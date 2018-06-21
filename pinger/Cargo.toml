@@ -1,0 +1,7 @@
+[package]
+name = "jaspy-pinger"
+version = "0.1.0"
+authors = ["Antti Tönkyrä <daedalus@pingtimeout.net>"]
+
+[dependencies]
+oping = "*"
