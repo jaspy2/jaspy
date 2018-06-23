@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn send_link_up_event(unix_time : f64, hostname : &String, ifindex : i64) {
-    println!("linkup event: {} {}", hostname, ifindex);
+    println!("linkup event @ {}: {} {}", unix_time, hostname, ifindex);
 }
 
 fn send_link_down_event(unix_time : f64, hostname : &String, ifindex : i64) {
-    println!("linkdown event: {} {}", hostname, ifindex);
+    println!("linkdown event @ {}: {} {}", unix_time, hostname, ifindex);
 }
 
 fn handle_parsed_trap(unix_time : f64, hostname : &String, trap : HashMap<String, String>) {
