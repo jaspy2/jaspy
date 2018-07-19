@@ -10,7 +10,6 @@ logging.basicConfig(
     format='%(asctime)-15s %(levelname)-8s %(name)-12s %(message)s'
 )
 logger = logging.getLogger('discover')
-logging.getLogger('urllib3.connectionpool').setLevel(logging.WARN)
 
 parser = argparse.ArgumentParser(description='perform jaspy network discovery')
 parser.add_argument('-s', '--snmpbot-url', required=False, help='url for snmpbot', default='http://localhost:8286')
@@ -22,6 +21,8 @@ args = parser.parse_args()
 
 if args.debug:
     logger.setLevel(logging.DEBUG)
+else:
+    logging.getLogger('urllib3.connectionpool').setLevel(logging.WARN)
 
 
 def try_resolve(device_name):
@@ -211,7 +212,7 @@ def build_connections(detected_devices):
                 interface['_link'] = cdp_link_candidate
             if interface['_link'] is not None:
                 l_device, l_port = interface['_link']
-            logger.info('LINK %s:%s ->> %s:%s', fqdn, interface['IF-MIB::ifName'], l_device.device_fqdn, l_port['IF-MIB::ifName'])
+            logger.info('LINK %s:%s -> %s:%s', fqdn, interface['IF-MIB::ifName'], l_device.device_fqdn, l_port['IF-MIB::ifName'])
 
 
 def main():
@@ -224,6 +225,12 @@ def main():
     build_connections(detected_devices)
     for dev in detected_devices.values():
         print(dev.device_fqdn)
-
+        for ifidx in sorted(dev.interfaces.keys()):
+            iface = dev.interfaces[ifidx]
+            linkinfo = ''
+            if '_link' in iface and iface['_link'] is not None:
+                rem_dev, rem_port = iface['_link']
+                linkinfo = ' -> {}:{}'.format(rem_dev.device_fqdn, rem_port['IF-MIB::ifName'])
+            print(' - {}{}'.format(iface['IF-MIB::ifName'], linkinfo))
 if __name__ == '__main__':
     main()
