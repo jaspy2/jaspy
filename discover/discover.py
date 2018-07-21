@@ -1,9 +1,9 @@
 import time
 import logging
 import argparse
-import socket
 import threading
-from lib.SNMPDataSource import SNMPDataSource, DeviceBugs
+import socket
+from lib.SNMPDataSource import SNMPDataSource
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,13 +36,13 @@ def try_resolve(device_name):
         if len(hndn) == 2:
             dn = hndn[1]
             fqdn = '%s.%s.' % (hn, dn)
-            retd = socket.gethostbyname(fqdn)
+            socket.gethostbyname(fqdn)
             return '%s.%s' % (hn, dn)
         else:
             for search_domain in args.dns_domain:
                 try:
                     fqdn = '%s.%s.' % (hn, search_domain)
-                    retd = socket.gethostbyname(fqdn)
+                    socket.gethostbyname(fqdn)
                     return '%s.%s' % (hn, search_domain)
                 except socket.gaierror as gaie:
                     pass
@@ -51,6 +51,19 @@ def try_resolve(device_name):
     except socket.gaierror:
         logger.info('failed to resolve fqdn %s', device_name)
         return None
+
+
+def get_remote_name(interface_info, protocol, protocol_field):
+    if protocol not in interface_info['_neighbors']:
+        return None
+    protocol_info = interface_info['_neighbors'][protocol]
+    if protocol_field not in protocol_info or protocol_info[protocol_field] is None:
+        return None
+    nbr_info = protocol_info[protocol_field].strip()
+    if len(nbr_info) == 0:
+        return None
+    fqdn = try_resolve(nbr_info)
+    return fqdn
 
 
 def discover_device(device_fqdn, detected_devices, detector_threads, detector_lock):
@@ -65,22 +78,12 @@ def discover_device(device_fqdn, detected_devices, detector_threads, detector_lo
     tmp_discovered_neighbors = []
     for key, value in sds.interfaces.items():
         if '_neighbors' in value:
-            if 'lldp' in value['_neighbors']:
-                if 'LLDP-MIB::lldpRemSysName' in value['_neighbors']['lldp'] and value['_neighbors']['lldp']['LLDP-MIB::lldpRemSysName'] is not None:
-                    remote_name = value['_neighbors']['lldp']['LLDP-MIB::lldpRemSysName']
-                    if remote_name.strip() != '':
-                        logger.info('%s: %s', device_fqdn, remote_name)
-                        fqdn = try_resolve(remote_name)
-                        if fqdn not in tmp_discovered_neighbors and fqdn is not None:
-                            tmp_discovered_neighbors.append(fqdn)
-            if 'cdp' in value['_neighbors']:
-                if 'CISCO-CDP-MIB::cdpCacheDeviceId' in value['_neighbors']['cdp'] and value['_neighbors']['cdp']['CISCO-CDP-MIB::cdpCacheDeviceId'] is not None:
-                    remote_name = value['_neighbors']['cdp']['CISCO-CDP-MIB::cdpCacheDeviceId']
-                    if remote_name.strip() != '':
-                        logger.info('%s: %s', device_fqdn, remote_name)
-                        fqdn = try_resolve(remote_name)
-                        if fqdn not in tmp_discovered_neighbors and fqdn is not None:
-                            tmp_discovered_neighbors.append(fqdn)
+            lldp_neighbor = get_remote_name(value, 'lldp', 'LLDP-MIB::lldpRemSysName')
+            if lldp_neighbor is not None and lldp_neighbor not in tmp_discovered_neighbors:
+                tmp_discovered_neighbors.append(lldp_neighbor)
+            cdp_neighbor = get_remote_name(value, 'cdp', 'CISCO-CDP-MIB::cdpCacheDeviceId')
+            if cdp_neighbor is not None and cdp_neighbor not in tmp_discovered_neighbors:
+                tmp_discovered_neighbors.append(cdp_neighbor)
     with detector_lock:
         for tmp_discovered_neighbor in tmp_discovered_neighbors:
             if tmp_discovered_neighbor in detected_devices or tmp_discovered_neighbor in detector_threads:
@@ -129,7 +132,8 @@ def lookup_lldp_neighbor(detected_devices, lldp_neighbor_descriptor):
     return device
 
 
-def lookup_lldp_neighbor_port(detected_devices, local_device, local_port, lldp_neighbor_descriptor, lldp_neighbor, is_reverse=False):
+def lookup_lldp_neighbor_port(
+        detected_devices, local_device, local_port, lldp_neighbor_descriptor, lldp_neighbor, is_reverse=False):
     # direct lookup, this is the most reliable one in terms of getting the correct result
     remote_port = lldp_neighbor.lookup_port_by_lldp_remote_info(
         lldp_neighbor_descriptor['LLDP-MIB::lldpRemPortId'],
@@ -156,7 +160,8 @@ def lookup_lldp_neighbor_port(detected_devices, local_device, local_port, lldp_n
         if num_refs == 1 and last_checked_interface is not None:
             return last_checked_interface
     logger.error(
-        '[LLDP] giving up on %s:%s (%s)', local_device.device_fqdn, local_port['IF-MIB::ifName'], lldp_neighbor.device_fqdn
+        '[LLDP] giving up on %s:%s (%s)',
+        local_device.device_fqdn, local_port['IF-MIB::ifName'], lldp_neighbor.device_fqdn
     )
 
 
@@ -167,7 +172,9 @@ def lookup_cdp_neighbor(detected_devices, cdp_neighbor_descriptor):
     else:
         return None
 
-def lookup_cdp_neighbor_port(detected_devices, local_device, local_port, cdp_neighbor_descriptor, cdp_neighbor, is_reverse=False):
+
+def lookup_cdp_neighbor_port(
+        detected_devices, local_device, local_port, cdp_neighbor_descriptor, cdp_neighbor, is_reverse=False):
     # note: reverse lookup not implemented but kept in function case of need
     remote_port = cdp_neighbor.lookup_port_by_cdp_info(
         cdp_neighbor_descriptor['CISCO-CDP-MIB::cdpCacheDevicePort']
@@ -175,7 +182,8 @@ def lookup_cdp_neighbor_port(detected_devices, local_device, local_port, cdp_nei
     if remote_port is not None:
         return remote_port
     logger.error(
-        '[CDP] giving up on %s:%s (%s)', local_device.device_fqdn, local_port['IF-MIB::ifName'], cdp_neighbor.device_fqdn
+        '[CDP] giving up on %s:%s (%s)',
+        local_device.device_fqdn, local_port['IF-MIB::ifName'], cdp_neighbor.device_fqdn
     )
 
 
@@ -212,7 +220,10 @@ def build_connections(detected_devices):
                 interface['_link'] = cdp_link_candidate
             if interface['_link'] is not None:
                 l_device, l_port = interface['_link']
-            logger.info('LINK %s:%s -> %s:%s', fqdn, interface['IF-MIB::ifName'], l_device.device_fqdn, l_port['IF-MIB::ifName'])
+                logger.info(
+                    'LINK %s:%s -> %s:%s',
+                    fqdn, interface['IF-MIB::ifName'], l_device.device_fqdn, l_port['IF-MIB::ifName']
+                )
 
 
 def main():
