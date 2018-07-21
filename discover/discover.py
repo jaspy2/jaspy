@@ -17,6 +17,7 @@ parser.add_argument('-c', '--community', required=True, help='snmp community')
 parser.add_argument('-r', '--root-device', required=True, help='root device for discovery')
 parser.add_argument('-d', '--dns-domain', required=True, help='dns domains', action='append', default=None)
 parser.add_argument('-D', '--debug', required=False, action='store_const', const=True, default=False)
+parser.add_argument('-S', '--stable', required=False, action='store_const', const=True, default=False)
 args = parser.parse_args()
 
 if args.debug:
@@ -65,6 +66,48 @@ def get_remote_name(interface_info, protocol, protocol_field):
     fqdn = try_resolve(nbr_info)
     return fqdn
 
+def send_device_info(device):
+    device_name, device_domain = device.device_fqdn.split('.', 1)
+    device_json = {
+        'name': device_name,
+        'device_type': device.device_type(),
+        'dns_domain': device_domain,
+        'snmp_community': device.community(),
+        'base_mac': device.get_chassis_id(),
+        'os_info': device.os_info()
+    }
+    # backend logic:
+    # - updates device by hostname & dns domain
+    # - backend should create device if not existing
+    # requests.post(blahblah, json=device_json)
+
+    interfaces_json = {
+        'device_name': device_name,
+        'dns_domain': device_domain,
+        'interfaces': {}
+    }
+
+    def value_or_none(i, k):
+        if k in i and len(k.strip()) > 0:
+            return i[k]
+        return None
+
+    for interface in device.interfaces.values():
+        interface_info = {
+            'index': interface['IF-MIB::ifIndex'],
+            'interface_type': interface['IF-MIB::ifType'],
+            'name': interface['IF-MIB::ifName'],
+            'alias': value_or_none(interface, 'IF-MIB::ifAlias'),
+            'description': value_or_none(interface, 'IF-MIB::ifDescr')
+        }
+        interfaces_json['interfaces'][interface_info['name']] = interface_info
+    # backend logic:
+    # - lookup interface by name, name is key in interfaces-dict
+    # - update values
+    # - missing interfaces MUST be deleted
+    # requests.post(blahblah, json=interfaces_json)
+    pass
+
 
 def discover_device(device_fqdn, detected_devices, detector_threads, detector_lock):
     sds = SNMPDataSource(device_fqdn, args.snmpbot_url, args.community)
@@ -89,6 +132,7 @@ def discover_device(device_fqdn, detected_devices, detector_threads, detector_lo
             if tmp_discovered_neighbor in detected_devices or tmp_discovered_neighbor in detector_threads:
                 continue
             start_device_discovery(tmp_discovered_neighbor, detected_devices, detector_threads, detector_lock)
+    send_device_info(sds)
 
 
 def start_device_discovery(device_fqdn, detected_devices, detector_threads, detector_lock):
@@ -226,6 +270,31 @@ def build_connections(detected_devices):
                 )
 
 
+def send_device_topology_info(device):
+    device_link_info = {'topology_stable': args.stable, 'interfaces': {}}
+    for interface in device.interfaces.values():
+        if '_link' not in interface or interface['_link'] is None:
+            device_link_info['interfaces'][interface['IF-MIB::ifName']] = None
+            continue
+        l_device, l_port = interface['_link']
+        l_device_name, l_device_dns_domain = l_device.device_fqdn.split('.', 1)
+        device_link_info['interfaces'][interface['IF-MIB::ifName']] = {
+            'name': l_device_name,
+            'dns_domain': l_device_dns_domain,
+            'interface': l_port['IF-MIB::ifName']
+        }
+    # backend logic
+    # - if topology stable is set, just update connectedinterfaces; todo: handle MOVED links?
+    # - if topology is NOT stable, REMOVE all connectedinterfaces that are null
+    # requests.post(blahblah, json=device_link_info)
+    pass
+
+
+def send_topology_info(detected_devices):
+    for device in detected_devices.values():
+        send_device_topology_info(device)
+
+
 def main():
     rdev = try_resolve(args.root_device)
     if rdev is None:
@@ -234,6 +303,7 @@ def main():
     detected_devices = {}
     perform_discovery(rdev, detected_devices)
     build_connections(detected_devices)
+    send_topology_info(detected_devices)
     for dev in detected_devices.values():
         print(dev.device_fqdn)
         for ifidx in sorted(dev.interfaces.keys()):
@@ -243,5 +313,7 @@ def main():
                 rem_dev, rem_port = iface['_link']
                 linkinfo = ' -> {}:{}'.format(rem_dev.device_fqdn, rem_port['IF-MIB::ifName'])
             print(' - {}{}'.format(iface['IF-MIB::ifName'], linkinfo))
+
+
 if __name__ == '__main__':
     main()

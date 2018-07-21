@@ -110,6 +110,15 @@ class SNMPDataSource(object):
             'IF-MIB::ifTable': self._ifmib_handle_ifindex_tables
         }
 
+    def community(self):
+        return self._community
+
+    def device_type(self):
+        return 'UNKNOWN'
+
+    def os_info(self):
+        return 'UNKNOWN'
+
     def has_bug(self, bug):
         if bug in self._device_bugs:
             return True
