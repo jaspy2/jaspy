@@ -304,15 +304,6 @@ def main():
     perform_discovery(rdev, detected_devices)
     build_connections(detected_devices)
     send_topology_info(detected_devices)
-    for dev in detected_devices.values():
-        print(dev.device_fqdn)
-        for ifidx in sorted(dev.interfaces.keys()):
-            iface = dev.interfaces[ifidx]
-            linkinfo = ''
-            if '_link' in iface and iface['_link'] is not None:
-                rem_dev, rem_port = iface['_link']
-                linkinfo = ' -> {}:{}'.format(rem_dev.device_fqdn, rem_port['IF-MIB::ifName'])
-            print(' - {}{}'.format(iface['IF-MIB::ifName'], linkinfo))
 
 
 if __name__ == '__main__':

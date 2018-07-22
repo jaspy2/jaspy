@@ -12,6 +12,40 @@ class DeviceBugs(Enum):
 
 
 class SNMPDataSource(object):
+    def _build_lldp_mapping_from_mac_address(self, lldp_index, lldp_data, lldp_porttype, lldp_portid):
+        if DeviceBugs.LLDP_MACADDRESS_DUPLICATE in self._device_bugs:
+            # perhaps lldp-id = ifindex then lol
+            if lldp_index in self.interfaces:
+                self._lldp_index_to_interface[lldp_index] = self.interfaces[lldp_index]
+        elif lldp_portid in self._anything_to_interface:
+            self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[lldp_portid]
+        else:
+            if DeviceBugs.LLDP_MACADDRESS_CANNOT_ASSOCIATE not in self._device_bugs:
+                self._device_bugs.append(DeviceBugs.LLDP_MACADDRESS_CANNOT_ASSOCIATE)
+                self._logger.error('VENDOR-BUG: cannot associate LLDP ID (MAC) to interface MAC!')
+            # perhaps lldp-id = ifindex then lol
+            if lldp_index in self.interfaces:
+                self._lldp_index_to_interface[lldp_index] = self.interfaces[lldp_index]
+
+    def _lldp_try_map_id_using_anything(self, lldp_index, lldp_data, lldp_porttype, lldp_portid):
+        try:
+            # try to decode into ascii... :)
+            decoded_port = binascii.unhexlify(
+                lldp_portid.replace(' ', '')
+            ).decode('ascii', errors='ignore')
+            if decoded_port in self._anything_to_interface:
+                self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[decoded_port]
+            if decoded_port.startswith('Eth'):
+                test_cisco_nexus_quirk = decoded_port.replace('Eth', 'Ethernet')
+                if test_cisco_nexus_quirk in self._anything_to_interface:
+                    if DeviceBugs.LLDP_NO_ASSOCIATION_TO_INTERFACE not in self._device_bugs:
+                        self._device_bugs.append(DeviceBugs.LLDP_NO_ASSOCIATION_TO_INTERFACE)
+                        self._logger.error(
+                            'VENDOR-BUG: LLDP interface cannot be associated to real interface without guesswork!')
+                    self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[test_cisco_nexus_quirk]
+        except binascii.Error:
+            pass
+
     def _lldp_handle_lldp_loc_port_table(self, data):
         mac_uniqueness_test = {}
         for entry in data:
@@ -34,39 +68,12 @@ class SNMPDataSource(object):
             lldp_porttype = lldp_data['LLDP-MIB::lldpLocPortIdSubtype']
             lldp_portid = lldp_data['LLDP-MIB::lldpLocPortId']
             if lldp_porttype == 'macAddress':
-                if DeviceBugs.LLDP_MACADDRESS_DUPLICATE in self._device_bugs:
-                    # perhaps lldp-id = ifindex then lol
-                    if lldp_index in self.interfaces:
-                        self._lldp_index_to_interface[lldp_index] = self.interfaces[lldp_index]
-                elif lldp_portid in self._anything_to_interface:
-                    self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[lldp_portid]
-                else:
-                    if DeviceBugs.LLDP_MACADDRESS_CANNOT_ASSOCIATE not in self._device_bugs:
-                        self._device_bugs.append(DeviceBugs.LLDP_MACADDRESS_CANNOT_ASSOCIATE)
-                        self._logger.error('VENDOR-BUG: cannot associate LLDP ID (MAC) to interface MAC!')
-                    # perhaps lldp-id = ifindex then lol
-                    if lldp_index in self.interfaces:
-                        self._lldp_index_to_interface[lldp_index] = self.interfaces[lldp_index]
+                self._build_lldp_mapping_from_mac_address(lldp_index, lldp_data, lldp_porttype, lldp_portid)
             else:
                 if lldp_portid in self._anything_to_interface:
                     self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[lldp_portid]
                 if lldp_porttype in ['local', 'interfaceName']:
-                    try:
-                        # try to decode into ascii... :)
-                        decoded_port = binascii.unhexlify(
-                            lldp_portid.replace(' ', '')
-                        ).decode('ascii', errors='ignore')
-                        if decoded_port in self._anything_to_interface:
-                            self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[decoded_port]
-                        if decoded_port.startswith('Eth'):
-                            test_cisco_nexus_quirk = decoded_port.replace('Eth', 'Ethernet')
-                            if test_cisco_nexus_quirk in self._anything_to_interface:
-                                if DeviceBugs.LLDP_NO_ASSOCIATION_TO_INTERFACE not in self._device_bugs:
-                                    self._device_bugs.append(DeviceBugs.LLDP_NO_ASSOCIATION_TO_INTERFACE)
-                                    self._logger.error('VENDOR-BUG: LLDP interface cannot be associated to real interface without guesswork!')
-                                self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[test_cisco_nexus_quirk]
-                    except binascii.Error:
-                        pass
+                    self._lldp_try_map_id_using_anything(lldp_index, lldp_data, lldp_porttype, lldp_portid)
 
     def _lldp_handle_lldp_rem_table(self, data):
         for entry in data:
@@ -225,7 +232,10 @@ class SNMPDataSource(object):
                 elif num_results == 1:
                     self._single_object_to_data(object_resultset_json)
             except json.decoder.JSONDecodeError:
-                self._logger.error('error decoding JSON from snmpbot, code=%s data: %s', object_resultset.status_code, object_resultset.text)
+                self._logger.error(
+                    'error decoding JSON from snmpbot, code=%s data: %s',
+                    object_resultset.status_code, object_resultset.text
+                )
 
     def _walk_tables(self, tables):
         for table in tables:
