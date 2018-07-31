@@ -173,6 +173,14 @@ class SNMPDataSource(object):
         self._build_anything_to_interface()
         self._get_lldp_tables()
         self._get_cdp_tables()
+        self._ensure_interface_sanity()
+
+    def _ensure_interface_sanity(self):
+        for iface in self.interfaces.values():
+            if 'IF-MIB::ifName' not in iface:
+                iface['IF-MIB::ifName'] = iface['IF-MIB::ifDescr']
+            if 'IF-MIB::ifType' not in iface:
+                iface['IF-MIB::ifType'] = 'other'
 
     def _is_valid_mac_keyed_interface(self, interface):
         if 'IF-MIB::ifType' not in interface:
