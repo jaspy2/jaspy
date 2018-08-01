@@ -4,6 +4,7 @@ import argparse
 import threading
 import socket
 from lib.SNMPDataSource import SNMPDataSource
+import json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -101,6 +102,9 @@ def send_device_info(device):
             'description': value_or_none(interface, 'IF-MIB::ifDescr')
         }
         interfaces_json['interfaces'][interface_info['name']] = interface_info
+
+    device_json['interfaces'] = interfaces_json
+    print(json.dumps(device_json))
     # backend logic:
     # - lookup interface by name, name is key in interfaces-dict
     # - update values
@@ -271,7 +275,7 @@ def build_connections(detected_devices):
 
 
 def send_device_topology_info(device):
-    device_link_info = {'topology_stable': args.stable, 'interfaces': {}}
+    device_link_info = {'interfaces': {}}
     for interface in device.interfaces.values():
         if '_link' not in interface or interface['_link'] is None:
             device_link_info['interfaces'][interface['IF-MIB::ifName']] = None
@@ -283,6 +287,8 @@ def send_device_topology_info(device):
             'dns_domain': l_device_dns_domain,
             'interface': l_port['IF-MIB::ifName']
         }
+    out = {'device_fqdn': device.device_fqdn, 'topology_stable': args.stable, 'interfaces': device_link_info['interfaces']}
+    print(json.dumps(out))
     # backend logic
     # - if topology stable is set, just update connectedinterfaces; todo: handle MOVED links?
     # - if topology is NOT stable, REMOVE all connectedinterfaces that are null
@@ -293,6 +299,7 @@ def send_device_topology_info(device):
 def send_topology_info(detected_devices):
     for device in detected_devices.values():
         send_device_topology_info(device)
+
 
 
 def main():
