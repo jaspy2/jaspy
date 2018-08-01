@@ -71,11 +71,11 @@ def send_device_info(device):
     device_name, device_domain = device.device_fqdn.split('.', 1)
     device_json = {
         'name': device_name,
-        'device_type': device.device_type(),
-        'dns_domain': device_domain,
-        'snmp_community': device.community(),
-        'base_mac': device.get_chassis_id(),
-        'os_info': device.os_info()
+        'deviceType': device.device_type(),
+        'dnsDomain': device_domain,
+        'snmpCommunity': device.community(),
+        'baseMac': device.get_chassis_id(),
+        'osInfo': device.os_info()
     }
     # backend logic:
     # - updates device by hostname & dns domain
@@ -83,8 +83,8 @@ def send_device_info(device):
     # requests.post(blahblah, json=device_json)
 
     interfaces_json = {
-        'device_name': device_name,
-        'dns_domain': device_domain,
+        'deviceName': device_name,
+        'dnsDomain': device_domain,
         'interfaces': {}
     }
 
@@ -96,7 +96,7 @@ def send_device_info(device):
     for interface in device.interfaces.values():
         interface_info = {
             'index': interface['IF-MIB::ifIndex'],
-            'interface_type': interface['IF-MIB::ifType'],
+            'interfaceType': interface['IF-MIB::ifType'],
             'name': interface['IF-MIB::ifName'],
             'alias': value_or_none(interface, 'IF-MIB::ifAlias'),
             'description': value_or_none(interface, 'IF-MIB::ifDescr')
@@ -284,10 +284,10 @@ def send_device_topology_info(device):
         l_device_name, l_device_dns_domain = l_device.device_fqdn.split('.', 1)
         device_link_info['interfaces'][interface['IF-MIB::ifName']] = {
             'name': l_device_name,
-            'dns_domain': l_device_dns_domain,
+            'dnsDomain': l_device_dns_domain,
             'interface': l_port['IF-MIB::ifName']
         }
-    out = {'device_fqdn': device.device_fqdn, 'topology_stable': args.stable, 'interfaces': device_link_info['interfaces']}
+    out = {'deviceFqdn': device.device_fqdn, 'topologyStable': args.stable, 'interfaces': device_link_info['interfaces']}
     print(json.dumps(out))
     # backend logic
     # - if topology stable is set, just update connectedinterfaces; todo: handle MOVED links?
