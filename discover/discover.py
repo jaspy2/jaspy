@@ -77,10 +77,6 @@ def send_device_info(device):
         'baseMac': device.get_chassis_id(),
         'osInfo': device.os_info()
     }
-    # backend logic:
-    # - updates device by hostname & dns domain
-    # - backend should create device if not existing
-    # requests.post(blahblah, json=device_json)
 
     interfaces_json = {
         'deviceName': device_name,
@@ -106,8 +102,8 @@ def send_device_info(device):
     device_json['interfaces'] = interfaces_json
     print(json.dumps(device_json))
     # backend logic:
-    # - lookup interface by name, name is key in interfaces-dict
-    # - update values
+    # - updates device by hostname & dns domain
+    # - backend should create device if not existing
     # - missing interfaces MUST be deleted
     # requests.post(blahblah, json=interfaces_json)
     pass
