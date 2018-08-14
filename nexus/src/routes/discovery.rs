@@ -108,6 +108,8 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovery
 
 // TODO: this might be better placed in an utility module or maybe in dbo logic?
 fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connection) {
+    if interface.connected_interface.is_none() { return; }
+
     let mut new_local_interface : models::dbo::Interface = interface.clone();
     new_local_interface.connected_interface = None;
     match new_local_interface.update(&connection) {
@@ -139,8 +141,6 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
         }
     }
 
-    // TODO: immediately resolve peer device, deduplicates some code
-
     for local_interface in local_device.interfaces(&connection).iter() {
         let peer_interface_info : &models::json::LinkPeerInfo;
         match link_infos.get(&local_interface.name) {
@@ -163,7 +163,6 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
             }
         }
 
-        // TODO: this takes time, can we optimize?
         let peer_device : models::dbo::Device;
         match models::dbo::Device::find_by_fqdn(&connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
             Some(some_peer_device) => {
