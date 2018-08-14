@@ -106,6 +106,18 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovery
     }
 }
 
+// TODO: this might be better placed in an utility module or maybe in dbo logic?
+fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connection) {
+    let mut new_local_interface : models::dbo::Interface = interface.clone();
+    new_local_interface.connected_interface = None;
+    match new_local_interface.update(&connection) {
+        Ok(_) => {},
+        Err(_) => {
+            // TODO: log?
+        }
+    }
+}
+
 #[put("/links", data = "<links_json>")]
 fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, connection: db::Connection) {
     let link_infos : &HashMap<String, Option<models::json::LinkPeerInfo>> = &links_json.interfaces;
@@ -130,114 +142,95 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
     // TODO: immediately resolve peer device, deduplicates some code
 
     for local_interface in local_device.interfaces(&connection).iter() {
+        let peer_interface_info : &models::json::LinkPeerInfo;
         match link_infos.get(&local_interface.name) {
             Some(peer_interface_info_opt) => {
                 match peer_interface_info_opt {
-                    Some(peer_interface_info) => {
-                        match local_interface.peer_interface(&connection) {
-                            Some(peer_interface) => {
-                                match models::dbo::Device::find_by_fqdn(&connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
-                                    Some(peer_device) => {
-                                        let mut create_link : bool = false;
-                                        let mut clear_other : bool = false;
-                                        if peer_interface.device_id != peer_device.id {
-                                            // Device changed
-                                            create_link = true;
-                                            clear_other = true;
-                                        } else if peer_interface_info.interface != peer_interface.name {
-                                            // Interface in device changed
-                                            create_link = true;
-                                            clear_other = true;
-                                        }
-                                        if create_link {
-                                            match peer_device.interface_by_name(&connection, &peer_interface_info.interface) {
-                                                Some(new_peer_interface) => {
-                                                    // TBD: create link other way too? maybe not?
-                                                    let mut new_local_interface : models::dbo::Interface = local_interface.clone();
-                                                    new_local_interface.connected_interface = Some(new_peer_interface.id);
-                                                    match new_local_interface.update(&connection) {
-                                                        Ok(_) => {},
-                                                        Err(_) => {
-                                                            // TODO: log?
-                                                        }
-                                                    }
-                                                },
-                                                None => {
-                                                    // other side interface not found, do some guesswork and/or clear any possible link?
-                                                }
-                                            }
-                                        }
-                                        if clear_other {
-                                            let mut new_peer_interface : models::dbo::Interface = peer_interface.clone();
-                                            new_peer_interface.connected_interface = None;
-                                            match new_peer_interface.update(&connection) {
-                                                Ok(_) => {},
-                                                Err(_) => {
-                                                    // TODO: log?
-                                                }
-                                            }
-                                        }
-                                    },
-                                    None => {
-                                        // wtf, peer device is not found, clear the link if unstable?
-                                    }
-                                }
-                            },
-                            None => {
-                                match models::dbo::Device::find_by_fqdn(&connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
-                                    Some(peer_device) => {
-                                        match peer_device.interface_by_name(&connection, &peer_interface_info.interface) {
-                                            Some(new_peer_interface) => {
-                                                // TBD: create link other way too? maybe not?
-                                                let mut new_local_interface : models::dbo::Interface = local_interface.clone();
-                                                new_local_interface.connected_interface = Some(new_peer_interface.id);
-                                                match new_local_interface.update(&connection) {
-                                                    Ok(_) => {},
-                                                    Err(_) => {
-                                                        // TODO: log?
-                                                    }
-                                                }
-                                            },
-                                            None => {
-                                                // other side interface not found, do some guesswork and/or clear any possible link?
-                                            }
-                                        }
-                                    },
-                                    None => {
-                                        // wtf, peer device is not found, clear the link if unstable?
-                                    }
-                                }
-                            }
-                        }
+                    Some(some_peer_interface_info) => {
+                        peer_interface_info = some_peer_interface_info;
                     },
                     None => {
-                        if !links_json.topology_stable {
-                            match local_interface.connected_interface {
-                                Some(_connected_interface) => {
-                                    // TBD: should this clear peer connection too? probably not (will be cleared when discovered)
-                                    let mut new_local_interface : models::dbo::Interface = local_interface.clone();
-                                    new_local_interface.connected_interface = None;
-                                    match new_local_interface.update(&connection) {
-                                        Ok(_) => {},
-                                        Err(_) => {
-                                            // TODO: log?
-                                        }
-                                    }
-                                },
-                                None => {
-                                    // no-op
+                        // TBD, should we clear peer connection? This must respect stability.
+                        if !links_json.topology_stable { clear_connection(local_interface, &connection); }
+                        continue;
+                    }
+                }
+            },
+            None => {
+                // TBD, should we clear peer connection? This must respect stability.
+                if !links_json.topology_stable { clear_connection(local_interface, &connection); }
+                continue;
+            }
+        }
+
+        // TODO: this takes time, can we optimize?
+        let peer_device : models::dbo::Device;
+        match models::dbo::Device::find_by_fqdn(&connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
+            Some(some_peer_device) => {
+                peer_device = some_peer_device;
+            },
+            None => {
+                match local_interface.connected_interface {
+                    Some(_) => {
+                        if !links_json.topology_stable { clear_connection(local_interface, &connection); }
+                        continue;
+                    },
+                    None => {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // todo if peer interface is same noop, if different then change, if no peer interface then change
+        match local_interface.peer_interface(&connection) {
+            Some(peer_interface) => {
+                let mut create_link = false;
+                let mut clear_other = false;
+                if peer_interface.device_id != peer_device.id {
+                    // Device changed
+                    create_link = true;
+                    clear_other = true;
+                } else if peer_interface_info.interface != peer_interface.name {
+                    // Interface in device changed
+                    create_link = true;
+                    clear_other = true;
+                }
+                if create_link {
+                    match peer_device.interface_by_name(&connection, &peer_interface_info.interface) {
+                        Some(new_peer_interface) => {
+                            // TBD: create link other way too? maybe not?
+                            let mut new_local_interface : models::dbo::Interface = local_interface.clone();
+                            new_local_interface.connected_interface = Some(new_peer_interface.id);
+                            match new_local_interface.update(&connection) {
+                                Ok(_) => {},
+                                Err(_) => {
+                                    // TODO: log?
                                 }
                             }
+                        },
+                        None => {
+                            // other side interface not found, do some guesswork and/or clear any possible link?
+                        }
+                    }
+                }
+                if clear_other {
+                    let mut new_peer_interface : models::dbo::Interface = peer_interface.clone();
+                    new_peer_interface.connected_interface = None;
+                    match new_peer_interface.update(&connection) {
+                        Ok(_) => {},
+                        Err(_) => {
+                            // TODO: log?
                         }
                     }
                 }
             },
             None => {
-                match local_interface.connected_interface {
-                    Some(_connected_interface) => {
-                        // TBD: should this clear peer connection too? probably not (will be cleared when discovered)
+                match peer_device.interface_by_name(&connection, &peer_interface_info.interface) {
+                    Some(new_peer_interface) => {
+                        // TBD: create link other way too? maybe not?
                         let mut new_local_interface : models::dbo::Interface = local_interface.clone();
-                        new_local_interface.connected_interface = None;
+                        new_local_interface.connected_interface = Some(new_peer_interface.id);
                         match new_local_interface.update(&connection) {
                             Ok(_) => {},
                             Err(_) => {
@@ -246,7 +239,7 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
                         }
                     },
                     None => {
-                        // no-op
+                        // other side interface not found, do some guesswork and/or clear any possible link?
                     }
                 }
             }
