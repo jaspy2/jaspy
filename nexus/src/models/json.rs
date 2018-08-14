@@ -38,3 +38,14 @@ pub struct LinkInfo {
     pub interfaces : HashMap<String, Option<LinkPeerInfo>>,
     pub topology_stable : bool,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct DeviceMonitorInfo {
+    pub fqdn : String,
+    pub responsive : bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DeviceMonitorResponse {
+    pub devices : Vec<DeviceMonitorInfo>,
+}

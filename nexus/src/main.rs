@@ -22,6 +22,13 @@ fn main() {
                 routes::discovery::discovery_links
             ]
         )
+        .mount(
+            "/device",
+            routes![
+                routes::device::device_list,
+                routes::device::monitored_device_list,
+            ]
+        )
         .manage(db::connect())
         .launch();
 }

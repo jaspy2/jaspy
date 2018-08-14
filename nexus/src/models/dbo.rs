@@ -5,6 +5,7 @@ use diesel::BelongingToDsl;
 use diesel::RunQueryDsl;
 use diesel::QueryDsl;
 use diesel::ExpressionMethods;
+use diesel::BoolExpressionMethods;
 
 #[table_name = "devices"]
 #[derive(Insertable)]
@@ -68,6 +69,35 @@ impl Device {
             },
             Err(_) => {
                 return None;
+            }
+        }
+    }
+
+    pub fn all(connection: &PgConnection) -> Vec<Device> {
+        match devices::table.load(connection) {
+            Ok(result) => {
+                return result;
+            },
+            Err(_) => {
+                return Vec::new();
+            }
+        }
+    }
+
+    pub fn monitored(connection: &PgConnection) -> Vec<Device> {
+        // TODO: default setting for polling enabled? NULL might mean false in that case..
+        match devices::table
+            .filter(
+                devices::polling_enabled.is_null()
+                .or(devices::polling_enabled.eq(true))
+            )
+            .load(connection)
+        {
+            Ok(result) => {
+                return result;
+            },
+            Err(_) => {
+                return Vec::new();
             }
         }
     }
