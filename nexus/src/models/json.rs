@@ -49,3 +49,28 @@ pub struct DeviceMonitorInfo {
 pub struct DeviceMonitorResponse {
     pub devices : Vec<DeviceMonitorInfo>,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct DeviceMonitorReport {
+    pub device_fqdn : String,
+    pub up : bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct InterfaceMonitorInterfaceReport {
+    pub if_index: i32,
+    pub in_octets: Option<u64>,
+    pub out_octets: Option<u64>,
+    pub in_packets: Option<u64>,
+    pub out_packets: Option<u64>,
+    pub in_errors: Option<u64>,
+    pub out_errors: Option<u64>,
+    pub up: Option<bool>,
+    pub speed: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct InterfaceMonitorReport {
+    pub device_fqdn : String,
+    pub interfaces: Vec<InterfaceMonitorInterfaceReport>,
+}
