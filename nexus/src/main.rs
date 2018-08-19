@@ -22,14 +22,11 @@ fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
 }
 
 fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS>>, metric_miss_cache: Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>) {
+    // TODO: in addition to initial run, do full runs every now and then to refresh counters
     let mut initial_run : bool = true;
     let pool = db::connect();
     loop {
         if !should_continue(&running) { break; }
-        // get devices & ports
-        // for port in ports
-        // if initial_run then add to list and get ifinfo
-        // if not initial run and metric_miss_cache.hasvalue(device_fqdn) then add to list and get ifinfo
         let mut refresh_devices : Vec<models::dbo::Device> = Vec::new();
         let mut refresh_interfaces : HashMap<String, Vec<models::dbo::Interface>> = HashMap::new();
         {
