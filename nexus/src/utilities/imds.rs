@@ -1,16 +1,20 @@
 use models;
 use std::collections::HashMap;
+use std::sync::{Arc,Mutex};
+use utilities;
 
 pub struct IMDS {
     metrics_storage : models::metrics::Metrics,
+    msgbus: Arc<Mutex<utilities::msgbus::MessageBus>>
 }
 
 impl IMDS {
-    pub fn new() -> IMDS {
+    pub fn new(msgbus: Arc<Mutex<utilities::msgbus::MessageBus>>) -> IMDS {
         let imds = IMDS {
             metrics_storage: models::metrics::Metrics {
                 devices: HashMap::new()
-            }
+            },
+            msgbus: msgbus
         };
 
         return imds;
@@ -49,7 +53,19 @@ impl IMDS {
             }
         }
         
-        // TODO: delta & event if change
+        if let Some(device_up) = device.up {
+            if device_up != dmr.up {
+                if let Ok(ref mut msgbus) = self.msgbus.lock() {
+                    let msg;
+                    if dmr.up { 
+                        msg = format!("{} UP", dmr.fqdn);
+                    } else {
+                        msg = format!("{} DOWN", dmr.fqdn);
+                    }
+                    msgbus.message_str(&msg);
+                }
+            }
+        }
         device.up = Some(dmr.up);
     }
 
@@ -136,9 +152,5 @@ impl IMDS {
                 println!(" {} status={:?} speed={:?}", interface_metrics.name, interface_metrics.up, reported_speed);
             }
         }
-    }
-
-    pub fn test(self: &IMDS) {
-        println!("test!");
     }
 }
