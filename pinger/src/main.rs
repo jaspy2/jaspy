@@ -24,15 +24,15 @@ struct PingThreadInfo {
 }
 
 struct PingAccountingInfo {
-    responsive : bool,
+    responsive : Option<bool>,
     hysteresis_responsive : u8,
     hysteresis_unresponsive : u8
 }
 
-#[derive(Deserialize,Debug)]
+#[derive(Serialize,Deserialize,Debug)]
 struct DeviceInfo {
     fqdn : String,
-    responsive : bool
+    up : Option<bool>
 }
 
 #[derive(Deserialize,Debug)]
@@ -53,7 +53,7 @@ fn get_devices(source_url : &String) -> Result<HashMap<String, DeviceInfo>, Stri
                             device_info.fqdn.clone(),
                             DeviceInfo {
                                 fqdn: device_info.fqdn.clone(),
-                                responsive: device_info.responsive
+                                up: device_info.up
                             }
                         );
                     }
@@ -89,8 +89,33 @@ fn pinger_prepare_instance(host : &String) -> Result<oping::Ping, oping::PingErr
     return Ok(oping_instance);
 }
 
-fn pinger_handle_host_drop(host : &String, ping_accounting_info : &mut PingAccountingInfo) {
-    if !ping_accounting_info.responsive {
+fn send_status_update(source_url: &String, host : &String, ping_accounting_info : &mut PingAccountingInfo) {
+    let client = reqwest::Client::new();
+    let resp_obj = DeviceInfo {
+        up: ping_accounting_info.responsive,
+        fqdn: host.clone()
+    };
+    let response = client.request(reqwest::Method::Put, source_url)
+        .json(&resp_obj)
+        .send();
+    match response {
+        Ok(_) => {},
+        Err(_) => {}
+    }
+}
+
+fn pinger_handle_host_drop(source_url: &String, host : &String, ping_accounting_info : &mut PingAccountingInfo) {
+    let responsive;
+    match ping_accounting_info.responsive {
+        Some(value) => { responsive = value; },
+        None => {
+            // Initial state is down!
+            ping_accounting_info.responsive = Some(false);
+            send_status_update(source_url, host, ping_accounting_info);
+            return;
+        }
+    }
+    if !responsive {
         ping_accounting_info.hysteresis_responsive = 0;
         ping_accounting_info.hysteresis_unresponsive = 0;
         return;
@@ -99,15 +124,26 @@ fn pinger_handle_host_drop(host : &String, ping_accounting_info : &mut PingAccou
     }
     ping_accounting_info.hysteresis_unresponsive += 1;
     if ping_accounting_info.hysteresis_unresponsive >= PING_HYST_LIMIT {
-        ping_accounting_info.responsive = false;
+        ping_accounting_info.responsive = Some(false);
+        send_status_update(source_url, host, ping_accounting_info);
         println!("[{}] -> DOWN", host);
     } else {
         println!("[{}] <hyst> not responding ({}/{})", host, ping_accounting_info.hysteresis_unresponsive, PING_HYST_LIMIT);
     }
 }
 
-fn pinger_handle_host_resp(host : &String, ping_accounting_info : &mut PingAccountingInfo) {
-    if ping_accounting_info.responsive {
+fn pinger_handle_host_resp(source_url: &String, host : &String, ping_accounting_info : &mut PingAccountingInfo) {
+    let responsive;
+    match ping_accounting_info.responsive {
+        Some(value) => { responsive = value; },
+        None => {
+            // Initial state is up!
+            ping_accounting_info.responsive = Some(true);
+            send_status_update(source_url, host, ping_accounting_info);
+            return;
+        }
+    }
+    if responsive {
         ping_accounting_info.hysteresis_responsive = 0;
         ping_accounting_info.hysteresis_unresponsive = 0;
         return;
@@ -116,7 +152,8 @@ fn pinger_handle_host_resp(host : &String, ping_accounting_info : &mut PingAccou
     }
     ping_accounting_info.hysteresis_responsive += 1;
     if ping_accounting_info.hysteresis_responsive >= PING_HYST_LIMIT {
-        ping_accounting_info.responsive = true;
+        ping_accounting_info.responsive = Some(true);
+        send_status_update(source_url, host, ping_accounting_info);
         println!("[{}] -> OK", host);
     } else {
         println!("[{}] <hyst> responding ({}/{})", host, ping_accounting_info.hysteresis_responsive, PING_HYST_LIMIT);
@@ -128,20 +165,20 @@ fn is_responding(ping_item : &oping::PingItem) -> bool {
     return true;
 }
 
-fn pinger_process_ping_result(host : &String, mut ping_accounting_info : &mut PingAccountingInfo, ping_item : oping::PingItem) {
+fn pinger_process_ping_result(source_url: &String, host : &String, mut ping_accounting_info : &mut PingAccountingInfo, ping_item : oping::PingItem) {
     if is_responding(&ping_item) {
-        pinger_handle_host_resp(host, &mut ping_accounting_info);
+        pinger_handle_host_resp(source_url, host, &mut ping_accounting_info);
     } else {
-        pinger_handle_host_drop(host, &mut ping_accounting_info);
+        pinger_handle_host_drop(source_url, host, &mut ping_accounting_info);
     }
 }
 
-fn pinger_perform_ping(host : &String, mut ping_accounting_info : &mut PingAccountingInfo, oping_instance : oping::Ping) {
+fn pinger_perform_ping(source_url: &String, host : &String, mut ping_accounting_info : &mut PingAccountingInfo, oping_instance : oping::Ping) {
     match oping_instance.send() {
         Ok(oping_result) => {
             match oping_result.last() {
                 Some(ping_result) => {
-                    pinger_process_ping_result(host, &mut ping_accounting_info, ping_result);
+                    pinger_process_ping_result(source_url, host, &mut ping_accounting_info, ping_result);
                 },
                 None => {}
             }
@@ -163,9 +200,9 @@ fn get_time_msecs() -> u64 {
     }
 }
 
-fn pinger(device_info : DeviceInfo, running : sync::Arc<sync::atomic::AtomicBool>, done : sync::mpsc::Sender<bool>) {
+fn pinger(source_url : String, device_info : DeviceInfo, running : sync::Arc<sync::atomic::AtomicBool>, done : sync::mpsc::Sender<bool>) {
     let mut ping_accounting_info : PingAccountingInfo = PingAccountingInfo {
-        responsive: device_info.responsive,
+        responsive: device_info.up,
         hysteresis_responsive: 0,
         hysteresis_unresponsive: 0
     };
@@ -175,7 +212,7 @@ fn pinger(device_info : DeviceInfo, running : sync::Arc<sync::atomic::AtomicBool
         
         match pinger_prepare_instance(&device_info.fqdn) {
             Ok(oping_instance) => {
-                pinger_perform_ping(&device_info.fqdn, &mut ping_accounting_info, oping_instance);
+                pinger_perform_ping(&source_url, &device_info.fqdn, &mut ping_accounting_info, oping_instance);
             },
             Err(e) => {
                 println!("[{}] ping instance creation error: {:?}", device_info.fqdn, e);
@@ -195,19 +232,20 @@ fn pinger(device_info : DeviceInfo, running : sync::Arc<sync::atomic::AtomicBool
     println!("[{}] stop monitoring", device_info.fqdn);
 }
 
-fn start_ping_worker(device_info : &DeviceInfo, ping_workers : &mut HashMap<String, PingThreadInfo>) {
+fn start_ping_worker(source_url: &String, device_info : &DeviceInfo, ping_workers : &mut HashMap<String, PingThreadInfo>) {
     let running = std::sync::Arc::new(sync::atomic::AtomicBool::new(true));
     let running_ptit = running.clone();
     let (tx, rx) = sync::mpsc::channel();
     let device_info_copy = DeviceInfo {
-        responsive: device_info.responsive,
+        up: device_info.up,
         fqdn: device_info.fqdn.clone()
     };
+    let source_url_copy = source_url.clone();
     ping_workers.insert(
         device_info.fqdn.clone(), 
         PingThreadInfo {
             thd: thread::spawn(|| {
-                pinger(device_info_copy, running_ptit, tx)
+                pinger(source_url_copy, device_info_copy, running_ptit, tx)
             }),
             running: running,
             finished_signal: rx
@@ -270,12 +308,12 @@ fn check_expired_fqdn_workers(devices : &HashMap<String, DeviceInfo>, ping_worke
     }
 }
 
-fn check_if_worker_needed(devices : &HashMap<String, DeviceInfo>, mut ping_workers : &mut HashMap<String, PingThreadInfo>) {
+fn check_if_worker_needed(source_url : &String, devices : &HashMap<String, DeviceInfo>, mut ping_workers : &mut HashMap<String, PingThreadInfo>) {
     for (fqdn, device_info) in devices.iter() {
         if ping_workers.contains_key(&*fqdn) {
             continue;
         }
-        start_ping_worker(&device_info, &mut ping_workers);
+        start_ping_worker(source_url, &device_info, &mut ping_workers);
     }
 }
 
@@ -302,7 +340,7 @@ fn main() {
             }
         }
         let mut expired_fqdns : Vec<String> = Vec::new();
-        check_if_worker_needed(&devices, &mut ping_workers);
+        check_if_worker_needed(&source_url, &devices, &mut ping_workers);
         check_expired_fqdn_workers(&devices, &ping_workers, &mut expired_fqdns);
         prepare_expired_fqdns_for_reap(&mut ping_workers, &expired_fqdns, &mut reap_threads);
         reap_finished_threads(&mut reap_threads);
