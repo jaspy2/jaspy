@@ -1,10 +1,12 @@
 extern crate rocket_contrib;
 use models;
 use db;
+use std::sync::{Arc,Mutex};
 use std::collections::{HashSet,HashMap};
+use rocket::State;
 
 #[put("/device", data = "<discovery_json>")]
-fn discovery_device(discovery_json: rocket_contrib::Json<models::json::DiscoveryInfo>, connection: db::Connection) {
+fn discovery_device(discovery_json: rocket_contrib::Json<models::json::DiscoveryInfo>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
     let discovered_device : &models::json::DiscoveredDevice = &discovery_json.device_info;
     let discovered_device_interfaces : &Vec<models::json::DiscoveredInterface> = &discovery_json.interface_info;
 
@@ -104,6 +106,12 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovery
             }
         }
     }
+
+    // TODO: optimize: only invalidate metric miss cache if stuff changes
+    let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
+    if let Ok(ref mut metric_miss_cache) = metric_miss_cache.inner().lock() {
+        if !metric_miss_cache.miss_set.contains(&device_fqdn) { metric_miss_cache.miss_set.insert(device_fqdn); }
+    }
 }
 
 // TODO: this might be better placed in an utility module or maybe in dbo logic?
@@ -121,7 +129,7 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connect
 }
 
 #[put("/links", data = "<links_json>")]
-fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, connection: db::Connection) {
+fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
     let link_infos : &HashMap<String, Option<models::json::LinkPeerInfo>> = &links_json.interfaces;
     let fqdn_splitted : Vec<&str> = links_json.device_fqdn.splitn(2, ".").collect();
     if fqdn_splitted.len() != 2 {
@@ -243,5 +251,11 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
                 }
             }
         }
+    }
+
+    // TODO: optimize: only invalidate metric miss cache if stuff changes
+    let device_fqdn = format!("{}.{}", local_device.name, local_device.dns_domain);
+    if let Ok(ref mut metric_miss_cache) = metric_miss_cache.inner().lock() {
+        if !metric_miss_cache.miss_set.contains(&device_fqdn) { metric_miss_cache.miss_set.insert(device_fqdn); }
     }
 }

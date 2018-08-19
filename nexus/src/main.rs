@@ -20,10 +20,19 @@ fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
     return running.load(std::sync::atomic::Ordering::Relaxed);
 }
 
-fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS>>) {
+fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS>>, metric_miss_cache: Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>) {
+    let mut initial_run : bool = true;
     loop {
         if !should_continue(&running) { break; }
         // get devices & ports
+        // for port in ports
+        // if initial_run then add to list and get ifinfo
+        // if not initial run and metric_miss_cache.hasvalue(device_fqdn) then add to list and get ifinfo
+        {
+            if let Ok(ref mut metric_miss_cache) = metric_miss_cache.lock() {
+                metric_miss_cache.miss_set.clear();
+            }
+        }
         {
             // refresh results :)
             if let Ok(ref mut imds) = imds.lock() {
@@ -32,8 +41,7 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
                 imds.refresh_interface(&"test.fqdn".to_string(), 123, &"interfacePort2".to_string(), false, None);
             };
         }
-
-        // TODO: optimize: after we get initial result, we don't need to refresh unless something changes
+        initial_run = false;
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }
@@ -41,11 +49,13 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
 fn main() {
     let running = Arc::new(AtomicBool::new(true));
     let imds : Arc<Mutex<utilities::imds::IMDS>> = Arc::new(Mutex::new(utilities::imds::IMDS::new()));
+    let metric_miss_cache : Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>> = Arc::new(Mutex::new(models::metrics::DeviceMetricRefreshCacheMiss::new()));
 
     let imds_worker_imds = imds.clone();
     let imds_worker_running = running.clone();
+    let imds_worder_metric_miss_cache = metric_miss_cache.clone();
     let imds_worker_thread = std::thread::spawn(|| {
-        imds_worker(imds_worker_running, imds_worker_imds);
+        imds_worker(imds_worker_running, imds_worker_imds, imds_worder_metric_miss_cache);
     });
     
     rocket::ignite()
@@ -71,6 +81,7 @@ fn main() {
         )
         .manage(db::connect())
         .manage(imds.clone())
+        .manage(metric_miss_cache.clone())
         .launch();
 
     (*running).store(false, std::sync::atomic::Ordering::Relaxed);
