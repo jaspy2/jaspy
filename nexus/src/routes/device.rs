@@ -2,6 +2,9 @@ extern crate rocket_contrib;
 use models;
 use db;
 use rocket_contrib::Json;
+use std::sync::{Arc,Mutex};
+use rocket::State;
+use utilities;
 
 #[get("/")]
 fn device_list(connection: db::Connection) -> Json<Vec<models::dbo::Device>> {
@@ -9,12 +12,24 @@ fn device_list(connection: db::Connection) -> Json<Vec<models::dbo::Device>> {
 }
 
 #[get("/monitor")]
-fn monitored_device_list(connection: db::Connection) -> Json<models::json::DeviceMonitorResponse> {
+fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Json<models::json::DeviceMonitorResponse> {
+    let mut dmi : Vec<models::json::DeviceMonitorInfo> = Vec::new();
+    for monitored in models::dbo::Device::monitored(&connection).iter() {
+        if let Ok(ref mut imds) = imds.lock() {
+            let device_fqdn = format!("{}.{}", monitored.name, monitored.dns_domain);
+            if let Some(imds_device) = imds.get_device(&device_fqdn) {
+                dmi.push(models::json::DeviceMonitorInfo { fqdn: device_fqdn, up: imds_device.up });
+            }
+        }
+    }
+    /*if let Ok(ref mut imds) = imds.lock() {
+        imds.get_device()
+    }
     // TODO: initial responsive status from DB, do we need indeterminate state?
     let mut dmi : Vec<models::json::DeviceMonitorInfo> = Vec::new();
     for monitored in models::dbo::Device::monitored(&connection).iter() {
         let fqdn = format!("{}.{}", monitored.name, monitored.dns_domain);
         dmi.push(models::json::DeviceMonitorInfo { fqdn: fqdn, responsive: true });
-    }
+    }*/
     return Json(models::json::DeviceMonitorResponse { devices : dmi });
 }

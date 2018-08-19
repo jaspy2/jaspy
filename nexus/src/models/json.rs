@@ -42,7 +42,7 @@ pub struct LinkInfo {
 #[derive(Serialize, Deserialize)]
 pub struct DeviceMonitorInfo {
     pub fqdn : String,
-    pub responsive : bool,
+    pub up : Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]

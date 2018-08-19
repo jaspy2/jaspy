@@ -16,6 +16,10 @@ impl IMDS {
         return imds;
     }
 
+    pub fn get_device(self: &IMDS, device_fqdn: &String) -> Option<&models::metrics::DeviceMetrics> {
+        return self.metrics_storage.devices.get(device_fqdn);
+    }
+
     pub fn refresh_device(self: &mut IMDS, device_fqdn: &String) {
         match self.metrics_storage.devices.get_mut(device_fqdn) {
             Some(device) => {
