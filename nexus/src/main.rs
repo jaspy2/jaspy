@@ -15,6 +15,7 @@ mod schema;
 mod utilities;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
+use std::collections::HashMap;
 
 fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
     return running.load(std::sync::atomic::Ordering::Relaxed);
@@ -22,23 +23,47 @@ fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
 
 fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS>>, metric_miss_cache: Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>) {
     let mut initial_run : bool = true;
+    let pool = db::connect();
     loop {
         if !should_continue(&running) { break; }
         // get devices & ports
         // for port in ports
         // if initial_run then add to list and get ifinfo
         // if not initial run and metric_miss_cache.hasvalue(device_fqdn) then add to list and get ifinfo
+        let mut refresh_devices : Vec<models::dbo::Device> = Vec::new();
+        let mut refresh_interfaces : HashMap<String, Vec<models::dbo::Interface>> = HashMap::new();
         {
             if let Ok(ref mut metric_miss_cache) = metric_miss_cache.lock() {
-                metric_miss_cache.miss_set.clear();
+                match pool.get() {
+                    Ok(conn) => {
+                        for device in models::dbo::Device::all(&conn).iter() {
+                            let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
+                            if initial_run || metric_miss_cache.miss_set.contains(&device_fqdn) {
+                                refresh_devices.push(device.clone());
+                                refresh_interfaces.insert(device_fqdn, device.interfaces(&conn));
+                            }
+                        }
+                        metric_miss_cache.miss_set.clear();
+                    },
+                    Err(_) => {
+                        // TODO: log?
+                        std::thread::sleep(std::time::Duration::from_millis(1000));
+                        continue;
+                    }
+                }
             }
         }
         {
-            // refresh results :)
             if let Ok(ref mut imds) = imds.lock() {
-                imds.refresh_device(&"test.fqdn".to_string());
-                imds.refresh_interface(&"test.fqdn".to_string(), 1234, &"interfacePort1".to_string(), false, None);
-                imds.refresh_interface(&"test.fqdn".to_string(), 123, &"interfacePort2".to_string(), false, None);
+                for device in refresh_devices.iter() {
+                    let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
+                    imds.refresh_device(&device_fqdn);
+                    if let Some(device_interfaces) = refresh_interfaces.get(&device_fqdn) {
+                        for interface in device_interfaces.iter() {
+                            imds.refresh_interface(&device_fqdn, interface.index, &interface.name, interface.connected_interface.is_some(), interface.speed_override);
+                        }
+                    }
+                }
             };
         }
         initial_run = false;

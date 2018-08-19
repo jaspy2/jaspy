@@ -66,7 +66,7 @@ pub struct InterfaceMonitorInterfaceReport {
     pub in_errors: Option<u64>,
     pub out_errors: Option<u64>,
     pub up: Option<bool>,
-    pub speed: Option<u64>,
+    pub speed: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize)]

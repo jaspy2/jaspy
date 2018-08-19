@@ -49,7 +49,7 @@ impl IMDS {
         device.up = Some(dmr.up);
     }
 
-    pub fn refresh_interface(self: &mut IMDS, device_fqdn: &String, if_index: i32, name: &String, neighbors: bool, speed_override: Option<u64>) {
+    pub fn refresh_interface(self: &mut IMDS, device_fqdn: &String, if_index: i32, name: &String, neighbors: bool, speed_override: Option<i32>) {
         let device;
         match self.metrics_storage.devices.get_mut(device_fqdn) {
             Some(value) => {

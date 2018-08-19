@@ -5,7 +5,7 @@ pub struct InterfaceMetrics {
 
     pub name: String,
     pub neighbors: bool,
-    pub speed_override: Option<u64>,
+    pub speed_override: Option<i32>,
 
     pub in_octets: Option<u64>,
     pub out_octets: Option<u64>,
@@ -14,7 +14,7 @@ pub struct InterfaceMetrics {
     pub in_errors: Option<u64>,
     pub out_errors: Option<u64>,
     pub up: Option<bool>,
-    pub speed: Option<u64>,
+    pub speed: Option<i32>,
 }
 
 pub struct DeviceMetrics {
