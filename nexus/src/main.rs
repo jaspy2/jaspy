@@ -23,21 +23,26 @@ fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
 }
 
 fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS>>, metric_miss_cache: Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>) {
+    let mut first_run_done = false;
     let mut refresh_run_counter : i32 = 0;
     let pool = db::connect();
     loop {
         if !should_continue(&running) { break; }
+        let mut refresh = false;
         let mut refresh_devices : Vec<models::dbo::Device> = Vec::new();
         let mut refresh_interfaces : HashMap<String, Vec<models::dbo::Interface>> = HashMap::new();
         {
             if let Ok(ref mut metric_miss_cache) = metric_miss_cache.lock() {
                 match pool.get() {
                     Ok(conn) => {
-                        for device in models::dbo::Device::all(&conn).iter() {
-                            let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
-                            if refresh_run_counter == 0 || metric_miss_cache.miss_set.contains(&device_fqdn) {
-                                refresh_devices.push(device.clone());
-                                refresh_interfaces.insert(device_fqdn, device.interfaces(&conn));
+                        if !first_run_done || !metric_miss_cache.miss_set.is_empty() {
+                            refresh = true;
+                            for device in models::dbo::Device::all(&conn).iter() {
+                                let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
+                                if refresh_run_counter == 0 || metric_miss_cache.miss_set.contains(&device_fqdn) {
+                                    refresh_devices.push(device.clone());
+                                    refresh_interfaces.insert(device_fqdn, device.interfaces(&conn));
+                                }
                             }
                         }
                         metric_miss_cache.miss_set.clear();
@@ -61,11 +66,12 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
                         }
                     }
                 }
-                if refresh_run_counter == 0 {
+                if refresh {
                     imds.prune();
                 }
             };
         }
+        first_run_done = true;
         if refresh_run_counter >= 9 { refresh_run_counter = 0; } else { refresh_run_counter += 1; }
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
