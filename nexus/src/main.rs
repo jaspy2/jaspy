@@ -96,6 +96,7 @@ fn main() {
             routes![
                 routes::device::device_list,
                 routes::device::monitored_device_list,
+                routes::device::monitored_device_report,
             ]
         )
         .mount(

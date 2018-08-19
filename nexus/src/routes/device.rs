@@ -22,14 +22,12 @@ fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utili
             }
         }
     }
-    /*if let Ok(ref mut imds) = imds.lock() {
-        imds.get_device()
-    }
-    // TODO: initial responsive status from DB, do we need indeterminate state?
-    let mut dmi : Vec<models::json::DeviceMonitorInfo> = Vec::new();
-    for monitored in models::dbo::Device::monitored(&connection).iter() {
-        let fqdn = format!("{}.{}", monitored.name, monitored.dns_domain);
-        dmi.push(models::json::DeviceMonitorInfo { fqdn: fqdn, responsive: true });
-    }*/
     return Json(models::json::DeviceMonitorResponse { devices : dmi });
+}
+
+#[put("/monitor", data = "<device_monitor_report>")]
+fn monitored_device_report(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, device_monitor_report : Json<models::json::DeviceMonitorReport>) {
+    if let Ok(ref mut imds) = imds.lock() {
+        imds.report_device(device_monitor_report.into_inner());
+    }
 }

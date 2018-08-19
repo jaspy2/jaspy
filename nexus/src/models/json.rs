@@ -52,7 +52,7 @@ pub struct DeviceMonitorResponse {
 
 #[derive(Serialize, Deserialize)]
 pub struct DeviceMonitorReport {
-    pub device_fqdn : String,
+    pub fqdn : String,
     pub up : bool,
 }
 

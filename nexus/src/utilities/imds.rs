@@ -39,7 +39,7 @@ impl IMDS {
 
     pub fn report_device(self: &mut IMDS, dmr: models::json::DeviceMonitorReport) {
         let device;
-        match self.metrics_storage.devices.get_mut(&dmr.device_fqdn) {
+        match self.metrics_storage.devices.get_mut(&dmr.fqdn) {
             Some(value) => {
                 device = value;
             },
