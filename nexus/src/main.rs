@@ -8,6 +8,7 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate r2d2;
 extern crate r2d2_diesel;
+extern crate time;
 mod routes;
 mod models;
 mod db;
@@ -22,8 +23,7 @@ fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
 }
 
 fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS>>, metric_miss_cache: Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>) {
-    // TODO: in addition to initial run, do full runs every now and then to refresh counters
-    let mut initial_run : bool = true;
+    let mut refresh_run_counter : i32 = 0;
     let pool = db::connect();
     loop {
         if !should_continue(&running) { break; }
@@ -35,7 +35,7 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
                     Ok(conn) => {
                         for device in models::dbo::Device::all(&conn).iter() {
                             let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
-                            if initial_run || metric_miss_cache.miss_set.contains(&device_fqdn) {
+                            if refresh_run_counter == 0 || metric_miss_cache.miss_set.contains(&device_fqdn) {
                                 refresh_devices.push(device.clone());
                                 refresh_interfaces.insert(device_fqdn, device.interfaces(&conn));
                             }
@@ -61,9 +61,12 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
                         }
                     }
                 }
+                if refresh_run_counter == 0 {
+                    imds.prune();
+                }
             };
         }
-        initial_run = false;
+        if refresh_run_counter >= 9 { refresh_run_counter = 0; } else { refresh_run_counter += 1; }
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }
