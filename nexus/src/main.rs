@@ -62,7 +62,7 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
                     imds.refresh_device(&device_fqdn);
                     if let Some(device_interfaces) = refresh_interfaces.get(&device_fqdn) {
                         for interface in device_interfaces.iter() {
-                            imds.refresh_interface(&device_fqdn, interface.index, &interface.name, interface.connected_interface.is_some(), interface.speed_override);
+                            imds.refresh_interface(&device_fqdn, interface.index, &interface.interface_type, &interface.name, interface.connected_interface.is_some(), interface.speed_override);
                         }
                     }
                 }
@@ -96,7 +96,7 @@ fn main() {
             "/discovery",
             routes![
                 routes::discovery::discovery_device,
-                routes::discovery::discovery_links
+                routes::discovery::discovery_links,
             ]
         )
         .mount(
@@ -111,6 +111,7 @@ fn main() {
             "/metrics",
             routes![
                 routes::metrics::metrics_fast,
+                routes::metrics::metrics,
             ]
         )
         .manage(db::connect())

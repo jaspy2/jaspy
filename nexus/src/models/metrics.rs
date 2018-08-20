@@ -5,6 +5,7 @@ pub struct InterfaceMetrics {
 
     pub name: String,
     pub neighbors: bool,
+    pub interface_type: String,
     pub speed_override: Option<i32>,
 
     pub in_octets: Option<u64>,
@@ -45,8 +46,8 @@ impl DeviceMetricRefreshCacheMiss {
 }
 
 pub enum MetricValue {
-    Float64(f64),
     Int64(i64),
+    Uint64(u64),
 }
 
 pub struct LabeledMetric {
@@ -62,5 +63,23 @@ impl LabeledMetric {
             value: value,
             labels: labels.clone(),
         }
+    }
+
+    pub fn as_text(self: &LabeledMetric) -> String {
+        let mut label_data : Vec<String> = Vec::new();
+        for (label, value) in self.labels.iter() {
+            label_data.push(format!("{}=\"{}\"", label, value));
+        }
+        let labeltext = label_data.join(",");
+        let body;
+        match self.value {
+            MetricValue::Int64(value) => {
+                body = format!("{}{{{}}} {}", self.name, labeltext, value);
+            },
+            MetricValue::Uint64(value) => {
+                body = format!("{}{{{}}} {}", self.name, labeltext, value);
+            }
+        }
+        return format!("{}", body);
     }
 }

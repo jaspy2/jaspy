@@ -92,7 +92,7 @@ impl IMDS {
         device.up = Some(dmr.up);
     }
 
-    pub fn refresh_interface(self: &mut IMDS, device_fqdn: &String, if_index: i32, name: &String, neighbors: bool, speed_override: Option<i32>) {
+    pub fn refresh_interface(self: &mut IMDS, device_fqdn: &String, if_index: i32, interface_type: &String, name: &String, neighbors: bool, speed_override: Option<i32>) {
         let device;
         match self.metrics_storage.devices.get_mut(device_fqdn) {
             Some(value) => {
@@ -119,6 +119,7 @@ impl IMDS {
             name: name.clone(),
             neighbors: neighbors,
             speed_override: speed_override,
+            interface_type: interface_type.clone(),
 
             in_octets: None,
             out_octets: None,
@@ -164,26 +165,124 @@ impl IMDS {
         }
     }
 
-    pub fn get_fast_metrics(self: &IMDS) {
-        let jaspy_device_up = "jaspy_device_up".to_string();
-        let mut metric_values: Vec<models::metrics::MetricValue> = Vec::new();
+    pub fn get_metrics(self: &IMDS) -> Vec<models::metrics::LabeledMetric> {
+        let jaspy_interface_octets = "jaspy_interface_octets".to_string();
+        let jaspy_interface_packets = "jaspy_interface_packets".to_string();
+        let jaspy_interface_errors = "jaspy_interface_errors".to_string();
+        let jaspy_interface_speed = "jaspy_interface_speed".to_string();
+
+        let mut metric_values: Vec<models::metrics::LabeledMetric> = Vec::new();
         for (_device_key, device_metrics) in self.metrics_storage.devices.iter() {
-            // TODO: still needs labels
-            // Only emit device up/down metrics if device is actually up/down aka. not indeterminate :)
-            if let Some(device_up_bool) = device_metrics.up {
-                let device_up : i64;
-                if device_up_bool { device_up = 1; } else { device_up = 0; }
-                let metric = models::metrics::LabeledMetric::new(&jaspy_device_up, models::metrics::MetricValue::Int64(device_up), &HashMap::new());
-            }
-            
-            println!("{} status={:?}", device_metrics.fqdn, device_metrics.up);
             for (_interface_key, interface_metrics) in device_metrics.interfaces.iter() {
                 let reported_speed = match interface_metrics.speed_override {
                     Some(speed_override) => Some(speed_override),
                     None => interface_metrics.speed
                 };
-                println!(" {} status={:?} speed={:?}", interface_metrics.name, interface_metrics.up, reported_speed);
+
+                let mut labels: HashMap<String,String> = HashMap::new();
+                labels.insert("fqdn".to_string(), device_metrics.fqdn.clone());
+                labels.insert("name".to_string(), interface_metrics.name.clone());
+                labels.insert("interface_type".to_string(), interface_metrics.interface_type.clone());
+                if interface_metrics.neighbors { labels.insert("neighbors".to_string(), "yes".to_string()); }
+                else { labels.insert("neighbors".to_string(), "no".to_string()); }
+
+                let mut in_labels = labels.clone();
+                in_labels.insert("direction".to_string(), "rx".to_string());
+                let mut out_labels = labels.clone();
+                out_labels.insert("direction".to_string(), "tx".to_string());
+
+                if let Some(interface_metrics_reported_speed) = reported_speed {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_speed, models::metrics::MetricValue::Int64(interface_metrics_reported_speed as i64),
+                        &labels
+                    ));
+                }
+
+                if let Some(interface_metrics_in_octets) = interface_metrics.in_octets {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_octets, models::metrics::MetricValue::Uint64(interface_metrics_in_octets),
+                        &in_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_out_octets) = interface_metrics.out_octets {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_octets, models::metrics::MetricValue::Uint64(interface_metrics_out_octets),
+                        &out_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_in_packets) = interface_metrics.in_packets {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_packets, models::metrics::MetricValue::Uint64(interface_metrics_in_packets),
+                        &in_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_out_packets) = interface_metrics.out_packets {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_packets, models::metrics::MetricValue::Uint64(interface_metrics_out_packets),
+                        &out_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_in_errors) = interface_metrics.in_errors {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_errors, models::metrics::MetricValue::Uint64(interface_metrics_in_errors),
+                        &in_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_out_errors) = interface_metrics.out_errors {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_errors, models::metrics::MetricValue::Uint64(interface_metrics_out_errors),
+                        &out_labels
+                    ));
+                }
             }
         }
+
+        return metric_values;
+    }
+
+    pub fn get_fast_metrics(self: &IMDS) -> Vec<models::metrics::LabeledMetric> {
+        let jaspy_device_up = "jaspy_device_up".to_string();
+        let jaspy_interface_up = "jaspy_interface_up".to_string();
+
+        let mut metric_values: Vec<models::metrics::LabeledMetric> = Vec::new();
+        for (_device_key, device_metrics) in self.metrics_storage.devices.iter() {
+            // Only emit device up/down metrics if device is actually up/down aka. not indeterminate :)
+            if let Some(device_up_bool) = device_metrics.up {
+                let device_up : i64;
+                let mut labels: HashMap<String,String> = HashMap::new();
+                labels.insert("fqdn".to_string(), device_metrics.fqdn.clone());
+                if device_up_bool { device_up = 1; } else { device_up = 0; }
+                let metric = models::metrics::LabeledMetric::new(
+                    &jaspy_device_up, models::metrics::MetricValue::Int64(device_up),
+                    &labels
+                );
+                metric_values.push(metric);
+            }
+
+            for (_interface_key, interface_metrics) in device_metrics.interfaces.iter() {
+                let mut labels: HashMap<String,String> = HashMap::new();
+                labels.insert("fqdn".to_string(), device_metrics.fqdn.clone());
+                labels.insert("name".to_string(), interface_metrics.name.clone());
+                labels.insert("interface_type".to_string(), interface_metrics.interface_type.clone());
+                if interface_metrics.neighbors { labels.insert("neighbors".to_string(), "yes".to_string()); }
+                else { labels.insert("neighbors".to_string(), "no".to_string()); }
+
+                if let Some(interface_metrics_up) = interface_metrics.up {
+                    let val : i64;
+                    if interface_metrics_up { val = 1; } else { val = 0; }
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_up, models::metrics::MetricValue::Int64(val),
+                        &labels
+                    ));
+                }
+            }
+        }
+
+        return metric_values;
     }
 }
