@@ -165,7 +165,17 @@ impl IMDS {
     }
 
     pub fn get_fast_metrics(self: &IMDS) {
+        let jaspy_device_up = "jaspy_device_up".to_string();
+        let mut metric_values: Vec<models::metrics::MetricValue> = Vec::new();
         for (_device_key, device_metrics) in self.metrics_storage.devices.iter() {
+            // TODO: still needs labels
+            // Only emit device up/down metrics if device is actually up/down aka. not indeterminate :)
+            if let Some(device_up_bool) = device_metrics.up {
+                let device_up : i64;
+                if device_up_bool { device_up = 1; } else { device_up = 0; }
+                let metric = models::metrics::LabeledMetric::new(&jaspy_device_up, models::metrics::MetricValue::Int64(device_up), &HashMap::new());
+            }
+            
             println!("{} status={:?}", device_metrics.fqdn, device_metrics.up);
             for (_interface_key, interface_metrics) in device_metrics.interfaces.iter() {
                 let reported_speed = match interface_metrics.speed_override {

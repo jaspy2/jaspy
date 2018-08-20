@@ -43,3 +43,24 @@ impl DeviceMetricRefreshCacheMiss {
         return dmrcm;
     }
 }
+
+pub enum MetricValue {
+    Float64(f64),
+    Int64(i64),
+}
+
+pub struct LabeledMetric {
+    name: String,
+    labels: HashMap<String, String>,
+    value: MetricValue,
+}
+
+impl LabeledMetric {
+    pub fn new(name: &String, value: MetricValue, labels: &HashMap<String,String>) -> LabeledMetric {
+        return LabeledMetric {
+            name: name.clone(),
+            value: value,
+            labels: labels.clone(),
+        }
+    }
+}
