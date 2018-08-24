@@ -1,76 +1,80 @@
 use std::collections::HashMap;
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct DiscoveredDevice {
     pub name: String,
-    pub dns_domain: String,
-    pub snmp_community: Option<String>,
-    pub base_mac: Option<String>,
-    pub os_info: Option<String>,
+    pub dnsDomain: String,
+    pub snmpCommunity: Option<String>,
+    pub baseMac: Option<String>,
+    pub osInfo: Option<String>,
+    pub interfaces : HashMap<String, DiscoveredInterface>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct DiscoveredInterface {
     pub index: i32,
-    pub interface_type: String,
-    pub display_name: Option<String>,
+    pub interfaceType: String,
+    pub displayName: Option<String>,
     pub name: String,
     pub alias: Option<String>,
     pub description: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct DiscoveryInfo {
-    pub device_info : DiscoveredDevice,
-    pub interface_info : Vec<DiscoveredInterface>,
-}
-
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct LinkPeerInfo {
     pub name : String,
-    pub dns_domain : String,
+    pub dnsDomain : String,
     pub interface : String,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct LinkInfo {
-    pub device_fqdn : String,
+    pub deviceFqdn : String,
     pub interfaces : HashMap<String, Option<LinkPeerInfo>>,
-    pub topology_stable : bool,
+    pub topologyStable : bool,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct DeviceMonitorInfo {
     pub fqdn : String,
     pub up : Option<bool>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct DeviceMonitorResponse {
     pub devices : Vec<DeviceMonitorInfo>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct DeviceMonitorReport {
     pub fqdn : String,
     pub up : bool,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct InterfaceMonitorInterfaceReport {
-    pub if_index: i32,
-    pub in_octets: Option<u64>,
-    pub out_octets: Option<u64>,
-    pub in_packets: Option<u64>,
-    pub out_packets: Option<u64>,
-    pub in_errors: Option<u64>,
-    pub out_errors: Option<u64>,
+    pub ifIndex: i32,
+    pub inOctets: Option<u64>,
+    pub outOctets: Option<u64>,
+    pub inPackets: Option<u64>,
+    pub outPackets: Option<u64>,
+    pub inErrors: Option<u64>,
+    pub outErrors: Option<u64>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 pub struct InterfaceMonitorReport {
-    pub device_fqdn : String,
+    pub deviceFqdn : String,
     pub interfaces: Vec<InterfaceMonitorInterfaceReport>,
 }
