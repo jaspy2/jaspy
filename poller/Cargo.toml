@@ -1,0 +1,11 @@
+[package]
+name = "jaspy-poller"
+version = "0.1.0"
+authors = ["Antti Tönkyrä <daedalus@pingtimeout.net>"]
+
+[dependencies]
+reqwest = "*"
+serde = "*"
+serde_json = "*"
+serde_derive = "*"
+rand = "*"
