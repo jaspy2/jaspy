@@ -31,6 +31,7 @@ pub struct NewInterface {
 
 #[table_name = "devices"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Device {
     pub id: i32,
     pub name: String,
@@ -44,6 +45,7 @@ pub struct Device {
 #[belongs_to(Device)]
 #[table_name = "interfaces"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Associations, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Interface {
     pub id: i32,
     pub index: i32,
@@ -170,6 +172,17 @@ impl Interface {
             },
             Err(_) => {
                 return None;
+            }
+        }
+    }
+
+    pub fn all(connection: &PgConnection) -> Vec<Interface> {
+        match interfaces::table.load(connection) {
+            Ok(result) => {
+                return result;
+            },
+            Err(_) => {
+                return Vec::new();
             }
         }
     }

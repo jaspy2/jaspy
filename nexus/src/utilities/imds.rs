@@ -134,7 +134,7 @@ impl IMDS {
 
     pub fn report_interfaces(self: &mut IMDS, imr: models::json::InterfaceMonitorReport) {
         let device;
-        match self.metrics_storage.devices.get_mut(&imr.deviceFqdn) {
+        match self.metrics_storage.devices.get_mut(&imr.device_fqdn) {
             Some(value) => {
                 device = value;
             },
@@ -145,7 +145,7 @@ impl IMDS {
         }
         for interface_report in imr.interfaces.iter() {
             let mut interface;
-            match device.interfaces.get_mut(&interface_report.ifIndex) {
+            match device.interfaces.get_mut(&interface_report.if_index) {
                 Some(target_interface) => { interface = target_interface; },
                 None => {
                     // TODO: log? this means we got a report for interface we don't really follow
@@ -154,12 +154,12 @@ impl IMDS {
             }
 
             // TODO: statechanges should be emitted
-            if interface_report.inOctets.is_some() { interface.in_octets = interface_report.inOctets; }
-            if interface_report.outOctets.is_some() { interface.out_octets = interface_report.outOctets; }
-            if interface_report.inPackets.is_some() { interface.in_packets = interface_report.inPackets; }
-            if interface_report.outPackets.is_some() { interface.out_packets = interface_report.outPackets; }
-            if interface_report.inErrors.is_some() { interface.in_errors = interface_report.inErrors; }
-            if interface_report.outErrors.is_some() { interface.out_errors = interface_report.outErrors; }
+            if interface_report.in_octets.is_some() { interface.in_octets = interface_report.in_octets; }
+            if interface_report.out_octets.is_some() { interface.out_octets = interface_report.out_octets; }
+            if interface_report.in_packets.is_some() { interface.in_packets = interface_report.in_packets; }
+            if interface_report.out_packets.is_some() { interface.out_packets = interface_report.out_packets; }
+            if interface_report.in_errors.is_some() { interface.in_errors = interface_report.in_errors; }
+            if interface_report.out_errors.is_some() { interface.out_errors = interface_report.out_errors; }
             if interface_report.up.is_some() { interface.up = interface_report.up; }
             if interface_report.speed.is_some() { interface.speed = interface_report.speed; }
         }

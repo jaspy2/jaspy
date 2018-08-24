@@ -108,6 +108,13 @@ fn main() {
             ]
         )
         .mount(
+            "/interface",
+            routes![
+                routes::interface::interface_list,
+                routes::interface::interface_monitor_report,
+            ]
+        )
+        .mount(
             "/metrics",
             routes![
                 routes::metrics::metrics_fast,

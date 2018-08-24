@@ -11,12 +11,12 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovere
     let discovered_device_interfaces : &HashMap<String, models::json::DiscoveredInterface> = &discovered_device.interfaces;
 
     let device : models::dbo::Device;
-    let existing_device = models::dbo::Device::find_by_fqdn(&connection, &discovered_device.name, &discovered_device.dnsDomain);
+    let existing_device = models::dbo::Device::find_by_fqdn(&connection, &discovered_device.name, &discovered_device.dns_domain);
     match existing_device {
         Some(mut existing_device) => {
-            existing_device.base_mac = discovered_device.baseMac.clone();
-            existing_device.os_info = discovered_device.osInfo.clone();
-            existing_device.snmp_community = discovered_device.snmpCommunity.clone();
+            existing_device.base_mac = discovered_device.base_mac.clone();
+            existing_device.os_info = discovered_device.os_info.clone();
+            existing_device.snmp_community = discovered_device.snmp_community.clone();
             match existing_device.update(&connection) {
                 Ok(_) => {
                     // TODO: Log update?
@@ -31,10 +31,10 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovere
         None => {
             let new_device = models::dbo::NewDevice {
                 name: discovered_device.name.clone(),
-                dns_domain: discovered_device.dnsDomain.clone(),
-                snmp_community: discovered_device.snmpCommunity.clone(),
-                base_mac: discovered_device.baseMac.clone(),
-                os_info: discovered_device.osInfo.clone(),
+                dns_domain: discovered_device.dns_domain.clone(),
+                snmp_community: discovered_device.snmp_community.clone(),
+                base_mac: discovered_device.base_mac.clone(),
+                os_info: discovered_device.os_info.clone(),
                 polling_enabled: None,
             };
             match models::dbo::Device::create(&new_device, &connection) {
@@ -64,7 +64,7 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovere
             Some(selected_interface) => {
                 let mut updated_interface : models::dbo::Interface = (*selected_interface).clone();
                 updated_interface.index = interface.index;
-                updated_interface.interface_type = interface.interfaceType.clone();
+                updated_interface.interface_type = interface.interface_type.clone();
                 updated_interface.name = interface.name.clone();
                 updated_interface.alias = interface.alias.clone();
                 updated_interface.description = interface.description.clone();
@@ -82,7 +82,7 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovere
                     description: interface.description.clone(),
                     device_id: device.id,
                     index: interface.index,
-                    interface_type: interface.interfaceType.clone(),
+                    interface_type: interface.interface_type.clone(),
                 };
                 
                 match models::dbo::Interface::create(&new_interface, &connection) {
@@ -131,7 +131,7 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connect
 #[put("/links", data = "<links_json>")]
 fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
     let link_infos : &HashMap<String, Option<models::json::LinkPeerInfo>> = &links_json.interfaces;
-    let fqdn_splitted : Vec<&str> = links_json.deviceFqdn.splitn(2, ".").collect();
+    let fqdn_splitted : Vec<&str> = links_json.device_fqdn.splitn(2, ".").collect();
     if fqdn_splitted.len() != 2 {
         // TODO: log?
         return;
@@ -159,27 +159,27 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
                     },
                     None => {
                         // TBD, should we clear peer connection? This must respect stability.
-                        if !links_json.topologyStable { clear_connection(local_interface, &connection); }
+                        if !links_json.topology_stable { clear_connection(local_interface, &connection); }
                         continue;
                     }
                 }
             },
             None => {
                 // TBD, should we clear peer connection? This must respect stability.
-                if !links_json.topologyStable { clear_connection(local_interface, &connection); }
+                if !links_json.topology_stable { clear_connection(local_interface, &connection); }
                 continue;
             }
         }
 
         let peer_device : models::dbo::Device;
-        match models::dbo::Device::find_by_fqdn(&connection, &peer_interface_info.name, &peer_interface_info.dnsDomain) {
+        match models::dbo::Device::find_by_fqdn(&connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
             Some(some_peer_device) => {
                 peer_device = some_peer_device;
             },
             None => {
                 match local_interface.connected_interface {
                     Some(_) => {
-                        if !links_json.topologyStable { clear_connection(local_interface, &connection); }
+                        if !links_json.topology_stable { clear_connection(local_interface, &connection); }
                         continue;
                     },
                     None => {
