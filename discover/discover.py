@@ -5,6 +5,8 @@ import threading
 import socket
 from lib.SNMPDataSource import SNMPDataSource
 import json
+import requests
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,6 +16,7 @@ logger = logging.getLogger('discover')
 
 parser = argparse.ArgumentParser(description='perform jaspy network discovery')
 parser.add_argument('-s', '--snmpbot-url', required=False, help='url for snmpbot', default='http://localhost:8286')
+parser.add_argument('-j', '--jaspy-url', required=False, help='url for jaspy', default='http://localhost:8000')
 parser.add_argument('-c', '--community', required=True, help='snmp community')
 parser.add_argument('-r', '--root-device', required=True, help='root device for discovery')
 parser.add_argument('-d', '--dns-domain', required=True, help='dns domains', action='append', default=None)
@@ -78,11 +81,7 @@ def send_device_info(device):
         'osInfo': device.os_info()
     }
 
-    interfaces_json = {
-        'deviceName': device_name,
-        'dnsDomain': device_domain,
-        'interfaces': {}
-    }
+    interfaces_json = {}
 
     def value_or_none(i, k):
         if k in i and len(k.strip()) > 0:
@@ -97,10 +96,12 @@ def send_device_info(device):
             'alias': value_or_none(interface, 'IF-MIB::ifAlias'),
             'description': value_or_none(interface, 'IF-MIB::ifDescr')
         }
-        interfaces_json['interfaces'][interface_info['name']] = interface_info
+        interfaces_json[interface_info['name']] = interface_info
 
     device_json['interfaces'] = interfaces_json
-    print(json.dumps(device_json))
+
+    requests.put('%s/discovery/device' % (args.jaspy_url), json=device_json)
+
     # backend logic:
     # - updates device by hostname & dns domain
     # - backend should create device if not existing
@@ -284,7 +285,8 @@ def send_device_topology_info(device):
             'interface': l_port['IF-MIB::ifName']
         }
     out = {'deviceFqdn': device.device_fqdn, 'topologyStable': args.stable, 'interfaces': device_link_info['interfaces']}
-    print(json.dumps(out))
+
+    requests.put('%s/discovery/links' % (args.jaspy_url), json=out)
     # backend logic
     # - if topology stable is set, just update connectedinterfaces; todo: handle MOVED links?
     # - if topology is NOT stable, REMOVE all connectedinterfaces that are null
