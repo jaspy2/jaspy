@@ -13,7 +13,7 @@ fn interface_list(connection: db::Connection) -> Json<Vec<models::dbo::Interface
 
 #[put("/monitor", data = "<interface_monitor_report>")]
 fn interface_monitor_report(imds: State<Arc<Mutex<utilities::imds::IMDS>>>, interface_monitor_report : Json<models::json::InterfaceMonitorReport>) {
-    /*if let Ok(ref mut imds) = imds.lock() {
-        imds.report_device(device_monitor_report.into_inner());
-    }*/
+    if let Ok(ref mut imds) = imds.lock() {
+        imds.report_interfaces(interface_monitor_report.into_inner());
+    }
 }
