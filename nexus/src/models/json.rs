@@ -38,28 +38,28 @@ pub struct LinkInfo {
     pub topology_stable : bool,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeviceMonitorInfo {
     pub fqdn : String,
     pub up : Option<bool>,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeviceMonitorResponse {
     pub devices : Vec<DeviceMonitorInfo>,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeviceMonitorReport {
     pub fqdn : String,
     pub up : bool,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InterfaceMonitorInterfaceReport {
     pub if_index: i32,
     pub in_octets: Option<u64>,
@@ -72,8 +72,8 @@ pub struct InterfaceMonitorInterfaceReport {
     pub speed: Option<i32>,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InterfaceMonitorReport {
     pub device_fqdn : String,
     pub interfaces: Vec<InterfaceMonitorInterfaceReport>,
