@@ -2,6 +2,7 @@ use std::collections::{HashMap};
 use std;
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InterfaceMonitorInterfaceReport {
     pub if_index: i32,
     pub in_octets: Option<u64>,
@@ -76,6 +77,7 @@ fn try_get_updown_as_bool(val: Option<&SNMPBotResultEntryObjectValue>) -> Option
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InterfaceMonitorReport {
     pub device_fqdn: String,
     pub interfaces: Vec<InterfaceMonitorInterfaceReport>,
