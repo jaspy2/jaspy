@@ -162,7 +162,7 @@ impl IMDS {
                 }
             }
 
-            // TODO: statechanges should be emitted for errors / speed?
+            // TODO: statechanges should be emitted for errors?
             if interface_report.in_octets.is_some() { interface.in_octets = interface_report.in_octets; }
             if interface_report.out_octets.is_some() { interface.out_octets = interface_report.out_octets; }
             if interface_report.in_packets.is_some() { interface.in_packets = interface_report.in_packets; }
@@ -175,6 +175,7 @@ impl IMDS {
                     if let Some(new_state) = interface_report.up {
                         if old_state != new_state {
                             let mut neighbor : Option<String> = None;
+                            let mut neighbor_interface_name : Option<String> = None;
                             let mut link_interfaces : Vec<models::dbo::Interface> = Vec::new();
                             let mut link_statuses : HashMap<String, String> = HashMap::new();
                             if let Some(local_device) = models::dbo::Device::find_by_fqdn(connection, &imr.device_fqdn) {
@@ -182,6 +183,7 @@ impl IMDS {
                                     if let Some(remote_interface) = local_interface.peer_interface(connection) {
                                         let remote_device = remote_interface.device(connection);
                                         neighbor = Some(format!("{}.{}", remote_device.name, remote_device.dns_domain));
+                                        neighbor_interface_name = Some(remote_interface.name.clone());
                                         for remote_peer_candidate in remote_device.interfaces(connection) {
                                             if let Some(rpc_remote_interface) = remote_peer_candidate.peer_interface(connection) {
                                                 if rpc_remote_interface.device_id == local_device.id {
@@ -214,7 +216,7 @@ impl IMDS {
                                 }
                             }
                             if let Ok(ref mut msgbus) = self.msgbus.lock() {
-                                let event = models::events::Event::interface_change_event(&imr.device_fqdn, &interface.name, neighbor, &link_statuses, old_state, new_state);
+                                let event = models::events::Event::interface_updown_event(&imr.device_fqdn, &interface.name, neighbor, neighbor_interface_name, &link_statuses, old_state, new_state);
                                 msgbus.event(event);
                             }
                         }
@@ -223,6 +225,27 @@ impl IMDS {
                 interface.up = interface_report.up;
             }
             if interface_report.speed.is_some() {
+                if let Some(old_state) = interface.speed {
+                    if let Some(new_state) = interface_report.speed {
+                        if old_state != new_state {
+                            let mut neighbor : Option<String> = None;
+                            let mut neighbor_interface_name : Option<String> = None;
+                            if let Some(local_device) = models::dbo::Device::find_by_fqdn(connection, &imr.device_fqdn) {
+                                if let Some(local_interface) = local_device.interface_by_index(connection, &interface_report.if_index) {
+                                    if let Some(remote_interface) = local_interface.peer_interface(connection) {
+                                        let remote_device = remote_interface.device(connection);
+                                        neighbor = Some(format!("{}.{}", remote_device.name, remote_device.dns_domain));
+                                        neighbor_interface_name = Some(remote_interface.name.clone());
+                                    }
+                                }
+                            }
+                            if let Ok(ref mut msgbus) = self.msgbus.lock() {
+                                let event = models::events::Event::interface_speed_event(&imr.device_fqdn, &interface.name, neighbor, neighbor_interface_name, old_state, new_state);
+                                msgbus.event(event);
+                            }
+                        }
+                    }
+                }
                 interface.speed = interface_report.speed;
             }
         }
