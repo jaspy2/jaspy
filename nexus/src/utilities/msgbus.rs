@@ -1,3 +1,6 @@
+use models;
+extern crate serde_json;
+
 pub struct MessageBus {
 
 }
@@ -7,7 +10,7 @@ impl MessageBus {
         return MessageBus{};
     }
 
-    pub fn message_str(self: &MessageBus, message: &String) {
-        println!("{}", message);
+    pub fn event(self: &MessageBus, event: models::events::Event) {
+        println!("{}", json!(event));
     }
 }

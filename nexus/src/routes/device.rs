@@ -26,8 +26,8 @@ fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utili
 }
 
 #[put("/monitor", data = "<device_monitor_report>")]
-fn monitored_device_report(imds: State<Arc<Mutex<utilities::imds::IMDS>>>, device_monitor_report : Json<models::json::DeviceMonitorReport>) {
+fn monitored_device_report(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, device_monitor_report : Json<models::json::DeviceMonitorReport>) {
     if let Ok(ref mut imds) = imds.lock() {
-        imds.report_device(device_monitor_report.into_inner());
+        imds.report_device(&connection, device_monitor_report.into_inner());
     }
 }

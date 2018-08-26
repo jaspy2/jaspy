@@ -3,6 +3,7 @@
 #![plugin(rocket_codegen)]
 #![allow(proc_macro_derive_resolution_fallback)] // remove when able
 #[macro_use] extern crate serde_derive;
+#[macro_use] extern crate serde_json;
 #[macro_use] extern crate diesel;
 extern crate rocket;
 extern crate rocket_contrib;

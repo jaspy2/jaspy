@@ -1,7 +1,8 @@
 use models;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc,Mutex};
 use utilities;
+use db;
 
 pub struct IMDS {
     metrics_storage : models::metrics::Metrics,
@@ -64,7 +65,7 @@ impl IMDS {
         self.metrics_storage.devices.insert(device_fqdn.clone(), dm);
     }
 
-    pub fn report_device(self: &mut IMDS, dmr: models::json::DeviceMonitorReport) {
+    pub fn report_device(self: &mut IMDS, connection: &db::Connection, dmr: models::json::DeviceMonitorReport) {
         let device;
         match self.metrics_storage.devices.get_mut(&dmr.fqdn) {
             Some(value) => {
@@ -78,14 +79,21 @@ impl IMDS {
         
         if let Some(device_up) = device.up {
             if device_up != dmr.up {
-                if let Ok(ref mut msgbus) = self.msgbus.lock() {
-                    let msg;
-                    if dmr.up { 
-                        msg = format!("{} UP", dmr.fqdn);
-                    } else {
-                        msg = format!("{} DOWN", dmr.fqdn);
+                if let Some(device) = models::dbo::Device::find_by_fqdn(connection, &dmr.fqdn) {
+                    let mut neighbors: HashSet<String> = HashSet::new();
+                    for interface in device.interfaces(connection).iter() {
+                        if let Some(conn_iface) = interface.peer_interface(connection) {
+                            let conn_device = conn_iface.device(connection);
+                            let conn_fqdn = format!("{}.{}", conn_device.name, conn_device.dns_domain);
+                            if !neighbors.contains(&conn_fqdn) {
+                                neighbors.insert(conn_fqdn);
+                            }
+                        }
                     }
-                    msgbus.message_str(&msg);
+                    if let Ok(ref mut msgbus) = self.msgbus.lock() {
+                        let event = models::events::Event::ping_change_event(&dmr.fqdn, neighbors, device_up, dmr.up);
+                        msgbus.event(event);
+                    }
                 }
             }
         }
@@ -132,7 +140,7 @@ impl IMDS {
         });
     }
 
-    pub fn report_interfaces(self: &mut IMDS, imr: models::json::InterfaceMonitorReport) {
+    pub fn report_interfaces(self: &mut IMDS, connection: &db::Connection, imr: models::json::InterfaceMonitorReport) {
         let device;
         match self.metrics_storage.devices.get_mut(&imr.device_fqdn) {
             Some(value) => {
@@ -145,6 +153,7 @@ impl IMDS {
         }
         for interface_report in imr.interfaces.iter() {
             let mut interface;
+            let mut interfaces_shadow = device.interfaces.clone();
             match device.interfaces.get_mut(&interface_report.if_index) {
                 Some(target_interface) => { interface = target_interface; },
                 None => {
@@ -153,15 +162,69 @@ impl IMDS {
                 }
             }
 
-            // TODO: statechanges should be emitted
+            // TODO: statechanges should be emitted for errors / speed?
             if interface_report.in_octets.is_some() { interface.in_octets = interface_report.in_octets; }
             if interface_report.out_octets.is_some() { interface.out_octets = interface_report.out_octets; }
             if interface_report.in_packets.is_some() { interface.in_packets = interface_report.in_packets; }
             if interface_report.out_packets.is_some() { interface.out_packets = interface_report.out_packets; }
             if interface_report.in_errors.is_some() { interface.in_errors = interface_report.in_errors; }
             if interface_report.out_errors.is_some() { interface.out_errors = interface_report.out_errors; }
-            if interface_report.up.is_some() { interface.up = interface_report.up; }
-            if interface_report.speed.is_some() { interface.speed = interface_report.speed; }
+            if interface_report.up.is_some() {
+                // TODO: fix this nested hellhole :)
+                if let Some(old_state) = interface.up {
+                    if let Some(new_state) = interface_report.up {
+                        if old_state != new_state {
+                            let mut neighbor : Option<String> = None;
+                            let mut link_interfaces : Vec<models::dbo::Interface> = Vec::new();
+                            let mut link_statuses : HashMap<String, String> = HashMap::new();
+                            if let Some(local_device) = models::dbo::Device::find_by_fqdn(connection, &imr.device_fqdn) {
+                                if let Some(local_interface) = local_device.interface_by_index(connection, &interface_report.if_index) {
+                                    if let Some(remote_interface) = local_interface.peer_interface(connection) {
+                                        let remote_device = remote_interface.device(connection);
+                                        neighbor = Some(format!("{}.{}", remote_device.name, remote_device.dns_domain));
+                                        for remote_peer_candidate in remote_device.interfaces(connection) {
+                                            if let Some(rpc_remote_interface) = remote_peer_candidate.peer_interface(connection) {
+                                                if rpc_remote_interface.device_id == local_device.id {
+                                                    link_interfaces.push(rpc_remote_interface.clone());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            for link_interface in link_interfaces.iter() {
+                                if let Some(link_interface_data) = interfaces_shadow.get_mut(&link_interface.index) {
+                                    if link_interface.index == interface_report.if_index {
+                                        link_interface_data.up = interface_report.up;
+                                    }
+                                    let status : String;
+                                    match link_interface_data.up {
+                                        Some(value) => {
+                                            if value {
+                                                status = "up".to_string();
+                                            } else {
+                                                status = "down".to_string();
+                                            }
+                                        },
+                                        None => {
+                                            status = "unknown".to_string();
+                                        }
+                                    }
+                                    link_statuses.insert(link_interface_data.name.clone(), status);
+                                }
+                            }
+                            if let Ok(ref mut msgbus) = self.msgbus.lock() {
+                                let event = models::events::Event::interface_change_event(&imr.device_fqdn, &interface.name, neighbor, &link_statuses, old_state, new_state);
+                                msgbus.event(event);
+                            }
+                        }
+                    }
+                }
+                interface.up = interface_report.up;
+            }
+            if interface_report.speed.is_some() {
+                interface.speed = interface_report.speed;
+            }
         }
     }
 

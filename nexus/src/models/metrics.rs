@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+#[derive(Clone)]
 pub struct InterfaceMetrics {
     pub expiry: f64,
 

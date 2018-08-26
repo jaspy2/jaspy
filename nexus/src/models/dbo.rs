@@ -119,6 +119,21 @@ impl Device {
         }
     }
 
+    pub fn interface_by_index(self: &Device, connection: &PgConnection, index: &i32) -> Option<Interface> {
+        match interfaces::table
+            .filter(interfaces::device_id.eq(self.id))
+            .filter(interfaces::index.eq(index))
+            .first::<Interface>(connection)
+        {
+            Ok(interface) => {
+                return Some(interface);
+            },
+            Err(_) => {
+                return None;
+            }
+        }
+    }
+
     pub fn create(new_device: &NewDevice, connection: &PgConnection) -> Result<Device, diesel::result::Error> {
         let result = diesel::insert_into(devices::table)
             .values(new_device)
@@ -126,10 +141,29 @@ impl Device {
         return result;
     }
 
-    pub fn find_by_fqdn(connection: &PgConnection, hostname: &String, domain_name: &String) -> Option<Device> {
+    pub fn find_by_hostname_and_domain_name(connection: &PgConnection, hostname: &String, domain_name: &String) -> Option<Device> {
         match devices::table
             .filter(devices::name.eq(hostname))
             .filter(devices::dns_domain.eq(domain_name))
+            .first::<Device>(connection)
+        {
+            Ok(device) => {
+                return Some(device);
+            },
+            Err(_) => {
+                return None;
+            }
+        }
+    }
+
+    pub fn find_by_fqdn(connection: &PgConnection, fqdn: &String) -> Option<Device> {
+        let fqdn_splitted : Vec<&str> = fqdn.splitn(2, ".").collect();
+        if fqdn_splitted.len() != 2 {
+            return None;
+        }
+        match devices::table
+            .filter(devices::name.eq(fqdn_splitted[0]))
+            .filter(devices::dns_domain.eq(fqdn_splitted[1]))
             .first::<Device>(connection)
         {
             Ok(device) => {
@@ -175,6 +209,22 @@ impl Interface {
             }
         }
     }
+
+    /*pub fn by_fqdn_and_index(index: i32, connection: &PgConnection) -> Option<Interface> {
+
+        match interfaces::table
+            .filter(interfaces::index.eq(index)).
+            .filter(interfaces::)
+            .first::<Interface>(connection)    
+        {
+            Ok(interface) => {
+                return Some(interface);
+            },
+            Err(_) => {
+                return None;
+            }
+        }
+    }*/
 
     pub fn all(connection: &PgConnection) -> Vec<Interface> {
         match interfaces::table.load(connection) {

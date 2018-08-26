@@ -11,7 +11,7 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovere
     let discovered_device_interfaces : &HashMap<String, models::json::DiscoveredInterface> = &discovered_device.interfaces;
 
     let device : models::dbo::Device;
-    let existing_device = models::dbo::Device::find_by_fqdn(&connection, &discovered_device.name, &discovered_device.dns_domain);
+    let existing_device = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &discovered_device.name, &discovered_device.dns_domain);
     match existing_device {
         Some(mut existing_device) => {
             existing_device.base_mac = discovered_device.base_mac.clone();
@@ -138,7 +138,7 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
     }
 
     let local_device : models::dbo::Device;
-    let local_device_result = models::dbo::Device::find_by_fqdn(&connection, &fqdn_splitted[0].to_string(), &fqdn_splitted[1].to_string());
+    let local_device_result = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &fqdn_splitted[0].to_string(), &fqdn_splitted[1].to_string());
     match local_device_result {
         Some(local_device_result) => {
             local_device = local_device_result;
@@ -172,7 +172,7 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
         }
 
         let peer_device : models::dbo::Device;
-        match models::dbo::Device::find_by_fqdn(&connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
+        match models::dbo::Device::find_by_hostname_and_domain_name(&connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
             Some(some_peer_device) => {
                 peer_device = some_peer_device;
             },
