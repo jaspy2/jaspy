@@ -1,16 +1,49 @@
+#[macro_use] extern crate serde_derive;
+extern crate serde_json;
+extern crate reqwest;
 use std::io::{self, Read};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
+mod models;
 
-fn send_link_up_event(unix_time : f64, hostname : &String, ifindex : i64) {
+fn send_interface_event(jaspy_url: String, ifm: models::json::InterfaceMonitorReport) {
+    let client = reqwest::Client::new();
+    let response = client.request(reqwest::Method::Put, &format!("{}/interface/monitor", jaspy_url))
+        .json(&ifm)
+        .send();
+    match response {
+        Ok(_) => {},
+        Err(_) => {}
+    }
+}
+
+fn send_link_up_event(jaspy_url: String, unix_time : f64, hostname : &String, ifindex : i64) {
     println!("linkup event @ {}: {} {}", unix_time, hostname, ifindex);
+    let mut ifm = models::json::InterfaceMonitorReport {
+        device_fqdn: hostname.clone(),
+        interfaces: Vec::new()
+    };
+    ifm.interfaces.push(models::json::InterfaceMonitorInterfaceReport {
+        if_index: ifindex as i32,
+        up: true,
+    });
+    send_interface_event(jaspy_url, ifm);
 }
 
-fn send_link_down_event(unix_time : f64, hostname : &String, ifindex : i64) {
+fn send_link_down_event(jaspy_url: String, unix_time : f64, hostname : &String, ifindex : i64) {
     println!("linkdown event @ {}: {} {}", unix_time, hostname, ifindex);
+    let mut ifm = models::json::InterfaceMonitorReport {
+        device_fqdn: hostname.clone(),
+        interfaces: Vec::new()
+    };
+    ifm.interfaces.push(models::json::InterfaceMonitorInterfaceReport {
+        if_index: ifindex as i32,
+        up: false,
+    });
+    send_interface_event(jaspy_url, ifm);
 }
 
-fn handle_parsed_trap(unix_time : f64, hostname : &String, trap : HashMap<String, String>) {
+fn handle_parsed_trap(jaspy_url: String, unix_time : f64, hostname : &String, trap : HashMap<String, String>) {
     let trap_type = match trap.get("SNMPv2-MIB::snmpTrapOID") {
         Some(value) => value,
         None => {
@@ -30,14 +63,14 @@ fn handle_parsed_trap(unix_time : f64, hostname : &String, trap : HashMap<String
             None => { println!("failed to find ifIndex field in trap"); return; }
         };
         if is_link_up {
-            send_link_up_event(unix_time, hostname, ifindex);
+            send_link_up_event(jaspy_url, unix_time, hostname, ifindex);
         } else if is_link_down {
-            send_link_down_event(unix_time, hostname, ifindex);
+            send_link_down_event(jaspy_url, unix_time, hostname, ifindex);
         }
     }
 }
 
-fn handle_trap(trap : String, unix_time : f64) {
+fn handle_trap(jaspy_url: String, trap : String, unix_time : f64) {
     let mut lines = trap.split("\n");
     
     let hostname = match lines.next() {
@@ -75,7 +108,7 @@ fn handle_trap(trap : String, unix_time : f64) {
         }
     }
 
-    handle_parsed_trap(unix_time, &hostname.to_string(), trap_info);
+    handle_parsed_trap(jaspy_url, unix_time, &hostname.to_string(), trap_info);
 }
 
 fn do_fork() {
@@ -94,14 +127,26 @@ fn get_unixtime_float_with_msecs() -> f64 {
     }
 }
 
+fn print_usage() {
+    println!("usage: {} <jaspy_url>", std::env::args().nth(0).unwrap());
+}
+
 fn main() {
+    let jaspy_url;
+    if let Some(argv1) = std::env::args().nth(1) {
+        jaspy_url = argv1;
+    } else {
+        print_usage();
+        return;
+    }
+
     let mut buffer_tmp = String::new();
     match io::stdin().read_to_string(&mut buffer_tmp) {
         Ok(_) => {
             let unix_time = get_unixtime_float_with_msecs();
             let buffer = buffer_tmp.clone();
             do_fork();
-            handle_trap(buffer, unix_time);
+            handle_trap(jaspy_url, buffer, unix_time);
         },
         Err(e) => {
             println!("error: {:?}", e);
