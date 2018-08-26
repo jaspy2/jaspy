@@ -30,12 +30,14 @@ struct PingAccountingInfo {
 }
 
 #[derive(Serialize,Deserialize,Debug)]
+#[serde(rename_all = "camelCase")]
 struct DeviceInfo {
     fqdn : String,
     up : Option<bool>
 }
 
 #[derive(Deserialize,Debug)]
+#[serde(rename_all = "camelCase")]
 struct DeviceInfoResponse {
     devices : Vec<DeviceInfo>
 }
