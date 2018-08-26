@@ -38,12 +38,16 @@ fn start_poll_worker(jaspy_url: &String, snmpbot_url: &String, device_info : &mo
     );
 }
 
-fn snmpbot_query(statistics: &mut HashMap<i32, HashMap<String, models::json::SNMPBotResultEntryObjectValue>>, url: &reqwest::Url) {
+fn snmpbot_query(device_fqdn: &String, statistics: &mut HashMap<i32, HashMap<String, models::json::SNMPBotResultEntryObjectValue>>, url: &reqwest::Url) {
     let mut response;
     if let Ok(response_parsed) = reqwest::get(url.as_str()) {
         response = response_parsed;
     } else {
         // TODO: log?
+        return;
+    }
+    if !response.status().is_success() {
+        println!("[{}] snmpbot returned ({}), skipping this poll", device_fqdn, response.status());
         return;
     }
     let resp_json : Result<Vec<models::json::SNMPBotResponse>, _> = response.json();
@@ -53,7 +57,7 @@ fn snmpbot_query(statistics: &mut HashMap<i32, HashMap<String, models::json::SNM
             query_results = resp_json_result;
         }, 
         Err(what) => {
-            println!("error parsing json: {}", what);
+            println!("[{}] error parsing json: {}", device_fqdn, what);
             return;
         }
     }
@@ -126,8 +130,8 @@ fn poll_device(snmpbot_url: &String, device_info: &models::json::Device) -> Opti
     ifxtable_url.query_pairs_mut().append_pair("table", "IF-MIB::ifXTable");
 
     let mut stats: HashMap<i32, HashMap<String, models::json::SNMPBotResultEntryObjectValue>> = HashMap::new();
-    snmpbot_query(&mut stats, &iftable_url);
-    snmpbot_query(&mut stats, &ifxtable_url);
+    snmpbot_query(&device_fqdn, &mut stats, &iftable_url);
+    snmpbot_query(&device_fqdn, &mut stats, &ifxtable_url);
 
     let mut report = models::json::InterfaceMonitorReport::new(&device_fqdn);
 
