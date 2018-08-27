@@ -244,6 +244,14 @@ impl Interface {
         return result;
     }
 
+    pub fn name(self: &Interface) -> String {
+        if let Some(ref display_name) = self.display_name {
+            return display_name.clone();
+        } else {
+            return self.name.clone();
+        }
+    }
+
     pub fn update(self: &Interface, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
         return diesel::update(interfaces::table.find(self.id)).set(self).execute(connection);
     }

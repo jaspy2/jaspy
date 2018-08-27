@@ -219,7 +219,7 @@ impl IMDS {
                             if let Some(connpair) = ConnectionPair::load_by_fqdn_ifindex(connection, &imr.device_fqdn, &interface_report.if_index) {
                                 if let Some(remote_info) = connpair.remote_info {
                                     neighbor = Some(format!("{}.{}", remote_info.device.name, remote_info.device.dns_domain));
-                                    neighbor_interface_name = Some(remote_info.interface.name.clone());
+                                    neighbor_interface_name = Some(remote_info.interface.name());
                                     for remote_peer_candidate in remote_info.device.interfaces(connection) {
                                         if let Some(rpc_remote_interface) = remote_peer_candidate.peer_interface(connection) {
                                             if rpc_remote_interface.device_id == connpair.local_device.id {
@@ -268,7 +268,7 @@ impl IMDS {
                             if let Some(connpair) = ConnectionPair::load_by_fqdn_ifindex(connection, &imr.device_fqdn, &interface_report.if_index) {
                                 if let Some(remote_info) = connpair.remote_info {
                                     neighbor = Some(format!("{}.{}", remote_info.device.name, remote_info.device.dns_domain));
-                                    neighbor_interface_name = Some(remote_info.interface.name.clone());
+                                    neighbor_interface_name = Some(remote_info.interface.name());
                                 }
                             }
                             if let Ok(ref mut msgbus) = self.msgbus.lock() {
