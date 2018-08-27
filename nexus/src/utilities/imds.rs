@@ -9,6 +9,47 @@ pub struct IMDS {
     msgbus: Arc<Mutex<utilities::msgbus::MessageBus>>
 }
 
+struct ConnectionPair {
+    local_device: models::dbo::Device,
+    local_interface: models::dbo::Interface,
+    remote_info: Option<ConnectionPairRemoteInfo>,
+}
+
+struct ConnectionPairRemoteInfo {
+    device: models::dbo::Device,
+    interface: models::dbo::Interface,
+}
+
+impl ConnectionPair {
+    fn load_by_fqdn_ifindex(connection: &db::Connection, fqdn: &String, ifindex: &i32) -> Option<ConnectionPair> {
+        if let Some(local_device) = models::dbo::Device::find_by_fqdn(connection, fqdn) {
+            if let Some(local_interface) = local_device.interface_by_index(connection, ifindex) {
+                let connpair : ConnectionPair;
+                if let Some(remote_interface) = local_interface.peer_interface(connection) {
+                    let remote_device = remote_interface.device(connection);
+                    connpair = ConnectionPair {
+                        local_device: local_device,
+                        local_interface: local_interface,
+                        remote_info: Some(ConnectionPairRemoteInfo {
+                            device: remote_device,
+                            interface: remote_interface,
+                        }),
+                    };
+                } else {
+                    connpair = ConnectionPair {
+                        local_device: local_device,
+                        local_interface: local_interface,
+                        remote_info: None,
+                    };
+                }
+
+                return Some(connpair);
+            }
+        }
+        return None;
+    }
+}
+
 impl IMDS {
     pub fn new(msgbus: Arc<Mutex<utilities::msgbus::MessageBus>>) -> IMDS {
         let imds = IMDS {
@@ -178,17 +219,14 @@ impl IMDS {
                             let mut neighbor_interface_name : Option<String> = None;
                             let mut link_interfaces : Vec<models::dbo::Interface> = Vec::new();
                             let mut link_statuses : HashMap<String, String> = HashMap::new();
-                            if let Some(local_device) = models::dbo::Device::find_by_fqdn(connection, &imr.device_fqdn) {
-                                if let Some(local_interface) = local_device.interface_by_index(connection, &interface_report.if_index) {
-                                    if let Some(remote_interface) = local_interface.peer_interface(connection) {
-                                        let remote_device = remote_interface.device(connection);
-                                        neighbor = Some(format!("{}.{}", remote_device.name, remote_device.dns_domain));
-                                        neighbor_interface_name = Some(remote_interface.name.clone());
-                                        for remote_peer_candidate in remote_device.interfaces(connection) {
-                                            if let Some(rpc_remote_interface) = remote_peer_candidate.peer_interface(connection) {
-                                                if rpc_remote_interface.device_id == local_device.id {
-                                                    link_interfaces.push(rpc_remote_interface.clone());
-                                                }
+                            if let Some(connpair) = ConnectionPair::load_by_fqdn_ifindex(connection, &imr.device_fqdn, &interface_report.if_index) {
+                                if let Some(remote_info) = connpair.remote_info {
+                                    neighbor = Some(format!("{}.{}", remote_info.device.name, remote_info.device.dns_domain));
+                                    neighbor_interface_name = Some(remote_info.interface.name.clone());
+                                    for remote_peer_candidate in remote_info.device.interfaces(connection) {
+                                        if let Some(rpc_remote_interface) = remote_peer_candidate.peer_interface(connection) {
+                                            if rpc_remote_interface.device_id == connpair.local_device.id {
+                                                link_interfaces.push(rpc_remote_interface.clone());
                                             }
                                         }
                                     }
@@ -230,13 +268,10 @@ impl IMDS {
                         if old_state != new_state {
                             let mut neighbor : Option<String> = None;
                             let mut neighbor_interface_name : Option<String> = None;
-                            if let Some(local_device) = models::dbo::Device::find_by_fqdn(connection, &imr.device_fqdn) {
-                                if let Some(local_interface) = local_device.interface_by_index(connection, &interface_report.if_index) {
-                                    if let Some(remote_interface) = local_interface.peer_interface(connection) {
-                                        let remote_device = remote_interface.device(connection);
-                                        neighbor = Some(format!("{}.{}", remote_device.name, remote_device.dns_domain));
-                                        neighbor_interface_name = Some(remote_interface.name.clone());
-                                    }
+                            if let Some(connpair) = ConnectionPair::load_by_fqdn_ifindex(connection, &imr.device_fqdn, &interface_report.if_index) {
+                                if let Some(remote_info) = connpair.remote_info {
+                                    neighbor = Some(format!("{}.{}", remote_info.device.name, remote_info.device.dns_domain));
+                                    neighbor_interface_name = Some(remote_info.interface.name.clone());
                                 }
                             }
                             if let Ok(ref mut msgbus) = self.msgbus.lock() {
