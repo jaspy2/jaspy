@@ -11,7 +11,6 @@ pub struct IMDS {
 
 struct ConnectionPair {
     local_device: models::dbo::Device,
-    local_interface: models::dbo::Interface,
     remote_info: Option<ConnectionPairRemoteInfo>,
 }
 
@@ -29,7 +28,6 @@ impl ConnectionPair {
                     let remote_device = remote_interface.device(connection);
                     connpair = ConnectionPair {
                         local_device: local_device,
-                        local_interface: local_interface,
                         remote_info: Some(ConnectionPairRemoteInfo {
                             device: remote_device,
                             interface: remote_interface,
@@ -38,7 +36,6 @@ impl ConnectionPair {
                 } else {
                     connpair = ConnectionPair {
                         local_device: local_device,
-                        local_interface: local_interface,
                         remote_info: None,
                     };
                 }
