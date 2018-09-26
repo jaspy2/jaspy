@@ -7,6 +7,6 @@ export default class Link {
     }
 
     destroy() {
-        console.log("        destroy link -> " + name);
+        console.log("        destroy link -> " + this.name);
     }
 }

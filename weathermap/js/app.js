@@ -81,6 +81,14 @@ let exampleData = {
                         "fqdn": "testdata3.domain.tld",
                         "interface": "Te2/1"
                     }
+                },
+                "Te9/3": {
+                    "name": "Te9/3",
+                    "ifIndex": 1,
+                    "connectedTo": {
+                        "fqdn": "testdata3.domain.tld",
+                        "interface": "Te2/2"
+                    }
                 }
             }
         },
@@ -93,6 +101,43 @@ let exampleData = {
                         "fqdn": "testdata2.domain.tld",
                         "interface": "Te9/2"
                     }
+                },
+                "Te2/2": {
+                    "name": "Te2/2",
+                    "ifIndex": 1,
+                    "connectedTo": {
+                        "fqdn": "testdata2.domain.tld",
+                        "interface": "Te9/3"
+                    }
+                }
+            }
+        }
+    }
+}
+
+let exampleData2 = {
+    "devices": {
+        "testdata1.domain.tld": {
+            "interfaces": {
+                "Te1/1": {
+                    "name": "Te1/1",
+                    "ifIndex": 1,
+                    "connectedTo": {
+                        "fqdn": "testdata2.domain.tld",
+                        "interface": "Te9/1"
+                    }
+                }
+            }
+        },
+        "testdata2.domain.tld": {
+            "interfaces": {
+                "Te9/1": {
+                    "name": "Te9/1",
+                    "ifIndex": 1,
+                    "connectedTo": {
+                        "fqdn": "testdata1.domain.tld",
+                        "interface": "Te1/1"
+                    }
                 }
             }
         },
@@ -100,4 +145,4 @@ let exampleData = {
 }
 
 wm.updateTopologyData(exampleData);
-wm.updateTopologyData(exampleData);
+//wm.updateTopologyData(exampleData2);

@@ -10,7 +10,11 @@ export default class LinkGroup {
     }
 
     destroy() {
-        console.log("        destroy linkgroup -> " + name);
+        console.log("        destroy linkgroup -> " + this.name);
+        for(let [key, value] of Object.entries(this.groupedLinks)) {
+            this.groupedLinks[key].destroy();
+            delete this.groupedLinks[key];
+        }
     }
 
     updateTopologyData(linkgroupInfo) {

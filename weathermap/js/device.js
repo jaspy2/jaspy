@@ -10,6 +10,18 @@ export default class Device {
         console.log("create device " + fqdn)
     }
 
+    destroy() {
+        console.log("destroy device " + this.fqdn)
+        for(let [key, value] of Object.entries(this.interfaces)) {
+            value.destroy();
+            delete this.interfaces[key];
+        }
+        for(let [key, value] of Object.entries(this.linkGroups)) {
+            value.destroy();
+            delete this.linkGroups[key];
+        }
+    }
+
     updateTopologyData(data) {
         console.log("update device " + this.fqdn)
         let linkGroupUpdates = {};
@@ -31,10 +43,16 @@ export default class Device {
                 linkGroupUpdates[connectionInfo["fqdn"]][value["connectedTo"]["interface"]] = value;
             }
         }
+        for(let [key, value] of Object.entries(this.interfaces)) {
+            if(!(key in data["interfaces"])) {
+                value.destroy();
+                delete this.interfaces[key];
+            }
+        }
         for(let [key, value] of Object.entries(this.linkGroups)) {
             if(!(key in linkGroupUpdates)) {
                 value.destroy();
-                delete this.this.linkGroups[key];
+                delete this.linkGroups[key];
                 continue;
             }
             value.updateTopologyData(linkGroupUpdates[key]);

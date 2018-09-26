@@ -5,11 +5,6 @@ export default class DeviceGraph {
     constructor(viewport) {
         this.viewport = viewport;
         this.devices = {}
-        
-        /*var sprite = this.viewport.addChild(new PIXI.Sprite(PIXI.Texture.WHITE));
-        sprite.tint = 0xff0000;
-        sprite.width = sprite.height = 100;
-        sprite.position.set(100, 100);*/
     }
 
     updateTopologyData(data) {
@@ -21,7 +16,11 @@ export default class DeviceGraph {
             targetDevice = this.devices[key]
             targetDevice.updateTopologyData(value);
         }
-        // Step 1, update devices
-        // Step 2, update linkgroups { update link remote endpoints }
+        for(let [key, value] of Object.entries(this.devices)) {
+            if(!(key in data["devices"])) {
+                this.devices[key].destroy();
+                delete this.devices[key];
+            }
+        }
     }
 }
