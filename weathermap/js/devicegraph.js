@@ -22,5 +22,14 @@ export default class DeviceGraph {
                 delete this.devices[key];
             }
         }
+        for(let [key, value] of Object.entries(this.devices)) {
+            value.updateLinkgroupData(this.devices);
+        }
+    }
+
+    updateGraphics() {
+        for(let [key, value] of Object.entries(this.devices)) {
+            value.updateGraphics(this.viewport);
+        }
     }
 }

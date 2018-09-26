@@ -7,6 +7,8 @@ export default class Device {
         this.fqdn = fqdn;
         this.interfaces = {};
         this.linkGroups = {};
+        this.graphicsObjectInfo = null;
+        this.position = new Victor(Math.random()*1600,Math.random()*400);
         console.log("create device " + fqdn)
     }
 
@@ -19,6 +21,11 @@ export default class Device {
         for(let [key, value] of Object.entries(this.linkGroups)) {
             value.destroy();
             delete this.linkGroups[key];
+        }
+
+        if(this.graphicsObjectInfo !== null) {
+            this.graphicsObjectInfo["attachedTo"].removeChild(this.graphicsObjectInfo["object"]);
+            this.graphicsObjectInfo = null;
         }
     }
 
@@ -57,5 +64,32 @@ export default class Device {
             }
             value.updateTopologyData(linkGroupUpdates[key]);
         }
+    }
+
+    updateLinkgroupData(devices) {
+        for(let [key, value] of Object.entries(this.linkGroups)) {
+            if(!(key in devices)) {
+                console.error("device " + key + " referenced by linkgroup not in devices!?");
+                continue;
+            }
+            value.updateTargetInfo(devices[key]);
+        }
+    }
+
+    updateGraphics(viewport) {
+        if(this.graphicsObjectInfo == null) {
+            this.graphicsObjectInfo = {
+                "object": new PIXI.Sprite(PIXI.Texture.WHITE),
+                "attachedTo": viewport
+            };
+            this.graphicsObjectInfo["object"].tint = 0xff0000;
+            this.graphicsObjectInfo["object"].width = this.graphicsObjectInfo["object"].height = 32
+            this.graphicsObjectInfo["object"].position.set(this.position.x, this.position.y);
+            this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
+        }
+    }
+
+    getPosition() {
+        return this.position;
     }
 }

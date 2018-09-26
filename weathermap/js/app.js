@@ -43,6 +43,10 @@ class WeatherMap extends PIXI.Application {
     updateTopologyData(data) {
         this.deviceGraph.updateTopologyData(data);
     }
+
+    updateGraphics() {
+        this.deviceGraph.updateGraphics();
+    }
 }
 
 let wm = new WeatherMap(window.innerWidth, window.innerHeight);
@@ -145,4 +149,5 @@ let exampleData2 = {
 }
 
 wm.updateTopologyData(exampleData);
+wm.updateGraphics();
 //wm.updateTopologyData(exampleData2);

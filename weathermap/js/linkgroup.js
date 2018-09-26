@@ -5,6 +5,7 @@ export default class LinkGroup {
     constructor(name) {
         this.name = name;
         this.target = name;
+        this.targetPosition = new Victor(0, 0);
         this.groupedLinks = {};
         console.log("        create linkgroup -> " + name);
     }
@@ -30,5 +31,9 @@ export default class LinkGroup {
                 delete this.groupedLinks[key];
             }
         }
+    }
+
+    updateTargetInfo(targetDevice) {
+        this.targetPosition = targetDevice.getPosition();
     }
 }
