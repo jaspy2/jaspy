@@ -122,6 +122,12 @@ fn main() {
                 routes::metrics::metrics,
             ]
         )
+        .mount(
+            "/weathermap",
+            routes![
+                routes::weathermap::full_topology_data
+            ]
+        )
         .manage(db::connect())
         .manage(imds.clone())
         .manage(metric_miss_cache.clone())

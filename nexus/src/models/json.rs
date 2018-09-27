@@ -75,6 +75,34 @@ pub struct InterfaceMonitorInterfaceReport {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InterfaceMonitorReport {
-    pub device_fqdn : String,
+    pub device_fqdn: String,
     pub interfaces: Vec<InterfaceMonitorInterfaceReport>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapDeviceInterfaceConnectedTo {
+    pub fqdn: String,
+    pub interface: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapDeviceInterface {
+    pub name: String,
+    pub if_index: i32,
+    pub connected_to: Option<WeathermapDeviceInterfaceConnectedTo>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapDevice {
+    pub fqdn: String,
+    pub interfaces: HashMap<String, WeathermapDeviceInterface>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapBase {
+    pub devices: HashMap<String, WeathermapDevice>,
 }

@@ -12,8 +12,15 @@ pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 pub fn connect() -> Pool {
     let env_opt = env::var("DATABASE_URL");
-    let manager = ConnectionManager::<PgConnection>::new(env_opt.unwrap());
-    r2d2::Pool::builder().build(manager).expect("Failed to create pool")
+    match env_opt {
+        Ok(env_opt) => {
+            let manager = ConnectionManager::<PgConnection>::new(env_opt);
+            r2d2::Pool::builder().build(manager).expect("Failed to create pool")
+        },
+        Err(_) => {
+            panic!("DATABASE_URL env var not set!");
+        }
+    }
 }
 
 pub struct Connection(pub r2d2::PooledConnection<ConnectionManager<PgConnection>>);

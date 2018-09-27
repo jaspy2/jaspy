@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Antti Tönkyrä <daedalus@pingtimeout.net>"]
 
 [dependencies]
+dotenv = "0.10.*"
 rocket = "0.3.6"
 rocket_codegen = "0.3.6"
 serde = "1.0"
