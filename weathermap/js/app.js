@@ -113,7 +113,8 @@ class WeatherMap extends PIXI.Application {
         }
     }
 
-    async dataUpdate() {        
+    async dataUpdate() {
+        // note, this can be used for history browsing 
         const curtime = Math.round((new Date()).getTime() / 1000);
         const prometheusDeviceUp = await fetch(config.prometheusQueryURL + 'min(jaspy_device_up{}) by (fqdn)' + '&time=' + curtime).then(res => res.json()).catch(fail => Promise.reject(0));
         if(prometheusDeviceUp["status"] == "error") return Promise.reject(0);
@@ -129,8 +130,9 @@ class WeatherMap extends PIXI.Application {
 
         this.beginStatisticsUpdate();
         this.updateInterfaceSpeed(prometheusInterfaceSpeed);
-        //this.updateInterfaceUp(prometheusInterfaceUp);
         this.updateInterfaceOctetsPerSecond(prometheusDataOctets);
+        //these could be used in history-mode
+        //this.updateInterfaceUp(prometheusInterfaceUp);
         //this.updateDeviceUp(prometheusDeviceUp);
         this.commitStatisticsUpdate();
         this.updateGraphics();
@@ -146,16 +148,17 @@ class WeatherMap extends PIXI.Application {
         if(curtime - this.lastTopologyUpdate > 60) {
             this.lastTopologyUpdate = curtime;
             this.updateTopologyData();
-            console.log("topo-tick");
+            console.log("topo-tick @ " + curtime);
         }
-        if(curtime - this.lastDataUpdate > 30) {
+        if(curtime - this.lastDataUpdate > 10) {
             this.lastDataUpdate = curtime;
             this.dataUpdate();
-            console.log("data-tick");
+            console.log("data-tick @ " + curtime);
         }
         if(curtime - this.lastStatusUpdate > 1) {
             this.lastStatusUpdate = curtime;
             this.statusUpdate();
+            console.log("status-tick @ " + curtime);
         }
     }
 }
@@ -166,7 +169,7 @@ window.addEventListener('resize', function() {
 });
 
 function mainLoop() {
-    const curtime = Math.round((new Date()).getTime() / 1000);
+    const curtime = (new Date()).getTime() / 1000.0;
     wm.frame(curtime);
     requestAnimationFrame(mainLoop);
 }
