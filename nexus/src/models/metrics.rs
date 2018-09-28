@@ -52,9 +52,9 @@ pub enum MetricValue {
 }
 
 pub struct LabeledMetric {
-    name: String,
-    labels: HashMap<String, String>,
-    value: MetricValue,
+    pub name: String,
+    pub labels: HashMap<String, String>,
+    pub value: MetricValue,
 }
 
 impl LabeledMetric {

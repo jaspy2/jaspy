@@ -125,7 +125,8 @@ fn main() {
         .mount(
             "/weathermap",
             routes![
-                routes::weathermap::full_topology_data
+                routes::weathermap::full_topology_data,
+                routes::weathermap::state_information,
             ]
         )
         .manage(db::connect())

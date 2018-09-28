@@ -106,3 +106,22 @@ pub struct WeathermapDevice {
 pub struct WeathermapBase {
     pub devices: HashMap<String, WeathermapDevice>,
 }
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapStateDeviceInterfaceState {
+    pub state: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapStateDevice {
+    pub state: bool,
+    pub interfaces: HashMap<String, WeathermapStateDeviceInterfaceState>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapStateBase {
+    pub devices: HashMap<String, WeathermapStateDevice>,
+}
