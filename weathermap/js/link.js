@@ -55,9 +55,9 @@ export default class Link {
 
     getUtilization() {
         if(this.sourceInterface) {
-            if(this.sourceInterface.statisticsData !== null) {
+            if(this.sourceInterface.statisticsData) {
                 return this.sourceInterface.statisticsData["tx_mbps"]/this.sourceInterface.statisticsData["speed_mbps"];
-            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData !== null) {
+            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData) {
                 return this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"]/this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"];
             } else {
                 return 0;
