@@ -54,10 +54,14 @@ export default class Link {
     }
 
     getUtilization() {
-        if(this.sourceInterface.statisticsData !== null) {
-            return this.sourceInterface.statisticsData["tx_mbps"]/this.sourceInterface.statisticsData["speed_mbps"];
-        } else if(this.sourceInterface.connectedToInterface !== null && this.sourceInterface.connectedToInterface.statisticsData !== null) {
-            return this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"]/this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"];
+        if(this.sourceInterface) {
+            if(this.sourceInterface.statisticsData !== null) {
+                return this.sourceInterface.statisticsData["tx_mbps"]/this.sourceInterface.statisticsData["speed_mbps"];
+            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData !== null) {
+                return this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"]/this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"];
+            } else {
+                return 0;
+            }
         } else {
             return 0;
         }

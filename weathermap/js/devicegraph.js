@@ -75,7 +75,8 @@ export default class DeviceGraph {
         }
         if(!(iface in this.updateBatch[fqdn]["interfaces"])) {
             this.updateBatch[fqdn]["interfaces"][iface] = {
-                "mbps": null,
+                "rx_mbps": null,
+                "tx_mbps": null,
                 "speed_mbps": null,
                 "status": null
             }
