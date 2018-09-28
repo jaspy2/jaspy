@@ -4,7 +4,11 @@ import Device from "./device.js";
 export default class DeviceGraph {
     constructor(viewport) {
         this.viewport = viewport;
+        this.linkLayer = new PIXI.DisplayObjectContainer();
+        this.deviceLayer = new PIXI.DisplayObjectContainer();
         this.devices = {}
+        this.viewport.addChild(this.linkLayer);
+        this.viewport.addChild(this.deviceLayer);
     }
 
     updateTopologyData(data) {
@@ -33,7 +37,7 @@ export default class DeviceGraph {
             deviceCoordinates[key] = value.getPosition();
         }
         for(let [key, value] of Object.entries(this.devices)) {
-            value.updateGraphics(this.viewport, deviceCoordinates);
+            value.updateGraphics(this.linkLayer, this.deviceLayer, deviceCoordinates);
         }
     }
 }

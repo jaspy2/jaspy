@@ -76,11 +76,11 @@ export default class Device {
         }
     }
 
-    updateGraphics(viewport, deviceCoordinates) {
+    updateGraphics(linkLayer, deviceLayer, deviceCoordinates) {
         if(this.graphicsObjectInfo == null) {
             this.graphicsObjectInfo = {
                 "object": new PIXI.Graphics(),
-                "attachedTo": viewport
+                "attachedTo": deviceLayer
             };
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
@@ -96,7 +96,7 @@ export default class Device {
         for(let [key, value] of Object.entries(this.linkGroups)) {
             let localCoord = this.getPosition();
             let remoteCoord = deviceCoordinates[key];
-            value.updateGraphics(viewport, localCoord, remoteCoord);
+            value.updateGraphics(linkLayer, localCoord, remoteCoord);
         }
     }
 
