@@ -1,4 +1,4 @@
-
+import {getLinkColor} from "./util.js";
 
 export default class Link {
     constructor(name) {
@@ -30,14 +30,20 @@ export default class Link {
         let rightUpper = endPosition.clone().add(widthOffset1);
         let rightLower = endPosition.clone().add(widthOffset2);
 
+        let color = getLinkColor(this.getUtilization(), 1.0);
+
         this.dirty = true;
         if(this.dirty) {
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
-            obj.beginFill(0xff00ff);
-            obj.lineStyle(0,0x00ffff);
+            obj.beginFill(color);
+            obj.lineStyle(0,0x000000);
             obj.moveTo(leftUpper.x, leftUpper.y);
             obj.lineTo(leftLower.x, leftLower.y); obj.lineTo(rightLower.x, rightLower.y); obj.lineTo(rightUpper.x, rightUpper.y); obj.lineTo(leftUpper.x, leftUpper.y);
         }
+    }
+
+    getUtilization() {
+        return Math.random();
     }
 }

@@ -1,4 +1,5 @@
 import Link from "./link.js";
+import {getLinkColor} from "./util.js";
 
 
 export default class LinkGroup {
@@ -81,16 +82,21 @@ export default class LinkGroup {
             let widthPerLink = width/numLinks;
 
             let linknum = 0;
+            let utilTotal = 0;
             for(let [key, value] of Object.entries(this.groupedLinks)) {
                 let widthOffset1 = sides.clone().multiply(new Victor(width/-2.0, width/-2.0)).add(sides.clone().multiply(new Victor(linknum*widthPerLink, linknum*widthPerLink)));
                 let widthOffset2 = widthOffset1.clone().add(sides.clone().multiply(new Victor(widthPerLink, widthPerLink)));
                 value.updateGraphics(viewport, linkLineStartPosMiddle, linkLineEndposMiddle, widthOffset1, widthOffset2);
+                utilTotal += value.getUtilization();
             }
+
+            let avgUtil = utilTotal / numLinks;
+            let color = getLinkColor(avgUtil, 1.0);
 
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
-            obj.beginFill(0xff0000);
-            obj.lineStyle(0,0x00ffff);
+            obj.beginFill(color);
+            obj.lineStyle(0,0x000000);
             obj.moveTo(startOffset.x,startOffset.y);
             obj.lineTo(arrowBackLeft.x, arrowBackLeft.y); obj.lineTo(arrowBackRight.x,arrowBackRight.y); obj.lineTo(startOffset.x,startOffset.y);
             obj.endFill();
