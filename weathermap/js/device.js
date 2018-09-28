@@ -8,7 +8,8 @@ export default class Device {
         this.interfaces = {};
         this.linkGroups = {};
         this.graphicsObjectInfo = null;
-        this.position = new Victor(Math.random()*1600,Math.random()*400);
+        this.dirty = false;
+        this.setPosition(new Victor(Math.random()*1600,Math.random()*400));
         console.log("create device " + fqdn)
     }
 
@@ -82,6 +83,10 @@ export default class Device {
                 "object": new PIXI.Graphics(),
                 "attachedTo": deviceLayer
             };
+            this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
+        }
+
+        if(this.dirty) {
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
             obj.beginFill(0xff0000);
@@ -90,7 +95,7 @@ export default class Device {
             obj.lineTo(-10,10); obj.lineTo(10,10); obj.lineTo(10,-10); obj.lineTo(-10,-10);
             obj.endFill();
             obj.position.set(this.position.x, this.position.y);
-            this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
+            this.dirty = false;
         }
 
         for(let [key, value] of Object.entries(this.linkGroups)) {
@@ -102,5 +107,10 @@ export default class Device {
 
     getPosition() {
         return this.position;
+    }
+
+    setPosition(position) {
+        this.position = position;
+        this.dirty = true;
     }
 }
