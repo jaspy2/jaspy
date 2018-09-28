@@ -4,8 +4,8 @@ import Device from "./device.js";
 export default class DeviceGraph {
     constructor(viewport) {
         this.viewport = viewport;
-        this.linkLayer = new PIXI.DisplayObjectContainer();
-        this.deviceLayer = new PIXI.DisplayObjectContainer();
+        this.linkLayer = new PIXI.Container();
+        this.deviceLayer = new PIXI.Container();
         this.devices = {};
         this.viewport.addChild(this.linkLayer);
         this.viewport.addChild(this.deviceLayer);
