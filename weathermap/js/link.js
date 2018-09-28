@@ -1,15 +1,17 @@
 import {getLinkColor} from "./util.js";
 
 export default class Link {
-    constructor(name) {
-        this.name = name;
+    constructor(remoteInterfaceName, sourceInterface) {
+        this.remoteInterfaceName = remoteInterfaceName;
         this.graphicsObjectInfo = null;
         this.dirty = false;
-        console.log("        create link -> " + name);
+        this.sourceInterface = sourceInterface;
+        console.log("        create link -> " + remoteInterfaceName);
     }
 
     destroy() {
-        console.log("        destroy link -> " + this.name);
+        console.log("        destroy link -> " + this.remoteInterfaceName);
+        this.sourceInterface.connectedToInterface = null;
         if(this.graphicsObjectInfo !== null) {
             this.graphicsObjectInfo["attachedTo"].removeChild(this.graphicsObjectInfo["object"]);
             this.graphicsObjectInfo = null;
@@ -30,7 +32,7 @@ export default class Link {
         let rightUpper = endPosition.clone().add(widthOffset1);
         let rightLower = endPosition.clone().add(widthOffset2);
 
-        let color = getLinkColor(this.getUtilization(), 1.0);
+        let color = this.isUp() ? getLinkColor(this.getUtilization(), 1.0) : 0xff00ff;
 
         this.dirty = true;
         if(this.dirty) {
@@ -43,7 +45,21 @@ export default class Link {
         }
     }
 
+    isUp() {
+        if(this.sourceInterface.statisticsData === null) {
+            return false;
+        } else {
+            return this.sourceInterface.statisticsData.status === 1;
+        }
+    }
+
     getUtilization() {
-        return Math.random();
+        if(this.sourceInterface.statisticsData !== null) {
+            return this.sourceInterface.statisticsData["tx_mbps"]/this.sourceInterface.statisticsData["speed_mbps"];
+        } else if(this.sourceInterface.connectedToInterface !== null && this.sourceInterface.connectedToInterface.statisticsData !== null) {
+            return this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"]/this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"];
+        } else {
+            return 0;
+        }
     }
 }

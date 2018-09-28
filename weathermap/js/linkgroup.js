@@ -32,7 +32,7 @@ export default class LinkGroup {
         console.log("    update linkgroup " + this.name);
         for(let [key, value] of Object.entries(linkgroupInfo)) {
             if(!(key in this.groupedLinks)) {
-                this.groupedLinks[value["connectedTo"]["interface"]] = new Link(value["connectedTo"]["interface"]);
+                this.groupedLinks[value["connectedTo"]["interface"]] = new Link(value["connectedTo"]["interface"], value["interface"]);
             }
         }
         for(let [key, value] of Object.entries(this.groupedLinks)) {
@@ -45,6 +45,10 @@ export default class LinkGroup {
 
     updateTargetInfo(targetDevice) {
         this.targetPosition = targetDevice.getPosition();
+        for(let [key, value] of Object.entries(this.groupedLinks)) {
+            let remoteInterface = targetDevice.interfaces[value.remote_iface];
+            value.sourceInterface.connectedToInterface = remoteInterface;
+        }
     }
 
     updateGraphics(viewport, localCoord, remoteCoord) {
@@ -72,6 +76,8 @@ export default class LinkGroup {
             let sidesScaled = sides.clone().multiply(new Victor(arrowWidth, arrowWidth));
             let arrowBackLeft = new Victor(0,0).subtract(dirScaled).subtract(sidesScaled);
             let arrowBackRight = new Victor(0,0).subtract(dirScaled).add(sidesScaled);
+            let boxBackLeft = new Victor(0,0).subtract(sidesScaled).subtract(dirScaled.clone().multiply(new Victor(0.5,0.5)));
+            let boxBackRight = new Victor(0,0).add(sidesScaled).subtract(dirScaled.clone().multiply(new Victor(0.5,0.5)));
             let startOffset = new Victor(0,0).subtract(dir.clone().multiply(new Victor(1,1)));
 
             let linkLineStartPosMiddle = localCoord;
@@ -83,24 +89,40 @@ export default class LinkGroup {
 
             let linknum = 0;
             let utilTotal = 0;
+            let linksUp = 0;
             for(let [key, value] of Object.entries(this.groupedLinks)) {
                 let widthOffset1 = sides.clone().multiply(new Victor(width/-2.0, width/-2.0)).add(sides.clone().multiply(new Victor(linknum*widthPerLink, linknum*widthPerLink)));
                 let widthOffset2 = widthOffset1.clone().add(sides.clone().multiply(new Victor(widthPerLink, widthPerLink)));
                 value.updateGraphics(viewport, linkLineStartPosMiddle, linkLineEndposMiddle, widthOffset1, widthOffset2);
                 utilTotal += value.getUtilization();
+                if(value.isUp()) linksUp += 1;
             }
 
             let avgUtil = utilTotal / numLinks;
             let color = getLinkColor(avgUtil, 1.0);
+            if(linksUp === 0) {
+                color = 0xff00ff;
+            }
 
-            let obj = this.graphicsObjectInfo["object"];
-            obj.clear();
-            obj.beginFill(color);
-            obj.lineStyle(0,0x000000);
-            obj.moveTo(startOffset.x,startOffset.y);
-            obj.lineTo(arrowBackLeft.x, arrowBackLeft.y); obj.lineTo(arrowBackRight.x,arrowBackRight.y); obj.lineTo(startOffset.x,startOffset.y);
-            obj.endFill();
-            obj.position.set(this.position.x, this.position.y);
+            if(linksUp > 0) {
+                let obj = this.graphicsObjectInfo["object"];
+                obj.clear();
+                obj.beginFill(color);
+                obj.lineStyle(0,0x000000);
+                obj.moveTo(startOffset.x,startOffset.y);
+                obj.lineTo(arrowBackLeft.x, arrowBackLeft.y); obj.lineTo(arrowBackRight.x,arrowBackRight.y); obj.lineTo(startOffset.x,startOffset.y);
+                obj.endFill();
+                obj.position.set(this.position.x, this.position.y);
+            } else {
+                let obj = this.graphicsObjectInfo["object"];
+                obj.clear();
+                obj.beginFill(color);
+                obj.lineStyle(0,0x000000);
+                obj.moveTo(boxBackLeft.x, boxBackLeft.y);
+                obj.lineTo(arrowBackLeft.x, arrowBackLeft.y); obj.lineTo(arrowBackRight.x,arrowBackRight.y); obj.lineTo(boxBackRight.x,boxBackRight.y); obj.lineTo(boxBackLeft.x, boxBackLeft.y);
+                obj.endFill();
+                obj.position.set(this.position.x, this.position.y);
+            }
         }
     }
 

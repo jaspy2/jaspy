@@ -9,6 +9,7 @@ export default class Device {
         this.linkGroups = {};
         this.graphicsObjectInfo = null;
         this.dirty = false;
+        this.status = null;
         this.setPosition(new Victor(Math.random()*1600,Math.random()*400));
         console.log("create device " + fqdn)
     }
@@ -48,6 +49,7 @@ export default class Device {
                 if(!(connectionInfo["fqdn"] in linkGroupUpdates)) {
                     linkGroupUpdates[connectionInfo["fqdn"]] = {};
                 }
+                value["interface"] = iface;
                 linkGroupUpdates[connectionInfo["fqdn"]][value["connectedTo"]["interface"]] = value;
             }
         }
@@ -89,8 +91,16 @@ export default class Device {
         if(this.dirty) {
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
-            obj.beginFill(0xff0000);
-            obj.lineStyle(2,0x00ffff);
+            let fillcolor = null;
+            if(this.status === 1) {
+                fillcolor = 0x00aa00;
+            } else if(this.status === 0) {
+                fillcolor = 0xff0000;
+            } else {
+                fillcolor = 0xffff00;
+            }
+            obj.beginFill(fillcolor);
+            obj.lineStyle(2,0x777777);
             obj.moveTo(-10,-10);
             obj.lineTo(-10,10); obj.lineTo(10,10); obj.lineTo(10,-10); obj.lineTo(-10,-10);
             obj.endFill();
@@ -112,5 +122,16 @@ export default class Device {
     setPosition(position) {
         this.position = position;
         this.dirty = true;
+    }
+
+    updateStatistics(data) {
+        this.status = data["status"];
+        for(let [key, value] of Object.entries(data["interfaces"])) {
+            if(!(key in this.interfaces)) {
+                console.error("received update for " + fqdn + "/" + key + " which is not in device interfaces");
+            } else {
+                this.interfaces[key].updateStatistics(value);
+            }
+        }
     }
 }
