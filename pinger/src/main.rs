@@ -97,7 +97,7 @@ fn send_status_update(source_url: &String, host : &String, ping_accounting_info 
         up: ping_accounting_info.responsive,
         fqdn: host.clone()
     };
-    let response = client.request(reqwest::Method::Put, source_url)
+    let response = client.request(reqwest::Method::PUT, source_url)
         .json(&resp_obj)
         .send();
     match response {
