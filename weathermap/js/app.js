@@ -14,7 +14,7 @@ class WeatherMap extends PIXI.Application {
 
         this.lastTopologyUpdate = 0;
         this.lastDataUpdate = 0;
-        this.lastGraphicsUpdate = 0;
+        this.lastStatusUpdate = 0;
 
         document.body.appendChild(this.renderer.view);
     }
@@ -45,7 +45,7 @@ class WeatherMap extends PIXI.Application {
     }
 
     async updateTopologyData() {
-        let data = await fetch(config.jaspyNexusURL).then(res => res.json()).catch(fail => Promise.reject(fail));
+        const data = await fetch(config.jaspyNexusURL).then(res => res.json()).catch(fail => Promise.reject(fail));
         this.deviceGraph.updateTopologyData(data);
     }
 
@@ -129,23 +129,33 @@ class WeatherMap extends PIXI.Application {
 
         this.beginStatisticsUpdate();
         this.updateInterfaceSpeed(prometheusInterfaceSpeed);
-        this.updateInterfaceUp(prometheusInterfaceUp);
+        //this.updateInterfaceUp(prometheusInterfaceUp);
         this.updateInterfaceOctetsPerSecond(prometheusDataOctets);
-        this.updateDeviceUp(prometheusDeviceUp);
+        //this.updateDeviceUp(prometheusDeviceUp);
         this.commitStatisticsUpdate();
         this.updateGraphics();
     }
 
+    async statusUpdate() {
+        const statusInfo = await fetch(config.jaspyNexusURL+"/state").then(res => res.json()).catch(fail => Promise.reject(fail));
+        this.deviceGraph.updateStatuses(statusInfo["devices"]);
+        this.updateGraphics();
+    }
+
     frame(curtime) {
-        if(curtime - this.lastTopologyUpdate > 5) {
+        if(curtime - this.lastTopologyUpdate > 60) {
             this.lastTopologyUpdate = curtime;
             this.updateTopologyData();
             console.log("topo-tick");
         }
-        if(curtime - this.lastDataUpdate > 5) {
+        if(curtime - this.lastDataUpdate > 30) {
             this.lastDataUpdate = curtime;
             this.dataUpdate();
             console.log("data-tick");
+        }
+        if(curtime - this.lastStatusUpdate > 1) {
+            this.lastStatusUpdate = curtime;
+            this.statusUpdate();
         }
     }
 }

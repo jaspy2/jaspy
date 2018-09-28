@@ -70,7 +70,6 @@ export default class DeviceGraph {
         if(!(fqdn in this.updateBatch)) {
             this.updateBatch[fqdn] = {
                 "interfaces": [],
-                "status": null
             }
         }
         if(!(iface in this.updateBatch[fqdn]["interfaces"])) {
@@ -78,7 +77,6 @@ export default class DeviceGraph {
                 "rx_mbps": null,
                 "tx_mbps": null,
                 "speed_mbps": null,
-                "status": null
             }
         }
     }
@@ -107,7 +105,7 @@ export default class DeviceGraph {
         }
     }
 
-    updateInterfaceUp(prometheusResultVector) {
+    /*updateInterfaceUp(prometheusResultVector) {
         for(let metric of prometheusResultVector) {
             let fqdn = metric["metric"]["fqdn"];
             let name = metric["metric"]["name"];
@@ -127,6 +125,16 @@ export default class DeviceGraph {
             let value = parseInt(metric["value"][1]);
 
             this.updateBatch[fqdn]["status"] = value;
+        }
+    }*/
+
+    updateStatuses(statusInfo) {
+        for(let [fqdn, data] of Object.entries(statusInfo)) {
+            if(!(fqdn in this.devices)) {
+                console.error("received status update for non-existing device " + fqdn);
+                continue;
+            }
+            this.devices[fqdn].setStatus(data);
         }
     }
 }

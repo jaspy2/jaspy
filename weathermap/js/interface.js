@@ -6,6 +6,7 @@ export default class Interface {
         this.topologyData = {};
         this.statisticsData = null;
         this.connectedToInterface = null;
+        this.status = null;
         console.log("    create interface " + name);
     }
 
@@ -17,6 +18,10 @@ export default class Interface {
         for(let [key, value] of Object.entries(data)) {
             this.topologyData[key] = value;
         }
+    }
+
+    setStatus(newStatus) {
+        this.status = newStatus["state"];
     }
 
     updateStatistics(data) {

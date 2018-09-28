@@ -88,13 +88,14 @@ export default class Device {
             this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
         }
 
+        this.dirty = true;
         if(this.dirty) {
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
             let fillcolor = null;
-            if(this.status === 1) {
+            if(this.status === true) {
                 fillcolor = 0x00aa00;
-            } else if(this.status === 0) {
+            } else if(this.status === false) {
                 fillcolor = 0xff0000;
             } else {
                 fillcolor = 0xffff00;
@@ -115,6 +116,19 @@ export default class Device {
         }
     }
 
+    setStatus(newStatus) {
+        this.status = newStatus["state"];
+        this.dirty = true;
+
+        for(let [key, value] of Object.entries(newStatus["interfaces"])) {
+            if(!(key in this.interfaces)) {
+                console.error("received update for " + fqdn + "/" + key + " which is not in device interfaces");
+            } else {
+                this.interfaces[key].setStatus(value);
+            }
+        }
+    }
+
     getPosition() {
         return this.position;
     }
@@ -125,7 +139,6 @@ export default class Device {
     }
 
     updateStatistics(data) {
-        this.status = data["status"];
         for(let [key, value] of Object.entries(data["interfaces"])) {
             if(!(key in this.interfaces)) {
                 console.error("received update for " + fqdn + "/" + key + " which is not in device interfaces");

@@ -46,10 +46,10 @@ export default class Link {
     }
 
     isUp() {
-        if(this.sourceInterface.statisticsData === null) {
+        if(!this.sourceInterface.status) {
             return false;
         } else {
-            return this.sourceInterface.statisticsData.status === 1;
+            return this.sourceInterface.status;
         }
     }
 
