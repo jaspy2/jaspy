@@ -42,7 +42,7 @@ export default class Device {
             if(value["connectedTo"]) {
                 let connectionInfo = value["connectedTo"];
                 if(!(connectionInfo["fqdn"] in this.linkGroups)) {
-                    this.linkGroups[connectionInfo["fqdn"]] = new LinkGroup(connectionInfo["fqdn"]);
+                    this.linkGroups[connectionInfo["fqdn"]] = new LinkGroup(this.fqdn, connectionInfo["fqdn"]);
                 }
                 if(!(connectionInfo["fqdn"] in linkGroupUpdates)) {
                     linkGroupUpdates[connectionInfo["fqdn"]] = {};
@@ -76,16 +76,27 @@ export default class Device {
         }
     }
 
-    updateGraphics(viewport) {
+    updateGraphics(viewport, deviceCoordinates) {
         if(this.graphicsObjectInfo == null) {
             this.graphicsObjectInfo = {
-                "object": new PIXI.Sprite(PIXI.Texture.WHITE),
+                "object": new PIXI.Graphics(),
                 "attachedTo": viewport
             };
-            this.graphicsObjectInfo["object"].tint = 0xff0000;
-            this.graphicsObjectInfo["object"].width = this.graphicsObjectInfo["object"].height = 32
-            this.graphicsObjectInfo["object"].position.set(this.position.x, this.position.y);
+            let obj = this.graphicsObjectInfo["object"];
+            obj.clear();
+            obj.beginFill(0xff0000);
+            obj.lineStyle(2,0x00ffff);
+            obj.moveTo(-10,-10);
+            obj.lineTo(-10,10); obj.lineTo(10,10); obj.lineTo(10,-10); obj.lineTo(-10,-10);
+            obj.endFill();
+            obj.position.set(this.position.x, this.position.y);
             this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
+        }
+
+        for(let [key, value] of Object.entries(this.linkGroups)) {
+            let localCoord = this.getPosition();
+            let remoteCoord = deviceCoordinates[key];
+            value.updateGraphics(viewport, localCoord, remoteCoord);
         }
     }
 
