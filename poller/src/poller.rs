@@ -153,7 +153,7 @@ pub fn poller(jaspy_url : String, snmpbot_url: String, device_info : models::jso
         println!("[{}] polling", fqdn);
         if let Some(poll_result) = poll_device(&snmpbot_url, &device_info) {
             let client = reqwest::Client::new();
-            let response = client.request(reqwest::Method::Put, &format!("{}/interface/monitor", jaspy_url))
+            let response = client.request(reqwest::Method::PUT, &format!("{}/interface/monitor", jaspy_url))
                 .json(&poll_result)
                 .send();
             match response {
