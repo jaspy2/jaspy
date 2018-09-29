@@ -30,7 +30,6 @@ export default class Link {
                 curPoint.x += 20;
                 let worldPoint = simulationGlobals.viewport.toWorld(curPoint);
                 this.link.label.position = worldPoint;
-                console.log(this.link.sourceInterface);
                 this.link.label.text = 
                     hostnameFromFQDN(this.link.sourceInterface.parentDeviceFQDN) + " " + this.link.sourceInterface.name +
                     " >> " +

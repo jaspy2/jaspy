@@ -26,7 +26,6 @@ export default class Interface {
     }
 
     updateStatistics(data) {
-        console.log(data);
         this.statisticsData = data;
     }
 }
