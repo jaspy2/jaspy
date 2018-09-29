@@ -119,7 +119,7 @@ export default class Device {
             this.armDragEvents(this.graphicsObjectInfo["object"]);
 
             let text = new PIXI.Text(this.hostname, {fontFamily : '"Courier New", Courier, monospace', fontSize: 14, fill : 0xffffff, align : 'center'});
-            text.position.x -= text.width / 2.0;
+            text.position.x -= Math.round(text.width / 2.0);
             text.position.y -= 30;
             this.graphicsObjectInfo["object"].addChild(text);
         }
