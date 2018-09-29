@@ -15,6 +15,8 @@ class WeatherMap extends PIXI.Application {
         this.lastTopologyUpdate = 0;
         this.lastDataUpdate = 0;
         this.lastStatusUpdate = 0;
+        this.lastGraphicsUpdate = 0;
+        this.lastAnimationUpdate = 0;
 
         document.body.appendChild(this.renderer.view);
     }
@@ -30,6 +32,7 @@ class WeatherMap extends PIXI.Application {
             .drag()
             .wheel()
             .decelerate();
+        simulationGlobals.viewport = this.viewport;
         this.stage.addChild(this.viewport);
     }
 
@@ -115,18 +118,20 @@ class WeatherMap extends PIXI.Application {
 
     async dataUpdate() {
         // note, this can be used for history browsing 
-        const curtime = Math.round((new Date()).getTime() / 1000);
-        const prometheusDeviceUp = await fetch(config.prometheusQueryURL + 'min(jaspy_device_up{}) by (fqdn)' + '&time=' + curtime).then(res => res.json()).catch(fail => Promise.reject(0));
-        if(prometheusDeviceUp["status"] == "error") return Promise.reject(0);
+        let curtime = Math.round((new Date()).getTime() / 1000);
+        let timequery = '&time=' + curtime;
+        timequery = '';
+        const prometheusDeviceUp = await fetch(config.prometheusQueryURL + 'min(jaspy_device_up{}) by (fqdn)' + timequery).then(res => res.json()).catch(fail => Promise.reject(fail));
+        if(prometheusDeviceUp["status"] == "error") return Promise.reject(prometheusDeviceUp);
         
-        const prometheusInterfaceUp = await fetch(config.prometheusQueryURL + 'min(jaspy_interface_up{neighbors="yes"}) by (fqdn, name)' + '&time=' + curtime).then(res => res.json()).catch(fail => Promise.reject(0));
-        if(prometheusInterfaceUp["status"] == "error") return Promise.reject(0);
+        const prometheusInterfaceUp = await fetch(config.prometheusQueryURL + 'min(jaspy_interface_up{neighbors="yes"}) by (fqdn, name)' + timequery).then(res => res.json()).catch(fail => Promise.reject(fail));
+        if(prometheusInterfaceUp["status"] == "error") return Promise.reject(prometheusInterfaceUp);
         
-        const prometheusInterfaceSpeed = await fetch(config.prometheusQueryURL + 'min(jaspy_interface_speed{neighbors="yes"}) by (fqdn, name)' + '&time=' + curtime).then(res => res.json()).catch(fail => Promise.reject(0));
-        if(prometheusInterfaceSpeed["status"] == "error") return Promise.reject(0);
+        const prometheusInterfaceSpeed = await fetch(config.prometheusQueryURL + 'min(jaspy_interface_speed{neighbors="yes"}) by (fqdn, name)' + timequery).then(res => res.json()).catch(fail => Promise.reject(fail));
+        if(prometheusInterfaceSpeed["status"] == "error") return Promise.reject(prometheusInterfaceSpeed);
         
-        const prometheusDataOctets = await fetch(config.prometheusQueryURL + 'sum(rate(jaspy_interface_octets{neighbors="yes"}[120s])) by (fqdn, name, direction)' + '&time=' + curtime).then(res => res.json()).catch(fail => Promise.reject(fail));
-        if(prometheusDataOctets["status"] == "error") return Promise.reject(0);
+        const prometheusDataOctets = await fetch(config.prometheusQueryURL + 'sum(rate(jaspy_interface_octets{neighbors="yes"}[120s])) by (fqdn, name, direction)' + timequery).then(res => res.json()).catch(fail => Promise.reject(fail));
+        if(prometheusDataOctets["status"] == "error") return Promise.reject(prometheusDataOctets);
 
         this.beginStatisticsUpdate();
         this.updateInterfaceSpeed(prometheusInterfaceSpeed);
@@ -135,13 +140,14 @@ class WeatherMap extends PIXI.Application {
         //this.updateInterfaceUp(prometheusInterfaceUp);
         //this.updateDeviceUp(prometheusDeviceUp);
         this.commitStatisticsUpdate();
-        this.updateGraphics();
+
+        simulationGlobals.animationUpdateRequested = true;
+        simulationGlobals.graphicsUpdateRequested = true;
     }
 
     async statusUpdate() {
         const statusInfo = await fetch(config.jaspyNexusURL+"/state").then(res => res.json()).catch(fail => Promise.reject(fail));
         this.deviceGraph.updateStatuses(statusInfo["devices"]);
-        this.updateGraphics();
     }
 
     frame(curtime) {
@@ -159,6 +165,21 @@ class WeatherMap extends PIXI.Application {
             this.lastStatusUpdate = curtime;
             this.statusUpdate();
             console.log("status-tick @ " + curtime);
+        }
+
+        if(curtime - this.lastGraphicsUpdate > 1 || simulationGlobals.requestGraphicsUpdate) {
+            this.lastGraphicsUpdate = curtime;
+            // reset gfx request flag, might retrigger
+            simulationGlobals.requestGraphicsUpdate = false;
+            this.updateGraphics();
+            console.log("gfx-tick @ " + curtime);
+        }
+
+        if(curtime - this.lastAnimationUpdate > 1 || simulationGlobals.requestAnimationUpdate) {
+            this.lastAnimationUpdate = curtime;
+            // reset anim request flag, might retrigger
+            simulationGlobals.requestAnimationUpdate = false;
+            // this.updateAnimation();
         }
     }
 }

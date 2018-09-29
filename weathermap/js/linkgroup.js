@@ -11,7 +11,7 @@ export default class LinkGroup {
         this.groupedLinks = {};
         this.graphicsObjectInfo = null;
         this.setPosition(null);
-        this.dirty = false;
+        this.graphicsDirty = false;
         console.log("        create linkgroup -> " + name);
     }
 
@@ -33,12 +33,14 @@ export default class LinkGroup {
         for(let [key, value] of Object.entries(linkgroupInfo)) {
             if(!(key in this.groupedLinks)) {
                 this.groupedLinks[value["connectedTo"]["interface"]] = new Link(value["connectedTo"]["interface"], value["interface"]);
+                this.graphicsDirty = true;
             }
         }
         for(let [key, value] of Object.entries(this.groupedLinks)) {
             if(!(key in linkgroupInfo)) {
                 this.groupedLinks[key].destroy();
                 delete this.groupedLinks[key];
+                this.graphicsDirty = true;
             }
         }
     }
@@ -49,6 +51,10 @@ export default class LinkGroup {
             let remoteInterface = targetDevice.interfaces[value.remote_iface];
             value.sourceInterface.connectedToInterface = remoteInterface;
         }
+    }
+
+    interfacesUpdated() {
+        this.graphicsDirty = true;
     }
 
     updateGraphics(viewport, localCoord, remoteCoord) {
@@ -68,8 +74,7 @@ export default class LinkGroup {
             this.setPosition(candidatePosition);
         }
 
-        this.dirty = true;
-        if(this.dirty) {
+        if(this.graphicsDirty) {
             let arrowWidth = 10.0;
             let arrowLength = 20.0;
             let dirScaled = dir.clone().multiply(new Victor(arrowLength, arrowLength));
@@ -123,11 +128,15 @@ export default class LinkGroup {
                 obj.endFill();
                 obj.position.set(this.position.x, this.position.y);
             }
+            this.graphicsDirty = false;
         }
     }
 
     setPosition(position) {
+        if(this.position && (position.x == this.position.x && position.y == this.position.y)) {
+            return;
+        }
         this.position = position;
-        this.dirty = true;
+        this.graphicsDirty = true;
     }
 }

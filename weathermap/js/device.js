@@ -8,10 +8,39 @@ export default class Device {
         this.interfaces = {};
         this.linkGroups = {};
         this.graphicsObjectInfo = null;
-        this.dirty = false;
+        this.graphicsDirty = false;
         this.status = null;
+        this.dragInfo = null;
         this.setPosition(new Victor(Math.random()*1600,Math.random()*400));
         console.log("create device " + fqdn)
+    }
+
+    armDragEvents(object) {
+        object.device = this;
+        object.interactive = true;
+        object.buttonMode = true;
+
+        object.mousedown = object.touchstart = function(data) {
+            this.device.dragInfo = {};
+            simulationGlobals.requestGraphicsUpdate = true;
+            simulationGlobals.requestAnimationUpdate = true;
+            data.stopPropagation();
+        };
+
+        object.mouseup = object.mouseupoutside = object.touchend = object.touchendoutside = function(data) {
+            this.device.dragInfo = null;
+        };
+
+        object.mousemove = object.touchmove = function(data) {
+            if(this.device.dragInfo !== null) {
+                let curPoint = data.data.global;
+                let worldPoint = simulationGlobals.viewport.toWorld(curPoint);
+                this.device.setPosition(new Victor(worldPoint.x, worldPoint.y));
+                simulationGlobals.requestGraphicsUpdate = true;
+                simulationGlobals.requestAnimationUpdate = true;
+                data.stopPropagation();
+            }
+        };
     }
 
     destroy() {
@@ -86,10 +115,10 @@ export default class Device {
                 "attachedTo": deviceLayer
             };
             this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
+            this.armDragEvents(this.graphicsObjectInfo["object"]);
         }
 
-        this.dirty = true;
-        if(this.dirty) {
+        if(this.graphicsDirty) {
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
             let fillcolor = null;
@@ -106,7 +135,7 @@ export default class Device {
             obj.lineTo(-10,10); obj.lineTo(10,10); obj.lineTo(10,-10); obj.lineTo(-10,-10);
             obj.endFill();
             obj.position.set(this.position.x, this.position.y);
-            this.dirty = false;
+            this.graphicsDirty = false;
         }
 
         for(let [key, value] of Object.entries(this.linkGroups)) {
@@ -118,7 +147,7 @@ export default class Device {
 
     setStatus(newStatus) {
         this.status = newStatus["state"];
-        this.dirty = true;
+        this.graphicsDirty = true;
 
         for(let [key, value] of Object.entries(newStatus["interfaces"])) {
             if(!(key in this.interfaces)) {
@@ -127,6 +156,12 @@ export default class Device {
                 this.interfaces[key].setStatus(value);
             }
         }
+
+        for(let [key, value] of Object.entries(this.linkGroups)) {
+            value.interfacesUpdated();
+        }
+
+        simulationGlobals.requestGraphicsUpdate = true;
     }
 
     getPosition() {
@@ -135,7 +170,7 @@ export default class Device {
 
     setPosition(position) {
         this.position = position;
-        this.dirty = true;
+        this.graphicsDirty = true;
     }
 
     updateStatistics(data) {
@@ -146,5 +181,10 @@ export default class Device {
                 this.interfaces[key].updateStatistics(value);
             }
         }
+
+        for(let [key, value] of Object.entries(this.linkGroups)) {
+            value.interfacesUpdated();
+        }
+        simulationGlobals.requestGraphicsUpdate = true;
     }
 }
