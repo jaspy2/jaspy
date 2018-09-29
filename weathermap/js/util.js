@@ -47,3 +47,7 @@ export function getLinkColor(used, total) {
     let rgbhex = rgbToHex(rgb[0],rgb[1],rgb[2]);
     return Math.round(parseInt(rgbhex, 16));
 }
+
+export function hostnameFromFQDN(fqdn) {
+    return fqdn.split('.', 2)[0];
+}

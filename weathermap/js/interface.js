@@ -1,7 +1,8 @@
 
 
 export default class Interface {
-    constructor(name) {
+    constructor(name, parentDeviceFQDN) {
+        this.parentDeviceFQDN = parentDeviceFQDN;
         this.name = name;
         this.topologyData = {};
         this.statisticsData = null;

@@ -1,4 +1,4 @@
-import {getLinkColor} from "./util.js";
+import {getLinkColor,hostnameFromFQDN} from "./util.js";
 
 export default class Link {
     constructor(remoteInterfaceName, sourceInterface) {
@@ -6,6 +6,8 @@ export default class Link {
         this.graphicsObjectInfo = null;
         this.dirty = false;
         this.sourceInterface = sourceInterface;
+        this.label = new PIXI.Text("<loading>", {fontFamily : '"Courier New", Courier, monospace', fontSize: 14, fill : 0xffffff, align : 'left'});
+
         console.log("        create link -> " + remoteInterfaceName);
     }
 
@@ -18,6 +20,34 @@ export default class Link {
         }
     }
 
+    bindLabel(graphicsObject) {
+        graphicsObject.link = this;
+        graphicsObject.interactive = true;
+
+        graphicsObject.mousemove = function(ev) {
+            if(this.showLabel) {
+                let curPoint = ev.data.global;
+                curPoint.x += 20;
+                let worldPoint = simulationGlobals.viewport.toWorld(curPoint);
+                this.link.label.position = worldPoint;
+                console.log(this.link.sourceInterface);
+                this.link.label.text = 
+                hostnameFromFQDN(this.link.sourceInterface.parentDeviceFQDN) + " " + this.link.sourceInterface.name +
+                    " >> " +
+                    hostnameFromFQDN(this.link.sourceInterface.connectedToInterface.parentDeviceFQDN) + " " + this.link.sourceInterface.connectedToInterface.name + "\n" +
+                    this.link.getUsage().toFixed(2) + " Mbps";
+            }
+        }
+        graphicsObject.mouseout = function(ev) {
+            this.showLabel = false;
+            simulationGlobals.viewport.removeChild(this.link.label);
+        };
+        graphicsObject.mouseover = function(ev) {
+            this.showLabel = true;
+            simulationGlobals.viewport.addChild(this.link.label);
+        };
+    }
+
     updateGraphics(viewport, startPosition, endPosition, widthOffset1, widthOffset2) {
         if(this.graphicsObjectInfo == null) {
             this.graphicsObjectInfo = {
@@ -25,6 +55,7 @@ export default class Link {
                 "attachedTo": viewport
             };
             this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
+            this.bindLabel(this.graphicsObjectInfo["object"]);
         }
 
         let leftUpper = startPosition.clone().add(widthOffset1);
@@ -59,6 +90,20 @@ export default class Link {
                 return this.sourceInterface.statisticsData["tx_mbps"]/this.sourceInterface.statisticsData["speed_mbps"];
             } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData) {
                 return this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"]/this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"];
+            } else {
+                return 0;
+            }
+        } else {
+            return 0;
+        }
+    }
+
+    getUsage() {
+        if(this.sourceInterface) {
+            if(this.sourceInterface.statisticsData) {
+                return this.sourceInterface.statisticsData["tx_mbps"];
+            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData) {
+                return this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"];
             } else {
                 return 0;
             }

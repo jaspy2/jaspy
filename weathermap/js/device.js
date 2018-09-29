@@ -1,12 +1,13 @@
 import Interface from "./interface.js";
 import LinkGroup from "./linkgroup.js";
 import FocusEffect from "./effects/focuseffect.js";
+import {hostnameFromFQDN} from "./util.js";
 
 
 export default class Device {
     constructor(fqdn) {
         this.fqdn = fqdn;
-        this.hostname = fqdn.split('.', 2)[0];
+        this.hostname = hostnameFromFQDN(fqdn);
         this.interfaces = {};
         this.linkGroups = {};
         this.graphicsObjectInfo = null;
@@ -69,7 +70,7 @@ export default class Device {
         for(let [key, value] of Object.entries(data["interfaces"])) {
             let iface = null;
             if(!(key in this.interfaces)) {
-                this.interfaces[key] = new Interface(key);
+                this.interfaces[key] = new Interface(key, this.fqdn);
             }
             iface = this.interfaces[key];
             iface.updateTopologyData(value);

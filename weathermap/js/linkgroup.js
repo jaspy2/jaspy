@@ -12,6 +12,9 @@ export default class LinkGroup {
         this.graphicsObjectInfo = null;
         this.position = null;
         this.graphicsDirty = false;
+        this.source = source;
+        this.label = new PIXI.Text("<loading>", {fontFamily : '"Courier New", Courier, monospace', fontSize: 14, fill : 0xffffff, align : 'left'});
+
         console.log("        create linkgroup -> " + name);
     }
 
@@ -48,9 +51,32 @@ export default class LinkGroup {
     updateTargetInfo(targetDevice) {
         this.targetPosition = targetDevice.getPosition();
         for(let [key, value] of Object.entries(this.groupedLinks)) {
-            let remoteInterface = targetDevice.interfaces[value.remote_iface];
+            let remoteInterface = targetDevice.interfaces[value.remoteInterfaceName];
             value.sourceInterface.connectedToInterface = remoteInterface;
         }
+    }
+
+    bindLabel(graphicsObject) {
+        graphicsObject.linkgroup = this;
+        graphicsObject.interactive = true;
+
+        graphicsObject.mousemove = function(ev) {
+            if(this.showLabel) {
+                let curPoint = ev.data.global;
+                curPoint.x += 20;
+                let worldPoint = simulationGlobals.viewport.toWorld(curPoint);
+                this.linkgroup.label.position = worldPoint;
+                this.linkgroup.label.text = this.linkgroup.source + " >> " + this.linkgroup.target + "\n" + this.linkgroup.totalUsage().toFixed(2) + " Mbps";
+            }
+        }
+        graphicsObject.mouseout = function(ev) {
+            this.showLabel = false;
+            simulationGlobals.viewport.removeChild(this.linkgroup.label);
+        };
+        graphicsObject.mouseover = function(ev) {
+            this.showLabel = true;
+            simulationGlobals.viewport.addChild(this.linkgroup.label);
+        };
     }
 
     interfacesUpdated() {
@@ -64,6 +90,7 @@ export default class LinkGroup {
                 "attachedTo": viewport
             };
             this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
+            this.bindLabel(this.graphicsObjectInfo["object"]);
         }
 
         let midpoint = localCoord.clone().multiply(new Victor(-1,-1)).add(remoteCoord).multiply(new Victor(0.5,0.5));
@@ -130,6 +157,14 @@ export default class LinkGroup {
             }
             this.graphicsDirty = false;
         }
+    }
+
+    totalUsage() {
+        let usage = 0;
+        for(let [key, value] of Object.entries(this.groupedLinks)) {
+            usage += value.getUsage();
+        }
+        return usage;
     }
 
     setPosition(position) {
