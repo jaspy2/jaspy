@@ -32,7 +32,7 @@ export default class Link {
                 this.link.label.position = worldPoint;
                 console.log(this.link.sourceInterface);
                 this.link.label.text = 
-                hostnameFromFQDN(this.link.sourceInterface.parentDeviceFQDN) + " " + this.link.sourceInterface.name +
+                    hostnameFromFQDN(this.link.sourceInterface.parentDeviceFQDN) + " " + this.link.sourceInterface.name +
                     " >> " +
                     hostnameFromFQDN(this.link.sourceInterface.connectedToInterface.parentDeviceFQDN) + " " + this.link.sourceInterface.connectedToInterface.name + "\n" +
                     this.link.getUsage().toFixed(2) + " Mbps";
