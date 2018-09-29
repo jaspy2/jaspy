@@ -1,5 +1,5 @@
 import Link from "./link.js";
-import {getLinkColor} from "./util.js";
+import {getLinkColor,hostnameFromFQDN} from "./util.js";
 
 
 export default class LinkGroup {
@@ -66,7 +66,7 @@ export default class LinkGroup {
                 curPoint.x += 20;
                 let worldPoint = simulationGlobals.viewport.toWorld(curPoint);
                 this.linkgroup.label.position = worldPoint;
-                this.linkgroup.label.text = this.linkgroup.source + " >> " + this.linkgroup.target + "\n" + this.linkgroup.totalUsage().toFixed(2) + " Mbps";
+                this.linkgroup.label.text = hostnameFromFQDN(this.linkgroup.source) + " >> " + hostnameFromFQDN(this.linkgroup.target) + "\n" + this.linkgroup.totalUsage().toFixed(2) + " Mbps";
             }
         }
         graphicsObject.mouseout = function(ev) {
