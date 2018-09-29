@@ -5,6 +5,7 @@ import LinkGroup from "./linkgroup.js";
 export default class Device {
     constructor(fqdn) {
         this.fqdn = fqdn;
+        this.hostname = fqdn.split('.', 2)[0];
         this.interfaces = {};
         this.linkGroups = {};
         this.graphicsObjectInfo = null;
@@ -116,6 +117,11 @@ export default class Device {
             };
             this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
             this.armDragEvents(this.graphicsObjectInfo["object"]);
+
+            let text = new PIXI.Text(this.hostname, {fontFamily : '"Courier New", Courier, monospace', fontSize: 14, fill : 0xffffff, align : 'center'});
+            text.position.x -= text.width / 2.0;
+            text.position.y -= 30;
+            this.graphicsObjectInfo["object"].addChild(text);
         }
 
         if(this.graphicsDirty) {
@@ -169,6 +175,10 @@ export default class Device {
     }
 
     setPosition(position) {
+        position = new Victor(Math.round(position.x), Math.round(position.y));
+        if(this.position && (position.x == this.position.x && position.y == this.position.y)) {
+            return;
+        }
         this.position = position;
         this.graphicsDirty = true;
     }

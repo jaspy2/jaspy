@@ -10,7 +10,7 @@ export default class LinkGroup {
         this.targetPosition = new Victor(0, 0);
         this.groupedLinks = {};
         this.graphicsObjectInfo = null;
-        this.setPosition(null);
+        this.position = null;
         this.graphicsDirty = false;
         console.log("        create linkgroup -> " + name);
     }
@@ -133,6 +133,7 @@ export default class LinkGroup {
     }
 
     setPosition(position) {
+        position = new Victor(Math.round(position.x), Math.round(position.y));
         if(this.position && (position.x == this.position.x && position.y == this.position.y)) {
             return;
         }
