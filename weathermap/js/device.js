@@ -1,5 +1,6 @@
 import Interface from "./interface.js";
 import LinkGroup from "./linkgroup.js";
+import FocusEffect from "./effects/focuseffect.js";
 
 
 export default class Device {
@@ -12,6 +13,7 @@ export default class Device {
         this.graphicsDirty = false;
         this.status = null;
         this.dragInfo = null;
+        this.attachedEffects = [];
         this.setPosition(new Victor(Math.random()*1600,Math.random()*400));
         console.log("create device " + fqdn)
     }
@@ -109,6 +111,21 @@ export default class Device {
         }
     }
 
+    updateAnimation() {
+        let activeEffects = [];
+        for(let effect of this.attachedEffects) {
+            if(!effect.finished()) {
+                effect.updateAnimation();
+                activeEffects.push(effect);
+                simulationGlobals.requestAnimationUpdate = true;
+                simulationGlobals.requestGraphicsUpdate = true;
+            } else {
+                effect.destroy();
+            }
+        }
+        this.attachedEffects = activeEffects;
+    }
+
     updateGraphics(linkLayer, deviceLayer, deviceCoordinates) {
         if(this.graphicsObjectInfo == null) {
             this.graphicsObjectInfo = {
@@ -122,6 +139,10 @@ export default class Device {
             text.position.x -= Math.round(text.width / 2.0);
             text.position.y -= 30;
             this.graphicsObjectInfo["object"].addChild(text);
+        }
+
+        for(let effect of this.attachedEffects) {
+            effect.updateGraphics();
         }
 
         if(this.graphicsDirty) {
@@ -152,8 +173,18 @@ export default class Device {
     }
 
     setStatus(newStatus) {
-        this.status = newStatus["state"];
-        this.graphicsDirty = true;
+        if(this.status != newStatus["state"]) {
+            if(this.status !== null) {
+                let color = 0xff0000;
+                if(newStatus["state"] === true) color = 0x00ff00;
+                let radius = simulationGlobals.viewport.screenHeight > simulationGlobals.viewport.screenWidth ? simulationGlobals.viewport.screenHeight : simulationGlobals.viewport.screenWidth;
+                this.attachedEffects.push(new FocusEffect(radius, color, this.graphicsObjectInfo["object"]));
+                simulationGlobals.requestAnimationUpdate = true;
+                simulationGlobals.requestGraphicsUpdate = true;
+            }
+            this.status = newStatus["state"];
+            this.graphicsDirty = true;
+        }
 
         for(let [key, value] of Object.entries(newStatus["interfaces"])) {
             if(!(key in this.interfaces)) {

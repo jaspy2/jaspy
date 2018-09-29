@@ -56,6 +56,10 @@ class WeatherMap extends PIXI.Application {
         this.deviceGraph.updateGraphics();
     }
 
+    updateAnimation() {
+        this.deviceGraph.updateAnimation();
+    }
+
     beginStatisticsUpdate() {
         this.deviceGraph.beginStatisticsUpdate();
     }
@@ -179,7 +183,8 @@ class WeatherMap extends PIXI.Application {
             this.lastAnimationUpdate = curtime;
             // reset anim request flag, might retrigger
             simulationGlobals.requestAnimationUpdate = false;
-            // this.updateAnimation();
+            this.updateAnimation();
+            console.log("simulation-tick @ " + curtime);
         }
     }
 }

@@ -33,6 +33,12 @@ export default class DeviceGraph {
         }
     }
 
+    updateAnimation() {
+        for(let [key, value] of Object.entries(this.devices)) {
+            value.updateAnimation();
+        }
+    }
+
     updateGraphics() {
         let deviceCoordinates = {}
         for(let [key, value] of Object.entries(this.devices)) {
