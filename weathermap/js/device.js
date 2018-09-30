@@ -37,7 +37,24 @@ export default class Device {
         object.mouseup = object.mouseupoutside = object.touchend = object.touchendoutside = function(data) {
             this.device.dragInfo = null;
             // todo: update position to backend on this call and the update position retval will then drop the pos updates frozen flag!
-            simulationGlobals.positionUpdatesFrozen = false;
+            let fetchInfo = {
+                method: 'PUT',
+                body: JSON.stringify({
+                    deviceFqdn: this.device.fqdn,
+                    x: this.device.position.x,
+                    y: this.device.position.y,
+                    superNode: false,
+                    expandedByDefault: false
+                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            }
+            fetch(config.jaspyNexusURL+"/position", fetchInfo).then(function() {
+                simulationGlobals.positionUpdatesFrozen = false;
+            }).catch(function() {
+                simulationGlobals.positionUpdatesFrozen = false;
+            });
         };
 
         object.mousemove = object.touchmove = function(data) {
