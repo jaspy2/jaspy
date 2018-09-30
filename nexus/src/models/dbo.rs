@@ -343,6 +343,16 @@ impl WeathermapDeviceInfo {
             let mut wmap_info;
             if let Some(weathermap_info) = WeathermapDeviceInfo::lookup_by_device(connection, &device) {
                 wmap_info = weathermap_info;
+                wmap_info.x = updated_info.x;
+                wmap_info.y = updated_info.y;
+                wmap_info.expanded_by_default = updated_info.expanded_by_default;
+                wmap_info.super_node = updated_info.expanded_by_default;
+
+                if let Ok(_) = wmap_info.update(connection) {
+                    return Ok(wmap_info);
+                } else {
+                    return Err("failed to update WeathermapDeviceInfo".to_string());
+                }
             } else {
                 let template = NewWeathermapDeviceInfo {
                     x: updated_info.x,
@@ -352,19 +362,10 @@ impl WeathermapDeviceInfo {
                     device_id: device.id,
                 };
                 if let Ok(wmap_created_object) = WeathermapDeviceInfo::create(&template, connection) {
-                    wmap_info = wmap_created_object;
-                    wmap_info.x = updated_info.x;
-                    wmap_info.y = updated_info.y;
-                    wmap_info.expanded_by_default = updated_info.expanded_by_default;
-                    wmap_info.super_node = updated_info.expanded_by_default;
+                    return Ok(wmap_created_object);
                 } else {
                     return Err("couldn't create WeathermapDeviceInfo".to_string());
                 }
-            }
-            if wmap_info.update(connection).is_ok() {
-                return Ok(wmap_info);
-            } else {
-                return Err("failed to update WeathermapDeviceInfo".to_string());
             }
         } else {
             return Err("device not found".to_string());
