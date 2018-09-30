@@ -26,9 +26,22 @@ table! {
     }
 }
 
+table! {
+    weathermap_device_infos (id) {
+        id -> Int4,
+        x -> Float8,
+        y -> Float8,
+        super_node -> Bool,
+        expanded_by_default -> Bool,
+        device_id -> Int4,
+    }
+}
+
 joinable!(interfaces -> devices (device_id));
+joinable!(weathermap_device_infos -> devices (device_id));
 
 allow_tables_to_appear_in_same_query!(
     devices,
     interfaces,
+    weathermap_device_infos,
 );

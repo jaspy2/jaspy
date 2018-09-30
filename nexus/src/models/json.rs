@@ -125,3 +125,28 @@ pub struct WeathermapStateDevice {
 pub struct WeathermapStateBase {
     pub devices: HashMap<String, WeathermapStateDevice>,
 }
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapPositionInfoUpdateDeviceInfo {
+    pub device_fqdn: String,
+    pub x: f64,
+    pub y: f64,
+    pub super_node: bool,
+    pub expanded_by_default: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapPositionInfoDeviceInfo {
+    pub x: f64,
+    pub y: f64,
+    pub super_node: bool,
+    pub expanded_by_default: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapPositionInfoBase {
+    pub devices: HashMap<String, WeathermapPositionInfoDeviceInfo>,
+}

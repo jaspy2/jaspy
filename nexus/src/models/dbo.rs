@@ -1,4 +1,4 @@
-use schema::{devices,interfaces};
+use schema::{devices,interfaces,weathermap_device_infos};
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::BelongingToDsl;
@@ -40,6 +40,36 @@ pub struct Device {
     pub base_mac: Option<String>,
     pub polling_enabled: Option<bool>,
     pub os_info: Option<String>
+}
+
+pub struct UpdatedWeathermapDeviceInfo {
+    pub x: f64,
+    pub y: f64,
+    pub super_node: bool,
+    pub expanded_by_default: bool,
+}
+
+#[table_name = "weathermap_device_infos"]
+#[derive(Insertable)]
+pub struct NewWeathermapDeviceInfo {
+    pub x: f64,
+    pub y: f64,
+    pub super_node: bool,
+    pub expanded_by_default: bool,
+    pub device_id: i32,
+}
+
+#[belongs_to(Device)]
+#[table_name = "weathermap_device_infos"]
+#[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Associations, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WeathermapDeviceInfo {
+    pub id: i32,
+    pub x: f64,
+    pub y: f64,
+    pub super_node: bool,
+    pub expanded_by_default: bool,
+    pub device_id: i32,
 }
 
 #[belongs_to(Device)]
@@ -193,6 +223,20 @@ impl Device {
             }
         }
     }
+
+    pub fn weathermap_info(self: &Device, connection: &PgConnection) -> Option<WeathermapDeviceInfo> {
+        match weathermap_device_infos::table
+            .filter(weathermap_device_infos::device_id.eq(self.id))
+            .first::<WeathermapDeviceInfo>(connection)
+        {
+            Ok(weathermap_device_info) => {
+                return Some(weathermap_device_info);
+            },
+            Err(_) => {
+                return None;
+            }
+        }
+    }
 }
 
 impl Interface {
@@ -209,22 +253,6 @@ impl Interface {
             }
         }
     }
-
-    /*pub fn by_fqdn_and_index(index: i32, connection: &PgConnection) -> Option<Interface> {
-
-        match interfaces::table
-            .filter(interfaces::index.eq(index)).
-            .filter(interfaces::)
-            .first::<Interface>(connection)    
-        {
-            Ok(interface) => {
-                return Some(interface);
-            },
-            Err(_) => {
-                return None;
-            }
-        }
-    }*/
 
     pub fn all(connection: &PgConnection) -> Vec<Interface> {
         match interfaces::table.load(connection) {
@@ -280,6 +308,70 @@ impl Interface {
     }
 
     pub fn device(self: &Interface, connection: &PgConnection) -> Device {
+        return Device::by_id(self.device_id, connection).unwrap();
+    }
+}
+
+impl WeathermapDeviceInfo {
+    pub fn create(new_weathermap_device_info: &NewWeathermapDeviceInfo, connection: &PgConnection) -> Result<WeathermapDeviceInfo, diesel::result::Error> {
+        let result = diesel::insert_into(weathermap_device_infos::table)
+            .values(new_weathermap_device_info)
+            .get_result(connection);
+        return result;
+    }
+
+    pub fn update(self: &WeathermapDeviceInfo, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+        return diesel::update(weathermap_device_infos::table.find(self.id)).set(self).execute(connection);
+    }
+
+    pub fn lookup_by_device(connection: &PgConnection, device: &Device) -> Option<WeathermapDeviceInfo> {
+        match weathermap_device_infos::table
+            .filter(weathermap_device_infos::device_id.eq(device.id))
+            .first::<WeathermapDeviceInfo>(connection)
+        {
+            Ok(weathermap_device_info) => {
+                return Some(weathermap_device_info);
+            },
+            Err(_) => {
+                return None;
+            }
+        }
+    }
+
+    pub fn update_by_fqdn_or_create(connection: &PgConnection, fqdn: &String, updated_info: UpdatedWeathermapDeviceInfo) -> Result<WeathermapDeviceInfo, String> {
+        if let Some(device) = Device::find_by_fqdn(connection, fqdn) {
+            let mut wmap_info;
+            if let Some(weathermap_info) = WeathermapDeviceInfo::lookup_by_device(connection, &device) {
+                wmap_info = weathermap_info;
+            } else {
+                let template = NewWeathermapDeviceInfo {
+                    x: updated_info.x,
+                    y: updated_info.y,
+                    expanded_by_default: updated_info.expanded_by_default,
+                    super_node: updated_info.super_node,
+                    device_id: device.id,
+                };
+                if let Ok(wmap_created_object) = WeathermapDeviceInfo::create(&template, connection) {
+                    wmap_info = wmap_created_object;
+                    wmap_info.x = updated_info.x;
+                    wmap_info.y = updated_info.y;
+                    wmap_info.expanded_by_default = updated_info.expanded_by_default;
+                    wmap_info.super_node = updated_info.expanded_by_default;
+                } else {
+                    return Err("couldn't create WeathermapDeviceInfo".to_string());
+                }
+            }
+            if wmap_info.update(connection).is_ok() {
+                return Ok(wmap_info);
+            } else {
+                return Err("failed to update WeathermapDeviceInfo".to_string());
+            }
+        } else {
+            return Err("device not found".to_string());
+        }
+    }
+
+    pub fn device(self: &WeathermapDeviceInfo, connection: &PgConnection) -> Device {
         return Device::by_id(self.device_id, connection).unwrap();
     }
 }

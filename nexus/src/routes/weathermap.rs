@@ -132,3 +132,44 @@ fn state_information(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Json<mod
 
     return Json(weathermap_state);
 }
+
+
+#[get("/position")]
+fn get_position_data(connection: db::Connection) -> Json<models::json::WeathermapPositionInfoBase> {
+    let mut weathermap_position_info = models::json::WeathermapPositionInfoBase {
+        devices: HashMap::new(),
+    };
+
+    for device in models::dbo::Device::all(&connection) {
+        if let Some(wmpi) = device.weathermap_info(&connection) {
+            weathermap_position_info.devices.insert(
+                format!("{}.{}", device.name, device.dns_domain),
+                models::json::WeathermapPositionInfoDeviceInfo {
+                    x: wmpi.x,
+                    y: wmpi.y,
+                    super_node: wmpi.super_node,
+                    expanded_by_default: wmpi.expanded_by_default,
+                }
+            );
+        }
+    }
+
+    return Json(weathermap_position_info);
+}
+
+#[put("/position", data = "<device_position_info>")]
+fn put_position_data(connection: db::Connection, device_position_info : Json<models::json::WeathermapPositionInfoUpdateDeviceInfo>) {
+    let new_position_info = device_position_info.into_inner();
+    if let Ok(_updated_item) = models::dbo::WeathermapDeviceInfo::update_by_fqdn_or_create(
+        &connection,
+        &new_position_info.device_fqdn,
+        models::dbo::UpdatedWeathermapDeviceInfo { 
+            x: new_position_info.x,
+            y: new_position_info.y,
+            expanded_by_default: new_position_info.expanded_by_default,
+            super_node: new_position_info.super_node,
+        }
+    ) {
+
+    }
+}

@@ -127,6 +127,8 @@ fn main() {
             routes![
                 routes::weathermap::full_topology_data,
                 routes::weathermap::state_information,
+                routes::weathermap::get_position_data,
+                routes::weathermap::put_position_data,
             ]
         )
         .manage(db::connect())
