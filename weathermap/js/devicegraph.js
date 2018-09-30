@@ -143,4 +143,14 @@ export default class DeviceGraph {
             this.devices[fqdn].setStatus(data);
         }
     }
+
+    updatePositions(positionInfo) {
+        for(let [fqdn, data] of Object.entries(positionInfo)) {
+            if(!(fqdn in this.devices)) {
+                console.error("received position update for non-existing device " + fqdn);
+                continue;
+            }
+            this.devices[fqdn].requestPosition(new Victor(data['x'], data['y']));
+        }
+    }
 }

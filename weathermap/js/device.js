@@ -15,7 +15,9 @@ export default class Device {
         this.status = null;
         this.dragInfo = null;
         this.attachedEffects = [];
+        this.position = new Victor(0,0);
         this.setPosition(new Victor(Math.random()*1600,Math.random()*400));
+        this.requestedPosition = null;
         console.log("create device " + fqdn)
     }
 
@@ -28,11 +30,14 @@ export default class Device {
             this.device.dragInfo = {};
             simulationGlobals.requestGraphicsUpdate = true;
             simulationGlobals.requestAnimationUpdate = true;
+            simulationGlobals.positionUpdatesFrozen = true;
             data.stopPropagation();
         };
 
         object.mouseup = object.mouseupoutside = object.touchend = object.touchendoutside = function(data) {
             this.device.dragInfo = null;
+            // todo: update position to backend on this call and the update position retval will then drop the pos updates frozen flag!
+            simulationGlobals.positionUpdatesFrozen = false;
         };
 
         object.mousemove = object.touchmove = function(data) {
@@ -125,6 +130,21 @@ export default class Device {
             }
         }
         this.attachedEffects = activeEffects;
+
+        {
+            if(this.requestedPosition !== null) {
+                let offset = this.requestedPosition.clone().subtract(this.position);
+                if(offset.length() < 2.0) {
+                    this.setPosition(this.requestedPosition);
+                    this.requestedPosition = null;
+                } else {
+                    let newPosition = offset.multiply(new Victor(0.5,0.5));
+                    this.setPosition(this.position.clone().add(offset));
+                }
+                simulationGlobals.requestGraphicsUpdate = true;
+                simulationGlobals.requestAnimationUpdate = true;
+            }
+        }
     }
 
     updateGraphics(linkLayer, deviceLayer, deviceCoordinates) {
@@ -228,5 +248,15 @@ export default class Device {
             value.interfacesUpdated();
         }
         simulationGlobals.requestGraphicsUpdate = true;
+    }
+
+    requestPosition(newPosition) {
+        newPosition = new Victor(Math.round(newPosition.x), Math.round(newPosition.y));
+        if(this.position && (newPosition.x == this.position.x && newPosition.y == this.position.y)) {
+            return;
+        }
+        this.requestedPosition = newPosition;
+        simulationGlobals.requestGraphicsUpdate = true;
+        simulationGlobals.requestAnimationUpdate = true;
     }
 }

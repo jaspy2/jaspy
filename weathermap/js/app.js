@@ -17,6 +17,7 @@ class WeatherMap extends PIXI.Application {
         this.lastStatusUpdate = 0;
         this.lastGraphicsUpdate = 0;
         this.lastAnimationUpdate = 0;
+        this.lastPositionUpdate = 0;
 
         document.body.appendChild(this.renderer.view);
     }
@@ -154,6 +155,13 @@ class WeatherMap extends PIXI.Application {
         this.deviceGraph.updateStatuses(statusInfo["devices"]);
     }
 
+    async positionUpdate() {
+        const positionInfo = await fetch(config.jaspyNexusURL+"/position").then(res => res.json()).catch(fail => Promise.reject(fail));
+        this.deviceGraph.updatePositions(positionInfo["devices"]);
+        simulationGlobals.animationUpdateRequested = true;
+        simulationGlobals.graphicsUpdateRequested = true;
+    }
+
     frame(curtime) {
         if(curtime - this.lastTopologyUpdate > 60) {
             this.lastTopologyUpdate = curtime;
@@ -169,6 +177,11 @@ class WeatherMap extends PIXI.Application {
             this.lastStatusUpdate = curtime;
             this.statusUpdate();
             console.log("status-tick @ " + curtime);
+        }
+        if(curtime - this.lastPositionUpdate > 1 && !simulationGlobals.positionUpdatesFrozen) {
+            this.lastPositionUpdate = curtime;
+            this.positionUpdate();
+            console.log("position-tick @ " + curtime);
         }
 
         if(curtime - this.lastGraphicsUpdate > 1 || simulationGlobals.requestGraphicsUpdate) {
