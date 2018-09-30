@@ -36,7 +36,6 @@ export default class Device {
 
         object.mouseup = object.mouseupoutside = object.touchend = object.touchendoutside = function(data) {
             this.device.dragInfo = null;
-            // todo: update position to backend on this call and the update position retval will then drop the pos updates frozen flag!
             let fetchInfo = {
                 method: 'PUT',
                 body: JSON.stringify({
@@ -151,12 +150,12 @@ export default class Device {
         {
             if(this.requestedPosition !== null) {
                 let offset = this.requestedPosition.clone().subtract(this.position);
-                if(offset.length() < 2.0) {
+                if(offset.length() < 0.25) {
                     this.setPosition(this.requestedPosition);
                     this.requestedPosition = null;
                 } else {
-                    let newPosition = offset.multiply(new Victor(0.5,0.5));
-                    this.setPosition(this.position.clone().add(offset));
+                    let factoredOffset = offset.clone().multiply(new Victor(0.1,0.1));
+                    this.setPosition(this.position.clone().add(factoredOffset), true);
                 }
                 simulationGlobals.requestGraphicsUpdate = true;
                 simulationGlobals.requestAnimationUpdate = true;
@@ -243,8 +242,10 @@ export default class Device {
         return this.position;
     }
 
-    setPosition(position) {
-        position = new Victor(Math.round(position.x), Math.round(position.y));
+    setPosition(position, skipRounding=false) {
+        if(!skipRounding) {
+            position = new Victor(Math.round(position.x), Math.round(position.y));
+        }
         if(this.position && (position.x == this.position.x && position.y == this.position.y)) {
             return;
         }
