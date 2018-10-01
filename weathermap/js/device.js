@@ -18,6 +18,11 @@ export default class Device {
         this.position = new Victor(0,0);
         this.setPosition(new Victor(Math.random()*1600,Math.random()*400));
         this.requestedPosition = null;
+
+        this.neighborDevices = [];
+        this.superNode = false;
+        this.expanded = false;
+        
         console.log("create device " + fqdn)
     }
 
@@ -124,16 +129,65 @@ export default class Device {
     }
 
     updateLinkgroupData(devices) {
+        let newNeighborDeviceList = [];
         for(let [key, value] of Object.entries(this.linkGroups)) {
             if(!(key in devices)) {
                 console.error("device " + key + " referenced by linkgroup not in devices!?");
                 continue;
             }
+            newNeighborDeviceList.push(devices[key]);
             value.updateTargetInfo(devices[key]);
+        }
+        this.neighborDevices = newNeighborDeviceList;
+        if(this.neighborDevices.length > 1) {
+            this.superNodeByLinks = true;
+        } else {
+            this.superNodeByLinks = false;
         }
     }
 
-    updateAnimation() {
+    superNodeAnimation() {
+        if(this.requestedPosition !== null) {
+            let offset = this.requestedPosition.clone().subtract(this.position);
+            if(offset.length() < 0.25) {
+                this.setPosition(this.requestedPosition);
+                this.requestedPosition = null;
+            } else {
+                let factoredOffset = offset.clone().multiply(new Victor(0.1,0.1));
+                this.setPosition(this.position.clone().add(factoredOffset), true);
+            }
+            simulationGlobals.requestGraphicsUpdate = true;
+            simulationGlobals.requestAnimationUpdate = true;
+        }
+    }
+
+    edgeNodeAnimation() {
+        let offsetVector = new Victor(0,0);
+        if(this.neighborDevices.length === 1) {
+            let myPosition = this.getPosition().clone();
+            let nbrPosition = this.neighborDevices[0].getPosition();
+
+            let dirvToNbr = nbrPosition.clone().subtract(myPosition).normalize();
+            let springTarget = nbrPosition.clone().subtract(dirvToNbr.clone().multiply(new Victor(256,256)));
+            let dirvToSpringTarget = springTarget.subtract(myPosition);
+            let smoothedOffset = dirvToSpringTarget.clone().multiply(new Victor(0.2,0.2));
+
+            if(dirvToSpringTarget.length() < 1) {
+            } else if(dirvToSpringTarget.length() < 4) {
+                this.setPosition(myPosition.clone().add(dirvToSpringTarget), false);
+                simulationGlobals.requestGraphicsUpdate = true;
+                simulationGlobals.requestAnimationUpdate = true;
+            } else {
+                this.setPosition(myPosition.clone().add(smoothedOffset), true);
+                simulationGlobals.requestGraphicsUpdate = true;
+                simulationGlobals.requestAnimationUpdate = true;
+            }
+        } else {
+            // wut?
+        }
+    }
+
+    effectAnimation() {
         let activeEffects = [];
         for(let effect of this.attachedEffects) {
             if(!effect.finished()) {
@@ -146,20 +200,15 @@ export default class Device {
             }
         }
         this.attachedEffects = activeEffects;
+    }
 
-        {
-            if(this.requestedPosition !== null) {
-                let offset = this.requestedPosition.clone().subtract(this.position);
-                if(offset.length() < 0.25) {
-                    this.setPosition(this.requestedPosition);
-                    this.requestedPosition = null;
-                } else {
-                    let factoredOffset = offset.clone().multiply(new Victor(0.1,0.1));
-                    this.setPosition(this.position.clone().add(factoredOffset), true);
-                }
-                simulationGlobals.requestGraphicsUpdate = true;
-                simulationGlobals.requestAnimationUpdate = true;
-            }
+    updateAnimation() {
+        this.effectAnimation();
+
+        if(this.superNodeByConfig || this.neighborDevices.length > 1) {
+            this.superNodeAnimation();
+        } else {
+            this.edgeNodeAnimation();
         }
     }
 
