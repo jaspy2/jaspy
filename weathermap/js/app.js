@@ -7,8 +7,14 @@ class WeatherMap extends PIXI.Application {
             loopCount: 0,
             frameNumber: 0,
         };
-        
-        this.renderer = PIXI.autoDetectRenderer(window_width, window_height, {backgroundColor: 0x111111});
+
+        PIXI.settings.PRECISION_FRAGMENT = 'highp';
+        this.renderer = PIXI.autoDetectRenderer(window_width, window_height, {
+            backgroundColor: 0x111111,
+            antialias: false,
+        });
+        this.renderer.roundPixels = true;
+
         this.viewportInit();
         this.deviceGraphInit();
 
@@ -23,7 +29,6 @@ class WeatherMap extends PIXI.Application {
     }
 
     viewportInit() {
-        PIXI.settings.RESOLUTION = 2;
         this.viewport = new PIXI.extras.Viewport({
             screenWidth: window.innerWidth,
             screenHeight: window.innerHeight,        

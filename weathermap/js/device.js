@@ -22,7 +22,7 @@ export default class Device {
         this.neighborDevices = [];
         this.superNode = false;
         this.expanded = false;
-        
+
         console.log("create device " + fqdn)
     }
 
@@ -154,7 +154,7 @@ export default class Device {
                 this.requestedPosition = null;
             } else {
                 let factoredOffset = offset.clone().multiply(new Victor(0.1,0.1));
-                this.setPosition(this.position.clone().add(factoredOffset), true);
+                this.setPosition(this.position.clone().add(factoredOffset));
             }
             simulationGlobals.requestGraphicsUpdate = true;
             simulationGlobals.requestAnimationUpdate = true;
@@ -174,11 +174,11 @@ export default class Device {
 
             if(dirvToSpringTarget.length() < 1) {
             } else if(dirvToSpringTarget.length() < 4) {
-                this.setPosition(myPosition.clone().add(dirvToSpringTarget), false);
+                this.setPosition(myPosition.clone().add(dirvToSpringTarget));
                 simulationGlobals.requestGraphicsUpdate = true;
                 simulationGlobals.requestAnimationUpdate = true;
             } else {
-                this.setPosition(myPosition.clone().add(smoothedOffset), true);
+                this.setPosition(myPosition.clone().add(smoothedOffset));
                 simulationGlobals.requestGraphicsUpdate = true;
                 simulationGlobals.requestAnimationUpdate = true;
             }
@@ -291,10 +291,7 @@ export default class Device {
         return this.position;
     }
 
-    setPosition(position, skipRounding=false) {
-        if(!skipRounding) {
-            position = new Victor(Math.round(position.x), Math.round(position.y));
-        }
+    setPosition(position) {
         if(this.position && (position.x == this.position.x && position.y == this.position.y)) {
             return;
         }
