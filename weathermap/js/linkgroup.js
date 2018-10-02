@@ -128,6 +128,7 @@ export default class LinkGroup {
                 value.updateGraphics(viewport, linkLineStartPosMiddle, linkLineEndposMiddle, widthOffset1, widthOffset2);
                 utilTotal += value.getUtilization();
                 if(value.isUp()) linksUp += 1;
+                linknum += 1;
             }
 
             let avgUtil = utilTotal / numLinks;
