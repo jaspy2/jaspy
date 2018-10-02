@@ -162,9 +162,12 @@ export default class Device {
     }
 
     edgeNodeAnimation() {
+        let myPosition = this.getPosition().clone();
         let offsetVector = new Victor(0,0);
-        if(this.neighborDevices.length === 1) {
-            let myPosition = this.getPosition().clone();
+        if(this.neighborDevices.length != 1) return;
+        
+        // distance-spring
+        {
             let nbrPosition = this.neighborDevices[0].getPosition();
 
             let dirvToNbr = nbrPosition.clone().subtract(myPosition).normalize();
@@ -173,18 +176,28 @@ export default class Device {
             let smoothedOffset = dirvToSpringTarget.clone().multiply(new Victor(0.2,0.2));
 
             if(dirvToSpringTarget.length() < 1) {
-            } else if(dirvToSpringTarget.length() < 4) {
-                this.setPosition(myPosition.clone().add(dirvToSpringTarget));
-                simulationGlobals.requestGraphicsUpdate = true;
-                simulationGlobals.requestAnimationUpdate = true;
+                offsetVector.add(dirvToSpringTarget);
             } else {
-                this.setPosition(myPosition.clone().add(smoothedOffset));
-                simulationGlobals.requestGraphicsUpdate = true;
-                simulationGlobals.requestAnimationUpdate = true;
+                offsetVector.add(smoothedOffset);
             }
-        } else {
-            // wut?
         }
+
+        {
+            let clusterCenter = this.neighborDevices[0];
+            let forceOffset = new Victor(0,0);
+            for(let nbrNbr of clusterCenter.neighborDevices) {
+                if(nbrNbr == this) continue;
+                let offsetOfNbr = nbrNbr.getPosition().clone().subtract(clusterCenter.getPosition()).normalize();
+                forceOffset.add(offsetOfNbr.invert());
+            }
+            offsetVector.add(forceOffset);
+        }
+
+        if(offsetVector.length() > 0.01) {
+            simulationGlobals.requestGraphicsUpdate = true;
+            simulationGlobals.requestAnimationUpdate = true;
+        }
+        this.setPosition(myPosition.clone().add(offsetVector));
     }
 
     effectAnimation() {
