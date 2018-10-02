@@ -167,7 +167,7 @@ export default class Device {
         if(this.neighborDevices.length != 1) return;
         
         // distance-spring
-        {
+        if(true) {
             let nbrPosition = this.neighborDevices[0].getPosition();
 
             let dirvToNbr = nbrPosition.clone().subtract(myPosition).normalize();
@@ -182,18 +182,23 @@ export default class Device {
             }
         }
 
-        {
+        if(this.fqdn == "tenshi.test.makai.fi"||true) {
             let clusterCenter = this.neighborDevices[0];
+            let selfDV = this.getPosition().clone().subtract(clusterCenter.getPosition()).normalize();
+            let selfPerp = selfDV.clone().rotateDeg(90);
             let forceOffset = new Victor(0,0);
             for(let nbrNbr of clusterCenter.neighborDevices) {
                 if(nbrNbr == this) continue;
-                let offsetOfNbr = nbrNbr.getPosition().clone().subtract(clusterCenter.getPosition()).normalize();
-                forceOffset.add(offsetOfNbr.invert());
+                let nbrDV = nbrNbr.getPosition().clone().subtract(clusterCenter.getPosition()).normalize();
+                let invNbrDV = nbrDV.clone().invert();
+                let angle = Math.acos(selfDV.clone().dot(invNbrDV))*Math.sign(invNbrDV.clone().cross(selfDV));
+                let angleFactor = -angle * 10.0;
+                forceOffset.add(selfPerp.clone().multiply(new Victor(angleFactor, angleFactor)));
             }
             offsetVector.add(forceOffset);
         }
 
-        if(offsetVector.length() > 0.01) {
+        if(offsetVector.length() > 0.1) {
             simulationGlobals.requestGraphicsUpdate = true;
             simulationGlobals.requestAnimationUpdate = true;
         }
