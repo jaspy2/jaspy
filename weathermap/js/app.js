@@ -214,7 +214,7 @@ window.addEventListener('resize', function() {
 
 function mainLoop() {
     let curtime = (new Date()).getTime() / 1000.0;
-    if(simulationGlobals.requestAnimationUpdate || simulationGlobals.requestGraphicsUpdate)
+    wm.frame(curtime);
     requestAnimationFrame(mainLoop);
 }
 
