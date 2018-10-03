@@ -3,4 +3,5 @@ let simulationGlobals = {
     "requestAnimationUpdate": false,
     "viewport": null,
     "positionUpdatesFrozen": false,
+    "requestPIXIFrame": false,
 }

@@ -42,6 +42,9 @@ class WeatherMap extends PIXI.Application {
             .drag()
             .wheel()
             .decelerate();
+        this.viewport.on('moved', function() {
+            simulationGlobals.requestPIXIFrame = true;
+        });
         simulationGlobals.viewport = this.viewport;
         this.stage.addChild(this.viewport);
     }
@@ -172,6 +175,8 @@ class WeatherMap extends PIXI.Application {
     }
 
     frame(curtime) {
+        let tickerUpdate = false;
+
         if(curtime - this.lastTopologyUpdate > 60) {
             this.lastTopologyUpdate = curtime;
             this.updateTopologyData();
@@ -198,7 +203,7 @@ class WeatherMap extends PIXI.Application {
             // reset gfx request flag, might retrigger
             simulationGlobals.requestGraphicsUpdate = false;
             this.updateGraphics();
-            wm.ticker.update();
+            tickerUpdate = true;
             console.log("gfx-tick @ " + curtime);
         }
 
@@ -207,9 +212,16 @@ class WeatherMap extends PIXI.Application {
             // reset anim request flag, might retrigger
             simulationGlobals.requestAnimationUpdate = false;
             this.updateAnimation();
-            wm.ticker.update();
+            tickerUpdate = true;
             console.log("simulation-tick @ " + curtime);
         }
+
+        if(simulationGlobals.requestPIXIFrame) {
+            tickerUpdate = true;
+            simulationGlobals.requestPIXIFrame = false;
+        }
+
+        if(tickerUpdate) wm.ticker.update();
     }
 }
 
