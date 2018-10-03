@@ -79,14 +79,14 @@ pub struct InterfaceMonitorReport {
     pub interfaces: Vec<InterfaceMonitorInterfaceReport>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WeathermapDeviceInterfaceConnectedTo {
     pub fqdn: String,
     pub interface: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WeathermapDeviceInterface {
     pub name: String,
@@ -94,14 +94,14 @@ pub struct WeathermapDeviceInterface {
     pub connected_to: Option<WeathermapDeviceInterfaceConnectedTo>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WeathermapDevice {
     pub fqdn: String,
     pub interfaces: HashMap<String, WeathermapDeviceInterface>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WeathermapBase {
     pub devices: HashMap<String, WeathermapDevice>,

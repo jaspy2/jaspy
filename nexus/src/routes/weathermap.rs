@@ -6,9 +6,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use utilities;
 use rocket::State;
+use std::ops::DerefMut;
 
-#[get("/")]
-fn full_topology_data(connection: db::Connection) -> Json<models::json::WeathermapBase> {
+fn get_topology_data(connection: &db::Connection) -> models::json::WeathermapBase {
     let mut wmap: models::json::WeathermapBase = models::json::WeathermapBase {
         devices: HashMap::new(),
     };
@@ -48,7 +48,45 @@ fn full_topology_data(connection: db::Connection) -> Json<models::json::Weatherm
         
         wmap.devices.insert(device_fqdn.clone(), weathermap_device);
     }
-    return Json(wmap);
+
+    return wmap;
+}
+
+#[get("/")]
+fn full_topology_data(connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> Json<models::json::WeathermapBase> {
+    let cached_weathermap_topology_arc: Arc<Mutex<Option<utilities::cache::CachedWeathermapTopology>>>;
+    if let Ok(cache_controller) = cache_controller.inner().lock() {
+        cached_weathermap_topology_arc = cache_controller.cached_weathermap_topology.clone();
+    } else {
+        // TODO: log, this means cache is somehow VERY broken
+        cached_weathermap_topology_arc = Arc::new(Mutex::new(None));
+    }
+
+    let mut ret : models::json::WeathermapBase = models::json::WeathermapBase {
+        devices: HashMap::new()
+    };
+
+    if let Ok(ref mut cached_weathermap_topology_option_mutex) = cached_weathermap_topology_arc.lock() {
+        let mut cached_weathermap_topology_option: &mut Option<utilities::cache::CachedWeathermapTopology> = cached_weathermap_topology_option_mutex.deref_mut();
+        let cache_refresh: bool;
+        if let Some(cached_weathermap_topology_data) = cached_weathermap_topology_option {
+            let current_time = utilities::tools::get_time();
+            if current_time < cached_weathermap_topology_data.valid_until {
+                ret = cached_weathermap_topology_data.weathermap_topology.clone();
+                cache_refresh = false;
+            } else {
+                ret = get_topology_data(&connection);
+                cache_refresh = true;
+            }
+        } else {
+            ret = get_topology_data(&connection);
+            cache_refresh = true;
+        }
+        if cache_refresh {
+            *cached_weathermap_topology_option = Some(utilities::cache::CachedWeathermapTopology::new(ret.clone()));
+        }
+    }
+    return Json(ret);
 }
 
 #[get("/state")]

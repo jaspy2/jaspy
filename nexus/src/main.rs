@@ -91,6 +91,8 @@ fn main() {
     let imds_worker_thread = std::thread::spawn(|| {
         imds_worker(imds_worker_running, imds_worker_imds, imds_worder_metric_miss_cache);
     });
+
+    let cache_controller : Arc<Mutex<utilities::cache::CacheController>> = Arc::new(Mutex::new(utilities::cache::CacheController::new()));
     
     rocket::ignite()
         .mount(
@@ -134,6 +136,7 @@ fn main() {
         .manage(db::connect())
         .manage(imds.clone())
         .manage(metric_miss_cache.clone())
+        .manage(cache_controller.clone())
         .launch();
 
     (*running).store(false, std::sync::atomic::Ordering::Relaxed);

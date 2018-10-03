@@ -4,6 +4,8 @@ use db;
 use std::sync::{Arc,Mutex};
 use std::collections::{HashSet,HashMap};
 use rocket::State;
+use utilities;
+use std::ops::DerefMut;
 
 #[put("/device", data = "<discovery_json>")]
 fn discovery_device(discovery_json: rocket_contrib::Json<models::json::DiscoveredDevice>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
@@ -129,7 +131,12 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connect
 }
 
 #[put("/links", data = "<links_json>")]
-fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
+fn discovery_links(
+    links_json: rocket_contrib::Json<models::json::LinkInfo>,
+    connection: db::Connection,
+    metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>,
+    cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>
+) {
     let link_infos : &HashMap<String, Option<models::json::LinkPeerInfo>> = &links_json.interfaces;
     let fqdn_splitted : Vec<&str> = links_json.device_fqdn.splitn(2, ".").collect();
     if fqdn_splitted.len() != 2 {
@@ -257,5 +264,13 @@ fn discovery_links(links_json: rocket_contrib::Json<models::json::LinkInfo>, con
     let device_fqdn = format!("{}.{}", local_device.name, local_device.dns_domain);
     if let Ok(ref mut metric_miss_cache) = metric_miss_cache.inner().lock() {
         if !metric_miss_cache.miss_set.contains(&device_fqdn) { metric_miss_cache.miss_set.insert(device_fqdn); }
+    }
+
+    // Invalidate weathermap topology cache
+    if let Ok(mut cache_controller) = cache_controller.inner().lock() {
+        if let Ok(ref mut weathermap_cache) = cache_controller.cached_weathermap_topology.lock() {
+            let wmt: &mut Option<utilities::cache::CachedWeathermapTopology> = weathermap_cache.deref_mut();
+            *wmt = None;
+        }
     }
 }
