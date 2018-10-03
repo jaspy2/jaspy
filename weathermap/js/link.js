@@ -8,11 +8,11 @@ export default class Link {
         this.sourceInterface = sourceInterface;
         this.label = new PIXI.Text("<loading>", {fontFamily : '"Courier New", Courier, monospace', fontSize: 14, fill : 0xffffff, align : 'left'});
 
-        console.log("        create link -> " + remoteInterfaceName);
+        //console.log("        create link -> " + remoteInterfaceName);
     }
 
     destroy() {
-        console.log("        destroy link -> " + this.remoteInterfaceName);
+        //console.log("        destroy link -> " + this.remoteInterfaceName);
         this.sourceInterface.connectedToInterface = null;
         if(this.graphicsObjectInfo !== null) {
             this.graphicsObjectInfo["attachedTo"].removeChild(this.graphicsObjectInfo["object"]);

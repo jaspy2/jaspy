@@ -189,7 +189,7 @@ class WeatherMap extends PIXI.Application {
             console.log("position-tick @ " + curtime);
         }
 
-        if(curtime - this.lastGraphicsUpdate > 1 || simulationGlobals.requestGraphicsUpdate) {
+        if(curtime - this.lastGraphicsUpdate > 10 || simulationGlobals.requestGraphicsUpdate) {
             this.lastGraphicsUpdate = curtime;
             // reset gfx request flag, might retrigger
             simulationGlobals.requestGraphicsUpdate = false;
@@ -197,7 +197,7 @@ class WeatherMap extends PIXI.Application {
             console.log("gfx-tick @ " + curtime);
         }
 
-        if(curtime - this.lastAnimationUpdate > 1 || simulationGlobals.requestAnimationUpdate) {
+        if(curtime - this.lastAnimationUpdate > 10 || simulationGlobals.requestAnimationUpdate) {
             this.lastAnimationUpdate = curtime;
             // reset anim request flag, might retrigger
             simulationGlobals.requestAnimationUpdate = false;
@@ -213,8 +213,8 @@ window.addEventListener('resize', function() {
 });
 
 function mainLoop() {
-    const curtime = (new Date()).getTime() / 1000.0;
-    wm.frame(curtime);
+    let curtime = (new Date()).getTime() / 1000.0;
+    if(simulationGlobals.requestAnimationUpdate || simulationGlobals.requestGraphicsUpdate)
     requestAnimationFrame(mainLoop);
 }
 

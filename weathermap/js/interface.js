@@ -8,11 +8,11 @@ export default class Interface {
         this.statisticsData = null;
         this.connectedToInterface = null;
         this.status = null;
-        console.log("    create interface " + name);
+        //console.log("    create interface " + name);
     }
 
     destroy() {
-        console.log("    destroy interface " + this.name);
+        //console.log("    destroy interface " + this.name);
     }
 
     updateTopologyData(data) {

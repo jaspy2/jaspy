@@ -23,7 +23,7 @@ export default class Device {
         this.superNode = false;
         this.expanded = false;
 
-        console.log("create device " + fqdn)
+        //console.log("create device " + fqdn)
     }
 
     armDragEvents(object) {
@@ -74,7 +74,7 @@ export default class Device {
     }
 
     destroy() {
-        console.log("destroy device " + this.fqdn)
+        //console.log("destroy device " + this.fqdn)
         for(let [key, value] of Object.entries(this.interfaces)) {
             value.destroy();
             delete this.interfaces[key];
@@ -91,7 +91,7 @@ export default class Device {
     }
 
     updateTopologyData(data) {
-        console.log("update device " + this.fqdn)
+        //console.log("update device " + this.fqdn)
         let linkGroupUpdates = {};
         for(let [key, value] of Object.entries(data["interfaces"])) {
             let iface = null;

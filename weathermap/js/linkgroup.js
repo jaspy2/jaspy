@@ -15,11 +15,11 @@ export default class LinkGroup {
         this.source = source;
         this.label = new PIXI.Text("<loading>", {fontFamily : '"Courier New", Courier, monospace', fontSize: 14, fill : 0xffffff, align : 'left'});
 
-        console.log("        create linkgroup -> " + name);
+        //("        create linkgroup -> " + name);
     }
 
     destroy() {
-        console.log("        destroy linkgroup -> " + this.name);
+        //console.log("        destroy linkgroup -> " + this.name);
         for(let [key, value] of Object.entries(this.groupedLinks)) {
             this.groupedLinks[key].destroy();
             delete this.groupedLinks[key];
@@ -32,7 +32,7 @@ export default class LinkGroup {
     }
 
     updateTopologyData(linkgroupInfo) {
-        console.log("    update linkgroup " + this.name);
+        //console.log("    update linkgroup " + this.name);
         for(let [key, value] of Object.entries(linkgroupInfo)) {
             if(!(key in this.groupedLinks)) {
                 this.groupedLinks[value["connectedTo"]["interface"]] = new Link(value["connectedTo"]["interface"], value["interface"]);
