@@ -31,15 +31,22 @@ export default class Device {
         object.interactive = true;
         object.buttonMode = true;
 
-        object.mousedown = object.touchstart = function(data) {
-            this.device.dragInfo = {};
-            simulationGlobals.requestGraphicsUpdate = true;
-            simulationGlobals.requestAnimationUpdate = true;
-            simulationGlobals.positionUpdatesFrozen = true;
-            data.stopPropagation();
+        object.mousedown = object.touchstart = function(e) {
+            if(e.data.originalEvent.shiftKey) {
+                this.device.dragInfo = {};
+                simulationGlobals.requestGraphicsUpdate = true;
+                simulationGlobals.requestAnimationUpdate = true;
+                simulationGlobals.positionUpdatesFrozen = true;
+                e.stopPropagation();
+            } else {
+                this.device.expanded = !this.device.expanded;
+                simulationGlobals.requestGraphicsUpdate = true;
+                simulationGlobals.requestAnimationUpdate = true;
+                e.stopPropagation();
+            }
         };
 
-        object.mouseup = object.mouseupoutside = object.touchend = object.touchendoutside = function(data) {
+        object.mouseup = object.mouseupoutside = object.touchend = object.touchendoutside = function(e) {
             this.device.dragInfo = null;
             let fetchInfo = {
                 method: 'PUT',
@@ -61,14 +68,14 @@ export default class Device {
             });
         };
 
-        object.mousemove = object.touchmove = function(data) {
+        object.mousemove = object.touchmove = function(e) {
             if(this.device.dragInfo !== null) {
-                let curPoint = data.data.global;
+                let curPoint = e.data.global;
                 let worldPoint = simulationGlobals.viewport.toWorld(curPoint);
                 this.device.setPosition(new Victor(worldPoint.x, worldPoint.y));
                 simulationGlobals.requestGraphicsUpdate = true;
                 simulationGlobals.requestAnimationUpdate = true;
-                data.stopPropagation();
+                e.stopPropagation();
             }
         };
     }
@@ -162,16 +169,22 @@ export default class Device {
     }
 
     edgeNodeAnimation() {
+        if(this.neighborDevices.length != 1) return;
+        if(this.dragInfo) return;
+
         let myPosition = this.getPosition().clone();
         let offsetVector = new Victor(0,0);
-        if(this.neighborDevices.length != 1) return;
-        
-        // distance-spring
+
+        let nbr = this.neighborDevices[0];
+
         if(true) {
-            let nbrPosition = this.neighborDevices[0].getPosition();
+            let springDistance = 128.0;
+            if(this.expanded || nbr.expanded) springDistance = 256.0;
+
+            let nbrPosition = nbr.getPosition();
 
             let dirvToNbr = nbrPosition.clone().subtract(myPosition).normalize();
-            let springTarget = nbrPosition.clone().subtract(dirvToNbr.clone().multiply(new Victor(256,256)));
+            let springTarget = nbrPosition.clone().subtract(dirvToNbr.clone().multiply(new Victor(springDistance, springDistance)));
             let dirvToSpringTarget = springTarget.subtract(myPosition);
             let smoothedOffset = dirvToSpringTarget.clone().multiply(new Victor(0.2,0.2));
 
