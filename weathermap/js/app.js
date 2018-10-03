@@ -3,6 +3,10 @@ import DeviceGraph from './devicegraph.js';
 class WeatherMap extends PIXI.Application {
     constructor(window_width, window_height) {
         super();
+
+        this.ticker.autoStart = false;
+        this.ticker.stop();
+
         this.frameConstants = {
             loopCount: 0,
             frameNumber: 0,
@@ -194,6 +198,7 @@ class WeatherMap extends PIXI.Application {
             // reset gfx request flag, might retrigger
             simulationGlobals.requestGraphicsUpdate = false;
             this.updateGraphics();
+            wm.ticker.update();
             console.log("gfx-tick @ " + curtime);
         }
 
@@ -202,6 +207,7 @@ class WeatherMap extends PIXI.Application {
             // reset anim request flag, might retrigger
             simulationGlobals.requestAnimationUpdate = false;
             this.updateAnimation();
+            wm.ticker.update();
             console.log("simulation-tick @ " + curtime);
         }
     }
