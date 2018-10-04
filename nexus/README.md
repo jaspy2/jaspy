@@ -1,7 +1,10 @@
 # jaspy-nexus
 
-Reference & validation implementation of Jaspy2 API and related components
+Implementation of Jaspy2 API and related components
 
 ## Missing features
 
+ - Logging
  - MessageBus implementation
+ - Switchmaster?
+ - User locator?
