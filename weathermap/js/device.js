@@ -20,12 +20,20 @@ export default class Device {
         this.requestedPosition = null;
 
         this.neighborDevices = [];
-        this.superNode = false;
+        this.superNode = null;
         this.superNodeByConfig = false;
-        this.superNodeByLinks = false;
-        this.expanded = false;
+        this.expanded = null;
+        this.expandedByDefault = false;
 
         //console.log("create device " + fqdn)
+    }
+
+    isExpanded() {
+        if(this.expanded === null) {
+            return this.expandedByDefault;
+        } else {
+            return this.expanded;
+        }
     }
 
     armDragEvents(object) {
@@ -41,7 +49,7 @@ export default class Device {
                 simulationGlobals.positionUpdatesFrozen = true;
                 e.stopPropagation();
             } else {
-                this.device.expanded = !this.device.expanded;
+                this.device.expanded = !this.device.isExpanded();
                 simulationGlobals.requestGraphicsUpdate = true;
                 simulationGlobals.requestAnimationUpdate = true;
                 e.stopPropagation();
@@ -149,11 +157,10 @@ export default class Device {
         }
         this.neighborDevices = newNeighborDeviceList;
         if(this.neighborDevices.length > 1 || this.neighborDevices.length == 0) {
-            this.superNodeByLinks = true;
+            this.superNode = true;
         } else {
-            this.superNodeByLinks = false;
+            this.superNode = false;
         }
-        this.superNode = this.superNodeByLinks || this.superNodeByConfig;
     }
 
     superNodeAnimation() {
@@ -243,7 +250,7 @@ export default class Device {
     updateAnimation() {
         this.effectAnimation();
 
-        if(this.superNode) {
+        if(this.isSuperNode()) {
             this.superNodeAnimation();
         } else {
             this.edgeNodeAnimation();
@@ -251,11 +258,16 @@ export default class Device {
     }
 
     isLargeIcon() {
-        let largeIcon = this.expanded || this.superNode;
-        if(!this.superNode) {
-            if(this.neighborDevices[0].expanded) largeIcon = true;
+        let largeIcon = this.isExpanded() || this.isSuperNode();
+        if(!this.isSuperNode()) {
+            if(this.neighborDevices[0].isExpanded()) largeIcon = true;
         }
         return largeIcon;
+    }
+
+    isSuperNode() {
+        if(this.superNodeByConfig) return true;
+        return this.superNode;
     }
 
     updateGraphics(linkLayer, deviceLayer, devices) {
@@ -274,7 +286,7 @@ export default class Device {
             this.graphicsObjectInfo["object"].addChild(this.text);
         }
 
-        if(!largeIcon || !this.superNode) {
+        if(!largeIcon || !this.isSuperNode()) {
             let dvFromPeer = this.getPosition().clone().subtract(this.neighborDevices[0].getPosition()).normalize();
             let perpDVFromPeer = dvFromPeer.clone().rotateDeg(90).normalize();
             let horAngle = dvFromPeer.horizontalAngle();
@@ -399,5 +411,26 @@ export default class Device {
         this.requestedPosition = newPosition;
         simulationGlobals.requestGraphicsUpdate = true;
         simulationGlobals.requestAnimationUpdate = true;
+    }
+
+    updateWeathermapPosition(data) {
+        let changed = false;
+        
+        this.requestPosition(new Victor(data['x'], data['y']));
+        
+        if(this.expandedByDefault != data.expandedByDefault) {
+            changed = true;
+            this.expandedByDefault = data.expandedByDefault;
+        }
+        
+        if(this.superNodeByConfig != data.superNode) {
+            changed = true;
+            this.superNodeByConfig = data.superNode;
+        }
+
+        if(changed) {
+            simulationGlobals.requestGraphicsUpdate = true;
+            simulationGlobals.requestAnimationUpdate = true;
+        }
     }
 }

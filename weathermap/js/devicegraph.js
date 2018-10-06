@@ -146,7 +146,8 @@ export default class DeviceGraph {
                 console.error("received position update for non-existing device " + fqdn);
                 continue;
             }
-            this.devices[fqdn].requestPosition(new Victor(data['x'], data['y']));
+            let targetDevice = this.devices[fqdn];
+            targetDevice.updateWeathermapPosition(data);
         }
     }
 }
