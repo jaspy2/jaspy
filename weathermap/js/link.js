@@ -35,11 +35,14 @@ export default class Link {
                     " >> " +
                     hostnameFromFQDN(this.link.sourceInterface.connectedToInterface.parentDeviceFQDN) + " " + this.link.sourceInterface.connectedToInterface.name + "\n" +
                     this.link.getUsage().toFixed(2) + " Mbps";
+
+                simulationGlobals.requestGraphicsUpdate = true;
             }
         }
         graphicsObject.mouseout = function(ev) {
             this.showLabel = false;
             simulationGlobals.viewport.removeChild(this.link.label);
+            simulationGlobals.requestGraphicsUpdate = true;
         };
         graphicsObject.mouseover = function(ev) {
             this.showLabel = true;
@@ -80,6 +83,18 @@ export default class Link {
             return false;
         } else {
             return this.sourceInterface.status;
+        }
+    }
+
+    getSpeed() {
+        if(this.sourceInterface) {
+            if(this.sourceInterface.statisticsData) {
+                return this.sourceInterface.statisticsData["speed_mbps"];
+            } else {
+                return 0;
+            }
+        } else {
+            return 0;
         }
     }
 

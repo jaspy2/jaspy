@@ -21,6 +21,8 @@ export default class Device {
 
         this.neighborDevices = [];
         this.superNode = false;
+        this.superNodeByConfig = false;
+        this.superNodeByLinks = false;
         this.expanded = false;
 
         //console.log("create device " + fqdn)
@@ -146,11 +148,12 @@ export default class Device {
             value.updateTargetInfo(devices[key]);
         }
         this.neighborDevices = newNeighborDeviceList;
-        if(this.neighborDevices.length > 1) {
+        if(this.neighborDevices.length > 1 || this.neighborDevices.length == 0) {
             this.superNodeByLinks = true;
         } else {
             this.superNodeByLinks = false;
         }
+        this.superNode = this.superNodeByLinks || this.superNodeByConfig;
     }
 
     superNodeAnimation() {
@@ -176,10 +179,14 @@ export default class Device {
         let offsetVector = new Victor(0,0);
 
         let nbr = this.neighborDevices[0];
-
+        
+        let springDistance = config.springDistance;
+        if(this.isLargeIcon()) {
+            springDistance *= 3.0;
+        }
+        
         if(true) {
-            let springDistance = 128.0;
-            if(this.expanded || nbr.expanded) springDistance = 256.0;
+            
 
             let nbrPosition = nbr.getPosition();
 
@@ -195,7 +202,7 @@ export default class Device {
             }
         }
 
-        if(this.fqdn == "tenshi.test.makai.fi"||true) {
+        if(true) {
             let clusterCenter = this.neighborDevices[0];
             let selfDV = this.getPosition().clone().subtract(clusterCenter.getPosition()).normalize();
             let selfPerp = selfDV.clone().rotateDeg(90);
@@ -205,7 +212,7 @@ export default class Device {
                 let nbrDV = nbrNbr.getPosition().clone().subtract(clusterCenter.getPosition()).normalize();
                 let invNbrDV = nbrDV.clone().invert();
                 let angle = Math.acos(selfDV.clone().dot(invNbrDV))*Math.sign(invNbrDV.clone().cross(selfDV));
-                let angleFactor = -angle * 10.0;
+                let angleFactor = -angle * (springDistance / 20.0);
                 forceOffset.add(selfPerp.clone().multiply(new Victor(angleFactor, angleFactor)));
             }
             offsetVector.add(forceOffset);
@@ -236,14 +243,23 @@ export default class Device {
     updateAnimation() {
         this.effectAnimation();
 
-        if(this.superNodeByConfig || this.neighborDevices.length > 1) {
+        if(this.superNode) {
             this.superNodeAnimation();
         } else {
             this.edgeNodeAnimation();
         }
     }
 
-    updateGraphics(linkLayer, deviceLayer, deviceCoordinates) {
+    isLargeIcon() {
+        let largeIcon = this.expanded || this.superNode;
+        if(!this.superNode) {
+            if(this.neighborDevices[0].expanded) largeIcon = true;
+        }
+        return largeIcon;
+    }
+
+    updateGraphics(linkLayer, deviceLayer, devices) {
+        let largeIcon = this.isLargeIcon();
         if(this.graphicsObjectInfo == null) {
             this.graphicsObjectInfo = {
                 "object": new PIXI.Graphics(),
@@ -252,10 +268,33 @@ export default class Device {
             this.graphicsObjectInfo["attachedTo"].addChild(this.graphicsObjectInfo["object"]);
             this.armDragEvents(this.graphicsObjectInfo["object"]);
 
-            let text = new PIXI.Text(this.hostname, {fontFamily : '"Courier New", Courier, monospace', fontSize: 14, fill : 0xffffff, align : 'center'});
-            text.position.x -= Math.round(text.width / 2.0);
-            text.position.y -= 30;
-            this.graphicsObjectInfo["object"].addChild(text);
+            this.text = new PIXI.Text(this.hostname, {fontFamily : '"Courier New", Courier, monospace', fontSize: 14, fill : 0xffffff, align : 'center'});
+            this.text.position.x -= Math.round(this.text.width / 2.0);
+            this.text.position.y -= (config.deviceIconSize + 10);
+            this.graphicsObjectInfo["object"].addChild(this.text);
+        }
+
+        if(!largeIcon || !this.superNode) {
+            let dvFromPeer = this.getPosition().clone().subtract(this.neighborDevices[0].getPosition()).normalize();
+            let perpDVFromPeer = dvFromPeer.clone().rotateDeg(90).normalize();
+            let horAngle = dvFromPeer.horizontalAngle();
+            let offset = config.deviceIconSize;
+            if(!largeIcon) {
+                offset /= 4.0;
+            }
+            if(Math.abs(horAngle) > (Math.PI/2.0)) {
+                horAngle += Math.PI;
+                this.text.position.x = dvFromPeer.x * (offset + this.text.width) + perpDVFromPeer.x * this.text.height / 2.0;
+                this.text.position.y = dvFromPeer.y * (offset + this.text.width) + perpDVFromPeer.y * this.text.height / 2.0;
+            } else {
+                this.text.position.x = dvFromPeer.x * (offset) - perpDVFromPeer.x * this.text.height / 2.0;
+                this.text.position.y = dvFromPeer.y * (offset) - perpDVFromPeer.y * this.text.height / 2.0;
+            }
+            this.text.rotation = horAngle;
+        } else {
+            this.text.rotation = 0;
+            this.text.position.x = -Math.round(this.text.width / 2.0);
+            this.text.position.y = -(config.deviceIconSize + 10);
         }
 
         for(let effect of this.attachedEffects) {
@@ -273,10 +312,16 @@ export default class Device {
             } else {
                 fillcolor = 0xffff00;
             }
+            let radius = config.deviceIconSize / 2.0;
+            let lineWidth = 2;
+            if(!largeIcon) {
+                radius = radius / 4.0;
+                lineWidth = 0;
+            }
             obj.beginFill(fillcolor);
-            obj.lineStyle(2,0x777777);
-            obj.moveTo(-10,-10);
-            obj.lineTo(-10,10); obj.lineTo(10,10); obj.lineTo(10,-10); obj.lineTo(-10,-10);
+            obj.lineStyle(lineWidth,0x777777);
+            obj.moveTo(-radius,-radius);
+            obj.lineTo(-radius,radius); obj.lineTo(radius,radius); obj.lineTo(radius,-radius); obj.lineTo(-radius,-radius);
             obj.endFill();
             obj.position.set(this.position.x, this.position.y);
             this.graphicsDirty = false;
@@ -284,8 +329,9 @@ export default class Device {
 
         for(let [key, value] of Object.entries(this.linkGroups)) {
             let localCoord = this.getPosition();
-            let remoteCoord = deviceCoordinates[key];
-            value.updateGraphics(linkLayer, localCoord, remoteCoord);
+            let remoteCoord = devices[key].getPosition().clone();
+            let largeLink = largeIcon && devices[key].isLargeIcon();
+            value.updateGraphics(linkLayer, localCoord, remoteCoord, largeLink);
         }
     }
 

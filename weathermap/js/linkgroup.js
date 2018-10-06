@@ -67,11 +67,13 @@ export default class LinkGroup {
                 let worldPoint = simulationGlobals.viewport.toWorld(curPoint);
                 this.linkgroup.label.position = worldPoint;
                 this.linkgroup.label.text = hostnameFromFQDN(this.linkgroup.source) + " >> " + hostnameFromFQDN(this.linkgroup.target) + "\n" + this.linkgroup.totalUsage().toFixed(2) + " Mbps";
+                simulationGlobals.requestGraphicsUpdate = true;
             }
         }
         graphicsObject.mouseout = function(ev) {
             this.showLabel = false;
             simulationGlobals.viewport.removeChild(this.linkgroup.label);
+            simulationGlobals.requestGraphicsUpdate = true;
         };
         graphicsObject.mouseover = function(ev) {
             this.showLabel = true;
@@ -83,7 +85,7 @@ export default class LinkGroup {
         this.graphicsDirty = true;
     }
 
-    updateGraphics(viewport, localCoord, remoteCoord) {
+    updateGraphics(viewport, localCoord, remoteCoord, large) {
         if(this.graphicsObjectInfo == null) {
             this.graphicsObjectInfo = {
                 "object": new PIXI.Graphics(),
@@ -102,8 +104,18 @@ export default class LinkGroup {
         }
 
         if(this.graphicsDirty) {
-            let arrowWidth = 10.0;
-            let arrowLength = 20.0;
+            let speedFactor = this.totalSpeed();
+            if(speedFactor === 0 || !speedFactor) speedFactor = 1000;
+            speedFactor = Math.pow(2,Math.log10(speedFactor)) * config.speedFactorFactor;
+            let arrowWidth = config.arrowWidth * speedFactor;
+            let arrowLength = config.arrowLength * speedFactor;
+            let width = config.linkGroupWidth * speedFactor;
+            if(!large) {
+                width /= 2.0;
+                arrowWidth = width / 2.0;
+                arrowLength /= 2.0;
+            }
+
             let dirScaled = dir.clone().multiply(new Victor(arrowLength, arrowLength));
             let sidesScaled = sides.clone().multiply(new Victor(arrowWidth, arrowWidth));
             let arrowBackLeft = new Victor(0,0).subtract(dirScaled).subtract(sidesScaled);
@@ -116,7 +128,6 @@ export default class LinkGroup {
             let linkLineEndposMiddle = this.position.clone().add(startOffset).subtract(dirScaled).add(dir);
 
             let numLinks = Object.keys(this.groupedLinks).length;
-            let width = 10;
             let widthPerLink = width/numLinks;
 
             let linknum = 0;
@@ -166,6 +177,14 @@ export default class LinkGroup {
             usage += value.getUsage();
         }
         return usage;
+    }
+
+    totalSpeed() {
+        let speed = 0;
+        for(let [key, value] of Object.entries(this.groupedLinks)) {
+            speed += value.getSpeed();
+        }
+        return speed;
     }
 
     setPosition(position) {

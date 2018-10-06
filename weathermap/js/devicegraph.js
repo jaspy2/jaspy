@@ -40,12 +40,8 @@ export default class DeviceGraph {
     }
 
     updateGraphics() {
-        let deviceCoordinates = {}
         for(let [key, value] of Object.entries(this.devices)) {
-            deviceCoordinates[key] = value.getPosition();
-        }
-        for(let [key, value] of Object.entries(this.devices)) {
-            value.updateGraphics(this.linkLayer, this.deviceLayer, deviceCoordinates);
+            value.updateGraphics(this.linkLayer, this.deviceLayer, this.devices);
         }
     }
 
