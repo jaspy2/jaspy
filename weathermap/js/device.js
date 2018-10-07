@@ -1,6 +1,7 @@
 import Interface from "./interface.js";
 import LinkGroup from "./linkgroup.js";
 import FocusEffect from "./effects/focuseffect.js";
+import TextEffect from "./effects/texteffect.js";
 import {hostnameFromFQDN} from "./util.js";
 
 
@@ -24,8 +25,6 @@ export default class Device {
         this.superNodeByConfig = false;
         this.expanded = null;
         this.expandedByDefault = false;
-
-        //console.log("create device " + fqdn)
     }
 
     isExpanded() {
@@ -34,6 +33,27 @@ export default class Device {
         } else {
             return this.expanded;
         }
+    }
+
+    updatePositionInfo() {
+        let fetchInfo = {
+            method: 'PUT',
+            body: JSON.stringify({
+                deviceFqdn: this.fqdn,
+                x: this.position.x,
+                y: this.position.y,
+                superNode: this.superNodeByConfig,
+                expandedByDefault: this.expandedByDefault
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        }
+        fetch(config.jaspyNexusURL+"/position", fetchInfo).then(function() {
+            simulationGlobals.positionUpdatesFrozen = false;
+        }).catch(function() {
+            simulationGlobals.positionUpdatesFrozen = false;
+        });
     }
 
     armDragEvents(object) {
@@ -48,6 +68,22 @@ export default class Device {
                 simulationGlobals.requestAnimationUpdate = true;
                 simulationGlobals.positionUpdatesFrozen = true;
                 e.stopPropagation();
+            } else if(e.data.originalEvent.ctrlKey) {
+                this.device.expandedByDefault = !this.device.expandedByDefault;
+                this.device.attachedEffects.push(new TextEffect(new Victor(20,0), "expandedByDefault="+this.device.expandedByDefault, 0xff00ff, this.device.graphicsObjectInfo["object"], 10));
+                simulationGlobals.requestGraphicsUpdate = true;
+                simulationGlobals.requestAnimationUpdate = true;
+                simulationGlobals.positionUpdatesFrozen = true;
+                this.device.updatePositionInfo();
+                e.stopPropagation();
+            } else if(e.data.originalEvent.altKey) {
+                this.device.superNodeByConfig = !this.device.superNodeByConfig;
+                this.device.attachedEffects.push(new TextEffect(new Victor(20,0), "superNodeByConfig="+this.device.superNodeByConfig, 0xff00ff, this.device.graphicsObjectInfo["object"], 10));
+                simulationGlobals.requestGraphicsUpdate = true;
+                simulationGlobals.requestAnimationUpdate = true;
+                simulationGlobals.positionUpdatesFrozen = true;
+                this.device.updatePositionInfo();
+                e.stopPropagation();
             } else {
                 this.device.expanded = !this.device.isExpanded();
                 simulationGlobals.requestGraphicsUpdate = true;
@@ -58,24 +94,7 @@ export default class Device {
 
         object.mouseup = object.mouseupoutside = object.touchend = object.touchendoutside = function(e) {
             this.device.dragInfo = null;
-            let fetchInfo = {
-                method: 'PUT',
-                body: JSON.stringify({
-                    deviceFqdn: this.device.fqdn,
-                    x: this.device.position.x,
-                    y: this.device.position.y,
-                    superNode: false,
-                    expandedByDefault: false
-                }),
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            }
-            fetch(config.jaspyNexusURL+"/position", fetchInfo).then(function() {
-                simulationGlobals.positionUpdatesFrozen = false;
-            }).catch(function() {
-                simulationGlobals.positionUpdatesFrozen = false;
-            });
+            this.device.updatePositionInfo();
         };
 
         object.mousemove = object.touchmove = function(e) {
@@ -192,9 +211,7 @@ export default class Device {
             springDistance *= 3.0;
         }
         
-        if(true) {
-            
-
+        {
             let nbrPosition = nbr.getPosition();
 
             let dirvToNbr = nbrPosition.clone().subtract(myPosition).normalize();
@@ -209,7 +226,7 @@ export default class Device {
             }
         }
 
-        if(true) {
+        {
             let clusterCenter = this.neighborDevices[0];
             let selfDV = this.getPosition().clone().subtract(clusterCenter.getPosition()).normalize();
             let selfPerp = selfDV.clone().rotateDeg(90);
@@ -426,6 +443,7 @@ export default class Device {
         if(this.superNodeByConfig != data.superNode) {
             changed = true;
             this.superNodeByConfig = data.superNode;
+            console.log(data.superNode);
         }
 
         if(changed) {
