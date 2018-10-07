@@ -346,7 +346,7 @@ impl WeathermapDeviceInfo {
                 wmap_info.x = updated_info.x;
                 wmap_info.y = updated_info.y;
                 wmap_info.expanded_by_default = updated_info.expanded_by_default;
-                wmap_info.super_node = updated_info.expanded_by_default;
+                wmap_info.super_node = updated_info.super_node;
 
                 if let Ok(_) = wmap_info.update(connection) {
                     return Ok(wmap_info);
