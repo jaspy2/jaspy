@@ -12,7 +12,7 @@ fn device_list(connection: db::Connection) -> Json<Vec<models::dbo::Device>> {
 }
 
 #[get("/monitor")]
-fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Json<models::json::DeviceMonitorResponse> {
+fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, runtime_info: State<Arc<Mutex<models::internal::RuntimeInfo>>>) -> Json<models::json::DeviceMonitorResponse> {
     let mut dmi : Vec<models::json::DeviceMonitorInfo> = Vec::new();
     for monitored in models::dbo::Device::monitored(&connection).iter() {
         if let Ok(ref mut imds) = imds.lock() {
@@ -22,7 +22,13 @@ fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utili
             }
         }
     }
-    return Json(models::json::DeviceMonitorResponse { devices : dmi });
+    let state_id : i64;
+    if let Ok(ref rti) = runtime_info.lock() {
+        state_id = rti.state_id();
+    } else {
+        state_id = 0;
+    }
+    return Json(models::json::DeviceMonitorResponse { state_id: state_id, devices: dmi });
 }
 
 #[put("/monitor", data = "<device_monitor_report>")]

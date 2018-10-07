@@ -48,6 +48,7 @@ pub struct DeviceMonitorInfo {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceMonitorResponse {
+    pub state_id : i64,
     pub devices : Vec<DeviceMonitorInfo>,
 }
 

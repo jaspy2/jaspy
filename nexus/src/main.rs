@@ -93,6 +93,8 @@ fn main() {
     });
 
     let cache_controller : Arc<Mutex<utilities::cache::CacheController>> = Arc::new(Mutex::new(utilities::cache::CacheController::new()));
+
+    let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
     
     rocket::ignite()
         .mount(
@@ -137,6 +139,7 @@ fn main() {
         .manage(imds.clone())
         .manage(metric_miss_cache.clone())
         .manage(cache_controller.clone())
+        .manage(runtime_info.clone())
         .launch();
 
     (*running).store(false, std::sync::atomic::Ordering::Relaxed);
