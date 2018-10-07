@@ -18,31 +18,33 @@ const PING_HYST_LOOP_MSECS : u64 = 100;
 const PING_HYST_LIMIT : u8 = 10;
 
 struct PingThreadInfo {
-    thd : thread::JoinHandle<()>,
-    running : sync::Arc<sync::atomic::AtomicBool>,
-    finished_signal : sync::mpsc::Receiver<bool>
+    state_id: i64,
+    thd: thread::JoinHandle<()>,
+    running: sync::Arc<sync::atomic::AtomicBool>,
+    finished_signal: sync::mpsc::Receiver<bool>
 }
 
 struct PingAccountingInfo {
-    responsive : Option<bool>,
-    hysteresis_responsive : u8,
-    hysteresis_unresponsive : u8
+    responsive: Option<bool>,
+    hysteresis_responsive: u8,
+    hysteresis_unresponsive: u8
 }
 
 #[derive(Serialize,Deserialize,Debug)]
 #[serde(rename_all = "camelCase")]
 struct DeviceInfo {
-    fqdn : String,
-    up : Option<bool>
+    fqdn: String,
+    up: Option<bool>,
 }
 
 #[derive(Deserialize,Debug)]
 #[serde(rename_all = "camelCase")]
 struct DeviceInfoResponse {
-    devices : Vec<DeviceInfo>
+    state_id: i64,
+    devices: Vec<DeviceInfo>,
 }
 
-fn get_devices(source_url : &String) -> Result<HashMap<String, DeviceInfo>, String> {
+fn get_devices(source_url : &String) -> Result<(HashMap<String, DeviceInfo>, i64), String> {
     let mut devices : HashMap<String, DeviceInfo> = HashMap::new();
     let response = reqwest::get(source_url);
     match response {
@@ -59,7 +61,7 @@ fn get_devices(source_url : &String) -> Result<HashMap<String, DeviceInfo>, Stri
                             }
                         );
                     }
-                    return Ok(devices);
+                    return Ok((devices, device_info_response.state_id));
                 },
                 Err(_) => {
                     return Err("Unable to parse DeviceInfoResponse JSON".to_string())
@@ -234,7 +236,7 @@ fn pinger(source_url : String, device_info : DeviceInfo, running : sync::Arc<syn
     println!("[{}] stop monitoring", device_info.fqdn);
 }
 
-fn start_ping_worker(source_url: &String, device_info : &DeviceInfo, ping_workers : &mut HashMap<String, PingThreadInfo>) {
+fn start_ping_worker(source_url: &String, device_info: &DeviceInfo, ping_workers: &mut HashMap<String, PingThreadInfo>, state_id: &i64) {
     let running = std::sync::Arc::new(sync::atomic::AtomicBool::new(true));
     let running_ptit = running.clone();
     let (tx, rx) = sync::mpsc::channel();
@@ -246,6 +248,7 @@ fn start_ping_worker(source_url: &String, device_info : &DeviceInfo, ping_worker
     ping_workers.insert(
         device_info.fqdn.clone(), 
         PingThreadInfo {
+            state_id: *state_id,
             thd: thread::spawn(|| {
                 pinger(source_url_copy, device_info_copy, running_ptit, tx)
             }),
@@ -255,7 +258,7 @@ fn start_ping_worker(source_url: &String, device_info : &DeviceInfo, ping_worker
     );
 }
 
-fn reap_finished_threads(reap_threads : &mut Vec<PingThreadInfo>) {
+fn reap_finished_threads(reap_threads: &mut Vec<PingThreadInfo>) {
     loop {
         let mut reap : bool = false;
         let mut idx = 0;
@@ -298,24 +301,29 @@ fn prepare_expired_fqdns_for_reap(ping_workers : &mut HashMap<String, PingThread
     }
 }
 
-fn check_expired_fqdn_workers(devices : &HashMap<String, DeviceInfo>, ping_workers : &HashMap<String, PingThreadInfo>, expired_fqdns : &mut Vec<String>) {
+fn check_expired_fqdn_workers(devices : &HashMap<String, DeviceInfo>, ping_workers : &HashMap<String, PingThreadInfo>, expired_fqdns : &mut Vec<String>, state_id: &i64) {
     for (fqdn, ping_worker) in ping_workers.iter() {
-        match devices.get(fqdn) {
-            Some(_) => {},
-            None => {
-                ping_worker.running.store(false, sync::atomic::Ordering::Relaxed);
-                expired_fqdns.push(fqdn.clone());
+        if ping_worker.state_id != *state_id {
+            ping_worker.running.store(false, sync::atomic::Ordering::Relaxed);
+            expired_fqdns.push(fqdn.clone());
+        } else {
+            match devices.get(fqdn) {
+                Some(_) => {},
+                None => {
+                    ping_worker.running.store(false, sync::atomic::Ordering::Relaxed);
+                    expired_fqdns.push(fqdn.clone());
+                }
             }
         }
     }
 }
 
-fn check_if_worker_needed(source_url : &String, devices : &HashMap<String, DeviceInfo>, mut ping_workers : &mut HashMap<String, PingThreadInfo>) {
+fn check_if_worker_needed(source_url : &String, devices : &HashMap<String, DeviceInfo>, mut ping_workers : &mut HashMap<String, PingThreadInfo>, state_id: &i64) {
     for (fqdn, device_info) in devices.iter() {
         if ping_workers.contains_key(&*fqdn) {
             continue;
         }
-        start_ping_worker(source_url, &device_info, &mut ping_workers);
+        start_ping_worker(source_url, &device_info, &mut ping_workers, state_id);
     }
 }
 
@@ -324,6 +332,7 @@ fn main() {
     let mut ping_workers : HashMap<String, PingThreadInfo> = HashMap::new();
     let mut reap_threads : Vec<PingThreadInfo> = Vec::new();
     let mut devices : HashMap<String, DeviceInfo> = HashMap::new();
+    let mut state_id : i64 = 0;
 
     if let Some(argv1) = std::env::args().nth(1) {
         source_url = argv1;
@@ -335,15 +344,19 @@ fn main() {
     loop {
         match get_devices(&source_url) {
             Ok(received_devices) => {
-                devices = received_devices;
+                if state_id != received_devices.1 {
+                    println!("detect state_id change {} -> {}", state_id, received_devices.1)
+                }
+                devices = received_devices.0;
+                state_id = received_devices.1;
             },
             Err(error) => {
                 println!("Failed to get new device listing: {}", error);
             }
         }
         let mut expired_fqdns : Vec<String> = Vec::new();
-        check_if_worker_needed(&source_url, &devices, &mut ping_workers);
-        check_expired_fqdn_workers(&devices, &ping_workers, &mut expired_fqdns);
+        check_if_worker_needed(&source_url, &devices, &mut ping_workers, &state_id);
+        check_expired_fqdn_workers(&devices, &ping_workers, &mut expired_fqdns, &state_id);
         prepare_expired_fqdns_for_reap(&mut ping_workers, &expired_fqdns, &mut reap_threads);
         reap_finished_threads(&mut reap_threads);
         thread::sleep(time::Duration::from_millis(MAIN_LOOP_MSECS));
