@@ -41,7 +41,7 @@ pub struct InterfaceSpeedEvent {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
-    event_type: String,
+    pub event_type: String,
 
     #[serde(skip_serializing_if="Option::is_none")]
     ping_change: Option<PingChangeEvent>,

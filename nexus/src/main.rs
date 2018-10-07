@@ -10,6 +10,7 @@ extern crate rocket_contrib;
 extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate time;
+extern crate zmq;
 mod routes;
 mod models;
 mod db;
