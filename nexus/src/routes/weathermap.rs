@@ -12,7 +12,7 @@ fn get_topology_data(connection: &db::Connection) -> models::json::WeathermapBas
     let mut wmap: models::json::WeathermapBase = models::json::WeathermapBase {
         devices: HashMap::new(),
     };
-    let devices = models::dbo::Device::monitored(&connection);
+    let devices = models::dbo::Device::all(&connection);
     for device in devices.iter() {
         let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
         let mut weathermap_device = models::json::WeathermapDevice {
