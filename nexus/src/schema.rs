@@ -23,6 +23,7 @@ table! {
         description -> Nullable<Varchar>,
         polling_enabled -> Nullable<Bool>,
         speed_override -> Nullable<Int4>,
+        virtual_connection -> Nullable<Int4>,
     }
 }
 

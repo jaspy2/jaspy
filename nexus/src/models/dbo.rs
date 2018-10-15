@@ -91,6 +91,7 @@ pub struct Interface {
     pub description: Option<String>,
     pub polling_enabled: Option<bool>,
     pub speed_override: Option<i32>,
+    pub virtual_connection: Option<i32>,
 }
 
 impl Device {
@@ -304,13 +305,18 @@ impl Interface {
 
     pub fn delete(self: &Interface, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
         match interfaces::table
-            .filter(interfaces::connected_interface.eq(self.id))
-            .first::<Interface>(connection)    
+            .filter(
+                interfaces::connected_interface.eq(self.id)
+                .or(interfaces::virtual_connection.eq(self.id))
+            )
+            .load::<Interface>(connection)
         {
-            Ok(mut peer_interface) => {
-                peer_interface.connected_interface = None;
-                if let Err(_) = peer_interface.update(connection) {
-                    // TODO: log
+            Ok(mut peer_interface_vec) => {
+                for peer_interface in peer_interface_vec.iter_mut() {
+                    peer_interface.connected_interface = None;
+                    if let Err(_) = peer_interface.update(connection) {
+                        // TODO: log
+                    }
                 }
             },
             Err(_) => {}
@@ -319,21 +325,28 @@ impl Interface {
     }
 
     pub fn peer_interface(self: &Interface, connection: &PgConnection) -> Option<Interface> {
-        match self.connected_interface {
-            Some(connected_interface_id) => {
-                match Interface::by_id(connected_interface_id, connection) {
-                    Some(peer_interface) => {
-                        return Some(peer_interface);
-                    },
-                    None => {
-                        // TODO: WTF, this cant happen, probably?
-                        return None;
-                    }
+        if let Some(connected_interface_id) = self.virtual_connection {
+            match Interface::by_id(connected_interface_id, connection) {
+                Some(peer_interface) => {
+                    return Some(peer_interface);
+                },
+                None => {
+                    // TODO: WTF, this cant happen, probably?
+                    return None;
                 }
-            },
-            None => {
-                return None;
             }
+        } else if let Some(connected_interface_id) = self.connected_interface {
+            match Interface::by_id(connected_interface_id, connection) {
+                Some(peer_interface) => {
+                    return Some(peer_interface);
+                },
+                None => {
+                    // TODO: WTF, this cant happen, probably?
+                    return None;
+                }
+            }
+        } else {
+            return None;
         }
     }
 
