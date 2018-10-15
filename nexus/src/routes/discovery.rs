@@ -16,6 +16,7 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovere
     let existing_device = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &discovered_device.name, &discovered_device.dns_domain);
     match existing_device {
         Some(mut existing_device) => {
+            // TODO: attr compare, event if change except for snmp com
             existing_device.base_mac = discovered_device.base_mac.clone();
             existing_device.os_info = discovered_device.os_info.clone();
             existing_device.snmp_community = discovered_device.snmp_community.clone();
@@ -31,6 +32,7 @@ fn discovery_device(discovery_json: rocket_contrib::Json<models::json::Discovere
             }
         },
         None => {
+            // TODO: crate device event
             let new_device = models::dbo::NewDevice {
                 name: discovered_device.name.clone(),
                 dns_domain: discovered_device.dns_domain.clone(),

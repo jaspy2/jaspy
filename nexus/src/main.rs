@@ -109,6 +109,8 @@ fn main() {
             "/device",
             routes![
                 routes::device::device_list,
+                routes::device::device_create_or_modify,
+                routes::device::device_delete,
                 routes::device::monitored_device_list,
                 routes::device::monitored_device_report,
             ]

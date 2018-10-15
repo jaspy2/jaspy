@@ -11,6 +11,66 @@ fn device_list(connection: db::Connection) -> Json<Vec<models::dbo::Device>> {
     return Json(models::dbo::Device::all(&connection));
 }
 
+#[put("/", data = "<device_json>")]
+fn device_create_or_modify(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>) -> Option<Json<models::dbo::Device>> {
+    let mut device : models::dbo::Device;
+    if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
+        let mut changed = false;
+        device = old_device;
+        // TODO: figure out why json-null does not mean db-NULL
+        if device.polling_enabled != device_json.polling_enabled {
+            // TODO: this MUST raise an event!
+            changed = true;
+            device.polling_enabled = device_json.polling_enabled.clone();
+        }
+        if device.os_info != device_json.os_info {
+            // TODO: this MUST raise an event!
+            changed = true;
+            device.os_info = device_json.os_info.clone();
+        }
+        if device.base_mac != device_json.base_mac {
+            // TODO: this MUST raise an event!
+            changed = true;
+            device.base_mac = device_json.base_mac.clone();
+        }
+        if device.snmp_community != device_json.snmp_community {
+            // TODO: this MUST NOT raise an event!
+            changed = true;
+            device.snmp_community = device_json.snmp_community.clone();
+        }
+        if changed {
+            if let Err(_) = device.update(&connection) {
+                // TODO: return 500
+                return None;
+            }
+        }
+    } else {
+        if let Ok(created_device) = models::dbo::Device::create(&device_json, &connection) {
+            device = created_device;
+            // TODO: this MUST raise an event!
+        } else {
+            // TODO: return 500
+            return None;
+        }
+    }
+    return Some(Json(device));
+}
+
+#[delete("/", data = "<device_json>")]
+fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>) -> Option<Json<models::dbo::Device>> {
+    if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
+        if let Err(d) = old_device.delete(&connection) {
+            println!("{}", d);
+            // TODO: return 500
+            return None;
+        } else {
+            return Some(Json(old_device));
+        }
+    } else {
+        return None;
+    }
+}
+
 #[get("/monitor")]
 fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, runtime_info: State<Arc<Mutex<models::internal::RuntimeInfo>>>) -> Json<models::json::DeviceMonitorResponse> {
     let mut dmi : Vec<models::json::DeviceMonitorInfo> = Vec::new();

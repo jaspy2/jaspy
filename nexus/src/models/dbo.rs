@@ -8,7 +8,8 @@ use diesel::ExpressionMethods;
 use diesel::BoolExpressionMethods;
 
 #[table_name = "devices"]
-#[derive(Insertable)]
+#[derive(Insertable, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NewDevice {
     pub name: String,
     pub dns_domain: String,
@@ -32,6 +33,7 @@ pub struct NewInterface {
 #[table_name = "devices"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Clone)]
 #[serde(rename_all = "camelCase")]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct Device {
     pub id: i32,
     pub name: String,
@@ -76,6 +78,7 @@ pub struct WeathermapDeviceInfo {
 #[table_name = "interfaces"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Associations, Clone)]
 #[serde(rename_all = "camelCase")]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct Interface {
     pub id: i32,
     pub index: i32,
@@ -210,6 +213,21 @@ impl Device {
     }
 
     pub fn delete(self: &Device, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+        if let Ok(weathermap_device_info) = WeathermapDeviceInfo::belonging_to(self).load(connection) {
+            let wmdis : Vec<WeathermapDeviceInfo> = weathermap_device_info;
+            for wmdi in wmdis.iter() {
+                if let Err(_) = wmdi.delete(connection) {
+                    // TODO: log
+                }
+            }
+            for interface in self.interfaces(connection).iter() {
+                if let Err(d) = interface.delete(connection) {
+                    // TODO: log
+                    println!("{}", d);
+                }
+            }
+        }
+
         return diesel::delete(devices::table.find(self.id)).execute(connection);
     }
 
@@ -285,6 +303,18 @@ impl Interface {
     }
 
     pub fn delete(self: &Interface, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+        match interfaces::table
+            .filter(interfaces::connected_interface.eq(self.id))
+            .first::<Interface>(connection)    
+        {
+            Ok(mut peer_interface) => {
+                peer_interface.connected_interface = None;
+                if let Err(_) = peer_interface.update(connection) {
+                    // TODO: log
+                }
+            },
+            Err(_) => {}
+        }
         return diesel::delete(interfaces::table.find(self.id)).execute(connection);
     }
 
@@ -336,6 +366,10 @@ impl WeathermapDeviceInfo {
                 return None;
             }
         }
+    }
+
+    pub fn delete(self: &WeathermapDeviceInfo, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+        return diesel::delete(weathermap_device_infos::table.find(self.id)).execute(connection);
     }
 
     pub fn update_by_fqdn_or_create(connection: &PgConnection, fqdn: &String, updated_info: UpdatedWeathermapDeviceInfo) -> Result<WeathermapDeviceInfo, String> {
