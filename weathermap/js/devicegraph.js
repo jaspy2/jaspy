@@ -93,6 +93,9 @@ export default class DeviceGraph {
             let value = parseInt(metric["value"][1]);
             this.updateBatch[fqdn]["interfaces"][name][direction+"_mbps"] = (value * 8.0) / 1000.0 / 1000.0;
         }
+        for(let [key, value] of Object.entries(this.devices)) {
+            if(value.isStale()) value.interfaceUpdateEvent();
+        }
     }
 
     updateInterfaceSpeed(prometheusResultVector) {
@@ -104,6 +107,9 @@ export default class DeviceGraph {
             let value = parseInt(metric["value"][1]);
 
             this.updateBatch[fqdn]["interfaces"][name]["speed_mbps"] = value;
+        }
+        for(let [key, value] of Object.entries(this.devices)) {
+            if(value.isStale()) value.interfaceUpdateEvent();
         }
     }
 
@@ -140,6 +146,7 @@ export default class DeviceGraph {
         }
         for(let [key, value] of Object.entries(this.devices)) {
             value.checkStale();
+            if(value.isStale()) value.interfaceUpdateEvent();
         }
     }
 

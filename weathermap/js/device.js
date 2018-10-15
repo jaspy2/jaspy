@@ -20,7 +20,7 @@ export default class Device {
         this.setPosition(new Victor(Math.random()*1600,Math.random()*400));
         this.requestedPosition = null;
         this.lastUpdate = 0;
-        this.stalePrevious = false;
+        this.stale = false;
 
         this.neighborDevices = [];
         this.superNode = null;
@@ -29,16 +29,20 @@ export default class Device {
         this.expandedByDefault = false;
     }
 
+    isStale() {
+        return this.stale;
+    }
+
     checkStale() {
         let cur = ((new Date()).getTime()/1000.0);
         if(cur - this.lastUpdate > 60.0) {
-            if(this.stalePrevious === false) {
+            if(this.stale === false) {
                 this.status = null;
                 this.graphicsDirty = true;
-                this.stalePrevious = true;
+                this.stale = true;
             }
         } else {
-            this.stalePrevious = false;
+            this.stale = false;
         }
     }
 
@@ -434,6 +438,12 @@ export default class Device {
             value.interfacesUpdated();
         }
         simulationGlobals.requestGraphicsUpdate = true;
+    }
+
+    interfaceUpdateEvent() {
+        for(let [key, value] of Object.entries(this.linkGroups)) {
+            value.interfacesUpdated();
+        }
     }
 
     requestPosition(newPosition) {

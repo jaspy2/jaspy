@@ -68,7 +68,7 @@ export default class Link {
         let color = this.isUp() ? getLinkColor(this.getUtilization(), 1.0) : 0xff00ff;
 
         this.dirty = true;
-        if(this.dirty || simulationGlobals.globalGraphicsDirty) {
+        if(this.dirty) {
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
             obj.beginFill(color);
