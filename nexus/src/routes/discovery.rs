@@ -5,7 +5,6 @@ use std::sync::{Arc,Mutex};
 use std::collections::{HashSet,HashMap};
 use rocket::State;
 use utilities;
-use std::ops::DerefMut;
 
 #[put("/device", data = "<discovery_json>")]
 fn discovery_device(discovery_json: rocket_contrib::Json<models::json::DiscoveredDevice>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
@@ -269,10 +268,5 @@ fn discovery_links(
     }
 
     // Invalidate weathermap topology cache
-    if let Ok(mut cache_controller) = cache_controller.inner().lock() {
-        if let Ok(ref mut weathermap_cache) = cache_controller.cached_weathermap_topology.lock() {
-            let wmt: &mut Option<utilities::cache::CachedWeathermapTopology> = weathermap_cache.deref_mut();
-            *wmt = None;
-        }
-    }
+    if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
 }

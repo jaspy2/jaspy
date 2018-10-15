@@ -12,7 +12,7 @@ fn device_list(connection: db::Connection) -> Json<Vec<models::dbo::Device>> {
 }
 
 #[put("/", data = "<device_json>")]
-fn device_create_or_modify(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>) -> Option<Json<models::dbo::Device>> {
+fn device_create_or_modify(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> Option<Json<models::dbo::Device>> {
     let mut device : models::dbo::Device;
     if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
         let mut changed = false;
@@ -46,6 +46,7 @@ fn device_create_or_modify(connection: db::Connection, device_json: rocket_contr
         }
     } else {
         if let Ok(created_device) = models::dbo::Device::create(&device_json, &connection) {
+            if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
             device = created_device;
             // TODO: this MUST raise an event!
         } else {
@@ -57,13 +58,15 @@ fn device_create_or_modify(connection: db::Connection, device_json: rocket_contr
 }
 
 #[delete("/", data = "<device_json>")]
-fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>) -> Option<Json<models::dbo::Device>> {
+fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> Option<Json<models::dbo::Device>> {
     if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
         if let Err(d) = old_device.delete(&connection) {
             println!("{}", d);
             // TODO: return 500
             return None;
         } else {
+            if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
+            // TODO: this MUST raise an event!
             return Some(Json(old_device));
         }
     } else {
