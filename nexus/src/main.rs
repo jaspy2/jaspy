@@ -39,7 +39,7 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
                     Ok(conn) => {
                         if !first_run_done || !metric_miss_cache.miss_set.is_empty() || refresh_run_counter == 0 {
                             refresh = true;
-                            for device in models::dbo::Device::all(&conn).iter() {
+                            for device in models::dbo::Device::monitored(&conn).iter() {
                                 let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
                                 if refresh_run_counter == 0 || metric_miss_cache.miss_set.contains(&device_fqdn) {
                                     refresh_devices.push(device.clone());
