@@ -68,7 +68,7 @@ export default class Link {
         let color = this.isUp() ? getLinkColor(this.getUtilization(), 1.0) : 0xff00ff;
 
         this.dirty = true;
-        if(this.dirty) {
+        if(this.dirty || simulationGlobals.globalGraphicsDirty) {
             let obj = this.graphicsObjectInfo["object"];
             obj.clear();
             obj.beginFill(color);
@@ -79,7 +79,7 @@ export default class Link {
     }
 
     isUp() {
-        if(this.sourceInterface.status === null) {
+        if(this.sourceInterface.status === null || this.sourceInterface.isStale()) {
             if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.status !== null) {
                 return this.sourceInterface.connectedToInterface.status;
             } else {
@@ -92,8 +92,10 @@ export default class Link {
 
     getSpeed() {
         if(this.sourceInterface) {
-            if(this.sourceInterface.statisticsData) {
+            if(this.sourceInterface.statisticsData && this.sourceInterface.statisticsData["speed_mbps"] != null && !this.sourceInterface.isStale()) {
                 return this.sourceInterface.statisticsData["speed_mbps"];
+            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData && this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"] != null) {
+                return this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"];
             } else {
                 return 0;
             }
@@ -104,9 +106,9 @@ export default class Link {
 
     getUtilization() {
         if(this.sourceInterface) {
-            if(this.sourceInterface.statisticsData && this.sourceInterface.statisticsData["tx_mbps"] != null) {
+            if(this.sourceInterface.statisticsData && this.sourceInterface.statisticsData["tx_mbps"] != null && !this.sourceInterface.isStale()) {
                 return this.sourceInterface.statisticsData["tx_mbps"]/this.sourceInterface.statisticsData["speed_mbps"];
-            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData) {
+            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData && this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"] != null && this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"] != null) {
                 return this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"]/this.sourceInterface.connectedToInterface.statisticsData["speed_mbps"];
             } else {
                 return 0;
@@ -118,9 +120,9 @@ export default class Link {
 
     getUsage() {
         if(this.sourceInterface) {
-            if(this.sourceInterface.statisticsData && this.sourceInterface.statisticsData["tx_mbps"] != null) {
+            if(this.sourceInterface.statisticsData && this.sourceInterface.statisticsData["tx_mbps"] != null && !this.sourceInterface.isStale()) {
                 return this.sourceInterface.statisticsData["tx_mbps"];
-            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData) {
+            } else if(this.sourceInterface.connectedToInterface && this.sourceInterface.connectedToInterface.statisticsData && this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"] != null) {
                 return this.sourceInterface.connectedToInterface.statisticsData["rx_mbps"];
             } else {
                 return 0;

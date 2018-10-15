@@ -102,7 +102,7 @@ export default class LinkGroup {
         if(this.position != candidatePosition) {
             this.setPosition(candidatePosition);
         }
-
+        
         if(this.graphicsDirty) {
             let speedFactor = this.totalSpeed();
             if(speedFactor === 0 || !speedFactor) speedFactor = 1000;

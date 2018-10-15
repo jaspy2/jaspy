@@ -8,6 +8,7 @@ export default class Interface {
         this.statisticsData = null;
         this.connectedToInterface = null;
         this.status = null;
+        this.lastUpdate = 0;
         //console.log("    create interface " + name);
     }
 
@@ -22,10 +23,21 @@ export default class Interface {
     }
 
     setStatus(newStatus) {
+        this.lastUpdate = ((new Date()).getTime()/1000.0);
         this.status = newStatus["state"];
     }
 
     updateStatistics(data) {
+        this.lastUpdate = ((new Date()).getTime()/1000.0);
         this.statisticsData = data;
+    }
+
+    isStale() {
+        let cur = ((new Date()).getTime()/1000.0);
+        if(cur - this.lastUpdate > 60.0) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

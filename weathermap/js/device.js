@@ -19,12 +19,27 @@ export default class Device {
         this.position = new Victor(0,0);
         this.setPosition(new Victor(Math.random()*1600,Math.random()*400));
         this.requestedPosition = null;
+        this.lastUpdate = 0;
+        this.stalePrevious = false;
 
         this.neighborDevices = [];
         this.superNode = null;
         this.superNodeByConfig = false;
         this.expanded = null;
         this.expandedByDefault = false;
+    }
+
+    checkStale() {
+        let cur = ((new Date()).getTime()/1000.0);
+        if(cur - this.lastUpdate > 60.0) {
+            if(this.stalePrevious === false) {
+                this.status = null;
+                this.graphicsDirty = true;
+                this.stalePrevious = true;
+            }
+        } else {
+            this.stalePrevious = false;
+        }
     }
 
     isExpanded() {
@@ -365,6 +380,7 @@ export default class Device {
     }
 
     setStatus(newStatus) {
+        this.lastUpdate = ((new Date()).getTime()/1000.0);
         if(this.status != newStatus["state"]) {
             if(this.status !== null) {
                 let color = 0xff0000;

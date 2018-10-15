@@ -138,6 +138,9 @@ export default class DeviceGraph {
             }
             this.devices[fqdn].setStatus(data);
         }
+        for(let [key, value] of Object.entries(this.devices)) {
+            value.checkStale();
+        }
     }
 
     updatePositions(positionInfo) {
