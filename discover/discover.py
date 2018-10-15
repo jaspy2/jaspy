@@ -80,7 +80,6 @@ def send_device_info(device):
         'baseMac': device.get_chassis_id(),
         'osInfo': device.os_info()
     }
-
     interfaces_json = {}
 
     def value_or_none(i, k):

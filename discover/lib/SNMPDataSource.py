@@ -124,7 +124,7 @@ class SNMPDataSource(object):
         return 'UNKNOWN'
 
     def os_info(self):
-        return 'UNKNOWN'
+        return self._kvdata['SNMPv2-MIB::sysDescr']
 
     def has_bug(self, bug):
         if bug in self._device_bugs:
@@ -169,6 +169,7 @@ class SNMPDataSource(object):
 
     def collect(self):
         self._get_bridgemib_values()
+        self._get_sysdescr_values()
         self._get_ifmibs()
         self._build_anything_to_interface()
         self._get_lldp_tables()
@@ -264,6 +265,12 @@ class SNMPDataSource(object):
     def _get_bridgemib_values(self):
         single_objects = [
             'BRIDGE-MIB::dot1dBaseBridgeAddress'
+        ]
+        self._get_single_objects(single_objects)
+
+    def _get_sysdescr_values(self):
+        single_objects = [
+            'SNMPv2-MIB::sysDescr'
         ]
         self._get_single_objects(single_objects)
 
