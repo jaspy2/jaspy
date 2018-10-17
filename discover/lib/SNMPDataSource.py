@@ -124,7 +124,13 @@ class SNMPDataSource(object):
         return 'UNKNOWN'
 
     def os_info(self):
-        return self._kvdata['SNMPv2-MIB::sysDescr']
+        try:
+            return self._kvdata['SNMPv2-MIB::sysDescr']
+        except KeyError:
+            return 'UNKNOWN'
+
+    def discovery_success(self):
+        return 'SNMPv2-MIB::sysDescr' in self._kvdata
 
     def has_bug(self, bug):
         if bug in self._device_bugs:
