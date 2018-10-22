@@ -22,6 +22,8 @@ parser.add_argument('-r', '--root-device', required=True, help='root device for 
 parser.add_argument('-d', '--dns-domain', required=True, help='dns domains', action='append', default=None)
 parser.add_argument('-D', '--debug', required=False, action='store_const', const=True, default=False)
 parser.add_argument('-S', '--stable', required=False, action='store_const', const=True, default=False)
+parser.add_argument('-n', '--noop', required=False, action='store_const', const=True, default=False)
+parser.add_argument('-i', '--ignore', required=True, help='ignored devices', action='append', default=[])
 args = parser.parse_args()
 
 if args.debug:
@@ -99,7 +101,8 @@ def send_device_info(device):
 
     device_json['interfaces'] = interfaces_json
 
-    requests.put('%s/discovery/device' % (args.jaspy_url), json=device_json)
+    if not args.noop:
+        requests.put('%s/discovery/device' % (args.jaspy_url), json=device_json)
 
 
 def discover_device(device_fqdn, detected_devices, detector_threads, detector_lock):
@@ -115,10 +118,10 @@ def discover_device(device_fqdn, detected_devices, detector_threads, detector_lo
     for key, value in sds.interfaces.items():
         if '_neighbors' in value:
             lldp_neighbor = get_remote_name(value, 'lldp', 'LLDP-MIB::lldpRemSysName')
-            if lldp_neighbor is not None and lldp_neighbor not in tmp_discovered_neighbors:
+            if lldp_neighbor is not None and lldp_neighbor not in tmp_discovered_neighbors and lldp_neighbor not in args.ignore:
                 tmp_discovered_neighbors.append(lldp_neighbor)
             cdp_neighbor = get_remote_name(value, 'cdp', 'CISCO-CDP-MIB::cdpCacheDeviceId')
-            if cdp_neighbor is not None and cdp_neighbor not in tmp_discovered_neighbors:
+            if cdp_neighbor is not None and cdp_neighbor not in tmp_discovered_neighbors and cdp_neighbor not in args.ignore:
                 tmp_discovered_neighbors.append(cdp_neighbor)
     with detector_lock:
         for tmp_discovered_neighbor in tmp_discovered_neighbors:
@@ -278,7 +281,8 @@ def send_device_topology_info(device):
         }
     out = {'deviceFqdn': device.device_fqdn, 'topologyStable': args.stable, 'interfaces': device_link_info['interfaces']}
 
-    requests.put('%s/discovery/links' % (args.jaspy_url), json=out)
+    if not args.noop:
+        requests.put('%s/discovery/links' % (args.jaspy_url), json=out)
 
 
 def send_topology_info(detected_devices):
