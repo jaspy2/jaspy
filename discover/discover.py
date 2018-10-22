@@ -101,13 +101,6 @@ def send_device_info(device):
 
     requests.put('%s/discovery/device' % (args.jaspy_url), json=device_json)
 
-    # backend logic:
-    # - updates device by hostname & dns domain
-    # - backend should create device if not existing
-    # - missing interfaces MUST be deleted
-    # requests.post(blahblah, json=interfaces_json)
-    pass
-
 
 def discover_device(device_fqdn, detected_devices, detector_threads, detector_lock):
     sds = SNMPDataSource(device_fqdn, args.snmpbot_url, args.community)
@@ -199,7 +192,7 @@ def lookup_lldp_neighbor_port(
                         detected_devices, lldp_neighbor, rev_interface,
                         rev_lldp_neighbor_descriptor, rev_lldp_neighbor, True
                     )
-                    if rev_lldp_neighbor_port == local_port and False:
+                    if rev_lldp_neighbor_port == local_port:
                         return rev_interface
         if num_refs == 1 and last_checked_interface is not None:
             return last_checked_interface
@@ -286,11 +279,6 @@ def send_device_topology_info(device):
     out = {'deviceFqdn': device.device_fqdn, 'topologyStable': args.stable, 'interfaces': device_link_info['interfaces']}
 
     requests.put('%s/discovery/links' % (args.jaspy_url), json=out)
-    # backend logic
-    # - if topology stable is set, just update connectedinterfaces; todo: handle MOVED links?
-    # - if topology is NOT stable, REMOVE all connectedinterfaces that are null
-    # requests.post(blahblah, json=device_link_info)
-    pass
 
 
 def send_topology_info(detected_devices):
