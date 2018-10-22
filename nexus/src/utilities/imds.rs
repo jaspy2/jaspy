@@ -169,8 +169,12 @@ impl IMDS {
 
             in_octets: None,
             out_octets: None,
-            in_packets: None,
-            out_packets: None,
+            in_unicast_packets: None,
+            in_multicast_packets: None,
+            in_broadcast_packets: None,
+            out_unicast_packets: None,
+            out_multicast_packets: None,
+            out_broadcast_packets: None,
             in_errors: None,
             out_errors: None,
             up: None,
@@ -203,8 +207,12 @@ impl IMDS {
             // TODO: statechanges should be emitted for errors?
             if interface_report.in_octets.is_some() { interface.in_octets = interface_report.in_octets; }
             if interface_report.out_octets.is_some() { interface.out_octets = interface_report.out_octets; }
-            if interface_report.in_packets.is_some() { interface.in_packets = interface_report.in_packets; }
-            if interface_report.out_packets.is_some() { interface.out_packets = interface_report.out_packets; }
+            if interface_report.in_unicast_packets.is_some() { interface.in_unicast_packets = interface_report.in_unicast_packets; }
+            if interface_report.in_multicast_packets.is_some() { interface.in_multicast_packets = interface_report.in_multicast_packets; }
+            if interface_report.in_broadcast_packets.is_some() { interface.in_broadcast_packets = interface_report.in_broadcast_packets; }
+            if interface_report.out_unicast_packets.is_some() { interface.out_unicast_packets = interface_report.out_unicast_packets; }
+            if interface_report.out_multicast_packets.is_some() { interface.out_multicast_packets = interface_report.out_multicast_packets; }
+            if interface_report.out_broadcast_packets.is_some() { interface.out_broadcast_packets = interface_report.out_broadcast_packets; }
             if interface_report.in_errors.is_some() { interface.in_errors = interface_report.in_errors; }
             if interface_report.out_errors.is_some() { interface.out_errors = interface_report.out_errors; }
             if interface_report.up.is_some() {
@@ -285,7 +293,9 @@ impl IMDS {
 
     pub fn get_metrics(self: &IMDS) -> Vec<models::metrics::LabeledMetric> {
         let jaspy_interface_octets = "jaspy_interface_octets".to_string();
-        let jaspy_interface_packets = "jaspy_interface_packets".to_string();
+        let jaspy_interface_unicast_packets = "jaspy_interface_unicast_packets".to_string();
+        let jaspy_interface_multicast_packets = "jaspy_interface_multicast_packets".to_string();
+        let jaspy_interface_broadcast_packets = "jaspy_interface_broadcast_packets".to_string();
         let jaspy_interface_errors = "jaspy_interface_errors".to_string();
         let jaspy_interface_speed = "jaspy_interface_speed".to_string();
 
@@ -330,16 +340,44 @@ impl IMDS {
                     ));
                 }
 
-                if let Some(interface_metrics_in_packets) = interface_metrics.in_packets {
+                if let Some(interface_metrics_in_unicast_packets) = interface_metrics.in_unicast_packets {
                     metric_values.push(models::metrics::LabeledMetric::new(
-                        &jaspy_interface_packets, models::metrics::MetricValue::Uint64(interface_metrics_in_packets),
+                        &jaspy_interface_unicast_packets, models::metrics::MetricValue::Uint64(interface_metrics_in_unicast_packets),
                         &in_labels
                     ));
                 }
 
-                if let Some(interface_metrics_out_packets) = interface_metrics.out_packets {
+                if let Some(interface_metrics_in_multicast_packets) = interface_metrics.in_multicast_packets {
                     metric_values.push(models::metrics::LabeledMetric::new(
-                        &jaspy_interface_packets, models::metrics::MetricValue::Uint64(interface_metrics_out_packets),
+                        &jaspy_interface_multicast_packets, models::metrics::MetricValue::Uint64(interface_metrics_in_multicast_packets),
+                        &in_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_in_broadcast_packets) = interface_metrics.in_broadcast_packets {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_broadcast_packets, models::metrics::MetricValue::Uint64(interface_metrics_in_broadcast_packets),
+                        &in_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_out_unicast_packets) = interface_metrics.out_unicast_packets {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_unicast_packets, models::metrics::MetricValue::Uint64(interface_metrics_out_unicast_packets),
+                        &out_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_out_multicast_packets) = interface_metrics.out_multicast_packets {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_multicast_packets, models::metrics::MetricValue::Uint64(interface_metrics_out_multicast_packets),
+                        &out_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_out_broadcast_packets) = interface_metrics.out_broadcast_packets {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_broadcast_packets, models::metrics::MetricValue::Uint64(interface_metrics_out_broadcast_packets),
                         &out_labels
                     ));
                 }
