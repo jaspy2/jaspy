@@ -114,7 +114,7 @@ class SNMPDataSource(object):
             'LLDP-MIB::lldpRemTable': self._lldp_handle_lldp_rem_table,
             'CISCO-CDP-MIB::cdpCacheTable': self._cdp_handle_cachetable,
             'IF-MIB::ifXTable': self._ifmib_handle_ifindex_tables,
-            'IF-MIB::ifTable': self._ifmib_handle_ifindex_tables
+            'IF-MIB::ifTable': self._ifmib_handle_ifindex_tables,
         }
 
     def community(self):
@@ -208,7 +208,7 @@ class SNMPDataSource(object):
                 candidate_keys += ['IF-MIB::ifPhysAddress']
 
             for candidate_key in candidate_keys:
-                if candidate_key not in interface:
+                if candidate_key not in interface or interface[candidate_key] is None:
                     continue
                 ck_stripped = interface[candidate_key].strip()
                 if ck_stripped != '':
@@ -245,6 +245,8 @@ class SNMPDataSource(object):
                     self._logger.error('expected <= 1 results for %s, got %s instead!', single_object, num_results)
                     continue
                 elif num_results == 1:
+                    if 'Errors' in object_resultset_json:
+                        self._logger.error('snmpbot error: %s', object_resultset_json['Errors'])
                     self._single_object_to_data(object_resultset_json)
             except json.decoder.JSONDecodeError:
                 self._logger.error(
@@ -266,6 +268,8 @@ class SNMPDataSource(object):
             table_resultset_json = table_resultset.json()
             num_results = len(table_resultset_json)
             if num_results == 1:
+                if 'Errors' in table_resultset_json[0]:
+                    self._logger.error('snmpbot error: %s', table_resultset_json[0]['Errors'])
                 self._table_handlers[table](table_resultset_json[0]['Entries'])
 
     def _get_bridgemib_values(self):
