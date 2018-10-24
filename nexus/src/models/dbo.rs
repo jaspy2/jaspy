@@ -1,4 +1,4 @@
-use schema::{devices,interfaces,weathermap_device_infos};
+use schema::{devices,interfaces,weathermap_device_infos,client_locations};
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::BelongingToDsl;
@@ -61,6 +61,25 @@ pub struct NewWeathermapDeviceInfo {
     pub device_id: i32,
 }
 
+#[table_name = "client_locations"]
+#[derive(Insertable)]
+pub struct NewClientLocation {
+    pub device_id: i32,
+    pub ip_address: String,
+    pub port_info: String,
+}
+
+#[belongs_to(Device)]
+#[table_name = "client_locations"]
+#[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Associations, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientLocation {
+    pub id: i32,
+    pub device_id: i32,
+    pub ip_address: String,
+    pub port_info: String,
+}
+
 #[belongs_to(Device)]
 #[table_name = "weathermap_device_infos"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Associations, Clone)]
@@ -94,10 +113,50 @@ pub struct Interface {
     pub virtual_connection: Option<i32>,
 }
 
+impl ClientLocation {
+    pub fn create(new_client_location: &NewClientLocation, connection: &PgConnection) -> Result<ClientLocation, diesel::result::Error> {
+        let result = diesel::insert_into(client_locations::table)
+            .values(new_client_location)
+            .get_result(connection);
+        return result;
+    }
+
+    pub fn update(self: &ClientLocation, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+        return diesel::update(client_locations::table.find(self.id)).set(self).execute(connection);
+    }
+    pub fn by_ip(ip_address: &String, connection: &PgConnection) -> Option<ClientLocation> {
+        match client_locations::table
+            .filter(client_locations::ip_address.eq(ip_address))
+            .first::<ClientLocation>(connection)    
+        {
+            Ok(client_location) => {
+                return Some(client_location);
+            },
+            Err(_) => {
+                return None;
+            }
+        }
+    }
+}
+
 impl Device {
     pub fn by_id(id: i32, connection: &PgConnection) -> Option<Device> {
         match devices::table
             .filter(devices::id.eq(id))
+            .first::<Device>(connection)    
+        {
+            Ok(device) => {
+                return Some(device);
+            },
+            Err(_) => {
+                return None;
+            }
+        }
+    }
+
+    pub fn by_base_mac(base_mac: &String, connection: &PgConnection) -> Option<Device> {
+        match devices::table
+            .filter(devices::base_mac.eq(base_mac))
             .first::<Device>(connection)    
         {
             Ok(device) => {

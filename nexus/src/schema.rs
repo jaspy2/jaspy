@@ -1,4 +1,13 @@
 table! {
+    client_locations (id) {
+        id -> Int4,
+        device_id -> Int4,
+        ip_address -> Varchar,
+        port_info -> Varchar,
+    }
+}
+
+table! {
     devices (id) {
         id -> Int4,
         name -> Varchar,
@@ -38,10 +47,12 @@ table! {
     }
 }
 
+joinable!(client_locations -> devices (device_id));
 joinable!(interfaces -> devices (device_id));
 joinable!(weathermap_device_infos -> devices (device_id));
 
 allow_tables_to_appear_in_same_query!(
+    client_locations,
     devices,
     interfaces,
     weathermap_device_infos,

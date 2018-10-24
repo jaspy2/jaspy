@@ -99,6 +99,12 @@ fn main() {
     
     rocket::ignite()
         .mount(
+            "/clientlocation",
+            routes![
+                routes::clientlocation::put_clientlocation,
+            ]
+        )
+        .mount(
             "/discovery",
             routes![
                 routes::discovery::discovery_device,

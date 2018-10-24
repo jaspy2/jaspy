@@ -155,3 +155,10 @@ pub struct WeathermapPositionInfoDeviceInfo {
 pub struct WeathermapPositionInfoBase {
     pub devices: HashMap<String, WeathermapPositionInfoDeviceInfo>,
 }
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientLocationInfo {
+    pub yiaddr: String,
+    pub option82: HashMap<String, String>,
+}
