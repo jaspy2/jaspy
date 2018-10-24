@@ -50,23 +50,16 @@ fn snmpbot_query(device_fqdn: &String, statistics: &mut HashMap<i32, HashMap<Str
         println!("[{}] snmpbot returned ({}), skipping this poll", device_fqdn, response.status());
         return;
     }
-    let resp_json : Result<Vec<models::json::SNMPBotResponse>, _> = response.json();
-    let mut query_results : Vec<models::json::SNMPBotResponse>;
+    let resp_json : Result<models::json::SNMPBotResponse, _> = response.json();
+    let query_result : models::json::SNMPBotResponse;
     match resp_json {
         Ok(resp_json_result) => {
-            query_results = resp_json_result;
+            query_result = resp_json_result;
         }, 
         Err(what) => {
             println!("[{}] error parsing json: {}", device_fqdn, what);
             return;
         }
-    }
-    let query_result: models::json::SNMPBotResponse;
-    if let Some(first_query_result) = query_results.pop() {
-        query_result = first_query_result;
-    } else {
-        // TODO: log?
-        return;
     }
 
     for query_result_entry in query_result.entries.iter() {
@@ -106,8 +99,10 @@ fn snmpbot_query(device_fqdn: &String, statistics: &mut HashMap<i32, HashMap<Str
 
 fn poll_device(snmpbot_url: &String, device_info: &models::json::Device) -> Option<models::json::InterfaceMonitorReport> {
     let device_fqdn = format!("{}.{}", device_info.name, device_info.dns_domain);
-    let source_url = format!("{}/api/hosts/{}/tables/", snmpbot_url, device_fqdn);
-    let mut url;
+    let source_url_iftable = format!("{}/api/hosts/{}/tables/{}", snmpbot_url, device_fqdn, "IF-MIB::ifTable".to_string());
+    let source_url_ifxtable = format!("{}/api/hosts/{}/tables/{}", snmpbot_url, device_fqdn, "IF-MIB::ifXTable".to_string());
+    let mut ifxtable_url;
+    let mut iftable_url;
     let snmp_community;
     if let Some(ref parsed_snmp_community) = device_info.snmp_community {
         snmp_community = parsed_snmp_community;
@@ -115,19 +110,20 @@ fn poll_device(snmpbot_url: &String, device_info: &models::json::Device) -> Opti
         // TODO: log?
         return None;
     }
-    if let Ok(parsed_url) = reqwest::Url::parse(&source_url) {
-        url = parsed_url;
+    if let Ok(parsed_url) = reqwest::Url::parse(&source_url_iftable) {
+        iftable_url = parsed_url;
+        iftable_url.query_pairs_mut().append_pair("snmp", &format!("{}@{}", snmp_community, device_fqdn));
     } else {
         // TODO: log?
         return None;
     }
-    url.query_pairs_mut().append_pair("snmp", &format!("{}@{}", snmp_community, device_fqdn));
-
-    let mut iftable_url = url.clone();
-    iftable_url.query_pairs_mut().append_pair("table", "IF-MIB::ifTable");
-
-    let mut ifxtable_url = url.clone();
-    ifxtable_url.query_pairs_mut().append_pair("table", "IF-MIB::ifXTable");
+    if let Ok(parsed_url) = reqwest::Url::parse(&source_url_ifxtable) {
+        ifxtable_url = parsed_url;
+        ifxtable_url.query_pairs_mut().append_pair("snmp", &format!("{}@{}", snmp_community, device_fqdn));
+    } else {
+        // TODO: log?
+        return None;
+    }
 
     let mut stats: HashMap<i32, HashMap<String, models::json::SNMPBotResultEntryObjectValue>> = HashMap::new();
     snmpbot_query(&device_fqdn, &mut stats, &iftable_url);
