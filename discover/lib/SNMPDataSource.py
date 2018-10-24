@@ -252,8 +252,6 @@ class SNMPDataSource(object):
                     self._logger.error('expected <= 1 results for %s, got %s instead!', single_object, num_results)
                     continue
                 elif num_results == 1:
-                    if 'Errors' in object_resultset_json:
-                        self._logger.error('snmpbot error: %s', json.dumps(object_resultset_json))
                     self._single_object_to_data(object_resultset_json)
             except json.decoder.JSONDecodeError:
                 self._logger.error(
@@ -264,20 +262,19 @@ class SNMPDataSource(object):
     def _walk_tables(self, tables):
         for table in tables:
             table_resultset = requests.get(
-                '{}/api/hosts/{}/tables/'.format(self._snmpbot_address, self.device_fqdn),
+                '{}/api/hosts/{}/tables/{}'.format(self._snmpbot_address, self.device_fqdn, table),
                 params={
-                    'table': table,
                     'snmp': '{}@{}'.format(self._community, self.device_fqdn)
                 }
             )
             if table_resultset.status_code != 200:
+                self._logger.error('got status=%s for table %s', table_resultset.status_code, table)
                 continue
             table_resultset_json = table_resultset.json()
-            num_results = len(table_resultset_json)
-            if num_results == 1:
-                if 'Errors' in table_resultset_json[0]:
-                    self._logger.error('snmpbot error: %s', json.dumps(table_resultset_json[0]))
-                self._table_handlers[table](table_resultset_json[0]['Entries'])
+            if table_resultset_json['Entries'] is None:
+                self._logger.info('empty result for %s', table)
+            else:
+                self._table_handlers[table](table_resultset_json['Entries'])
 
     def _get_bridgemib_values(self):
         single_objects = [
