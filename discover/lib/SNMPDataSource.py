@@ -33,6 +33,11 @@ class SNMPDataSource(object):
             decoded_port = binascii.unhexlify(
                 lldp_portid.replace(' ', '')
             ).decode('ascii', errors='ignore')
+            if decoded_port.isdigit():
+                decoded_port_num = int(decoded_port)
+                if decoded_port_num in self.interfaces:
+                    self._lldp_index_to_interface[lldp_index] = self.interfaces[decoded_port_num]
+                    return
             if decoded_port in self._anything_to_interface:
                 self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[decoded_port]
             if decoded_port.startswith('Eth'):
@@ -81,6 +86,8 @@ class SNMPDataSource(object):
             lldp_data = entry['Objects']
             if lldp_index in self._lldp_index_to_interface:
                 local_interface = self._lldp_index_to_interface[lldp_index]
+                if local_interface['IF-MIB::ifName'].endswith('.0'):
+                    local_interface = self._anything_to_interface[local_interface['IF-MIB::ifName'][:-2]]
                 local_interface['_neighbors']['lldp'] = lldp_data
 
     def _cdp_handle_cachetable(self, data):

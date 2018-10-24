@@ -22,6 +22,8 @@ parser.add_argument('-r', '--root-device', required=True, help='root device for 
 parser.add_argument('-d', '--dns-domain', required=True, help='dns domains', action='append', default=None)
 parser.add_argument('-D', '--debug', required=False, action='store_const', const=True, default=False)
 parser.add_argument('-S', '--stable', required=False, action='store_const', const=True, default=False)
+parser.add_argument('-n', '--noop', required=False, action='store_const', const=True, default=False)
+parser.add_argument('-i', '--ignore', required=True, help='ignored devices', action='append', default=[])
 args = parser.parse_args()
 
 if args.debug:
@@ -99,14 +101,8 @@ def send_device_info(device):
 
     device_json['interfaces'] = interfaces_json
 
-    requests.put('%s/discovery/device' % (args.jaspy_url), json=device_json)
-
-    # backend logic:
-    # - updates device by hostname & dns domain
-    # - backend should create device if not existing
-    # - missing interfaces MUST be deleted
-    # requests.post(blahblah, json=interfaces_json)
-    pass
+    if not args.noop:
+        requests.put('%s/discovery/device' % (args.jaspy_url), json=device_json)
 
 
 def discover_device(device_fqdn, detected_devices, detector_threads, detector_lock):
@@ -122,10 +118,10 @@ def discover_device(device_fqdn, detected_devices, detector_threads, detector_lo
     for key, value in sds.interfaces.items():
         if '_neighbors' in value:
             lldp_neighbor = get_remote_name(value, 'lldp', 'LLDP-MIB::lldpRemSysName')
-            if lldp_neighbor is not None and lldp_neighbor not in tmp_discovered_neighbors:
+            if lldp_neighbor is not None and lldp_neighbor not in tmp_discovered_neighbors and lldp_neighbor not in args.ignore:
                 tmp_discovered_neighbors.append(lldp_neighbor)
             cdp_neighbor = get_remote_name(value, 'cdp', 'CISCO-CDP-MIB::cdpCacheDeviceId')
-            if cdp_neighbor is not None and cdp_neighbor not in tmp_discovered_neighbors:
+            if cdp_neighbor is not None and cdp_neighbor not in tmp_discovered_neighbors and cdp_neighbor not in args.ignore:
                 tmp_discovered_neighbors.append(cdp_neighbor)
     with detector_lock:
         for tmp_discovered_neighbor in tmp_discovered_neighbors:
@@ -199,7 +195,7 @@ def lookup_lldp_neighbor_port(
                         detected_devices, lldp_neighbor, rev_interface,
                         rev_lldp_neighbor_descriptor, rev_lldp_neighbor, True
                     )
-                    if rev_lldp_neighbor_port == local_port and False:
+                    if rev_lldp_neighbor_port == local_port:
                         return rev_interface
         if num_refs == 1 and last_checked_interface is not None:
             return last_checked_interface
@@ -285,12 +281,8 @@ def send_device_topology_info(device):
         }
     out = {'deviceFqdn': device.device_fqdn, 'topologyStable': args.stable, 'interfaces': device_link_info['interfaces']}
 
-    requests.put('%s/discovery/links' % (args.jaspy_url), json=out)
-    # backend logic
-    # - if topology stable is set, just update connectedinterfaces; todo: handle MOVED links?
-    # - if topology is NOT stable, REMOVE all connectedinterfaces that are null
-    # requests.post(blahblah, json=device_link_info)
-    pass
+    if not args.noop:
+        requests.put('%s/discovery/links' % (args.jaspy_url), json=out)
 
 
 def send_topology_info(detected_devices):
