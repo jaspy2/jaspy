@@ -23,7 +23,7 @@ parser.add_argument('-d', '--dns-domain', required=True, help='dns domains', act
 parser.add_argument('-D', '--debug', required=False, action='store_const', const=True, default=False)
 parser.add_argument('-S', '--stable', required=False, action='store_const', const=True, default=False)
 parser.add_argument('-n', '--noop', required=False, action='store_const', const=True, default=False)
-parser.add_argument('-i', '--ignore', required=True, help='ignored devices', action='append', default=[])
+parser.add_argument('-i', '--ignore', required=False, help='ignored devices', action='append', default=[])
 args = parser.parse_args()
 
 if args.debug:

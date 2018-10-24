@@ -253,7 +253,7 @@ class SNMPDataSource(object):
                     continue
                 elif num_results == 1:
                     if 'Errors' in object_resultset_json:
-                        self._logger.error('snmpbot error: %s', object_resultset_json['Errors'])
+                        self._logger.error('snmpbot error: %s', json.dumps(object_resultset_json))
                     self._single_object_to_data(object_resultset_json)
             except json.decoder.JSONDecodeError:
                 self._logger.error(
@@ -276,7 +276,7 @@ class SNMPDataSource(object):
             num_results = len(table_resultset_json)
             if num_results == 1:
                 if 'Errors' in table_resultset_json[0]:
-                    self._logger.error('snmpbot error: %s', table_resultset_json[0]['Errors'])
+                    self._logger.error('snmpbot error: %s', json.dumps(table_resultset_json[0]))
                 self._table_handlers[table](table_resultset_json[0]['Entries'])
 
     def _get_bridgemib_values(self):
