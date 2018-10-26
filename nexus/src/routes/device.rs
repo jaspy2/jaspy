@@ -74,15 +74,19 @@ fn device_create_or_modify(connection: db::Connection, device_json: rocket_contr
 }
 
 #[delete("/", data = "<device_json>")]
-fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> Option<Json<models::dbo::Device>> {
+fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
     if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
         if let Err(d) = old_device.delete(&connection) {
             println!("{}", d);
             // TODO: return 500
             return None;
         } else {
+            let device_fqdn = format!("{}.{}", old_device.name, old_device.dns_domain);
             if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
-            // TODO: EVENT
+            let event = models::events::Event::device_deleted_event(&device_fqdn);
+            if let Ok(ref mut msgbus) = msgbus.lock() {
+                msgbus.event(event);
+            }
             return Some(Json(old_device));
         }
     } else {
