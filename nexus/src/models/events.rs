@@ -158,7 +158,7 @@ impl Event {
     }
 
     pub fn device_base_mac_changed_event(fqdn: &String, old_state: &Option<String>, new_state: &Option<String>) -> Event {
-        let mut event = Event::new_empty("deviceOsInfoChanged");
+        let mut event = Event::new_empty("deviceBaseMacChanged");
         event.device_base_mac_changed = Some(DeviceBaseMACChangedEvent {
             fqdn: fqdn.clone(),
             old_state: old_state.clone(),
