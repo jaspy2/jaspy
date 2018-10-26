@@ -12,24 +12,48 @@ fn device_list(connection: db::Connection) -> Json<Vec<models::dbo::Device>> {
 }
 
 #[put("/", data = "<device_json>")]
-fn device_create_or_modify(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> Option<Json<models::dbo::Device>> {
+fn device_create_or_modify(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
     let mut device : models::dbo::Device;
     if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
+        let device_fqdn = format!("{}.{}", old_device.name, old_device.dns_domain);
         let mut changed = false;
         device = old_device;
-        // TODO: figure out why json-null does not mean db-NULL
         if device.polling_enabled != device_json.polling_enabled {
-            // TODO: this MUST raise an event!
+            if let Some(old_value) = device.polling_enabled {
+                if let Some(new_value) = device_json.polling_enabled {
+                    let event = models::events::Event::device_polling_changed_event(
+                        &device_fqdn, old_value, new_value);
+                    if let Ok(ref mut msgbus) = msgbus.lock() {
+                        msgbus.event(event);
+                    }
+                }
+            }
             changed = true;
             device.polling_enabled = device_json.polling_enabled.clone();
         }
         if device.os_info != device_json.os_info {
-            // TODO: this MUST raise an event!
+            if let Some(old_value) = device.os_info {
+                if let Some(ref new_value) = device_json.os_info {
+                    let event = models::events::Event::device_os_info_changed_event(
+                        &device_fqdn, &old_value, &new_value);
+                    if let Ok(ref mut msgbus) = msgbus.lock() {
+                        msgbus.event(event);
+                    }
+                }
+            }
             changed = true;
             device.os_info = device_json.os_info.clone();
         }
         if device.base_mac != device_json.base_mac {
-            // TODO: this MUST raise an event!
+            if let Some(old_value) = device.base_mac {
+                if let Some(ref new_value) = device_json.base_mac {
+                    let event = models::events::Event::device_base_mac_changed_event(
+                        &device_fqdn, &old_value, &new_value);
+                    if let Ok(ref mut msgbus) = msgbus.lock() {
+                        msgbus.event(event);
+                    }
+                }
+            }
             changed = true;
             device.base_mac = device_json.base_mac.clone();
         }
@@ -46,9 +70,13 @@ fn device_create_or_modify(connection: db::Connection, device_json: rocket_contr
         }
     } else {
         if let Ok(created_device) = models::dbo::Device::create(&device_json, &connection) {
+            let device_fqdn = format!("{}.{}", created_device.name, created_device.dns_domain);
             if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
             device = created_device;
-            // TODO: this MUST raise an event!
+            let event = models::events::Event::device_created_event(&device_fqdn);
+            if let Ok(ref mut msgbus) = msgbus.lock() {
+                msgbus.event(event);
+            }
         } else {
             // TODO: return 500
             return None;

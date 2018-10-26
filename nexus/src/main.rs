@@ -149,6 +149,7 @@ fn main() {
         .manage(metric_miss_cache.clone())
         .manage(cache_controller.clone())
         .manage(runtime_info.clone())
+        .manage(msgbus.clone())
         .launch();
 
     (*running).store(false, std::sync::atomic::Ordering::Relaxed);
