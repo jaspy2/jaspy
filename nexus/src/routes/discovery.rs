@@ -229,7 +229,7 @@ fn discovery_links(
                         }
                     }
                 }
-                if clear_other {
+                if clear_other && !links_json.topology_stable {
                     let mut new_peer_interface : models::dbo::Interface = peer_interface.clone();
                     new_peer_interface.connected_interface = None;
                     match new_peer_interface.update(&connection) {
