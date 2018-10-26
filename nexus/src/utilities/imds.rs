@@ -151,7 +151,6 @@ impl IMDS {
         }
         match device.interfaces.get_mut(&if_index) {
             Some(target_interface) => {
-                // TODO: events!
                 if target_interface.name != *name { target_interface.name = name.clone(); }
                 target_interface.neighbors = neighbors;
                 target_interface.speed_override = speed_override;
