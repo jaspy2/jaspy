@@ -19,40 +19,28 @@ fn device_create_or_modify(connection: db::Connection, device_json: rocket_contr
         let mut changed = false;
         device = old_device;
         if device.polling_enabled != device_json.polling_enabled {
-            if let Some(old_value) = device.polling_enabled {
-                if let Some(new_value) = device_json.polling_enabled {
-                    let event = models::events::Event::device_polling_changed_event(
-                        &device_fqdn, old_value, new_value);
-                    if let Ok(ref mut msgbus) = msgbus.lock() {
-                        msgbus.event(event);
-                    }
-                }
+            let event = models::events::Event::device_polling_changed_event(
+                &device_fqdn, device.polling_enabled, device_json.polling_enabled);
+            if let Ok(ref mut msgbus) = msgbus.lock() {
+                msgbus.event(event);
             }
             changed = true;
             device.polling_enabled = device_json.polling_enabled.clone();
         }
         if device.os_info != device_json.os_info {
-            if let Some(old_value) = device.os_info {
-                if let Some(ref new_value) = device_json.os_info {
-                    let event = models::events::Event::device_os_info_changed_event(
-                        &device_fqdn, &old_value, &new_value);
-                    if let Ok(ref mut msgbus) = msgbus.lock() {
-                        msgbus.event(event);
-                    }
-                }
+            let event = models::events::Event::device_os_info_changed_event(
+                &device_fqdn, &device.os_info, &device_json.os_info);
+            if let Ok(ref mut msgbus) = msgbus.lock() {
+                msgbus.event(event);
             }
             changed = true;
             device.os_info = device_json.os_info.clone();
         }
         if device.base_mac != device_json.base_mac {
-            if let Some(old_value) = device.base_mac {
-                if let Some(ref new_value) = device_json.base_mac {
-                    let event = models::events::Event::device_base_mac_changed_event(
-                        &device_fqdn, &old_value, &new_value);
-                    if let Ok(ref mut msgbus) = msgbus.lock() {
-                        msgbus.event(event);
-                    }
-                }
+            let event = models::events::Event::device_base_mac_changed_event(
+                &device_fqdn, &device.base_mac, &device_json.base_mac);
+            if let Ok(ref mut msgbus) = msgbus.lock() {
+                msgbus.event(event);
             }
             changed = true;
             device.base_mac = device_json.base_mac.clone();
@@ -94,7 +82,7 @@ fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<m
             return None;
         } else {
             if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
-            // TODO: this MUST raise an event!
+            // TODO: EVENT
             return Some(Json(old_device));
         }
     } else {
