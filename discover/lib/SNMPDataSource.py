@@ -116,6 +116,8 @@ class SNMPDataSource(object):
         self._lldp_index_to_interface = {}
         self._kvdata = {}
         self._logger = logging.getLogger('[{}]'.format(device_fqdn))
+        self._critical_tables = ['IF-MIB::ifTable', 'IF-MIB::ifXTable']
+        self._polling_valid = True
         self._table_handlers = {
             'LLDP-MIB::lldpLocPortTable': self._lldp_handle_lldp_loc_port_table,
             'LLDP-MIB::lldpRemTable': self._lldp_handle_lldp_rem_table,
@@ -126,6 +128,9 @@ class SNMPDataSource(object):
 
     def community(self):
         return self._community
+
+    def valid_result(self):
+        return self._polling_valid
 
     def device_type(self):
         return 'UNKNOWN'
@@ -268,7 +273,11 @@ class SNMPDataSource(object):
                 }
             )
             if table_resultset.status_code != 200:
-                self._logger.error('got status=%s for table %s', table_resultset.status_code, table)
+                if table in self._critical_tables:
+                    self._logger.critical('got status=%s for critical table %s', table_resultset.status_code, table)
+                    self._polling_valid = False
+                else:
+                    self._logger.error('got status=%s for table %s', table_resultset.status_code, table)
                 continue
             table_resultset_json = table_resultset.json()
             if table_resultset_json['Entries'] is None:

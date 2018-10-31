@@ -109,9 +109,13 @@ def discover_device(device_fqdn, detected_devices, detector_threads, detector_lo
     sds = SNMPDataSource(device_fqdn, args.snmpbot_url, args.community)
     try:
         sds.collect()
+        if not sds.valid_result():
+            logger.error("discarding invalid discovery result for %s", device_fqdn)
+            return
     except BaseException as be:
         logger.error('failed to discover %s', device_fqdn)
         logger.exception(be)
+        return
     with detector_lock:
         detected_devices[device_fqdn] = sds
     tmp_discovered_neighbors = []
