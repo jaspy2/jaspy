@@ -3,9 +3,11 @@ use std::sync::{Arc, Mutex};
 use utilities;
 use rocket::State;
 use models;
+use rocket::{get, put};
+
 
 #[get("/fast")]
-fn metrics_fast(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
+pub fn metrics_fast(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
     let mut ret : String = String::new();
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 
@@ -27,7 +29,7 @@ fn metrics_fast(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String
 }
 
 #[get("/")]
-fn metrics(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
+pub fn metrics(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
     let mut ret : String = String::new();
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 

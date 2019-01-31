@@ -1,11 +1,12 @@
 #![feature(custom_attribute)]
 #![feature(plugin)]
-#![plugin(rocket_codegen)]
+#![feature(decl_macro)]
+#![feature(proc_macro_hygiene)]
 #![allow(proc_macro_derive_resolution_fallback)] // remove when able
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate serde_json;
 #[macro_use] extern crate diesel;
-extern crate rocket;
+#[macro_use] extern crate rocket;
 extern crate rocket_contrib;
 extern crate r2d2;
 extern crate r2d2_diesel;

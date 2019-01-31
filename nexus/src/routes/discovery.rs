@@ -1,13 +1,14 @@
 extern crate rocket_contrib;
 use models;
 use db;
+use rocket::{get, put};
 use std::sync::{Arc,Mutex};
 use std::collections::{HashSet,HashMap};
 use rocket::State;
 use utilities;
 
 #[put("/device", data = "<discovery_json>")]
-fn discovery_device(discovery_json: rocket_contrib::Json<models::json::DiscoveredDevice>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
+pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
     let discovered_device : &models::json::DiscoveredDevice = &discovery_json.into_inner();
     let discovered_device_interfaces : &HashMap<String, models::json::DiscoveredInterface> = &discovered_device.interfaces;
 
@@ -132,8 +133,8 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connect
 }
 
 #[put("/links", data = "<links_json>")]
-fn discovery_links(
-    links_json: rocket_contrib::Json<models::json::LinkInfo>,
+pub fn discovery_links(
+    links_json: rocket_contrib::json::Json<models::json::LinkInfo>,
     connection: db::Connection,
     metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>,
     cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>

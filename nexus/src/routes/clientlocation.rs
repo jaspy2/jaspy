@@ -1,10 +1,11 @@
 extern crate rocket_contrib;
+use rocket::{get, put};
 use models;
 use db;
-use rocket_contrib::Json;
+use rocket_contrib::json;
 
 #[put("/", data = "<client_location_info_json>")]
-fn put_clientlocation(connection: db::Connection, client_location_info_json: Json<models::json::ClientLocationInfo>) {
+pub fn put_clientlocation(connection: db::Connection, client_location_info_json: json::Json<models::json::ClientLocationInfo>) {
     let client_location_info: models::json::ClientLocationInfo = client_location_info_json.into_inner();
     let option82_001: String;
     let option82_002: String;

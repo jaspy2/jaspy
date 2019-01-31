@@ -1,18 +1,19 @@
 extern crate rocket_contrib;
 use models;
 use db;
-use rocket_contrib::Json;
+use rocket::{get, put};
+use rocket_contrib::json;
 use std::sync::{Arc,Mutex};
 use rocket::State;
 use utilities;
 
 #[get("/")]
-fn device_list(connection: db::Connection) -> Json<Vec<models::dbo::Device>> {
-    return Json(models::dbo::Device::all(&connection));
+pub fn device_list(connection: db::Connection) -> json::Json<Vec<models::dbo::Device>> {
+    return json::Json(models::dbo::Device::all(&connection));
 }
 
 #[put("/", data = "<device_json>")]
-fn device_create_or_modify(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
+pub fn device_create_or_modify(connection: db::Connection, device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
     let mut device : models::dbo::Device;
     if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
         let device_fqdn = format!("{}.{}", old_device.name, old_device.dns_domain);
@@ -70,11 +71,11 @@ fn device_create_or_modify(connection: db::Connection, device_json: rocket_contr
             return None;
         }
     }
-    return Some(Json(device));
+    return Some(json::Json(device));
 }
 
 #[delete("/", data = "<device_json>")]
-fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
+pub fn device_delete(connection: db::Connection, device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
     if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
         if let Err(d) = old_device.delete(&connection) {
             println!("{}", d);
@@ -87,7 +88,7 @@ fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<m
             if let Ok(ref mut msgbus) = msgbus.lock() {
                 msgbus.event(event);
             }
-            return Some(Json(old_device));
+            return Some(json::Json(old_device));
         }
     } else {
         return None;
@@ -95,7 +96,7 @@ fn device_delete(connection: db::Connection, device_json: rocket_contrib::Json<m
 }
 
 #[get("/monitor")]
-fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, runtime_info: State<Arc<Mutex<models::internal::RuntimeInfo>>>) -> Json<models::json::DeviceMonitorResponse> {
+pub fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, runtime_info: State<Arc<Mutex<models::internal::RuntimeInfo>>>) -> json::Json<models::json::DeviceMonitorResponse> {
     let mut dmi : Vec<models::json::DeviceMonitorInfo> = Vec::new();
     for monitored in models::dbo::Device::monitored(&connection).iter() {
         if let Ok(ref mut imds) = imds.lock() {
@@ -111,11 +112,11 @@ fn monitored_device_list(connection: db::Connection, imds: State<Arc<Mutex<utili
     } else {
         state_id = 0;
     }
-    return Json(models::json::DeviceMonitorResponse { state_id: state_id, devices: dmi });
+    return json::Json(models::json::DeviceMonitorResponse { state_id: state_id, devices: dmi });
 }
 
 #[put("/monitor", data = "<device_monitor_report>")]
-fn monitored_device_report(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, device_monitor_report : Json<models::json::DeviceMonitorReport>) {
+pub fn monitored_device_report(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, device_monitor_report : json::Json<models::json::DeviceMonitorReport>) {
     if let Ok(ref mut imds) = imds.lock() {
         imds.report_device(&connection, device_monitor_report.into_inner());
     }

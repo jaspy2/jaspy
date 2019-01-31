@@ -1,7 +1,8 @@
 extern crate rocket_contrib;
+use rocket::{get, put};
 use models;
 use db;
-use rocket_contrib::Json;
+use rocket_contrib::json;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use utilities;
@@ -53,7 +54,7 @@ fn get_topology_data(connection: &db::Connection) -> models::json::WeathermapBas
 }
 
 #[get("/")]
-fn full_topology_data(connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> Json<models::json::WeathermapBase> {
+pub fn full_topology_data(connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> json::Json<models::json::WeathermapBase> {
     let cached_weathermap_topology_arc: Arc<Mutex<Option<utilities::cache::CachedWeathermapTopology>>>;
     if let Ok(cache_controller) = cache_controller.inner().lock() {
         cached_weathermap_topology_arc = cache_controller.cached_weathermap_topology.clone();
@@ -86,11 +87,11 @@ fn full_topology_data(connection: db::Connection, cache_controller: State<Arc<Mu
             *cached_weathermap_topology_option = Some(utilities::cache::CachedWeathermapTopology::new(ret.clone()));
         }
     }
-    return Json(ret);
+    return json::Json(ret);
 }
 
 #[get("/state")]
-fn state_information(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Json<models::json::WeathermapStateBase> {
+pub fn state_information(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> json::Json<models::json::WeathermapStateBase> {
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 
     if let Ok(ref mut imds) = imds.inner().lock() {
@@ -168,12 +169,12 @@ fn state_information(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Json<mod
         }
     }
 
-    return Json(weathermap_state);
+    return json::Json(weathermap_state);
 }
 
 
 #[get("/position")]
-fn get_position_data(connection: db::Connection) -> Json<models::json::WeathermapPositionInfoBase> {
+pub fn get_position_data(connection: db::Connection) -> json::Json<models::json::WeathermapPositionInfoBase> {
     let mut weathermap_position_info = models::json::WeathermapPositionInfoBase {
         devices: HashMap::new(),
     };
@@ -192,11 +193,11 @@ fn get_position_data(connection: db::Connection) -> Json<models::json::Weatherma
         }
     }
 
-    return Json(weathermap_position_info);
+    return json::Json(weathermap_position_info);
 }
 
 #[put("/position", data = "<device_position_info>")]
-fn put_position_data(connection: db::Connection, device_position_info : Json<models::json::WeathermapPositionInfoUpdateDeviceInfo>) {
+pub fn put_position_data(connection: db::Connection, device_position_info : json::Json<models::json::WeathermapPositionInfoUpdateDeviceInfo>) {
     let new_position_info = device_position_info.into_inner();
     if let Ok(_updated_item) = models::dbo::WeathermapDeviceInfo::update_by_fqdn_or_create(
         &connection,
