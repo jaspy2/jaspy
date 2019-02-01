@@ -19,6 +19,7 @@ pub struct InterfaceMetrics {
     pub out_broadcast_packets: Option<u64>,
     pub in_errors: Option<u64>,
     pub out_errors: Option<u64>,
+    pub out_discards: Option<u64>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
 }

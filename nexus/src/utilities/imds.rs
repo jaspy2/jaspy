@@ -176,6 +176,7 @@ impl IMDS {
             out_broadcast_packets: None,
             in_errors: None,
             out_errors: None,
+            out_discards: None,
             up: None,
             speed: None,
         });
@@ -214,6 +215,7 @@ impl IMDS {
             if interface_report.out_broadcast_packets.is_some() { interface.out_broadcast_packets = interface_report.out_broadcast_packets; }
             if interface_report.in_errors.is_some() { interface.in_errors = interface_report.in_errors; }
             if interface_report.out_errors.is_some() { interface.out_errors = interface_report.out_errors; }
+            if interface_report.out_discards.is_some() { interface.out_discards = interface_report.out_discards; }
             if interface_report.up.is_some() {
                 // TODO: fix this nested hellhole :)
                 if let Some(old_state) = interface.up {
@@ -297,6 +299,7 @@ impl IMDS {
         let jaspy_interface_broadcast_packets = "jaspy_interface_broadcast_packets".to_string();
         let jaspy_interface_errors = "jaspy_interface_errors".to_string();
         let jaspy_interface_speed = "jaspy_interface_speed".to_string();
+        let jaspy_interface_discards = "jaspy_interface_discards".to_string();
 
         let mut metric_values: Vec<models::metrics::LabeledMetric> = Vec::new();
         for (_device_key, device_metrics) in self.metrics_storage.devices.iter() {
@@ -391,6 +394,13 @@ impl IMDS {
                 if let Some(interface_metrics_out_errors) = interface_metrics.out_errors {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_errors, models::metrics::MetricValue::Uint64(interface_metrics_out_errors),
+                        &out_labels
+                    ));
+                }
+
+                if let Some(interface_metrics_out_discards) = interface_metrics.out_discards {
+                    metric_values.push(models::metrics::LabeledMetric::new(
+                        &jaspy_interface_discards, models::metrics::MetricValue::Uint64(interface_metrics_out_discards),
                         &out_labels
                     ));
                 }
