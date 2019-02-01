@@ -15,6 +15,7 @@ pub struct InterfaceMonitorInterfaceReport {
     pub out_broadcast_packets: Option<u64>,
     pub in_errors: Option<u64>,
     pub out_errors: Option<u64>,
+    pub out_discards: Option<u64>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
 }
@@ -33,6 +34,7 @@ impl InterfaceMonitorInterfaceReport {
             out_broadcast_packets: try_get_u64(objects.get("IF-MIB::ifHCOutBroadcastPkts")),
             in_errors: try_get_u64(objects.get("IF-MIB::ifInErrors")),
             out_errors: try_get_u64(objects.get("IF-MIB::ifOutErrors")),
+            out_discards: try_get_u64(objects.get("IF-MIB::ifOutDiscards")),
             up: try_get_updown_as_bool(objects.get("IF-MIB::ifOperStatus")),
             speed: try_get_i32(objects.get("IF-MIB::ifHighSpeed")),
         }
