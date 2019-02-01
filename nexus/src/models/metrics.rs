@@ -29,6 +29,8 @@ pub struct DeviceMetrics {
 
     pub fqdn: String,
 
+    pub hostname: String,
+
     pub up: Option<bool>,
 
     pub interfaces: HashMap<i32, InterfaceMetrics>,
