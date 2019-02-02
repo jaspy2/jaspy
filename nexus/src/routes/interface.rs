@@ -7,9 +7,20 @@ use std::sync::{Arc,Mutex};
 use rocket::State;
 use utilities;
 
-#[get("/")]
-pub fn interface_list(connection: db::Connection) -> json::Json<Vec<models::dbo::Interface>> {
-    return json::Json(models::dbo::Interface::all(&connection));
+#[get("/?<device_fqdn>")]
+pub fn interface_list(connection: db::Connection, device_fqdn: Option<String>) -> json::Json<Vec<models::dbo::Interface>> {
+    match device_fqdn {
+        Some(device_fqdn) => {
+            if let Some(device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
+                let interfaces = device.interfaces(&connection);
+                return json::Json(interfaces);
+            };
+            return json::Json(Vec::new());
+        },
+        None => {
+            return json::Json(models::dbo::Interface::all(&connection));
+        }
+    };
 }
 
 #[put("/monitor", data = "<interface_monitor_report>")]
