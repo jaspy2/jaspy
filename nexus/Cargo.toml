@@ -1,0 +1,22 @@
+[package]
+name = "jaspy-nexus"
+version = "0.1.0"
+authors = ["Antti Tönkyrä <daedalus@pingtimeout.net>"]
+
+[dependencies]
+dotenv = "*"
+rocket = "*"
+serde = "*"
+serde_json = "*"
+serde_derive = "*"
+diesel = { version = "*", features = ["postgres"] }
+r2d2 = "*"
+r2d2-diesel = "*"
+time = "*"
+zmq = "*"
+
+[dependencies.rocket_contrib]
+version = "*"
+default-features = false
+features = ["json"]
+
