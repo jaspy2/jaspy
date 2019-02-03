@@ -1,0 +1,1283 @@
+{
+  "Name": "TOKEN-RING-RMON-MIB",
+  "Objects": [
+    {
+      "Name": "tokenRingMLStatsIndex",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "tokenRingMLStatsDataSource",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "tokenRingMLStatsDropEvents",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsMacOctets",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsMacPkts",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsRingPurgeEvents",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsRingPurgePkts",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsBeaconEvents",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsBeaconTime",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.9",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "tokenRingMLStatsBeaconPkts",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsClaimTokenEvents",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsClaimTokenPkts",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsNAUNChanges",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsLineErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsInternalErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsBurstErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.16",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsACErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.17",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsAbortErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsLostFrameErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.19",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsCongestionErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.20",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsFrameCopiedErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.21",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsFrequencyErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.22",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsTokenErrors",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.23",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsSoftErrorReports",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.24",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsRingPollEvents",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.25",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLStatsOwner",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.26",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "tokenRingMLStatsStatus",
+      "OID": ".1.3.6.1.2.1.16.1.2.1.27",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "tokenRingPStatsIndex",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "tokenRingPStatsDataSource",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "tokenRingPStatsDropEvents",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataOctets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataMulticastPkts",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts18to63Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts64to127Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts128to255Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts256to511Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts512to1023Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts1024to2047Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts2048to4095Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts4096to8191Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPkts8192to18000Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.16",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsDataPktsGreaterThan18000Octets",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.17",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPStatsOwner",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.18",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "tokenRingPStatsStatus",
+      "OID": ".1.3.6.1.2.1.16.1.3.1.19",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "tokenRingMLHistoryIndex",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "tokenRingMLHistorySampleIndex",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "tokenRingMLHistoryIntervalStart",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.3",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "tokenRingMLHistoryDropEvents",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryMacOctets",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryMacPkts",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryRingPurgeEvents",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryRingPurgePkts",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryBeaconEvents",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryBeaconTime",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.10",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "tokenRingMLHistoryBeaconPkts",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryClaimTokenEvents",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryClaimTokenPkts",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryNAUNChanges",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryLineErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryInternalErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.16",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryBurstErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.17",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryACErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryAbortErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.19",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryLostFrameErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.20",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryCongestionErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.21",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryFrameCopiedErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.22",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryFrequencyErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.23",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryTokenErrors",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.24",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistorySoftErrorReports",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.25",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryRingPollEvents",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.26",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingMLHistoryActiveStations",
+      "OID": ".1.3.6.1.2.1.16.2.3.1.27",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "tokenRingPHistoryIndex",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "tokenRingPHistorySampleIndex",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "tokenRingPHistoryIntervalStart",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.3",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "tokenRingPHistoryDropEvents",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataOctets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataMulticastPkts",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts18to63Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts64to127Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts128to255Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts256to511Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts512to1023Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts1024to2047Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts2048to4095Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts4096to8191Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.16",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPkts8192to18000Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.17",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "tokenRingPHistoryDataPktsGreaterThan18000Octets",
+      "OID": ".1.3.6.1.2.1.16.2.4.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationControlIfIndex",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "ringStationControlTableSize",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "ringStationControlActiveStations",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.3",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "ringStationControlRingState",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "normalOperation",
+          "Value": 1
+        },
+        {
+          "Name": "ringPurgeState",
+          "Value": 2
+        },
+        {
+          "Name": "claimTokenState",
+          "Value": 3
+        },
+        {
+          "Name": "beaconFrameStreamingState",
+          "Value": 4
+        },
+        {
+          "Name": "beaconBitStreamingState",
+          "Value": 5
+        },
+        {
+          "Name": "beaconRingSignalLossState",
+          "Value": 6
+        },
+        {
+          "Name": "beaconSetRecoveryModeState",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "ringStationControlBeaconSender",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "ringStationControlBeaconNAUN",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.6",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "ringStationControlActiveMonitor",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.7",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "ringStationControlOrderChanges",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationControlOwner",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.9",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "ringStationControlStatus",
+      "OID": ".1.3.6.1.2.1.16.10.1.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "ringStationIfIndex",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.1",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "ringStationMacAddress",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "ringStationLastNAUN",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "ringStationStationStatus",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "inactive",
+          "Value": 2
+        },
+        {
+          "Name": "forcedRemoval",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "ringStationLastEnterTime",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.5",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ringStationLastExitTime",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.6",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ringStationDuplicateAddresses",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationInLineErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationOutLineErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationInternalErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationInBurstErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationOutBurstErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationACErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationAbortErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationLostFrameErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationCongestionErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.16",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationFrameCopiedErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.17",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationFrequencyErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationTokenErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.19",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationInBeaconErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.20",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationOutBeaconErrors",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.21",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationInsertions",
+      "OID": ".1.3.6.1.2.1.16.10.2.1.22",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ringStationOrderIfIndex",
+      "OID": ".1.3.6.1.2.1.16.10.3.1.1",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "ringStationOrderOrderIndex",
+      "OID": ".1.3.6.1.2.1.16.10.3.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "ringStationOrderMacAddress",
+      "OID": ".1.3.6.1.2.1.16.10.3.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "ringStationConfigControlIfIndex",
+      "OID": ".1.3.6.1.2.1.16.10.4.1.1",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "ringStationConfigControlMacAddress",
+      "OID": ".1.3.6.1.2.1.16.10.4.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "ringStationConfigControlRemove",
+      "OID": ".1.3.6.1.2.1.16.10.4.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "stable",
+          "Value": 1
+        },
+        {
+          "Name": "removing",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ringStationConfigControlUpdateStats",
+      "OID": ".1.3.6.1.2.1.16.10.4.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "stable",
+          "Value": 1
+        },
+        {
+          "Name": "updating",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ringStationConfigIfIndex",
+      "OID": ".1.3.6.1.2.1.16.10.5.1.1",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "ringStationConfigMacAddress",
+      "OID": ".1.3.6.1.2.1.16.10.5.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "ringStationConfigUpdateTime",
+      "OID": ".1.3.6.1.2.1.16.10.5.1.3",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ringStationConfigLocation",
+      "OID": ".1.3.6.1.2.1.16.10.5.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 4,
+        "Min": 4
+      }
+    },
+    {
+      "Name": "ringStationConfigMicrocode",
+      "OID": ".1.3.6.1.2.1.16.10.5.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 10,
+        "Min": 10
+      }
+    },
+    {
+      "Name": "ringStationConfigGroupAddress",
+      "OID": ".1.3.6.1.2.1.16.10.5.1.6",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 4,
+        "Min": 4
+      }
+    },
+    {
+      "Name": "ringStationConfigFunctionalAddress",
+      "OID": ".1.3.6.1.2.1.16.10.5.1.7",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 4,
+        "Min": 4
+      }
+    },
+    {
+      "Name": "sourceRoutingStatsIfIndex",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.1",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "sourceRoutingStatsRingNumber",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "sourceRoutingStatsInFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsOutFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsThroughFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsAllRoutesBroadcastFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsSingleRouteBroadcastFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsInOctets",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsOutOctets",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsThroughOctets",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsAllRoutesBroadcastOctets",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsSingleRoutesBroadcastOctets",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsLocalLLCFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStats1HopFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStats2HopsFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStats3HopsFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.16",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStats4HopsFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.17",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStats5HopsFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStats6HopsFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.19",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStats7HopsFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.20",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStats8HopsFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.21",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsMoreThan8HopsFrames",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.22",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "sourceRoutingStatsOwner",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.23",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "sourceRoutingStatsStatus",
+      "OID": ".1.3.6.1.2.1.16.10.6.1.24",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "tokenRingMLStatsEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsIndex",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsDataSource",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsDropEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsMacOctets",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsMacPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsRingPurgeEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsRingPurgePkts",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsBeaconEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsBeaconTime",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsBeaconPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsClaimTokenEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsClaimTokenPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsNAUNChanges",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsLineErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsInternalErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsBurstErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsACErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsAbortErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsLostFrameErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsCongestionErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsFrameCopiedErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsFrequencyErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsTokenErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsSoftErrorReports",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsRingPollEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsOwner",
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsStatus"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::tokenRingMLStatsIndex"
+      ],
+      "Name": "tokenRingMLStatsTable",
+      "OID": ".1.3.6.1.2.1.16.1.2"
+    },
+    {
+      "EntryName": "tokenRingPStatsEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsIndex",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataSource",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDropEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataOctets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataBroadcastPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataMulticastPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts18to63Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts64to127Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts128to255Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts256to511Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts512to1023Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts1024to2047Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts2048to4095Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts4096to8191Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPkts8192to18000Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsDataPktsGreaterThan18000Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsOwner",
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsStatus"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::tokenRingPStatsIndex"
+      ],
+      "Name": "tokenRingPStatsTable",
+      "OID": ".1.3.6.1.2.1.16.1.3"
+    },
+    {
+      "EntryName": "tokenRingMLHistoryEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryIndex",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistorySampleIndex",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryIntervalStart",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryDropEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryMacOctets",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryMacPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryRingPurgeEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryRingPurgePkts",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryBeaconEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryBeaconTime",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryBeaconPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryClaimTokenEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryClaimTokenPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryNAUNChanges",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryLineErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryInternalErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryBurstErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryACErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryAbortErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryLostFrameErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryCongestionErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryFrameCopiedErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryFrequencyErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryTokenErrors",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistorySoftErrorReports",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryRingPollEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryActiveStations"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistoryIndex",
+        "TOKEN-RING-RMON-MIB::tokenRingMLHistorySampleIndex"
+      ],
+      "Name": "tokenRingMLHistoryTable",
+      "OID": ".1.3.6.1.2.1.16.2.3"
+    },
+    {
+      "EntryName": "tokenRingPHistoryEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryIndex",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistorySampleIndex",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryIntervalStart",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDropEvents",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataOctets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataBroadcastPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataMulticastPkts",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts18to63Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts64to127Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts128to255Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts256to511Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts512to1023Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts1024to2047Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts2048to4095Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts4096to8191Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPkts8192to18000Octets",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryDataPktsGreaterThan18000Octets"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::tokenRingPHistoryIndex",
+        "TOKEN-RING-RMON-MIB::tokenRingPHistorySampleIndex"
+      ],
+      "Name": "tokenRingPHistoryTable",
+      "OID": ".1.3.6.1.2.1.16.2.4"
+    },
+    {
+      "EntryName": "ringStationControlEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationControlIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationControlTableSize",
+        "TOKEN-RING-RMON-MIB::ringStationControlActiveStations",
+        "TOKEN-RING-RMON-MIB::ringStationControlRingState",
+        "TOKEN-RING-RMON-MIB::ringStationControlBeaconSender",
+        "TOKEN-RING-RMON-MIB::ringStationControlBeaconNAUN",
+        "TOKEN-RING-RMON-MIB::ringStationControlActiveMonitor",
+        "TOKEN-RING-RMON-MIB::ringStationControlOrderChanges",
+        "TOKEN-RING-RMON-MIB::ringStationControlOwner",
+        "TOKEN-RING-RMON-MIB::ringStationControlStatus"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationControlIfIndex"
+      ],
+      "Name": "ringStationControlTable",
+      "OID": ".1.3.6.1.2.1.16.10.1"
+    },
+    {
+      "EntryName": "ringStationEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationMacAddress",
+        "TOKEN-RING-RMON-MIB::ringStationLastNAUN",
+        "TOKEN-RING-RMON-MIB::ringStationStationStatus",
+        "TOKEN-RING-RMON-MIB::ringStationLastEnterTime",
+        "TOKEN-RING-RMON-MIB::ringStationLastExitTime",
+        "TOKEN-RING-RMON-MIB::ringStationDuplicateAddresses",
+        "TOKEN-RING-RMON-MIB::ringStationInLineErrors",
+        "TOKEN-RING-RMON-MIB::ringStationOutLineErrors",
+        "TOKEN-RING-RMON-MIB::ringStationInternalErrors",
+        "TOKEN-RING-RMON-MIB::ringStationInBurstErrors",
+        "TOKEN-RING-RMON-MIB::ringStationOutBurstErrors",
+        "TOKEN-RING-RMON-MIB::ringStationACErrors",
+        "TOKEN-RING-RMON-MIB::ringStationAbortErrors",
+        "TOKEN-RING-RMON-MIB::ringStationLostFrameErrors",
+        "TOKEN-RING-RMON-MIB::ringStationCongestionErrors",
+        "TOKEN-RING-RMON-MIB::ringStationFrameCopiedErrors",
+        "TOKEN-RING-RMON-MIB::ringStationFrequencyErrors",
+        "TOKEN-RING-RMON-MIB::ringStationTokenErrors",
+        "TOKEN-RING-RMON-MIB::ringStationInBeaconErrors",
+        "TOKEN-RING-RMON-MIB::ringStationOutBeaconErrors",
+        "TOKEN-RING-RMON-MIB::ringStationInsertions"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationMacAddress"
+      ],
+      "Name": "ringStationTable",
+      "OID": ".1.3.6.1.2.1.16.10.2"
+    },
+    {
+      "EntryName": "ringStationOrderEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationOrderIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationOrderOrderIndex",
+        "TOKEN-RING-RMON-MIB::ringStationOrderMacAddress"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationOrderIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationOrderOrderIndex"
+      ],
+      "Name": "ringStationOrderTable",
+      "OID": ".1.3.6.1.2.1.16.10.3"
+    },
+    {
+      "EntryName": "ringStationConfigControlEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationConfigControlIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationConfigControlMacAddress",
+        "TOKEN-RING-RMON-MIB::ringStationConfigControlRemove",
+        "TOKEN-RING-RMON-MIB::ringStationConfigControlUpdateStats"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationConfigControlIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationConfigControlMacAddress"
+      ],
+      "Name": "ringStationConfigControlTable",
+      "OID": ".1.3.6.1.2.1.16.10.4"
+    },
+    {
+      "EntryName": "ringStationConfigEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationConfigIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationConfigMacAddress",
+        "TOKEN-RING-RMON-MIB::ringStationConfigUpdateTime",
+        "TOKEN-RING-RMON-MIB::ringStationConfigLocation",
+        "TOKEN-RING-RMON-MIB::ringStationConfigMicrocode",
+        "TOKEN-RING-RMON-MIB::ringStationConfigGroupAddress",
+        "TOKEN-RING-RMON-MIB::ringStationConfigFunctionalAddress"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::ringStationConfigIfIndex",
+        "TOKEN-RING-RMON-MIB::ringStationConfigMacAddress"
+      ],
+      "Name": "ringStationConfigTable",
+      "OID": ".1.3.6.1.2.1.16.10.5"
+    },
+    {
+      "EntryName": "sourceRoutingStatsEntry",
+      "EntryObjects": [
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsIfIndex",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsRingNumber",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsInFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsOutFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsThroughFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsAllRoutesBroadcastFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsSingleRouteBroadcastFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsInOctets",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsOutOctets",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsThroughOctets",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsAllRoutesBroadcastOctets",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsSingleRoutesBroadcastOctets",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsLocalLLCFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStats1HopFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStats2HopsFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStats3HopsFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStats4HopsFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStats5HopsFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStats6HopsFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStats7HopsFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStats8HopsFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsMoreThan8HopsFrames",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsOwner",
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsStatus"
+      ],
+      "IndexObjects": [
+        "TOKEN-RING-RMON-MIB::sourceRoutingStatsIfIndex"
+      ],
+      "Name": "sourceRoutingStatsTable",
+      "OID": ".1.3.6.1.2.1.16.10.6"
+    }
+  ]
+}

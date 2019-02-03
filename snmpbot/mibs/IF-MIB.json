@@ -1,0 +1,1606 @@
+{
+  "Name": "IF-MIB",
+  "OID": ".1.3.6.1.2.1.31",
+  "Objects": [
+    {
+      "Name": "ifNumber",
+      "OID": ".1.3.6.1.2.1.2.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ifTableLastChange",
+      "OID": ".1.3.6.1.2.1.31.1.5",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ifIndex",
+      "OID": ".1.3.6.1.2.1.2.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "ifDescr",
+      "OID": ".1.3.6.1.2.1.2.2.1.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "ifType",
+      "OID": ".1.3.6.1.2.1.2.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "regular1822",
+          "Value": 2
+        },
+        {
+          "Name": "hdh1822",
+          "Value": 3
+        },
+        {
+          "Name": "ddnX25",
+          "Value": 4
+        },
+        {
+          "Name": "rfc877x25",
+          "Value": 5
+        },
+        {
+          "Name": "ethernetCsmacd",
+          "Value": 6
+        },
+        {
+          "Name": "iso88023Csmacd",
+          "Value": 7
+        },
+        {
+          "Name": "iso88024TokenBus",
+          "Value": 8
+        },
+        {
+          "Name": "iso88025TokenRing",
+          "Value": 9
+        },
+        {
+          "Name": "iso88026Man",
+          "Value": 10
+        },
+        {
+          "Name": "starLan",
+          "Value": 11
+        },
+        {
+          "Name": "proteon10Mbit",
+          "Value": 12
+        },
+        {
+          "Name": "proteon80Mbit",
+          "Value": 13
+        },
+        {
+          "Name": "hyperchannel",
+          "Value": 14
+        },
+        {
+          "Name": "fddi",
+          "Value": 15
+        },
+        {
+          "Name": "lapb",
+          "Value": 16
+        },
+        {
+          "Name": "sdlc",
+          "Value": 17
+        },
+        {
+          "Name": "ds1",
+          "Value": 18
+        },
+        {
+          "Name": "e1",
+          "Value": 19
+        },
+        {
+          "Name": "basicISDN",
+          "Value": 20
+        },
+        {
+          "Name": "primaryISDN",
+          "Value": 21
+        },
+        {
+          "Name": "propPointToPointSerial",
+          "Value": 22
+        },
+        {
+          "Name": "ppp",
+          "Value": 23
+        },
+        {
+          "Name": "softwareLoopback",
+          "Value": 24
+        },
+        {
+          "Name": "eon",
+          "Value": 25
+        },
+        {
+          "Name": "ethernet3Mbit",
+          "Value": 26
+        },
+        {
+          "Name": "nsip",
+          "Value": 27
+        },
+        {
+          "Name": "slip",
+          "Value": 28
+        },
+        {
+          "Name": "ultra",
+          "Value": 29
+        },
+        {
+          "Name": "ds3",
+          "Value": 30
+        },
+        {
+          "Name": "sip",
+          "Value": 31
+        },
+        {
+          "Name": "frameRelay",
+          "Value": 32
+        },
+        {
+          "Name": "rs232",
+          "Value": 33
+        },
+        {
+          "Name": "para",
+          "Value": 34
+        },
+        {
+          "Name": "arcnet",
+          "Value": 35
+        },
+        {
+          "Name": "arcnetPlus",
+          "Value": 36
+        },
+        {
+          "Name": "atm",
+          "Value": 37
+        },
+        {
+          "Name": "miox25",
+          "Value": 38
+        },
+        {
+          "Name": "sonet",
+          "Value": 39
+        },
+        {
+          "Name": "x25ple",
+          "Value": 40
+        },
+        {
+          "Name": "iso88022llc",
+          "Value": 41
+        },
+        {
+          "Name": "localTalk",
+          "Value": 42
+        },
+        {
+          "Name": "smdsDxi",
+          "Value": 43
+        },
+        {
+          "Name": "frameRelayService",
+          "Value": 44
+        },
+        {
+          "Name": "v35",
+          "Value": 45
+        },
+        {
+          "Name": "hssi",
+          "Value": 46
+        },
+        {
+          "Name": "hippi",
+          "Value": 47
+        },
+        {
+          "Name": "modem",
+          "Value": 48
+        },
+        {
+          "Name": "aal5",
+          "Value": 49
+        },
+        {
+          "Name": "sonetPath",
+          "Value": 50
+        },
+        {
+          "Name": "sonetVT",
+          "Value": 51
+        },
+        {
+          "Name": "smdsIcip",
+          "Value": 52
+        },
+        {
+          "Name": "propVirtual",
+          "Value": 53
+        },
+        {
+          "Name": "propMultiplexor",
+          "Value": 54
+        },
+        {
+          "Name": "ieee80212",
+          "Value": 55
+        },
+        {
+          "Name": "fibreChannel",
+          "Value": 56
+        },
+        {
+          "Name": "hippiInterface",
+          "Value": 57
+        },
+        {
+          "Name": "frameRelayInterconnect",
+          "Value": 58
+        },
+        {
+          "Name": "aflane8023",
+          "Value": 59
+        },
+        {
+          "Name": "aflane8025",
+          "Value": 60
+        },
+        {
+          "Name": "cctEmul",
+          "Value": 61
+        },
+        {
+          "Name": "fastEther",
+          "Value": 62
+        },
+        {
+          "Name": "isdn",
+          "Value": 63
+        },
+        {
+          "Name": "v11",
+          "Value": 64
+        },
+        {
+          "Name": "v36",
+          "Value": 65
+        },
+        {
+          "Name": "g703at64k",
+          "Value": 66
+        },
+        {
+          "Name": "g703at2mb",
+          "Value": 67
+        },
+        {
+          "Name": "qllc",
+          "Value": 68
+        },
+        {
+          "Name": "fastEtherFX",
+          "Value": 69
+        },
+        {
+          "Name": "channel",
+          "Value": 70
+        },
+        {
+          "Name": "ieee80211",
+          "Value": 71
+        },
+        {
+          "Name": "ibm370parChan",
+          "Value": 72
+        },
+        {
+          "Name": "escon",
+          "Value": 73
+        },
+        {
+          "Name": "dlsw",
+          "Value": 74
+        },
+        {
+          "Name": "isdns",
+          "Value": 75
+        },
+        {
+          "Name": "isdnu",
+          "Value": 76
+        },
+        {
+          "Name": "lapd",
+          "Value": 77
+        },
+        {
+          "Name": "ipSwitch",
+          "Value": 78
+        },
+        {
+          "Name": "rsrb",
+          "Value": 79
+        },
+        {
+          "Name": "atmLogical",
+          "Value": 80
+        },
+        {
+          "Name": "ds0",
+          "Value": 81
+        },
+        {
+          "Name": "ds0Bundle",
+          "Value": 82
+        },
+        {
+          "Name": "bsc",
+          "Value": 83
+        },
+        {
+          "Name": "async",
+          "Value": 84
+        },
+        {
+          "Name": "cnr",
+          "Value": 85
+        },
+        {
+          "Name": "iso88025Dtr",
+          "Value": 86
+        },
+        {
+          "Name": "eplrs",
+          "Value": 87
+        },
+        {
+          "Name": "arap",
+          "Value": 88
+        },
+        {
+          "Name": "propCnls",
+          "Value": 89
+        },
+        {
+          "Name": "hostPad",
+          "Value": 90
+        },
+        {
+          "Name": "termPad",
+          "Value": 91
+        },
+        {
+          "Name": "frameRelayMPI",
+          "Value": 92
+        },
+        {
+          "Name": "x213",
+          "Value": 93
+        },
+        {
+          "Name": "adsl",
+          "Value": 94
+        },
+        {
+          "Name": "radsl",
+          "Value": 95
+        },
+        {
+          "Name": "sdsl",
+          "Value": 96
+        },
+        {
+          "Name": "vdsl",
+          "Value": 97
+        },
+        {
+          "Name": "iso88025CRFPInt",
+          "Value": 98
+        },
+        {
+          "Name": "myrinet",
+          "Value": 99
+        },
+        {
+          "Name": "voiceEM",
+          "Value": 100
+        },
+        {
+          "Name": "voiceFXO",
+          "Value": 101
+        },
+        {
+          "Name": "voiceFXS",
+          "Value": 102
+        },
+        {
+          "Name": "voiceEncap",
+          "Value": 103
+        },
+        {
+          "Name": "voiceOverIp",
+          "Value": 104
+        },
+        {
+          "Name": "atmDxi",
+          "Value": 105
+        },
+        {
+          "Name": "atmFuni",
+          "Value": 106
+        },
+        {
+          "Name": "atmIma",
+          "Value": 107
+        },
+        {
+          "Name": "pppMultilinkBundle",
+          "Value": 108
+        },
+        {
+          "Name": "ipOverCdlc",
+          "Value": 109
+        },
+        {
+          "Name": "ipOverClaw",
+          "Value": 110
+        },
+        {
+          "Name": "stackToStack",
+          "Value": 111
+        },
+        {
+          "Name": "virtualIpAddress",
+          "Value": 112
+        },
+        {
+          "Name": "mpc",
+          "Value": 113
+        },
+        {
+          "Name": "ipOverAtm",
+          "Value": 114
+        },
+        {
+          "Name": "iso88025Fiber",
+          "Value": 115
+        },
+        {
+          "Name": "tdlc",
+          "Value": 116
+        },
+        {
+          "Name": "gigabitEthernet",
+          "Value": 117
+        },
+        {
+          "Name": "hdlc",
+          "Value": 118
+        },
+        {
+          "Name": "lapf",
+          "Value": 119
+        },
+        {
+          "Name": "v37",
+          "Value": 120
+        },
+        {
+          "Name": "x25mlp",
+          "Value": 121
+        },
+        {
+          "Name": "x25huntGroup",
+          "Value": 122
+        },
+        {
+          "Name": "transpHdlc",
+          "Value": 123
+        },
+        {
+          "Name": "interleave",
+          "Value": 124
+        },
+        {
+          "Name": "fast",
+          "Value": 125
+        },
+        {
+          "Name": "ip",
+          "Value": 126
+        },
+        {
+          "Name": "docsCableMaclayer",
+          "Value": 127
+        },
+        {
+          "Name": "docsCableDownstream",
+          "Value": 128
+        },
+        {
+          "Name": "docsCableUpstream",
+          "Value": 129
+        },
+        {
+          "Name": "a12MppSwitch",
+          "Value": 130
+        },
+        {
+          "Name": "tunnel",
+          "Value": 131
+        },
+        {
+          "Name": "coffee",
+          "Value": 132
+        },
+        {
+          "Name": "ces",
+          "Value": 133
+        },
+        {
+          "Name": "atmSubInterface",
+          "Value": 134
+        },
+        {
+          "Name": "l2vlan",
+          "Value": 135
+        },
+        {
+          "Name": "l3ipvlan",
+          "Value": 136
+        },
+        {
+          "Name": "l3ipxvlan",
+          "Value": 137
+        },
+        {
+          "Name": "digitalPowerline",
+          "Value": 138
+        },
+        {
+          "Name": "mediaMailOverIp",
+          "Value": 139
+        },
+        {
+          "Name": "dtm",
+          "Value": 140
+        },
+        {
+          "Name": "dcn",
+          "Value": 141
+        },
+        {
+          "Name": "ipForward",
+          "Value": 142
+        },
+        {
+          "Name": "msdsl",
+          "Value": 143
+        },
+        {
+          "Name": "ieee1394",
+          "Value": 144
+        },
+        {
+          "Name": "if-gsn",
+          "Value": 145
+        },
+        {
+          "Name": "dvbRccMacLayer",
+          "Value": 146
+        },
+        {
+          "Name": "dvbRccDownstream",
+          "Value": 147
+        },
+        {
+          "Name": "dvbRccUpstream",
+          "Value": 148
+        },
+        {
+          "Name": "atmVirtual",
+          "Value": 149
+        },
+        {
+          "Name": "mplsTunnel",
+          "Value": 150
+        },
+        {
+          "Name": "srp",
+          "Value": 151
+        },
+        {
+          "Name": "voiceOverAtm",
+          "Value": 152
+        },
+        {
+          "Name": "voiceOverFrameRelay",
+          "Value": 153
+        },
+        {
+          "Name": "idsl",
+          "Value": 154
+        },
+        {
+          "Name": "compositeLink",
+          "Value": 155
+        },
+        {
+          "Name": "ss7SigLink",
+          "Value": 156
+        },
+        {
+          "Name": "propWirelessP2P",
+          "Value": 157
+        },
+        {
+          "Name": "frForward",
+          "Value": 158
+        },
+        {
+          "Name": "rfc1483",
+          "Value": 159
+        },
+        {
+          "Name": "usb",
+          "Value": 160
+        },
+        {
+          "Name": "ieee8023adLag",
+          "Value": 161
+        },
+        {
+          "Name": "bgppolicyaccounting",
+          "Value": 162
+        },
+        {
+          "Name": "frf16MfrBundle",
+          "Value": 163
+        },
+        {
+          "Name": "h323Gatekeeper",
+          "Value": 164
+        },
+        {
+          "Name": "h323Proxy",
+          "Value": 165
+        },
+        {
+          "Name": "mpls",
+          "Value": 166
+        },
+        {
+          "Name": "mfSigLink",
+          "Value": 167
+        },
+        {
+          "Name": "hdsl2",
+          "Value": 168
+        },
+        {
+          "Name": "shdsl",
+          "Value": 169
+        },
+        {
+          "Name": "ds1FDL",
+          "Value": 170
+        },
+        {
+          "Name": "pos",
+          "Value": 171
+        },
+        {
+          "Name": "dvbAsiIn",
+          "Value": 172
+        },
+        {
+          "Name": "dvbAsiOut",
+          "Value": 173
+        },
+        {
+          "Name": "plc",
+          "Value": 174
+        },
+        {
+          "Name": "nfas",
+          "Value": 175
+        },
+        {
+          "Name": "tr008",
+          "Value": 176
+        },
+        {
+          "Name": "gr303RDT",
+          "Value": 177
+        },
+        {
+          "Name": "gr303IDT",
+          "Value": 178
+        },
+        {
+          "Name": "isup",
+          "Value": 179
+        },
+        {
+          "Name": "propDocsWirelessMaclayer",
+          "Value": 180
+        },
+        {
+          "Name": "propDocsWirelessDownstream",
+          "Value": 181
+        },
+        {
+          "Name": "propDocsWirelessUpstream",
+          "Value": 182
+        },
+        {
+          "Name": "hiperlan2",
+          "Value": 183
+        },
+        {
+          "Name": "propBWAp2Mp",
+          "Value": 184
+        },
+        {
+          "Name": "sonetOverheadChannel",
+          "Value": 185
+        },
+        {
+          "Name": "digitalWrapperOverheadChannel",
+          "Value": 186
+        },
+        {
+          "Name": "aal2",
+          "Value": 187
+        },
+        {
+          "Name": "radioMAC",
+          "Value": 188
+        },
+        {
+          "Name": "atmRadio",
+          "Value": 189
+        },
+        {
+          "Name": "imt",
+          "Value": 190
+        },
+        {
+          "Name": "mvl",
+          "Value": 191
+        },
+        {
+          "Name": "reachDSL",
+          "Value": 192
+        },
+        {
+          "Name": "frDlciEndPt",
+          "Value": 193
+        },
+        {
+          "Name": "atmVciEndPt",
+          "Value": 194
+        },
+        {
+          "Name": "opticalChannel",
+          "Value": 195
+        },
+        {
+          "Name": "opticalTransport",
+          "Value": 196
+        },
+        {
+          "Name": "propAtm",
+          "Value": 197
+        },
+        {
+          "Name": "voiceOverCable",
+          "Value": 198
+        },
+        {
+          "Name": "infiniband",
+          "Value": 199
+        },
+        {
+          "Name": "teLink",
+          "Value": 200
+        },
+        {
+          "Name": "q2931",
+          "Value": 201
+        },
+        {
+          "Name": "virtualTg",
+          "Value": 202
+        },
+        {
+          "Name": "sipTg",
+          "Value": 203
+        },
+        {
+          "Name": "sipSig",
+          "Value": 204
+        },
+        {
+          "Name": "docsCableUpstreamChannel",
+          "Value": 205
+        },
+        {
+          "Name": "econet",
+          "Value": 206
+        },
+        {
+          "Name": "pon155",
+          "Value": 207
+        },
+        {
+          "Name": "pon622",
+          "Value": 208
+        },
+        {
+          "Name": "bridge",
+          "Value": 209
+        },
+        {
+          "Name": "linegroup",
+          "Value": 210
+        },
+        {
+          "Name": "voiceEMFGD",
+          "Value": 211
+        },
+        {
+          "Name": "voiceFGDEANA",
+          "Value": 212
+        },
+        {
+          "Name": "voiceDID",
+          "Value": 213
+        },
+        {
+          "Name": "mpegTransport",
+          "Value": 214
+        },
+        {
+          "Name": "sixToFour",
+          "Value": 215
+        },
+        {
+          "Name": "gtp",
+          "Value": 216
+        },
+        {
+          "Name": "pdnEtherLoop1",
+          "Value": 217
+        },
+        {
+          "Name": "pdnEtherLoop2",
+          "Value": 218
+        },
+        {
+          "Name": "opticalChannelGroup",
+          "Value": 219
+        },
+        {
+          "Name": "homepna",
+          "Value": 220
+        },
+        {
+          "Name": "gfp",
+          "Value": 221
+        },
+        {
+          "Name": "ciscoISLvlan",
+          "Value": 222
+        },
+        {
+          "Name": "actelisMetaLOOP",
+          "Value": 223
+        },
+        {
+          "Name": "fcipLink",
+          "Value": 224
+        },
+        {
+          "Name": "rpr",
+          "Value": 225
+        },
+        {
+          "Name": "qam",
+          "Value": 226
+        },
+        {
+          "Name": "lmp",
+          "Value": 227
+        },
+        {
+          "Name": "cblVectaStar",
+          "Value": 228
+        },
+        {
+          "Name": "docsCableMCmtsDownstream",
+          "Value": 229
+        },
+        {
+          "Name": "adsl2",
+          "Value": 230
+        },
+        {
+          "Name": "macSecControlledIF",
+          "Value": 231
+        },
+        {
+          "Name": "macSecUncontrolledIF",
+          "Value": 232
+        },
+        {
+          "Name": "aviciOpticalEther",
+          "Value": 233
+        },
+        {
+          "Name": "atmbond",
+          "Value": 234
+        },
+        {
+          "Name": "voiceFGDOS",
+          "Value": 235
+        },
+        {
+          "Name": "mocaVersion1",
+          "Value": 236
+        },
+        {
+          "Name": "ieee80216WMAN",
+          "Value": 237
+        },
+        {
+          "Name": "adsl2plus",
+          "Value": 238
+        },
+        {
+          "Name": "dvbRcsMacLayer",
+          "Value": 239
+        },
+        {
+          "Name": "dvbTdm",
+          "Value": 240
+        },
+        {
+          "Name": "dvbRcsTdma",
+          "Value": 241
+        },
+        {
+          "Name": "x86Laps",
+          "Value": 242
+        },
+        {
+          "Name": "wwanPP",
+          "Value": 243
+        },
+        {
+          "Name": "wwanPP2",
+          "Value": 244
+        },
+        {
+          "Name": "voiceEBS",
+          "Value": 245
+        },
+        {
+          "Name": "ifPwType",
+          "Value": 246
+        },
+        {
+          "Name": "ilan",
+          "Value": 247
+        },
+        {
+          "Name": "pip",
+          "Value": 248
+        },
+        {
+          "Name": "aluELP",
+          "Value": 249
+        },
+        {
+          "Name": "gpon",
+          "Value": 250
+        },
+        {
+          "Name": "vdsl2",
+          "Value": 251
+        },
+        {
+          "Name": "capwapDot11Profile",
+          "Value": 252
+        },
+        {
+          "Name": "capwapDot11Bss",
+          "Value": 253
+        },
+        {
+          "Name": "capwapWtpVirtualRadio",
+          "Value": 254
+        }
+      ]
+    },
+    {
+      "Name": "ifMtu",
+      "OID": ".1.3.6.1.2.1.2.2.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ifSpeed",
+      "OID": ".1.3.6.1.2.1.2.2.1.5",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "ifPhysAddress",
+      "OID": ".1.3.6.1.2.1.2.2.1.6",
+      "Syntax": "SNMPv2-TC::PhysAddress"
+    },
+    {
+      "Name": "ifAdminStatus",
+      "OID": ".1.3.6.1.2.1.2.2.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "up",
+          "Value": 1
+        },
+        {
+          "Name": "down",
+          "Value": 2
+        },
+        {
+          "Name": "testing",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "ifOperStatus",
+      "OID": ".1.3.6.1.2.1.2.2.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "up",
+          "Value": 1
+        },
+        {
+          "Name": "down",
+          "Value": 2
+        },
+        {
+          "Name": "testing",
+          "Value": 3
+        },
+        {
+          "Name": "unknown",
+          "Value": 4
+        },
+        {
+          "Name": "dormant",
+          "Value": 5
+        },
+        {
+          "Name": "notPresent",
+          "Value": 6
+        },
+        {
+          "Name": "lowerLayerDown",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "ifLastChange",
+      "OID": ".1.3.6.1.2.1.2.2.1.9",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ifInOctets",
+      "OID": ".1.3.6.1.2.1.2.2.1.10",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifInUcastPkts",
+      "OID": ".1.3.6.1.2.1.2.2.1.11",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifInNUcastPkts",
+      "OID": ".1.3.6.1.2.1.2.2.1.12",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifInDiscards",
+      "OID": ".1.3.6.1.2.1.2.2.1.13",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifInErrors",
+      "OID": ".1.3.6.1.2.1.2.2.1.14",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifInUnknownProtos",
+      "OID": ".1.3.6.1.2.1.2.2.1.15",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifOutOctets",
+      "OID": ".1.3.6.1.2.1.2.2.1.16",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifOutUcastPkts",
+      "OID": ".1.3.6.1.2.1.2.2.1.17",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifOutNUcastPkts",
+      "OID": ".1.3.6.1.2.1.2.2.1.18",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifOutDiscards",
+      "OID": ".1.3.6.1.2.1.2.2.1.19",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifOutErrors",
+      "OID": ".1.3.6.1.2.1.2.2.1.20",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifOutQLen",
+      "OID": ".1.3.6.1.2.1.2.2.1.21",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "ifSpecific",
+      "OID": ".1.3.6.1.2.1.2.2.1.22",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "ifName",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "ifInMulticastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifInBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifOutMulticastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifOutBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ifHCInOctets",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.6",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ifHCInUcastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.7",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ifHCInMulticastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.8",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ifHCInBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.9",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ifHCOutOctets",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.10",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ifHCOutUcastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.11",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ifHCOutMulticastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.12",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ifHCOutBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.13",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ifLinkUpDownTrapEnable",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ifHighSpeed",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.15",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "ifPromiscuousMode",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ifConnectorPresent",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.17",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ifAlias",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.18",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "ifCounterDiscontinuityTime",
+      "OID": ".1.3.6.1.2.1.31.1.1.1.19",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ifStackHigherLayer",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.31.1.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ifStackLowerLayer",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.31.1.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ifStackStatus",
+      "OID": ".1.3.6.1.2.1.31.1.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "ifStackLastChange",
+      "OID": ".1.3.6.1.2.1.31.1.6",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ifRcvAddressAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.31.1.4.1.1",
+      "Syntax": "SNMPv2-TC::PhysAddress"
+    },
+    {
+      "Name": "ifRcvAddressStatus",
+      "OID": ".1.3.6.1.2.1.31.1.4.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "ifRcvAddressType",
+      "OID": ".1.3.6.1.2.1.31.1.4.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "volatile",
+          "Value": 2
+        },
+        {
+          "Name": "nonVolatile",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "ifTestId",
+      "OID": ".1.3.6.1.2.1.31.1.3.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ifTestStatus",
+      "OID": ".1.3.6.1.2.1.31.1.3.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notInUse",
+          "Value": 1
+        },
+        {
+          "Name": "inUse",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ifTestType",
+      "OID": ".1.3.6.1.2.1.31.1.3.1.3",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "ifTestResult",
+      "OID": ".1.3.6.1.2.1.31.1.3.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "success",
+          "Value": 2
+        },
+        {
+          "Name": "inProgress",
+          "Value": 3
+        },
+        {
+          "Name": "notSupported",
+          "Value": 4
+        },
+        {
+          "Name": "unAbleToRun",
+          "Value": 5
+        },
+        {
+          "Name": "aborted",
+          "Value": 6
+        },
+        {
+          "Name": "failed",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "ifTestCode",
+      "OID": ".1.3.6.1.2.1.31.1.3.1.5",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "ifTestOwner",
+      "OID": ".1.3.6.1.2.1.31.1.3.1.6",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 0
+      }
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "ifEntry",
+      "EntryObjects": [
+        "IF-MIB::ifIndex",
+        "IF-MIB::ifDescr",
+        "IF-MIB::ifType",
+        "IF-MIB::ifMtu",
+        "IF-MIB::ifSpeed",
+        "IF-MIB::ifPhysAddress",
+        "IF-MIB::ifAdminStatus",
+        "IF-MIB::ifOperStatus",
+        "IF-MIB::ifLastChange",
+        "IF-MIB::ifInOctets",
+        "IF-MIB::ifInUcastPkts",
+        "IF-MIB::ifInNUcastPkts",
+        "IF-MIB::ifInDiscards",
+        "IF-MIB::ifInErrors",
+        "IF-MIB::ifInUnknownProtos",
+        "IF-MIB::ifOutOctets",
+        "IF-MIB::ifOutUcastPkts",
+        "IF-MIB::ifOutNUcastPkts",
+        "IF-MIB::ifOutDiscards",
+        "IF-MIB::ifOutErrors",
+        "IF-MIB::ifOutQLen",
+        "IF-MIB::ifSpecific"
+      ],
+      "IndexObjects": [
+        "IF-MIB::ifIndex"
+      ],
+      "Name": "ifTable",
+      "OID": ".1.3.6.1.2.1.2.2"
+    },
+    {
+      "AugmentsEntry": "IF-MIB::ifEntry",
+      "EntryName": "ifXEntry",
+      "EntryObjects": [
+        "IF-MIB::ifName",
+        "IF-MIB::ifInMulticastPkts",
+        "IF-MIB::ifInBroadcastPkts",
+        "IF-MIB::ifOutMulticastPkts",
+        "IF-MIB::ifOutBroadcastPkts",
+        "IF-MIB::ifHCInOctets",
+        "IF-MIB::ifHCInUcastPkts",
+        "IF-MIB::ifHCInMulticastPkts",
+        "IF-MIB::ifHCInBroadcastPkts",
+        "IF-MIB::ifHCOutOctets",
+        "IF-MIB::ifHCOutUcastPkts",
+        "IF-MIB::ifHCOutMulticastPkts",
+        "IF-MIB::ifHCOutBroadcastPkts",
+        "IF-MIB::ifLinkUpDownTrapEnable",
+        "IF-MIB::ifHighSpeed",
+        "IF-MIB::ifPromiscuousMode",
+        "IF-MIB::ifConnectorPresent",
+        "IF-MIB::ifAlias",
+        "IF-MIB::ifCounterDiscontinuityTime"
+      ],
+      "Name": "ifXTable",
+      "OID": ".1.3.6.1.2.1.31.1.1"
+    },
+    {
+      "EntryName": "ifStackEntry",
+      "EntryObjects": [
+        "IF-MIB::ifStackHigherLayer",
+        "IF-MIB::ifStackLowerLayer",
+        "IF-MIB::ifStackStatus"
+      ],
+      "IndexObjects": [
+        "IF-MIB::ifStackHigherLayer",
+        "IF-MIB::ifStackLowerLayer"
+      ],
+      "Name": "ifStackTable",
+      "OID": ".1.3.6.1.2.1.31.1.2"
+    },
+    {
+      "EntryName": "ifRcvAddressEntry",
+      "EntryObjects": [
+        "IF-MIB::ifRcvAddressAddress",
+        "IF-MIB::ifRcvAddressStatus",
+        "IF-MIB::ifRcvAddressType"
+      ],
+      "IndexObjects": [
+        "IF-MIB::ifIndex",
+        "IF-MIB::ifRcvAddressAddress"
+      ],
+      "Name": "ifRcvAddressTable",
+      "OID": ".1.3.6.1.2.1.31.1.4"
+    },
+    {
+      "AugmentsEntry": "IF-MIB::ifEntry",
+      "EntryName": "ifTestEntry",
+      "EntryObjects": [
+        "IF-MIB::ifTestId",
+        "IF-MIB::ifTestStatus",
+        "IF-MIB::ifTestType",
+        "IF-MIB::ifTestResult",
+        "IF-MIB::ifTestCode",
+        "IF-MIB::ifTestOwner"
+      ],
+      "Name": "ifTestTable",
+      "OID": ".1.3.6.1.2.1.31.1.3"
+    }
+  ]
+}

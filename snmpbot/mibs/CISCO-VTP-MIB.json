@@ -1,0 +1,1830 @@
+{
+  "Name": "CISCO-VTP-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.46",
+  "Objects": [
+    {
+      "Name": "vtpVersion",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "one",
+          "Value": 1
+        },
+        {
+          "Name": "two",
+          "Value": 2
+        },
+        {
+          "Name": "none",
+          "Value": 3
+        },
+        {
+          "Name": "three",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "vtpMaxVlanStorage",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 1023,
+        "Min": -1
+      }
+    },
+    {
+      "Name": "vtpNotificationsEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanCreatedNotifEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanDeletedNotifEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "managementDomainIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "managementDomainName",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "managementDomainLocalMode",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "client",
+          "Value": 1
+        },
+        {
+          "Name": "server",
+          "Value": 2
+        },
+        {
+          "Name": "transparent",
+          "Value": 3
+        },
+        {
+          "Name": "off",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "managementDomainConfigRevNumber",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.4",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "managementDomainLastUpdater",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.5",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "managementDomainLastChange",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.6",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "managementDomainRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "managementDomainTftpServer",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.8",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "managementDomainTftpPathname",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.9",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "managementDomainPruningState",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "managementDomainVersionInUse",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "version1",
+          "Value": 1
+        },
+        {
+          "Name": "version2",
+          "Value": 2
+        },
+        {
+          "Name": "none",
+          "Value": 3
+        },
+        {
+          "Name": "version3",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "managementDomainPruningStateOper",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "managementDomainAdminSrcIf",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.13",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "managementDomainSourceOnlyMode",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "managementDomainOperSrcIf",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.15",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "managementDomainConfigFile",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.16",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "managementDomainLocalUpdaterType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.17",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "managementDomainLocalUpdater",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.18",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "managementDomainDeviceID",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1.1.19",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpVlanIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanState",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "operational",
+          "Value": 1
+        },
+        {
+          "Name": "suspended",
+          "Value": 2
+        },
+        {
+          "Name": "mtuTooBigForDevice",
+          "Value": 3
+        },
+        {
+          "Name": "mtuTooBigForTrunk",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "ethernet",
+          "Value": 1
+        },
+        {
+          "Name": "fddi",
+          "Value": 2
+        },
+        {
+          "Name": "tokenRing",
+          "Value": 3
+        },
+        {
+          "Name": "fddiNet",
+          "Value": 4
+        },
+        {
+          "Name": "trNet",
+          "Value": 5
+        },
+        {
+          "Name": "deprecated",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanName",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.4",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "vtpVlanMtu",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.5",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 18190,
+        "Min": 1500
+      }
+    },
+    {
+      "Name": "vtpVlanDot10Said",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.6",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 4,
+        "Min": 4
+      }
+    },
+    {
+      "Name": "vtpVlanRingNumber",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.7",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanBridgeNumber",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.8",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 15,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanStpType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "ieee",
+          "Value": 1
+        },
+        {
+          "Name": "ibm",
+          "Value": 2
+        },
+        {
+          "Name": "hybrid",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanParentVlan",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.10",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanTranslationalVlan1",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.11",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanTranslationalVlan2",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.12",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanBridgeType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "srt",
+          "Value": 1
+        },
+        {
+          "Name": "srb",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanAreHopCount",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.14",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 13,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "vtpVlanSteHopCount",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.15",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 13,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "vtpVlanIsCRFBackup",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanTypeExt",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.17",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "vtpmanageable"
+        },
+        {
+          "Bit": 1,
+          "Name": "internal"
+        },
+        {
+          "Bit": 2,
+          "Name": "reserved"
+        },
+        {
+          "Bit": 3,
+          "Name": "rspan"
+        },
+        {
+          "Bit": 4,
+          "Name": "dynamicGvrp"
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanIfIndex",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "vtpInternalVlanAllocPolicy",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.2.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "ascending",
+          "Value": 1
+        },
+        {
+          "Name": "descending",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpInternalVlanOwner",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.2.2.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpVlanEditOperation",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "copy",
+          "Value": 2
+        },
+        {
+          "Name": "apply",
+          "Value": 3
+        },
+        {
+          "Name": "release",
+          "Value": 4
+        },
+        {
+          "Name": "restartTimer",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanApplyStatus",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "inProgress",
+          "Value": 1
+        },
+        {
+          "Name": "succeeded",
+          "Value": 2
+        },
+        {
+          "Name": "configNumberError",
+          "Value": 3
+        },
+        {
+          "Name": "inconsistentEdit",
+          "Value": 4
+        },
+        {
+          "Name": "tooBig",
+          "Value": 5
+        },
+        {
+          "Name": "localNVStoreFail",
+          "Value": 6
+        },
+        {
+          "Name": "remoteNVStoreFail",
+          "Value": 7
+        },
+        {
+          "Name": "editBufferEmpty",
+          "Value": 8
+        },
+        {
+          "Name": "someOtherError",
+          "Value": 9
+        },
+        {
+          "Name": "notPrimaryServer",
+          "Value": 10
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanEditBufferOwner",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.1.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "vtpVlanEditConfigRevNumber",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.1.1.4",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "vtpVlanEditModifiedVlan",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.1.1.5",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanEditIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanEditState",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "operational",
+          "Value": 1
+        },
+        {
+          "Name": "suspended",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanEditType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "ethernet",
+          "Value": 1
+        },
+        {
+          "Name": "fddi",
+          "Value": 2
+        },
+        {
+          "Name": "tokenRing",
+          "Value": 3
+        },
+        {
+          "Name": "fddiNet",
+          "Value": 4
+        },
+        {
+          "Name": "trNet",
+          "Value": 5
+        },
+        {
+          "Name": "deprecated",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanEditName",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.4",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "vtpVlanEditMtu",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.5",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 18190,
+        "Min": 1500
+      }
+    },
+    {
+      "Name": "vtpVlanEditDot10Said",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.6",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 4,
+        "Min": 4
+      }
+    },
+    {
+      "Name": "vtpVlanEditRingNumber",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.7",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanEditBridgeNumber",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.8",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 15,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanEditStpType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "ieee",
+          "Value": 1
+        },
+        {
+          "Name": "ibm",
+          "Value": 2
+        },
+        {
+          "Name": "auto",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanEditParentVlan",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.10",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanEditRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanEditTranslationalVlan1",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.12",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanEditTranslationalVlan2",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.13",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlanEditBridgeType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "srt",
+          "Value": 1
+        },
+        {
+          "Name": "srb",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanEditAreHopCount",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.15",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 13,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "vtpVlanEditSteHopCount",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.16",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 13,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "vtpVlanEditIsCRFBackup",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.17",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanEditTypeExt",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.18",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "vtpmanageable"
+        },
+        {
+          "Bit": 1,
+          "Name": "internal"
+        },
+        {
+          "Bit": 2,
+          "Name": "reserved"
+        },
+        {
+          "Bit": 3,
+          "Name": "rspan"
+        },
+        {
+          "Bit": 4,
+          "Name": "dynamicGvrp"
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanEditTypeExt2",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2.1.19",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "vtpmanageable"
+        },
+        {
+          "Bit": 1,
+          "Name": "internal"
+        },
+        {
+          "Bit": 2,
+          "Name": "reserved"
+        },
+        {
+          "Bit": 3,
+          "Name": "rspan"
+        },
+        {
+          "Bit": 4,
+          "Name": "dynamicGvrp"
+        }
+      ]
+    },
+    {
+      "Name": "vtpVlanLocalShutdown",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.3.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "up",
+          "Value": 1
+        },
+        {
+          "Name": "down",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpInSummaryAdverts",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1.1.1",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vtpInSubsetAdverts",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vtpInAdvertRequests",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vtpOutSummaryAdverts",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1.1.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vtpOutSubsetAdverts",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vtpOutAdvertRequests",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1.1.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vtpConfigRevNumberErrors",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1.1.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vtpConfigDigestErrors",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1.1.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vlanTrunkPortIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "vlanTrunkPortManagementDomain",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "vlanTrunkPortEncapsulationType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "isl",
+          "Value": 1
+        },
+        {
+          "Name": "dot10",
+          "Value": 2
+        },
+        {
+          "Name": "lane",
+          "Value": 3
+        },
+        {
+          "Name": "dot1Q",
+          "Value": 4
+        },
+        {
+          "Name": "negotiate",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "vlanTrunkPortVlansEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 128
+      }
+    },
+    {
+      "Name": "vlanTrunkPortNativeVlan",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.5",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "vlanTrunkPortInJoins",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vlanTrunkPortOutJoins",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vlanTrunkPortOldAdverts",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "vlanTrunkPortVlansPruningEligible",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.10",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 128
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansXmitJoined",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.11",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 128
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansRcvJoined",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.12",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 128
+      }
+    },
+    {
+      "Name": "vlanTrunkPortDynamicState",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "on",
+          "Value": 1
+        },
+        {
+          "Name": "off",
+          "Value": 2
+        },
+        {
+          "Name": "desirable",
+          "Value": 3
+        },
+        {
+          "Name": "auto",
+          "Value": 4
+        },
+        {
+          "Name": "onNoNegotiate",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "vlanTrunkPortDynamicStatus",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "trunking",
+          "Value": 1
+        },
+        {
+          "Name": "notTrunking",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vlanTrunkPortVtpEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.15",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vlanTrunkPortEncapsulationOperType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "isl",
+          "Value": 1
+        },
+        {
+          "Name": "dot10",
+          "Value": 2
+        },
+        {
+          "Name": "lane",
+          "Value": 3
+        },
+        {
+          "Name": "dot1Q",
+          "Value": 4
+        },
+        {
+          "Name": "negotiating",
+          "Value": 5
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "vlanTrunkPortVlansEnabled2k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.17",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansEnabled3k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.18",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansEnabled4k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.19",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlansPruningEligible2k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.20",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlansPruningEligible3k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.21",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vtpVlansPruningEligible4k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.22",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansXmitJoined2k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.23",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansXmitJoined3k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.24",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansXmitJoined4k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.25",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansRcvJoined2k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.26",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansRcvJoined3k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.27",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortVlansRcvJoined4k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.28",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanTrunkPortDot1qTunnel",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.29",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "trunk",
+          "Value": 1
+        },
+        {
+          "Name": "access",
+          "Value": 2
+        },
+        {
+          "Name": "disabled",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "vlanTrunkPortVlansActiveFirst2k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.30",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "vlanTrunkPortVlansActiveSecond2k",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1.1.31",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "vlanTrunkPortSetSerialNo",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "vlanTrunkPortsDot1qTag",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpDiscoverAction",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "discover",
+          "Value": 1
+        },
+        {
+          "Name": "noOperation",
+          "Value": 2
+        },
+        {
+          "Name": "purgeResult",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "vtpDiscoverStatus",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "inProgress",
+          "Value": 1
+        },
+        {
+          "Name": "succeeded",
+          "Value": 2
+        },
+        {
+          "Name": "resourceUnavailable",
+          "Value": 3
+        },
+        {
+          "Name": "someOtherError",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "vtpLastDiscoverTime",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.1.1.3",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "vtpDiscoverResultIndex",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.2.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "vtpDiscoverResultDatabaseName",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.2.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpDiscoverResultConflicting",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpDiscoverResultDeviceId",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.2.1.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpDiscoverResultPrimaryServer",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.2.1.5",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpDiscoverResultRevNumber",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.2.1.6",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "vtpDiscoverResultSystemName",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.2.1.7",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpDatabaseIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "vtpDatabaseName",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpDatabaseLocalMode",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "client",
+          "Value": 1
+        },
+        {
+          "Name": "server",
+          "Value": 2
+        },
+        {
+          "Name": "transparent",
+          "Value": 3
+        },
+        {
+          "Name": "off",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "vtpDatabaseRevNumber",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1.1.4",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "vtpDatabasePrimaryServer",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpDatabasePrimaryServerId",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1.1.6",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpDatabaseTakeOverPrimary",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpDatabaseTakeOverPassword",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1.1.8",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpAuthPassword",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.9.1.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "vtpAuthPasswordType",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.9.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "plaintext",
+          "Value": 1
+        },
+        {
+          "Name": "hidden",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "vtpAuthSecretKey",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.9.1.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 0,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "vlanStatsVlans",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.10.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "vlanStatsExtendedVlans",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.10.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "vlanStatsInternalVlans",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.10.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "vlanStatsFreeVlans",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.10.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "vtpVlanPortLocalSegment",
+      "OID": ".1.3.6.1.4.1.9.9.46.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "managementDomainEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex",
+        "CISCO-VTP-MIB::managementDomainName",
+        "CISCO-VTP-MIB::managementDomainLocalMode",
+        "CISCO-VTP-MIB::managementDomainConfigRevNumber",
+        "CISCO-VTP-MIB::managementDomainLastUpdater",
+        "CISCO-VTP-MIB::managementDomainLastChange",
+        "CISCO-VTP-MIB::managementDomainRowStatus",
+        "CISCO-VTP-MIB::managementDomainTftpServer",
+        "CISCO-VTP-MIB::managementDomainTftpPathname",
+        "CISCO-VTP-MIB::managementDomainPruningState",
+        "CISCO-VTP-MIB::managementDomainVersionInUse",
+        "CISCO-VTP-MIB::managementDomainPruningStateOper",
+        "CISCO-VTP-MIB::managementDomainAdminSrcIf",
+        "CISCO-VTP-MIB::managementDomainSourceOnlyMode",
+        "CISCO-VTP-MIB::managementDomainOperSrcIf",
+        "CISCO-VTP-MIB::managementDomainConfigFile",
+        "CISCO-VTP-MIB::managementDomainLocalUpdaterType",
+        "CISCO-VTP-MIB::managementDomainLocalUpdater",
+        "CISCO-VTP-MIB::managementDomainDeviceID"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex"
+      ],
+      "Name": "managementDomainTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.2.1"
+    },
+    {
+      "EntryName": "vtpVlanEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpVlanIndex",
+        "CISCO-VTP-MIB::vtpVlanState",
+        "CISCO-VTP-MIB::vtpVlanType",
+        "CISCO-VTP-MIB::vtpVlanName",
+        "CISCO-VTP-MIB::vtpVlanMtu",
+        "CISCO-VTP-MIB::vtpVlanDot10Said",
+        "CISCO-VTP-MIB::vtpVlanRingNumber",
+        "CISCO-VTP-MIB::vtpVlanBridgeNumber",
+        "CISCO-VTP-MIB::vtpVlanStpType",
+        "CISCO-VTP-MIB::vtpVlanParentVlan",
+        "CISCO-VTP-MIB::vtpVlanTranslationalVlan1",
+        "CISCO-VTP-MIB::vtpVlanTranslationalVlan2",
+        "CISCO-VTP-MIB::vtpVlanBridgeType",
+        "CISCO-VTP-MIB::vtpVlanAreHopCount",
+        "CISCO-VTP-MIB::vtpVlanSteHopCount",
+        "CISCO-VTP-MIB::vtpVlanIsCRFBackup",
+        "CISCO-VTP-MIB::vtpVlanTypeExt",
+        "CISCO-VTP-MIB::vtpVlanIfIndex"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex",
+        "CISCO-VTP-MIB::vtpVlanIndex"
+      ],
+      "Name": "vtpVlanTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.1"
+    },
+    {
+      "EntryName": "vtpInternalVlanEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpInternalVlanOwner"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex",
+        "CISCO-VTP-MIB::vtpVlanIndex"
+      ],
+      "Name": "vtpInternalVlanTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.3.2.2"
+    },
+    {
+      "AugmentsEntry": "CISCO-VTP-MIB::managementDomainEntry",
+      "EntryName": "vtpEditControlEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpVlanEditOperation",
+        "CISCO-VTP-MIB::vtpVlanApplyStatus",
+        "CISCO-VTP-MIB::vtpVlanEditBufferOwner",
+        "CISCO-VTP-MIB::vtpVlanEditConfigRevNumber",
+        "CISCO-VTP-MIB::vtpVlanEditModifiedVlan"
+      ],
+      "Name": "vtpEditControlTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.1"
+    },
+    {
+      "EntryName": "vtpVlanEditEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpVlanEditIndex",
+        "CISCO-VTP-MIB::vtpVlanEditState",
+        "CISCO-VTP-MIB::vtpVlanEditType",
+        "CISCO-VTP-MIB::vtpVlanEditName",
+        "CISCO-VTP-MIB::vtpVlanEditMtu",
+        "CISCO-VTP-MIB::vtpVlanEditDot10Said",
+        "CISCO-VTP-MIB::vtpVlanEditRingNumber",
+        "CISCO-VTP-MIB::vtpVlanEditBridgeNumber",
+        "CISCO-VTP-MIB::vtpVlanEditStpType",
+        "CISCO-VTP-MIB::vtpVlanEditParentVlan",
+        "CISCO-VTP-MIB::vtpVlanEditRowStatus",
+        "CISCO-VTP-MIB::vtpVlanEditTranslationalVlan1",
+        "CISCO-VTP-MIB::vtpVlanEditTranslationalVlan2",
+        "CISCO-VTP-MIB::vtpVlanEditBridgeType",
+        "CISCO-VTP-MIB::vtpVlanEditAreHopCount",
+        "CISCO-VTP-MIB::vtpVlanEditSteHopCount",
+        "CISCO-VTP-MIB::vtpVlanEditIsCRFBackup",
+        "CISCO-VTP-MIB::vtpVlanEditTypeExt",
+        "CISCO-VTP-MIB::vtpVlanEditTypeExt2"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex",
+        "CISCO-VTP-MIB::vtpVlanEditIndex"
+      ],
+      "Name": "vtpVlanEditTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.2"
+    },
+    {
+      "EntryName": "vtpVlanLocalShutdownEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpVlanLocalShutdown"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex",
+        "CISCO-VTP-MIB::vtpVlanIndex"
+      ],
+      "Name": "vtpVlanLocalShutdownTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.4.3"
+    },
+    {
+      "AugmentsEntry": "CISCO-VTP-MIB::managementDomainEntry",
+      "EntryName": "vtpStatsEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpInSummaryAdverts",
+        "CISCO-VTP-MIB::vtpInSubsetAdverts",
+        "CISCO-VTP-MIB::vtpInAdvertRequests",
+        "CISCO-VTP-MIB::vtpOutSummaryAdverts",
+        "CISCO-VTP-MIB::vtpOutSubsetAdverts",
+        "CISCO-VTP-MIB::vtpOutAdvertRequests",
+        "CISCO-VTP-MIB::vtpConfigRevNumberErrors",
+        "CISCO-VTP-MIB::vtpConfigDigestErrors"
+      ],
+      "Name": "vtpStatsTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.5.1"
+    },
+    {
+      "EntryName": "vlanTrunkPortEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vlanTrunkPortIfIndex",
+        "CISCO-VTP-MIB::vlanTrunkPortManagementDomain",
+        "CISCO-VTP-MIB::vlanTrunkPortEncapsulationType",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansEnabled",
+        "CISCO-VTP-MIB::vlanTrunkPortNativeVlan",
+        "CISCO-VTP-MIB::vlanTrunkPortRowStatus",
+        "CISCO-VTP-MIB::vlanTrunkPortInJoins",
+        "CISCO-VTP-MIB::vlanTrunkPortOutJoins",
+        "CISCO-VTP-MIB::vlanTrunkPortOldAdverts",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansPruningEligible",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansXmitJoined",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansRcvJoined",
+        "CISCO-VTP-MIB::vlanTrunkPortDynamicState",
+        "CISCO-VTP-MIB::vlanTrunkPortDynamicStatus",
+        "CISCO-VTP-MIB::vlanTrunkPortVtpEnabled",
+        "CISCO-VTP-MIB::vlanTrunkPortEncapsulationOperType",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansEnabled2k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansEnabled3k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansEnabled4k",
+        "CISCO-VTP-MIB::vtpVlansPruningEligible2k",
+        "CISCO-VTP-MIB::vtpVlansPruningEligible3k",
+        "CISCO-VTP-MIB::vtpVlansPruningEligible4k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansXmitJoined2k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansXmitJoined3k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansXmitJoined4k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansRcvJoined2k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansRcvJoined3k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansRcvJoined4k",
+        "CISCO-VTP-MIB::vlanTrunkPortDot1qTunnel",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansActiveFirst2k",
+        "CISCO-VTP-MIB::vlanTrunkPortVlansActiveSecond2k"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::vlanTrunkPortIfIndex"
+      ],
+      "Name": "vlanTrunkPortTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.6.1"
+    },
+    {
+      "EntryName": "vtpDiscoverEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpDiscoverAction",
+        "CISCO-VTP-MIB::vtpDiscoverStatus",
+        "CISCO-VTP-MIB::vtpLastDiscoverTime"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex"
+      ],
+      "Name": "vtpDiscoverTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.1"
+    },
+    {
+      "EntryName": "vtpDiscoverResultEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpDiscoverResultIndex",
+        "CISCO-VTP-MIB::vtpDiscoverResultDatabaseName",
+        "CISCO-VTP-MIB::vtpDiscoverResultConflicting",
+        "CISCO-VTP-MIB::vtpDiscoverResultDeviceId",
+        "CISCO-VTP-MIB::vtpDiscoverResultPrimaryServer",
+        "CISCO-VTP-MIB::vtpDiscoverResultRevNumber",
+        "CISCO-VTP-MIB::vtpDiscoverResultSystemName"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex",
+        "CISCO-VTP-MIB::vtpDiscoverResultIndex"
+      ],
+      "Name": "vtpDiscoverResultTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.7.2"
+    },
+    {
+      "EntryName": "vtpDatabaseEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpDatabaseIndex",
+        "CISCO-VTP-MIB::vtpDatabaseName",
+        "CISCO-VTP-MIB::vtpDatabaseLocalMode",
+        "CISCO-VTP-MIB::vtpDatabaseRevNumber",
+        "CISCO-VTP-MIB::vtpDatabasePrimaryServer",
+        "CISCO-VTP-MIB::vtpDatabasePrimaryServerId",
+        "CISCO-VTP-MIB::vtpDatabaseTakeOverPrimary",
+        "CISCO-VTP-MIB::vtpDatabaseTakeOverPassword"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex",
+        "CISCO-VTP-MIB::vtpDatabaseIndex"
+      ],
+      "Name": "vtpDatabaseTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.8.1"
+    },
+    {
+      "EntryName": "vtpAuthEntry",
+      "EntryObjects": [
+        "CISCO-VTP-MIB::vtpAuthPassword",
+        "CISCO-VTP-MIB::vtpAuthPasswordType",
+        "CISCO-VTP-MIB::vtpAuthSecretKey"
+      ],
+      "IndexObjects": [
+        "CISCO-VTP-MIB::managementDomainIndex"
+      ],
+      "Name": "vtpAuthenticationTable",
+      "OID": ".1.3.6.1.4.1.9.9.46.1.9.1"
+    }
+  ]
+}

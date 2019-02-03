@@ -1,0 +1,43 @@
+{
+  "Name": "SNMP-FRAMEWORK-MIB",
+  "OID": ".1.3.6.1.6.3.10",
+  "Objects": [
+    {
+      "Name": "snmpEngineID",
+      "OID": ".1.3.6.1.6.3.10.2.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 5
+      }
+    },
+    {
+      "Name": "snmpEngineBoots",
+      "OID": ".1.3.6.1.6.3.10.2.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "snmpEngineTime",
+      "OID": ".1.3.6.1.6.3.10.2.1.3",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "snmpEngineMaxMessageSize",
+      "OID": ".1.3.6.1.6.3.10.2.1.4",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 484
+      }
+    }
+  ],
+  "Tables": []
+}

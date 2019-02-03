@@ -1,0 +1,1144 @@
+{
+  "Name": "LLDP-MIB",
+  "OID": ".1.0.8802.1.1.2",
+  "Objects": [
+    {
+      "Name": "lldpMessageTxInterval",
+      "OID": ".1.0.8802.1.1.2.1.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 32768,
+        "Min": 5
+      }
+    },
+    {
+      "Name": "lldpMessageTxHoldMultiplier",
+      "OID": ".1.0.8802.1.1.2.1.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 10,
+        "Min": 2
+      }
+    },
+    {
+      "Name": "lldpReinitDelay",
+      "OID": ".1.0.8802.1.1.2.1.1.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 10,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpTxDelay",
+      "OID": ".1.0.8802.1.1.2.1.1.4",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 8192,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpNotificationInterval",
+      "OID": ".1.0.8802.1.1.2.1.1.5",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 3600,
+        "Min": 5
+      }
+    },
+    {
+      "Name": "lldpPortConfigPortNum",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.1.6.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4096,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpPortConfigAdminStatus",
+      "OID": ".1.0.8802.1.1.2.1.1.6.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "txOnly",
+          "Value": 1
+        },
+        {
+          "Name": "rxOnly",
+          "Value": 2
+        },
+        {
+          "Name": "txAndRx",
+          "Value": 3
+        },
+        {
+          "Name": "disabled",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "lldpPortConfigNotificationEnable",
+      "OID": ".1.0.8802.1.1.2.1.1.6.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "lldpPortConfigTLVsTxEnable",
+      "OID": ".1.0.8802.1.1.2.1.1.6.1.4",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "portDesc"
+        },
+        {
+          "Bit": 1,
+          "Name": "sysName"
+        },
+        {
+          "Bit": 2,
+          "Name": "sysDesc"
+        },
+        {
+          "Bit": 3,
+          "Name": "sysCap"
+        }
+      ]
+    },
+    {
+      "Name": "lldpConfigManAddrPortsTxEnable",
+      "OID": ".1.0.8802.1.1.2.1.1.7.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 512,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "lldpStatsRemTablesLastChangeTime",
+      "OID": ".1.0.8802.1.1.2.1.2.1",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "lldpStatsRemTablesInserts",
+      "OID": ".1.0.8802.1.1.2.1.2.2",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "lldpStatsRemTablesDeletes",
+      "OID": ".1.0.8802.1.1.2.1.2.3",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "lldpStatsRemTablesDrops",
+      "OID": ".1.0.8802.1.1.2.1.2.4",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "lldpStatsRemTablesAgeouts",
+      "OID": ".1.0.8802.1.1.2.1.2.5",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "lldpStatsTxPortNum",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.2.6.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4096,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpStatsTxPortFramesTotal",
+      "OID": ".1.0.8802.1.1.2.1.2.6.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "lldpStatsRxPortNum",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.2.7.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4096,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpStatsRxPortFramesDiscardedTotal",
+      "OID": ".1.0.8802.1.1.2.1.2.7.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "lldpStatsRxPortFramesErrors",
+      "OID": ".1.0.8802.1.1.2.1.2.7.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "lldpStatsRxPortFramesTotal",
+      "OID": ".1.0.8802.1.1.2.1.2.7.1.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "lldpStatsRxPortTLVsDiscardedTotal",
+      "OID": ".1.0.8802.1.1.2.1.2.7.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "lldpStatsRxPortTLVsUnrecognizedTotal",
+      "OID": ".1.0.8802.1.1.2.1.2.7.1.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "lldpStatsRxPortAgeoutsTotal",
+      "OID": ".1.0.8802.1.1.2.1.2.7.1.7",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "lldpLocChassisIdSubtype",
+      "OID": ".1.0.8802.1.1.2.1.3.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "chassisComponent",
+          "Value": 1
+        },
+        {
+          "Name": "interfaceAlias",
+          "Value": 2
+        },
+        {
+          "Name": "portComponent",
+          "Value": 3
+        },
+        {
+          "Name": "macAddress",
+          "Value": 4
+        },
+        {
+          "Name": "networkAddress",
+          "Value": 5
+        },
+        {
+          "Name": "interfaceName",
+          "Value": 6
+        },
+        {
+          "Name": "local",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "lldpLocChassisId",
+      "OID": ".1.0.8802.1.1.2.1.3.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpLocSysName",
+      "OID": ".1.0.8802.1.1.2.1.3.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "lldpLocSysDesc",
+      "OID": ".1.0.8802.1.1.2.1.3.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "lldpLocSysCapSupported",
+      "OID": ".1.0.8802.1.1.2.1.3.5",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "other"
+        },
+        {
+          "Bit": 1,
+          "Name": "repeater"
+        },
+        {
+          "Bit": 2,
+          "Name": "bridge"
+        },
+        {
+          "Bit": 3,
+          "Name": "wlanAccessPoint"
+        },
+        {
+          "Bit": 4,
+          "Name": "router"
+        },
+        {
+          "Bit": 5,
+          "Name": "telephone"
+        },
+        {
+          "Bit": 6,
+          "Name": "docsisCableDevice"
+        },
+        {
+          "Bit": 7,
+          "Name": "stationOnly"
+        }
+      ]
+    },
+    {
+      "Name": "lldpLocSysCapEnabled",
+      "OID": ".1.0.8802.1.1.2.1.3.6",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "other"
+        },
+        {
+          "Bit": 1,
+          "Name": "repeater"
+        },
+        {
+          "Bit": 2,
+          "Name": "bridge"
+        },
+        {
+          "Bit": 3,
+          "Name": "wlanAccessPoint"
+        },
+        {
+          "Bit": 4,
+          "Name": "router"
+        },
+        {
+          "Bit": 5,
+          "Name": "telephone"
+        },
+        {
+          "Bit": 6,
+          "Name": "docsisCableDevice"
+        },
+        {
+          "Bit": 7,
+          "Name": "stationOnly"
+        }
+      ]
+    },
+    {
+      "Name": "lldpLocPortNum",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.3.7.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4096,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpLocPortIdSubtype",
+      "OID": ".1.0.8802.1.1.2.1.3.7.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "interfaceAlias",
+          "Value": 1
+        },
+        {
+          "Name": "portComponent",
+          "Value": 2
+        },
+        {
+          "Name": "macAddress",
+          "Value": 3
+        },
+        {
+          "Name": "networkAddress",
+          "Value": 4
+        },
+        {
+          "Name": "interfaceName",
+          "Value": 5
+        },
+        {
+          "Name": "agentCircuitId",
+          "Value": 6
+        },
+        {
+          "Name": "local",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "lldpLocPortId",
+      "OID": ".1.0.8802.1.1.2.1.3.7.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpLocPortDesc",
+      "OID": ".1.0.8802.1.1.2.1.3.7.1.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "lldpLocManAddrSubtype",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.3.8.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 0
+        },
+        {
+          "Name": "ipV4",
+          "Value": 1
+        },
+        {
+          "Name": "ipV6",
+          "Value": 2
+        },
+        {
+          "Name": "nsap",
+          "Value": 3
+        },
+        {
+          "Name": "hdlc",
+          "Value": 4
+        },
+        {
+          "Name": "bbn1822",
+          "Value": 5
+        },
+        {
+          "Name": "all802",
+          "Value": 6
+        },
+        {
+          "Name": "e163",
+          "Value": 7
+        },
+        {
+          "Name": "e164",
+          "Value": 8
+        },
+        {
+          "Name": "f69",
+          "Value": 9
+        },
+        {
+          "Name": "x121",
+          "Value": 10
+        },
+        {
+          "Name": "ipx",
+          "Value": 11
+        },
+        {
+          "Name": "appleTalk",
+          "Value": 12
+        },
+        {
+          "Name": "decnetIV",
+          "Value": 13
+        },
+        {
+          "Name": "banyanVines",
+          "Value": 14
+        },
+        {
+          "Name": "e164withNsap",
+          "Value": 15
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        },
+        {
+          "Name": "distinguishedName",
+          "Value": 17
+        },
+        {
+          "Name": "asNumber",
+          "Value": 18
+        },
+        {
+          "Name": "xtpOverIpv4",
+          "Value": 19
+        },
+        {
+          "Name": "xtpOverIpv6",
+          "Value": 20
+        },
+        {
+          "Name": "xtpNativeModeXTP",
+          "Value": 21
+        },
+        {
+          "Name": "fibreChannelWWPN",
+          "Value": 22
+        },
+        {
+          "Name": "fibreChannelWWNN",
+          "Value": 23
+        },
+        {
+          "Name": "gwid",
+          "Value": 24
+        },
+        {
+          "Name": "afi",
+          "Value": 25
+        },
+        {
+          "Name": "reserved",
+          "Value": 65535
+        }
+      ]
+    },
+    {
+      "Name": "lldpLocManAddr",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.3.8.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 31,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpLocManAddrLen",
+      "OID": ".1.0.8802.1.1.2.1.3.8.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "lldpLocManAddrIfSubtype",
+      "OID": ".1.0.8802.1.1.2.1.3.8.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "ifIndex",
+          "Value": 2
+        },
+        {
+          "Name": "systemPortNumber",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "lldpLocManAddrIfId",
+      "OID": ".1.0.8802.1.1.2.1.3.8.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "lldpLocManAddrOID",
+      "OID": ".1.0.8802.1.1.2.1.3.8.1.6",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "lldpRemTimeMark",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.1",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "lldpRemLocalPortNum",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4096,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpRemIndex",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpRemChassisIdSubtype",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "chassisComponent",
+          "Value": 1
+        },
+        {
+          "Name": "interfaceAlias",
+          "Value": 2
+        },
+        {
+          "Name": "portComponent",
+          "Value": 3
+        },
+        {
+          "Name": "macAddress",
+          "Value": 4
+        },
+        {
+          "Name": "networkAddress",
+          "Value": 5
+        },
+        {
+          "Name": "interfaceName",
+          "Value": 6
+        },
+        {
+          "Name": "local",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "lldpRemChassisId",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpRemPortIdSubtype",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "interfaceAlias",
+          "Value": 1
+        },
+        {
+          "Name": "portComponent",
+          "Value": 2
+        },
+        {
+          "Name": "macAddress",
+          "Value": 3
+        },
+        {
+          "Name": "networkAddress",
+          "Value": 4
+        },
+        {
+          "Name": "interfaceName",
+          "Value": 5
+        },
+        {
+          "Name": "agentCircuitId",
+          "Value": 6
+        },
+        {
+          "Name": "local",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "lldpRemPortId",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.7",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpRemPortDesc",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.8",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "lldpRemSysName",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.9",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "lldpRemSysDesc",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.10",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "lldpRemSysCapSupported",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.11",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "other"
+        },
+        {
+          "Bit": 1,
+          "Name": "repeater"
+        },
+        {
+          "Bit": 2,
+          "Name": "bridge"
+        },
+        {
+          "Bit": 3,
+          "Name": "wlanAccessPoint"
+        },
+        {
+          "Bit": 4,
+          "Name": "router"
+        },
+        {
+          "Bit": 5,
+          "Name": "telephone"
+        },
+        {
+          "Bit": 6,
+          "Name": "docsisCableDevice"
+        },
+        {
+          "Bit": 7,
+          "Name": "stationOnly"
+        }
+      ]
+    },
+    {
+      "Name": "lldpRemSysCapEnabled",
+      "OID": ".1.0.8802.1.1.2.1.4.1.1.12",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "other"
+        },
+        {
+          "Bit": 1,
+          "Name": "repeater"
+        },
+        {
+          "Bit": 2,
+          "Name": "bridge"
+        },
+        {
+          "Bit": 3,
+          "Name": "wlanAccessPoint"
+        },
+        {
+          "Bit": 4,
+          "Name": "router"
+        },
+        {
+          "Bit": 5,
+          "Name": "telephone"
+        },
+        {
+          "Bit": 6,
+          "Name": "docsisCableDevice"
+        },
+        {
+          "Bit": 7,
+          "Name": "stationOnly"
+        }
+      ]
+    },
+    {
+      "Name": "lldpRemManAddrSubtype",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.2.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 0
+        },
+        {
+          "Name": "ipV4",
+          "Value": 1
+        },
+        {
+          "Name": "ipV6",
+          "Value": 2
+        },
+        {
+          "Name": "nsap",
+          "Value": 3
+        },
+        {
+          "Name": "hdlc",
+          "Value": 4
+        },
+        {
+          "Name": "bbn1822",
+          "Value": 5
+        },
+        {
+          "Name": "all802",
+          "Value": 6
+        },
+        {
+          "Name": "e163",
+          "Value": 7
+        },
+        {
+          "Name": "e164",
+          "Value": 8
+        },
+        {
+          "Name": "f69",
+          "Value": 9
+        },
+        {
+          "Name": "x121",
+          "Value": 10
+        },
+        {
+          "Name": "ipx",
+          "Value": 11
+        },
+        {
+          "Name": "appleTalk",
+          "Value": 12
+        },
+        {
+          "Name": "decnetIV",
+          "Value": 13
+        },
+        {
+          "Name": "banyanVines",
+          "Value": 14
+        },
+        {
+          "Name": "e164withNsap",
+          "Value": 15
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        },
+        {
+          "Name": "distinguishedName",
+          "Value": 17
+        },
+        {
+          "Name": "asNumber",
+          "Value": 18
+        },
+        {
+          "Name": "xtpOverIpv4",
+          "Value": 19
+        },
+        {
+          "Name": "xtpOverIpv6",
+          "Value": 20
+        },
+        {
+          "Name": "xtpNativeModeXTP",
+          "Value": 21
+        },
+        {
+          "Name": "fibreChannelWWPN",
+          "Value": 22
+        },
+        {
+          "Name": "fibreChannelWWNN",
+          "Value": 23
+        },
+        {
+          "Name": "gwid",
+          "Value": 24
+        },
+        {
+          "Name": "afi",
+          "Value": 25
+        },
+        {
+          "Name": "reserved",
+          "Value": 65535
+        }
+      ]
+    },
+    {
+      "Name": "lldpRemManAddr",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.2.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 31,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpRemManAddrIfSubtype",
+      "OID": ".1.0.8802.1.1.2.1.4.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "ifIndex",
+          "Value": 2
+        },
+        {
+          "Name": "systemPortNumber",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "lldpRemManAddrIfId",
+      "OID": ".1.0.8802.1.1.2.1.4.2.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "lldpRemManAddrOID",
+      "OID": ".1.0.8802.1.1.2.1.4.2.1.5",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "lldpRemUnknownTLVType",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.3.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 126,
+        "Min": 9
+      }
+    },
+    {
+      "Name": "lldpRemUnknownTLVInfo",
+      "OID": ".1.0.8802.1.1.2.1.4.3.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 511,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "lldpRemOrgDefInfoOUI",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.4.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 3,
+        "Min": 3
+      }
+    },
+    {
+      "Name": "lldpRemOrgDefInfoSubtype",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.4.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpRemOrgDefInfoIndex",
+      "NotAccessible": true,
+      "OID": ".1.0.8802.1.1.2.1.4.4.1.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "lldpRemOrgDefInfo",
+      "OID": ".1.0.8802.1.1.2.1.4.4.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 507,
+        "Min": 0
+      }
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "lldpPortConfigEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpPortConfigPortNum",
+        "LLDP-MIB::lldpPortConfigAdminStatus",
+        "LLDP-MIB::lldpPortConfigNotificationEnable",
+        "LLDP-MIB::lldpPortConfigTLVsTxEnable"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpPortConfigPortNum"
+      ],
+      "Name": "lldpPortConfigTable",
+      "OID": ".1.0.8802.1.1.2.1.1.6"
+    },
+    {
+      "AugmentsEntry": "LLDP-MIB::lldpLocManAddrEntry",
+      "EntryName": "lldpConfigManAddrEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpConfigManAddrPortsTxEnable"
+      ],
+      "Name": "lldpConfigManAddrTable",
+      "OID": ".1.0.8802.1.1.2.1.1.7"
+    },
+    {
+      "EntryName": "lldpStatsTxPortEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpStatsTxPortNum",
+        "LLDP-MIB::lldpStatsTxPortFramesTotal"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpStatsTxPortNum"
+      ],
+      "Name": "lldpStatsTxPortTable",
+      "OID": ".1.0.8802.1.1.2.1.2.6"
+    },
+    {
+      "EntryName": "lldpStatsRxPortEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpStatsRxPortNum",
+        "LLDP-MIB::lldpStatsRxPortFramesDiscardedTotal",
+        "LLDP-MIB::lldpStatsRxPortFramesErrors",
+        "LLDP-MIB::lldpStatsRxPortFramesTotal",
+        "LLDP-MIB::lldpStatsRxPortTLVsDiscardedTotal",
+        "LLDP-MIB::lldpStatsRxPortTLVsUnrecognizedTotal",
+        "LLDP-MIB::lldpStatsRxPortAgeoutsTotal"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpStatsRxPortNum"
+      ],
+      "Name": "lldpStatsRxPortTable",
+      "OID": ".1.0.8802.1.1.2.1.2.7"
+    },
+    {
+      "EntryName": "lldpLocPortEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpLocPortNum",
+        "LLDP-MIB::lldpLocPortIdSubtype",
+        "LLDP-MIB::lldpLocPortId",
+        "LLDP-MIB::lldpLocPortDesc"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpLocPortNum"
+      ],
+      "Name": "lldpLocPortTable",
+      "OID": ".1.0.8802.1.1.2.1.3.7"
+    },
+    {
+      "EntryName": "lldpLocManAddrEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpLocManAddrSubtype",
+        "LLDP-MIB::lldpLocManAddr",
+        "LLDP-MIB::lldpLocManAddrLen",
+        "LLDP-MIB::lldpLocManAddrIfSubtype",
+        "LLDP-MIB::lldpLocManAddrIfId",
+        "LLDP-MIB::lldpLocManAddrOID"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpLocManAddrSubtype",
+        "LLDP-MIB::lldpLocManAddr"
+      ],
+      "Name": "lldpLocManAddrTable",
+      "OID": ".1.0.8802.1.1.2.1.3.8"
+    },
+    {
+      "EntryName": "lldpRemEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpRemTimeMark",
+        "LLDP-MIB::lldpRemLocalPortNum",
+        "LLDP-MIB::lldpRemIndex",
+        "LLDP-MIB::lldpRemChassisIdSubtype",
+        "LLDP-MIB::lldpRemChassisId",
+        "LLDP-MIB::lldpRemPortIdSubtype",
+        "LLDP-MIB::lldpRemPortId",
+        "LLDP-MIB::lldpRemPortDesc",
+        "LLDP-MIB::lldpRemSysName",
+        "LLDP-MIB::lldpRemSysDesc",
+        "LLDP-MIB::lldpRemSysCapSupported",
+        "LLDP-MIB::lldpRemSysCapEnabled"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpRemTimeMark",
+        "LLDP-MIB::lldpRemLocalPortNum",
+        "LLDP-MIB::lldpRemIndex"
+      ],
+      "Name": "lldpRemTable",
+      "OID": ".1.0.8802.1.1.2.1.4.1"
+    },
+    {
+      "EntryName": "lldpRemManAddrEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpRemManAddrSubtype",
+        "LLDP-MIB::lldpRemManAddr",
+        "LLDP-MIB::lldpRemManAddrIfSubtype",
+        "LLDP-MIB::lldpRemManAddrIfId",
+        "LLDP-MIB::lldpRemManAddrOID"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpRemTimeMark",
+        "LLDP-MIB::lldpRemLocalPortNum",
+        "LLDP-MIB::lldpRemIndex",
+        "LLDP-MIB::lldpRemManAddrSubtype",
+        "LLDP-MIB::lldpRemManAddr"
+      ],
+      "Name": "lldpRemManAddrTable",
+      "OID": ".1.0.8802.1.1.2.1.4.2"
+    },
+    {
+      "EntryName": "lldpRemUnknownTLVEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpRemUnknownTLVType",
+        "LLDP-MIB::lldpRemUnknownTLVInfo"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpRemTimeMark",
+        "LLDP-MIB::lldpRemLocalPortNum",
+        "LLDP-MIB::lldpRemIndex",
+        "LLDP-MIB::lldpRemUnknownTLVType"
+      ],
+      "Name": "lldpRemUnknownTLVTable",
+      "OID": ".1.0.8802.1.1.2.1.4.3"
+    },
+    {
+      "EntryName": "lldpRemOrgDefInfoEntry",
+      "EntryObjects": [
+        "LLDP-MIB::lldpRemOrgDefInfoOUI",
+        "LLDP-MIB::lldpRemOrgDefInfoSubtype",
+        "LLDP-MIB::lldpRemOrgDefInfoIndex",
+        "LLDP-MIB::lldpRemOrgDefInfo"
+      ],
+      "IndexObjects": [
+        "LLDP-MIB::lldpRemTimeMark",
+        "LLDP-MIB::lldpRemLocalPortNum",
+        "LLDP-MIB::lldpRemIndex",
+        "LLDP-MIB::lldpRemOrgDefInfoOUI",
+        "LLDP-MIB::lldpRemOrgDefInfoSubtype",
+        "LLDP-MIB::lldpRemOrgDefInfoIndex"
+      ],
+      "Name": "lldpRemOrgDefInfoTable",
+      "OID": ".1.0.8802.1.1.2.1.4.4"
+    }
+  ]
+}

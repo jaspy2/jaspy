@@ -1,0 +1,925 @@
+{
+  "Name": "Q-BRIDGE-MIB",
+  "OID": ".1.3.6.1.2.1.17.7",
+  "Objects": [
+    {
+      "Name": "dot1qVlanVersionNumber",
+      "OID": ".1.3.6.1.2.1.17.7.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "version1",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "dot1qMaxVlanId",
+      "OID": ".1.3.6.1.2.1.17.7.1.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4094,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "dot1qMaxSupportedVlans",
+      "OID": ".1.3.6.1.2.1.17.7.1.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "dot1qNumVlans",
+      "OID": ".1.3.6.1.2.1.17.7.1.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "dot1qGvrpStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "dot1qFdbId",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.2.1.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "dot1qFdbDynamicCount",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.1.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qTpFdbAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.2.2.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot1qTpFdbPort",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "dot1qTpFdbStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "invalid",
+          "Value": 2
+        },
+        {
+          "Name": "learned",
+          "Value": 3
+        },
+        {
+          "Name": "self",
+          "Value": 4
+        },
+        {
+          "Name": "mgmt",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "dot1qTpGroupAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.2.3.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot1qTpGroupEgressPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.3.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qTpGroupLearnt",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.3.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qForwardAllPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.4.1.1",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qForwardAllStaticPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.4.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qForwardAllForbiddenPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.4.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qForwardUnregisteredPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.5.1.1",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qForwardUnregisteredStaticPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.5.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qForwardUnregisteredForbiddenPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.5.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qStaticUnicastAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.3.1.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot1qStaticUnicastReceivePort",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.3.1.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "dot1qStaticUnicastAllowedToGoTo",
+      "OID": ".1.3.6.1.2.1.17.7.1.3.1.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qStaticUnicastStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.3.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "invalid",
+          "Value": 2
+        },
+        {
+          "Name": "permanent",
+          "Value": 3
+        },
+        {
+          "Name": "deleteOnReset",
+          "Value": 4
+        },
+        {
+          "Name": "deleteOnTimeout",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "dot1qStaticMulticastAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.3.2.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot1qStaticMulticastReceivePort",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.3.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "dot1qStaticMulticastStaticEgressPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.3.2.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qStaticMulticastForbiddenEgressPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.3.2.1.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qStaticMulticastStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.3.2.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "invalid",
+          "Value": 2
+        },
+        {
+          "Name": "permanent",
+          "Value": 3
+        },
+        {
+          "Name": "deleteOnReset",
+          "Value": 4
+        },
+        {
+          "Name": "deleteOnTimeout",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "dot1qVlanNumDeletes",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.1",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qVlanTimeMark",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.4.2.1.1",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "dot1qVlanIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.4.2.1.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "dot1qVlanFdbId",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.2.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "dot1qVlanCurrentEgressPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.2.1.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qVlanCurrentUntaggedPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.2.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qVlanStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.2.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "permanent",
+          "Value": 2
+        },
+        {
+          "Name": "dynamicGvrp",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "dot1qVlanCreationTime",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.2.1.7",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "dot1qVlanStaticName",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.3.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "dot1qVlanStaticEgressPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.3.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qVlanForbiddenEgressPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.3.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qVlanStaticUntaggedPorts",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.3.1.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot1qVlanStaticRowStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.3.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "dot1qNextFreeLocalVlanIndex",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.4",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 0,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "dot1qPvid",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.5.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "dot1qPortAcceptableFrameTypes",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.5.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "admitAll",
+          "Value": 1
+        },
+        {
+          "Name": "admitOnlyVlanTagged",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "dot1qPortIngressFiltering",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.5.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "dot1qPortGvrpStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.5.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "dot1qPortGvrpFailedRegistrations",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.5.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qPortGvrpLastPduOrigin",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.5.1.6",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot1qPortRestrictedVlanRegistration",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.5.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "dot1qTpVlanPortInFrames",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.6.1.1",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qTpVlanPortOutFrames",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.6.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qTpVlanPortInDiscards",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.6.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qTpVlanPortInOverflowFrames",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.6.1.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qTpVlanPortOutOverflowFrames",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.6.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qTpVlanPortInOverflowDiscards",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.6.1.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "dot1qTpVlanPortHCInFrames",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.7.1.1",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "dot1qTpVlanPortHCOutFrames",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.7.1.2",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "dot1qTpVlanPortHCInDiscards",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.7.1.3",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "dot1qConstraintVlan",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.4.8.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "dot1qConstraintSet",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.4.8.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "dot1qConstraintType",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.8.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "independent",
+          "Value": 1
+        },
+        {
+          "Name": "shared",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "dot1qConstraintStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.8.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "dot1qConstraintSetDefault",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.9",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "dot1qConstraintTypeDefault",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "independent",
+          "Value": 1
+        },
+        {
+          "Name": "shared",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "dot1vProtocolTemplateFrameType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.5.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "ethernet",
+          "Value": 1
+        },
+        {
+          "Name": "rfc1042",
+          "Value": 2
+        },
+        {
+          "Name": "snap8021H",
+          "Value": 3
+        },
+        {
+          "Name": "snapOther",
+          "Value": 4
+        },
+        {
+          "Name": "llcOther",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "dot1vProtocolTemplateProtocolValue",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.5.1.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 2,
+        "Min": 2
+      }
+    },
+    {
+      "Name": "dot1vProtocolGroupId",
+      "OID": ".1.3.6.1.2.1.17.7.1.5.1.1.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "dot1vProtocolGroupRowStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.5.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "dot1vProtocolPortGroupId",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.17.7.1.5.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "dot1vProtocolPortGroupVid",
+      "OID": ".1.3.6.1.2.1.17.7.1.5.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4094,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "dot1vProtocolPortRowStatus",
+      "OID": ".1.3.6.1.2.1.17.7.1.5.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "dot1qFdbEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qFdbId",
+        "Q-BRIDGE-MIB::dot1qFdbDynamicCount"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qFdbId"
+      ],
+      "Name": "dot1qFdbTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.1"
+    },
+    {
+      "EntryName": "dot1qTpFdbEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qTpFdbAddress",
+        "Q-BRIDGE-MIB::dot1qTpFdbPort",
+        "Q-BRIDGE-MIB::dot1qTpFdbStatus"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qFdbId",
+        "Q-BRIDGE-MIB::dot1qTpFdbAddress"
+      ],
+      "Name": "dot1qTpFdbTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.2"
+    },
+    {
+      "EntryName": "dot1qTpGroupEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qTpGroupAddress",
+        "Q-BRIDGE-MIB::dot1qTpGroupEgressPorts",
+        "Q-BRIDGE-MIB::dot1qTpGroupLearnt"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qVlanIndex",
+        "Q-BRIDGE-MIB::dot1qTpGroupAddress"
+      ],
+      "Name": "dot1qTpGroupTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.3"
+    },
+    {
+      "EntryName": "dot1qForwardAllEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qForwardAllPorts",
+        "Q-BRIDGE-MIB::dot1qForwardAllStaticPorts",
+        "Q-BRIDGE-MIB::dot1qForwardAllForbiddenPorts"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qVlanIndex"
+      ],
+      "Name": "dot1qForwardAllTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.4"
+    },
+    {
+      "EntryName": "dot1qForwardUnregisteredEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qForwardUnregisteredPorts",
+        "Q-BRIDGE-MIB::dot1qForwardUnregisteredStaticPorts",
+        "Q-BRIDGE-MIB::dot1qForwardUnregisteredForbiddenPorts"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qVlanIndex"
+      ],
+      "Name": "dot1qForwardUnregisteredTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.2.5"
+    },
+    {
+      "EntryName": "dot1qStaticUnicastEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qStaticUnicastAddress",
+        "Q-BRIDGE-MIB::dot1qStaticUnicastReceivePort",
+        "Q-BRIDGE-MIB::dot1qStaticUnicastAllowedToGoTo",
+        "Q-BRIDGE-MIB::dot1qStaticUnicastStatus"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qFdbId",
+        "Q-BRIDGE-MIB::dot1qStaticUnicastAddress",
+        "Q-BRIDGE-MIB::dot1qStaticUnicastReceivePort"
+      ],
+      "Name": "dot1qStaticUnicastTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.3.1"
+    },
+    {
+      "EntryName": "dot1qStaticMulticastEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qStaticMulticastAddress",
+        "Q-BRIDGE-MIB::dot1qStaticMulticastReceivePort",
+        "Q-BRIDGE-MIB::dot1qStaticMulticastStaticEgressPorts",
+        "Q-BRIDGE-MIB::dot1qStaticMulticastForbiddenEgressPorts",
+        "Q-BRIDGE-MIB::dot1qStaticMulticastStatus"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qVlanIndex",
+        "Q-BRIDGE-MIB::dot1qStaticMulticastAddress",
+        "Q-BRIDGE-MIB::dot1qStaticMulticastReceivePort"
+      ],
+      "Name": "dot1qStaticMulticastTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.3.2"
+    },
+    {
+      "EntryName": "dot1qVlanCurrentEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qVlanTimeMark",
+        "Q-BRIDGE-MIB::dot1qVlanIndex",
+        "Q-BRIDGE-MIB::dot1qVlanFdbId",
+        "Q-BRIDGE-MIB::dot1qVlanCurrentEgressPorts",
+        "Q-BRIDGE-MIB::dot1qVlanCurrentUntaggedPorts",
+        "Q-BRIDGE-MIB::dot1qVlanStatus",
+        "Q-BRIDGE-MIB::dot1qVlanCreationTime"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qVlanTimeMark",
+        "Q-BRIDGE-MIB::dot1qVlanIndex"
+      ],
+      "Name": "dot1qVlanCurrentTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.2"
+    },
+    {
+      "EntryName": "dot1qVlanStaticEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qVlanStaticName",
+        "Q-BRIDGE-MIB::dot1qVlanStaticEgressPorts",
+        "Q-BRIDGE-MIB::dot1qVlanForbiddenEgressPorts",
+        "Q-BRIDGE-MIB::dot1qVlanStaticUntaggedPorts",
+        "Q-BRIDGE-MIB::dot1qVlanStaticRowStatus"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qVlanIndex"
+      ],
+      "Name": "dot1qVlanStaticTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.3"
+    },
+    {
+      "AugmentsEntry": "BRIDGE-MIB::dot1dBasePortEntry",
+      "EntryName": "dot1qPortVlanEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qPvid",
+        "Q-BRIDGE-MIB::dot1qPortAcceptableFrameTypes",
+        "Q-BRIDGE-MIB::dot1qPortIngressFiltering",
+        "Q-BRIDGE-MIB::dot1qPortGvrpStatus",
+        "Q-BRIDGE-MIB::dot1qPortGvrpFailedRegistrations",
+        "Q-BRIDGE-MIB::dot1qPortGvrpLastPduOrigin",
+        "Q-BRIDGE-MIB::dot1qPortRestrictedVlanRegistration"
+      ],
+      "Name": "dot1qPortVlanTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.5"
+    },
+    {
+      "EntryName": "dot1qPortVlanStatisticsEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qTpVlanPortInFrames",
+        "Q-BRIDGE-MIB::dot1qTpVlanPortOutFrames",
+        "Q-BRIDGE-MIB::dot1qTpVlanPortInDiscards",
+        "Q-BRIDGE-MIB::dot1qTpVlanPortInOverflowFrames",
+        "Q-BRIDGE-MIB::dot1qTpVlanPortOutOverflowFrames",
+        "Q-BRIDGE-MIB::dot1qTpVlanPortInOverflowDiscards"
+      ],
+      "IndexObjects": [
+        "BRIDGE-MIB::dot1dBasePort",
+        "Q-BRIDGE-MIB::dot1qVlanIndex"
+      ],
+      "Name": "dot1qPortVlanStatisticsTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.6"
+    },
+    {
+      "EntryName": "dot1qPortVlanHCStatisticsEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qTpVlanPortHCInFrames",
+        "Q-BRIDGE-MIB::dot1qTpVlanPortHCOutFrames",
+        "Q-BRIDGE-MIB::dot1qTpVlanPortHCInDiscards"
+      ],
+      "IndexObjects": [
+        "BRIDGE-MIB::dot1dBasePort",
+        "Q-BRIDGE-MIB::dot1qVlanIndex"
+      ],
+      "Name": "dot1qPortVlanHCStatisticsTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.7"
+    },
+    {
+      "EntryName": "dot1qLearningConstraintsEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1qConstraintVlan",
+        "Q-BRIDGE-MIB::dot1qConstraintSet",
+        "Q-BRIDGE-MIB::dot1qConstraintType",
+        "Q-BRIDGE-MIB::dot1qConstraintStatus"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qConstraintVlan",
+        "Q-BRIDGE-MIB::dot1qConstraintSet"
+      ],
+      "Name": "dot1qLearningConstraintsTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.4.8"
+    },
+    {
+      "EntryName": "dot1vProtocolGroupEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1vProtocolTemplateFrameType",
+        "Q-BRIDGE-MIB::dot1vProtocolTemplateProtocolValue",
+        "Q-BRIDGE-MIB::dot1vProtocolGroupId",
+        "Q-BRIDGE-MIB::dot1vProtocolGroupRowStatus"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1vProtocolTemplateFrameType",
+        "Q-BRIDGE-MIB::dot1vProtocolTemplateProtocolValue"
+      ],
+      "Name": "dot1vProtocolGroupTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.5.1"
+    },
+    {
+      "EntryName": "dot1vProtocolPortEntry",
+      "EntryObjects": [
+        "Q-BRIDGE-MIB::dot1vProtocolPortGroupId",
+        "Q-BRIDGE-MIB::dot1vProtocolPortGroupVid",
+        "Q-BRIDGE-MIB::dot1vProtocolPortRowStatus"
+      ],
+      "IndexObjects": [
+        "BRIDGE-MIB::dot1dBasePort",
+        "Q-BRIDGE-MIB::dot1vProtocolPortGroupId"
+      ],
+      "Name": "dot1vProtocolPortTable",
+      "OID": ".1.3.6.1.2.1.17.7.1.5.2"
+    }
+  ]
+}

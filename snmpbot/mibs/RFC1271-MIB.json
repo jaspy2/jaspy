@@ -1,0 +1,1645 @@
+{
+  "Name": "RFC1271-MIB",
+  "Objects": [
+    {
+      "Name": "etherStatsIndex",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "etherStatsDataSource",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "etherStatsDropEvents",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsOctets",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsPkts",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsMulticastPkts",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsCRCAlignErrors",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsUndersizePkts",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsOversizePkts",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsFragments",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsJabbers",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsCollisions",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsPkts64Octets",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsPkts65to127Octets",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsPkts128to255Octets",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.16",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsPkts256to511Octets",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.17",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsPkts512to1023Octets",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsPkts1024to1518Octets",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.19",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherStatsOwner",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.20",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "etherStatsStatus",
+      "OID": ".1.3.6.1.2.1.16.1.1.1.21",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "historyControlIndex",
+      "OID": ".1.3.6.1.2.1.16.2.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "historyControlDataSource",
+      "OID": ".1.3.6.1.2.1.16.2.1.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "historyControlBucketsRequested",
+      "OID": ".1.3.6.1.2.1.16.2.1.1.3",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "historyControlBucketsGranted",
+      "OID": ".1.3.6.1.2.1.16.2.1.1.4",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "historyControlInterval",
+      "OID": ".1.3.6.1.2.1.16.2.1.1.5",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 3600,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "historyControlOwner",
+      "OID": ".1.3.6.1.2.1.16.2.1.1.6",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "historyControlStatus",
+      "OID": ".1.3.6.1.2.1.16.2.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "etherHistoryIndex",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "etherHistorySampleIndex",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "etherHistoryIntervalStart",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.3",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "etherHistoryDropEvents",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryOctets",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryPkts",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryMulticastPkts",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryCRCAlignErrors",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryUndersizePkts",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryOversizePkts",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryFragments",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryJabbers",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryCollisions",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "etherHistoryUtilization",
+      "OID": ".1.3.6.1.2.1.16.2.2.1.15",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 10000,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "alarmIndex",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "alarmInterval",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "alarmVariable",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.3",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "alarmSampleType",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "absoluteValue",
+          "Value": 1
+        },
+        {
+          "Name": "deltaValue",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "alarmValue",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.5",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "alarmStartupAlarm",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "risingAlarm",
+          "Value": 1
+        },
+        {
+          "Name": "fallingAlarm",
+          "Value": 2
+        },
+        {
+          "Name": "risingOrFallingAlarm",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "alarmRisingThreshold",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.7",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "alarmFallingThreshold",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.8",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "alarmRisingEventIndex",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.9",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "alarmFallingEventIndex",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.10",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "alarmOwner",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.11",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "alarmStatus",
+      "OID": ".1.3.6.1.2.1.16.3.1.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "hostControlIndex",
+      "OID": ".1.3.6.1.2.1.16.4.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostControlDataSource",
+      "OID": ".1.3.6.1.2.1.16.4.1.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "hostControlTableSize",
+      "OID": ".1.3.6.1.2.1.16.4.1.1.3",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "hostControlLastDeleteTime",
+      "OID": ".1.3.6.1.2.1.16.4.1.1.4",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "hostControlOwner",
+      "OID": ".1.3.6.1.2.1.16.4.1.1.5",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "hostControlStatus",
+      "OID": ".1.3.6.1.2.1.16.4.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "hostAddress",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.1",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "hostCreationOrder",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostIndex",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.3",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostInPkts",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostOutPkts",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostInOctets",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostOutOctets",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostOutErrors",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostOutBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostOutMulticastPkts",
+      "OID": ".1.3.6.1.2.1.16.4.2.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostTimeAddress",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.1",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "hostTimeCreationOrder",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostTimeIndex",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.3",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostTimeInPkts",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostTimeOutPkts",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostTimeInOctets",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostTimeOutOctets",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostTimeOutErrors",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostTimeOutBroadcastPkts",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostTimeOutMulticastPkts",
+      "OID": ".1.3.6.1.2.1.16.4.3.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "hostTopNControlIndex",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostTopNHostIndex",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostTopNRateBase",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "hostTopNInPkts",
+          "Value": 1
+        },
+        {
+          "Name": "hostTopNOutPkts",
+          "Value": 2
+        },
+        {
+          "Name": "hostTopNInOctets",
+          "Value": 3
+        },
+        {
+          "Name": "hostTopNOutOctets",
+          "Value": 4
+        },
+        {
+          "Name": "hostTopNOutErrors",
+          "Value": 5
+        },
+        {
+          "Name": "hostTopNOutBroadcastPkts",
+          "Value": 6
+        },
+        {
+          "Name": "hostTopNOutMulticastPkts",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "hostTopNTimeRemaining",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.4",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "hostTopNDuration",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.5",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "hostTopNRequestedSize",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.6",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "hostTopNGrantedSize",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.7",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "hostTopNStartTime",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.8",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "hostTopNOwner",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.9",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "hostTopNStatus",
+      "OID": ".1.3.6.1.2.1.16.5.1.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "hostTopNReport",
+      "OID": ".1.3.6.1.2.1.16.5.2.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostTopNIndex",
+      "OID": ".1.3.6.1.2.1.16.5.2.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "hostTopNAddress",
+      "OID": ".1.3.6.1.2.1.16.5.2.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "hostTopNRate",
+      "OID": ".1.3.6.1.2.1.16.5.2.1.4",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "matrixControlIndex",
+      "OID": ".1.3.6.1.2.1.16.6.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "matrixControlDataSource",
+      "OID": ".1.3.6.1.2.1.16.6.1.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "matrixControlTableSize",
+      "OID": ".1.3.6.1.2.1.16.6.1.1.3",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "matrixControlLastDeleteTime",
+      "OID": ".1.3.6.1.2.1.16.6.1.1.4",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "matrixControlOwner",
+      "OID": ".1.3.6.1.2.1.16.6.1.1.5",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "matrixControlStatus",
+      "OID": ".1.3.6.1.2.1.16.6.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "matrixSDSourceAddress",
+      "OID": ".1.3.6.1.2.1.16.6.2.1.1",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "matrixSDDestAddress",
+      "OID": ".1.3.6.1.2.1.16.6.2.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "matrixSDIndex",
+      "OID": ".1.3.6.1.2.1.16.6.2.1.3",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "matrixSDPkts",
+      "OID": ".1.3.6.1.2.1.16.6.2.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "matrixSDOctets",
+      "OID": ".1.3.6.1.2.1.16.6.2.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "matrixSDErrors",
+      "OID": ".1.3.6.1.2.1.16.6.2.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "matrixDSSourceAddress",
+      "OID": ".1.3.6.1.2.1.16.6.3.1.1",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "matrixDSDestAddress",
+      "OID": ".1.3.6.1.2.1.16.6.3.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "matrixDSIndex",
+      "OID": ".1.3.6.1.2.1.16.6.3.1.3",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "matrixDSPkts",
+      "OID": ".1.3.6.1.2.1.16.6.3.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "matrixDSOctets",
+      "OID": ".1.3.6.1.2.1.16.6.3.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "matrixDSErrors",
+      "OID": ".1.3.6.1.2.1.16.6.3.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "filterIndex",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "filterChannelIndex",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "filterPktDataOffset",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.3",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "filterPktData",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "filterPktDataMask",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "filterPktDataNotMask",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.6",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "filterPktStatus",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.7",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "filterPktStatusMask",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.8",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "filterPktStatusNotMask",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.9",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "filterOwner",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.10",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "filterStatus",
+      "OID": ".1.3.6.1.2.1.16.7.1.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "channelIndex",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "channelIfIndex",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "channelAcceptType",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "acceptMatched",
+          "Value": 1
+        },
+        {
+          "Name": "acceptFailed",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "channelDataControl",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "on",
+          "Value": 1
+        },
+        {
+          "Name": "off",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "channelTurnOnEventIndex",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.5",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "channelTurnOffEventIndex",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.6",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "channelEventIndex",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.7",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "channelEventStatus",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "eventReady",
+          "Value": 1
+        },
+        {
+          "Name": "eventFired",
+          "Value": 2
+        },
+        {
+          "Name": "eventAlwaysReady",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "channelMatches",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "channelDescription",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.10",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "channelOwner",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.11",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "channelStatus",
+      "OID": ".1.3.6.1.2.1.16.7.2.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "bufferControlIndex",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "bufferControlChannelIndex",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "bufferControlFullStatus",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "spaceAvailable",
+          "Value": 1
+        },
+        {
+          "Name": "full",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "bufferControlFullAction",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "lockWhenFull",
+          "Value": 1
+        },
+        {
+          "Name": "wrapWhenFull",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "bufferControlCaptureSliceSize",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.5",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "bufferControlDownloadSliceSize",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.6",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "bufferControlDownloadOffset",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.7",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "bufferControlMaxOctetsRequested",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.8",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "bufferControlMaxOctetsGranted",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.9",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "bufferControlCapturedPackets",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.10",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "bufferControlTurnOnTime",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.11",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "bufferControlOwner",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.12",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "bufferControlStatus",
+      "OID": ".1.3.6.1.2.1.16.8.1.1.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "captureBufferControlIndex",
+      "OID": ".1.3.6.1.2.1.16.8.2.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "captureBufferIndex",
+      "OID": ".1.3.6.1.2.1.16.8.2.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "captureBufferPacketID",
+      "OID": ".1.3.6.1.2.1.16.8.2.1.3",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "captureBufferPacketData",
+      "OID": ".1.3.6.1.2.1.16.8.2.1.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "captureBufferPacketLength",
+      "OID": ".1.3.6.1.2.1.16.8.2.1.5",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "captureBufferPacketTime",
+      "OID": ".1.3.6.1.2.1.16.8.2.1.6",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "captureBufferPacketStatus",
+      "OID": ".1.3.6.1.2.1.16.8.2.1.7",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "eventIndex",
+      "OID": ".1.3.6.1.2.1.16.9.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "eventDescription",
+      "OID": ".1.3.6.1.2.1.16.9.1.1.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "eventType",
+      "OID": ".1.3.6.1.2.1.16.9.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "log",
+          "Value": 2
+        },
+        {
+          "Name": "snmp-trap",
+          "Value": 3
+        },
+        {
+          "Name": "log-and-trap",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "eventCommunity",
+      "OID": ".1.3.6.1.2.1.16.9.1.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 127,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "eventLastTimeSent",
+      "OID": ".1.3.6.1.2.1.16.9.1.1.5",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "eventOwner",
+      "OID": ".1.3.6.1.2.1.16.9.1.1.6",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "eventStatus",
+      "OID": ".1.3.6.1.2.1.16.9.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "valid",
+          "Value": 1
+        },
+        {
+          "Name": "createRequest",
+          "Value": 2
+        },
+        {
+          "Name": "underCreation",
+          "Value": 3
+        },
+        {
+          "Name": "invalid",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "logEventIndex",
+      "OID": ".1.3.6.1.2.1.16.9.2.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "logIndex",
+      "OID": ".1.3.6.1.2.1.16.9.2.1.2",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "logTime",
+      "OID": ".1.3.6.1.2.1.16.9.2.1.3",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "logDescription",
+      "OID": ".1.3.6.1.2.1.16.9.2.1.4",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "etherStatsEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::etherStatsIndex",
+        "RFC1271-MIB::etherStatsDataSource",
+        "RFC1271-MIB::etherStatsDropEvents",
+        "RFC1271-MIB::etherStatsOctets",
+        "RFC1271-MIB::etherStatsPkts",
+        "RFC1271-MIB::etherStatsBroadcastPkts",
+        "RFC1271-MIB::etherStatsMulticastPkts",
+        "RFC1271-MIB::etherStatsCRCAlignErrors",
+        "RFC1271-MIB::etherStatsUndersizePkts",
+        "RFC1271-MIB::etherStatsOversizePkts",
+        "RFC1271-MIB::etherStatsFragments",
+        "RFC1271-MIB::etherStatsJabbers",
+        "RFC1271-MIB::etherStatsCollisions",
+        "RFC1271-MIB::etherStatsPkts64Octets",
+        "RFC1271-MIB::etherStatsPkts65to127Octets",
+        "RFC1271-MIB::etherStatsPkts128to255Octets",
+        "RFC1271-MIB::etherStatsPkts256to511Octets",
+        "RFC1271-MIB::etherStatsPkts512to1023Octets",
+        "RFC1271-MIB::etherStatsPkts1024to1518Octets",
+        "RFC1271-MIB::etherStatsOwner",
+        "RFC1271-MIB::etherStatsStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::etherStatsIndex"
+      ],
+      "Name": "etherStatsTable",
+      "OID": ".1.3.6.1.2.1.16.1.1"
+    },
+    {
+      "EntryName": "historyControlEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::historyControlIndex",
+        "RFC1271-MIB::historyControlDataSource",
+        "RFC1271-MIB::historyControlBucketsRequested",
+        "RFC1271-MIB::historyControlBucketsGranted",
+        "RFC1271-MIB::historyControlInterval",
+        "RFC1271-MIB::historyControlOwner",
+        "RFC1271-MIB::historyControlStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::historyControlIndex"
+      ],
+      "Name": "historyControlTable",
+      "OID": ".1.3.6.1.2.1.16.2.1"
+    },
+    {
+      "EntryName": "etherHistoryEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::etherHistoryIndex",
+        "RFC1271-MIB::etherHistorySampleIndex",
+        "RFC1271-MIB::etherHistoryIntervalStart",
+        "RFC1271-MIB::etherHistoryDropEvents",
+        "RFC1271-MIB::etherHistoryOctets",
+        "RFC1271-MIB::etherHistoryPkts",
+        "RFC1271-MIB::etherHistoryBroadcastPkts",
+        "RFC1271-MIB::etherHistoryMulticastPkts",
+        "RFC1271-MIB::etherHistoryCRCAlignErrors",
+        "RFC1271-MIB::etherHistoryUndersizePkts",
+        "RFC1271-MIB::etherHistoryOversizePkts",
+        "RFC1271-MIB::etherHistoryFragments",
+        "RFC1271-MIB::etherHistoryJabbers",
+        "RFC1271-MIB::etherHistoryCollisions",
+        "RFC1271-MIB::etherHistoryUtilization"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::etherHistoryIndex",
+        "RFC1271-MIB::etherHistorySampleIndex"
+      ],
+      "Name": "etherHistoryTable",
+      "OID": ".1.3.6.1.2.1.16.2.2"
+    },
+    {
+      "EntryName": "alarmEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::alarmIndex",
+        "RFC1271-MIB::alarmInterval",
+        "RFC1271-MIB::alarmVariable",
+        "RFC1271-MIB::alarmSampleType",
+        "RFC1271-MIB::alarmValue",
+        "RFC1271-MIB::alarmStartupAlarm",
+        "RFC1271-MIB::alarmRisingThreshold",
+        "RFC1271-MIB::alarmFallingThreshold",
+        "RFC1271-MIB::alarmRisingEventIndex",
+        "RFC1271-MIB::alarmFallingEventIndex",
+        "RFC1271-MIB::alarmOwner",
+        "RFC1271-MIB::alarmStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::alarmIndex"
+      ],
+      "Name": "alarmTable",
+      "OID": ".1.3.6.1.2.1.16.3.1"
+    },
+    {
+      "EntryName": "hostControlEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::hostControlIndex",
+        "RFC1271-MIB::hostControlDataSource",
+        "RFC1271-MIB::hostControlTableSize",
+        "RFC1271-MIB::hostControlLastDeleteTime",
+        "RFC1271-MIB::hostControlOwner",
+        "RFC1271-MIB::hostControlStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::hostControlIndex"
+      ],
+      "Name": "hostControlTable",
+      "OID": ".1.3.6.1.2.1.16.4.1"
+    },
+    {
+      "EntryName": "hostEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::hostAddress",
+        "RFC1271-MIB::hostCreationOrder",
+        "RFC1271-MIB::hostIndex",
+        "RFC1271-MIB::hostInPkts",
+        "RFC1271-MIB::hostOutPkts",
+        "RFC1271-MIB::hostInOctets",
+        "RFC1271-MIB::hostOutOctets",
+        "RFC1271-MIB::hostOutErrors",
+        "RFC1271-MIB::hostOutBroadcastPkts",
+        "RFC1271-MIB::hostOutMulticastPkts"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::hostIndex",
+        "RFC1271-MIB::hostAddress"
+      ],
+      "Name": "hostTable",
+      "OID": ".1.3.6.1.2.1.16.4.2"
+    },
+    {
+      "EntryName": "hostTimeEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::hostTimeAddress",
+        "RFC1271-MIB::hostTimeCreationOrder",
+        "RFC1271-MIB::hostTimeIndex",
+        "RFC1271-MIB::hostTimeInPkts",
+        "RFC1271-MIB::hostTimeOutPkts",
+        "RFC1271-MIB::hostTimeInOctets",
+        "RFC1271-MIB::hostTimeOutOctets",
+        "RFC1271-MIB::hostTimeOutErrors",
+        "RFC1271-MIB::hostTimeOutBroadcastPkts",
+        "RFC1271-MIB::hostTimeOutMulticastPkts"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::hostTimeIndex",
+        "RFC1271-MIB::hostTimeCreationOrder"
+      ],
+      "Name": "hostTimeTable",
+      "OID": ".1.3.6.1.2.1.16.4.3"
+    },
+    {
+      "EntryName": "hostTopNControlEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::hostTopNControlIndex",
+        "RFC1271-MIB::hostTopNHostIndex",
+        "RFC1271-MIB::hostTopNRateBase",
+        "RFC1271-MIB::hostTopNTimeRemaining",
+        "RFC1271-MIB::hostTopNDuration",
+        "RFC1271-MIB::hostTopNRequestedSize",
+        "RFC1271-MIB::hostTopNGrantedSize",
+        "RFC1271-MIB::hostTopNStartTime",
+        "RFC1271-MIB::hostTopNOwner",
+        "RFC1271-MIB::hostTopNStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::hostTopNControlIndex"
+      ],
+      "Name": "hostTopNControlTable",
+      "OID": ".1.3.6.1.2.1.16.5.1"
+    },
+    {
+      "EntryName": "hostTopNEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::hostTopNReport",
+        "RFC1271-MIB::hostTopNIndex",
+        "RFC1271-MIB::hostTopNAddress",
+        "RFC1271-MIB::hostTopNRate"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::hostTopNReport",
+        "RFC1271-MIB::hostTopNIndex"
+      ],
+      "Name": "hostTopNTable",
+      "OID": ".1.3.6.1.2.1.16.5.2"
+    },
+    {
+      "EntryName": "matrixControlEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::matrixControlIndex",
+        "RFC1271-MIB::matrixControlDataSource",
+        "RFC1271-MIB::matrixControlTableSize",
+        "RFC1271-MIB::matrixControlLastDeleteTime",
+        "RFC1271-MIB::matrixControlOwner",
+        "RFC1271-MIB::matrixControlStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::matrixControlIndex"
+      ],
+      "Name": "matrixControlTable",
+      "OID": ".1.3.6.1.2.1.16.6.1"
+    },
+    {
+      "EntryName": "matrixSDEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::matrixSDSourceAddress",
+        "RFC1271-MIB::matrixSDDestAddress",
+        "RFC1271-MIB::matrixSDIndex",
+        "RFC1271-MIB::matrixSDPkts",
+        "RFC1271-MIB::matrixSDOctets",
+        "RFC1271-MIB::matrixSDErrors"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::matrixSDIndex",
+        "RFC1271-MIB::matrixSDSourceAddress",
+        "RFC1271-MIB::matrixSDDestAddress"
+      ],
+      "Name": "matrixSDTable",
+      "OID": ".1.3.6.1.2.1.16.6.2"
+    },
+    {
+      "EntryName": "matrixDSEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::matrixDSSourceAddress",
+        "RFC1271-MIB::matrixDSDestAddress",
+        "RFC1271-MIB::matrixDSIndex",
+        "RFC1271-MIB::matrixDSPkts",
+        "RFC1271-MIB::matrixDSOctets",
+        "RFC1271-MIB::matrixDSErrors"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::matrixDSIndex",
+        "RFC1271-MIB::matrixDSDestAddress",
+        "RFC1271-MIB::matrixDSSourceAddress"
+      ],
+      "Name": "matrixDSTable",
+      "OID": ".1.3.6.1.2.1.16.6.3"
+    },
+    {
+      "EntryName": "filterEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::filterIndex",
+        "RFC1271-MIB::filterChannelIndex",
+        "RFC1271-MIB::filterPktDataOffset",
+        "RFC1271-MIB::filterPktData",
+        "RFC1271-MIB::filterPktDataMask",
+        "RFC1271-MIB::filterPktDataNotMask",
+        "RFC1271-MIB::filterPktStatus",
+        "RFC1271-MIB::filterPktStatusMask",
+        "RFC1271-MIB::filterPktStatusNotMask",
+        "RFC1271-MIB::filterOwner",
+        "RFC1271-MIB::filterStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::filterIndex"
+      ],
+      "Name": "filterTable",
+      "OID": ".1.3.6.1.2.1.16.7.1"
+    },
+    {
+      "EntryName": "channelEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::channelIndex",
+        "RFC1271-MIB::channelIfIndex",
+        "RFC1271-MIB::channelAcceptType",
+        "RFC1271-MIB::channelDataControl",
+        "RFC1271-MIB::channelTurnOnEventIndex",
+        "RFC1271-MIB::channelTurnOffEventIndex",
+        "RFC1271-MIB::channelEventIndex",
+        "RFC1271-MIB::channelEventStatus",
+        "RFC1271-MIB::channelMatches",
+        "RFC1271-MIB::channelDescription",
+        "RFC1271-MIB::channelOwner",
+        "RFC1271-MIB::channelStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::channelIndex"
+      ],
+      "Name": "channelTable",
+      "OID": ".1.3.6.1.2.1.16.7.2"
+    },
+    {
+      "EntryName": "bufferControlEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::bufferControlIndex",
+        "RFC1271-MIB::bufferControlChannelIndex",
+        "RFC1271-MIB::bufferControlFullStatus",
+        "RFC1271-MIB::bufferControlFullAction",
+        "RFC1271-MIB::bufferControlCaptureSliceSize",
+        "RFC1271-MIB::bufferControlDownloadSliceSize",
+        "RFC1271-MIB::bufferControlDownloadOffset",
+        "RFC1271-MIB::bufferControlMaxOctetsRequested",
+        "RFC1271-MIB::bufferControlMaxOctetsGranted",
+        "RFC1271-MIB::bufferControlCapturedPackets",
+        "RFC1271-MIB::bufferControlTurnOnTime",
+        "RFC1271-MIB::bufferControlOwner",
+        "RFC1271-MIB::bufferControlStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::bufferControlIndex"
+      ],
+      "Name": "bufferControlTable",
+      "OID": ".1.3.6.1.2.1.16.8.1"
+    },
+    {
+      "EntryName": "captureBufferEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::captureBufferControlIndex",
+        "RFC1271-MIB::captureBufferIndex",
+        "RFC1271-MIB::captureBufferPacketID",
+        "RFC1271-MIB::captureBufferPacketData",
+        "RFC1271-MIB::captureBufferPacketLength",
+        "RFC1271-MIB::captureBufferPacketTime",
+        "RFC1271-MIB::captureBufferPacketStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::captureBufferControlIndex",
+        "RFC1271-MIB::captureBufferIndex"
+      ],
+      "Name": "captureBufferTable",
+      "OID": ".1.3.6.1.2.1.16.8.2"
+    },
+    {
+      "EntryName": "eventEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::eventIndex",
+        "RFC1271-MIB::eventDescription",
+        "RFC1271-MIB::eventType",
+        "RFC1271-MIB::eventCommunity",
+        "RFC1271-MIB::eventLastTimeSent",
+        "RFC1271-MIB::eventOwner",
+        "RFC1271-MIB::eventStatus"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::eventIndex"
+      ],
+      "Name": "eventTable",
+      "OID": ".1.3.6.1.2.1.16.9.1"
+    },
+    {
+      "EntryName": "logEntry",
+      "EntryObjects": [
+        "RFC1271-MIB::logEventIndex",
+        "RFC1271-MIB::logIndex",
+        "RFC1271-MIB::logTime",
+        "RFC1271-MIB::logDescription"
+      ],
+      "IndexObjects": [
+        "RFC1271-MIB::logEventIndex",
+        "RFC1271-MIB::logIndex"
+      ],
+      "Name": "logTable",
+      "OID": ".1.3.6.1.2.1.16.9.2"
+    }
+  ]
+}

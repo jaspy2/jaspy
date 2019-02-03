@@ -1,0 +1,2124 @@
+{
+  "Name": "IP-MIB",
+  "OID": ".1.3.6.1.2.1.48",
+  "Objects": [
+    {
+      "Name": "ipForwarding",
+      "OID": ".1.3.6.1.2.1.4.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "forwarding",
+          "Value": 1
+        },
+        {
+          "Name": "notForwarding",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipDefaultTTL",
+      "OID": ".1.3.6.1.2.1.4.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "ipReasmTimeout",
+      "OID": ".1.3.6.1.2.1.4.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipv6IpForwarding",
+      "OID": ".1.3.6.1.2.1.4.25",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "forwarding",
+          "Value": 1
+        },
+        {
+          "Name": "notForwarding",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipv6IpDefaultHopLimit",
+      "OID": ".1.3.6.1.2.1.4.26",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipv4InterfaceTableLastChange",
+      "OID": ".1.3.6.1.2.1.4.27",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ipv4InterfaceIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.28.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipv4InterfaceReasmMaxSize",
+      "OID": ".1.3.6.1.2.1.4.28.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipv4InterfaceEnableStatus",
+      "OID": ".1.3.6.1.2.1.4.28.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "up",
+          "Value": 1
+        },
+        {
+          "Name": "down",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipv4InterfaceRetransmitTime",
+      "OID": ".1.3.6.1.2.1.4.28.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6InterfaceTableLastChange",
+      "OID": ".1.3.6.1.2.1.4.29",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ipv6InterfaceIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.30.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipv6InterfaceReasmMaxSize",
+      "OID": ".1.3.6.1.2.1.4.30.1.2",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1500
+      }
+    },
+    {
+      "Name": "ipv6InterfaceIdentifier",
+      "OID": ".1.3.6.1.2.1.4.30.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 8,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipv6InterfaceEnableStatus",
+      "OID": ".1.3.6.1.2.1.4.30.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "up",
+          "Value": 1
+        },
+        {
+          "Name": "down",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipv6InterfaceReachableTime",
+      "OID": ".1.3.6.1.2.1.4.30.1.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6InterfaceRetransmitTime",
+      "OID": ".1.3.6.1.2.1.4.30.1.7",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6InterfaceForwarding",
+      "OID": ".1.3.6.1.2.1.4.30.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "forwarding",
+          "Value": 1
+        },
+        {
+          "Name": "notForwarding",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipSystemStatsIPVersion",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.31.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipSystemStatsInReceives",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCInReceives",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.4",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsInOctets",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCInOctets",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.6",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsInHdrErrors",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsInNoRoutes",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsInAddrErrors",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsInUnknownProtos",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.10",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsInTruncatedPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.11",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsInForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.12",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCInForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.13",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsReasmReqds",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.14",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsReasmOKs",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.15",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsReasmFails",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.16",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsInDiscards",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.17",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsInDelivers",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.18",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCInDelivers",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.19",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsOutRequests",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.20",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCOutRequests",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.21",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsOutNoRoutes",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.22",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsOutForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.23",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCOutForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.24",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsOutDiscards",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.25",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsOutFragReqds",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.26",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsOutFragOKs",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.27",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsOutFragFails",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.28",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsOutFragCreates",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.29",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsOutTransmits",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.30",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCOutTransmits",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.31",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsOutOctets",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.32",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCOutOctets",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.33",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsInMcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.34",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCInMcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.35",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsInMcastOctets",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.36",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCInMcastOctets",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.37",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsOutMcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.38",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCOutMcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.39",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsOutMcastOctets",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.40",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCOutMcastOctets",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.41",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsInBcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.42",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCInBcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.43",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsOutBcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.44",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipSystemStatsHCOutBcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.45",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipSystemStatsDiscontinuityTime",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.46",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ipSystemStatsRefreshRate",
+      "OID": ".1.3.6.1.2.1.4.31.1.1.47",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipIfStatsTableLastChange",
+      "OID": ".1.3.6.1.2.1.4.31.2",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ipIfStatsIPVersion",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.31.3.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipIfStatsIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.31.3.1.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipIfStatsInReceives",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCInReceives",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.4",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsInOctets",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCInOctets",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.6",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsInHdrErrors",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsInNoRoutes",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsInAddrErrors",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsInUnknownProtos",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.10",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsInTruncatedPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.11",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsInForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.12",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCInForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.13",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsReasmReqds",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.14",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsReasmOKs",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.15",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsReasmFails",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.16",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsInDiscards",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.17",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsInDelivers",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.18",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCInDelivers",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.19",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsOutRequests",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.20",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCOutRequests",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.21",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsOutForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.23",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCOutForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.24",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsOutDiscards",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.25",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsOutFragReqds",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.26",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsOutFragOKs",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.27",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsOutFragFails",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.28",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsOutFragCreates",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.29",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsOutTransmits",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.30",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCOutTransmits",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.31",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsOutOctets",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.32",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCOutOctets",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.33",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsInMcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.34",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCInMcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.35",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsInMcastOctets",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.36",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCInMcastOctets",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.37",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsOutMcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.38",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCOutMcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.39",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsOutMcastOctets",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.40",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCOutMcastOctets",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.41",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsInBcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.42",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCInBcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.43",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsOutBcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.44",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipIfStatsHCOutBcastPkts",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.45",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "ipIfStatsDiscontinuityTime",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.46",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ipIfStatsRefreshRate",
+      "OID": ".1.3.6.1.2.1.4.31.3.1.47",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipAddressPrefixIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.32.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipAddressPrefixType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.32.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressPrefixPrefix",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.32.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "ipAddressPrefixLength",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.32.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipAddressPrefixOrigin",
+      "OID": ".1.3.6.1.2.1.4.32.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "manual",
+          "Value": 2
+        },
+        {
+          "Name": "wellknown",
+          "Value": 3
+        },
+        {
+          "Name": "dhcp",
+          "Value": 4
+        },
+        {
+          "Name": "routeradv",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressPrefixOnLinkFlag",
+      "OID": ".1.3.6.1.2.1.4.32.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressPrefixAutonomousFlag",
+      "OID": ".1.3.6.1.2.1.4.32.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressPrefixAdvPreferredLifetime",
+      "OID": ".1.3.6.1.2.1.4.32.1.8",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipAddressPrefixAdvValidLifetime",
+      "OID": ".1.3.6.1.2.1.4.32.1.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipAddressSpinLock",
+      "OID": ".1.3.6.1.2.1.4.33",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipAddressAddrType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.34.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressAddr",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.34.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "ipAddressIfIndex",
+      "OID": ".1.3.6.1.2.1.4.34.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipAddressType",
+      "OID": ".1.3.6.1.2.1.4.34.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unicast",
+          "Value": 1
+        },
+        {
+          "Name": "anycast",
+          "Value": 2
+        },
+        {
+          "Name": "broadcast",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressPrefix",
+      "OID": ".1.3.6.1.2.1.4.34.1.5",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "ipAddressOrigin",
+      "OID": ".1.3.6.1.2.1.4.34.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "manual",
+          "Value": 2
+        },
+        {
+          "Name": "dhcp",
+          "Value": 4
+        },
+        {
+          "Name": "linklayer",
+          "Value": 5
+        },
+        {
+          "Name": "random",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressStatus",
+      "OID": ".1.3.6.1.2.1.4.34.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "preferred",
+          "Value": 1
+        },
+        {
+          "Name": "deprecated",
+          "Value": 2
+        },
+        {
+          "Name": "invalid",
+          "Value": 3
+        },
+        {
+          "Name": "inaccessible",
+          "Value": 4
+        },
+        {
+          "Name": "unknown",
+          "Value": 5
+        },
+        {
+          "Name": "tentative",
+          "Value": 6
+        },
+        {
+          "Name": "duplicate",
+          "Value": 7
+        },
+        {
+          "Name": "optimistic",
+          "Value": 8
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressCreated",
+      "OID": ".1.3.6.1.2.1.4.34.1.8",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ipAddressLastChanged",
+      "OID": ".1.3.6.1.2.1.4.34.1.9",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ipAddressRowStatus",
+      "OID": ".1.3.6.1.2.1.4.34.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "ipAddressStorageType",
+      "OID": ".1.3.6.1.2.1.4.34.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "volatile",
+          "Value": 2
+        },
+        {
+          "Name": "nonVolatile",
+          "Value": 3
+        },
+        {
+          "Name": "permanent",
+          "Value": 4
+        },
+        {
+          "Name": "readOnly",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "ipNetToPhysicalIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.35.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipNetToPhysicalNetAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.35.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "ipNetToPhysicalNetAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.35.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "ipNetToPhysicalPhysAddress",
+      "OID": ".1.3.6.1.2.1.4.35.1.4",
+      "Syntax": "SNMPv2-TC::PhysAddress"
+    },
+    {
+      "Name": "ipNetToPhysicalLastUpdated",
+      "OID": ".1.3.6.1.2.1.4.35.1.5",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "ipNetToPhysicalType",
+      "OID": ".1.3.6.1.2.1.4.35.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "invalid",
+          "Value": 2
+        },
+        {
+          "Name": "dynamic",
+          "Value": 3
+        },
+        {
+          "Name": "static",
+          "Value": 4
+        },
+        {
+          "Name": "local",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "ipNetToPhysicalState",
+      "OID": ".1.3.6.1.2.1.4.35.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "reachable",
+          "Value": 1
+        },
+        {
+          "Name": "stale",
+          "Value": 2
+        },
+        {
+          "Name": "delay",
+          "Value": 3
+        },
+        {
+          "Name": "probe",
+          "Value": 4
+        },
+        {
+          "Name": "invalid",
+          "Value": 5
+        },
+        {
+          "Name": "unknown",
+          "Value": 6
+        },
+        {
+          "Name": "incomplete",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "ipNetToPhysicalRowStatus",
+      "OID": ".1.3.6.1.2.1.4.35.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.36.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexLinkLocal",
+      "OID": ".1.3.6.1.2.1.4.36.1.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndex3",
+      "OID": ".1.3.6.1.2.1.4.36.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexAdminLocal",
+      "OID": ".1.3.6.1.2.1.4.36.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexSiteLocal",
+      "OID": ".1.3.6.1.2.1.4.36.1.5",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndex6",
+      "OID": ".1.3.6.1.2.1.4.36.1.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndex7",
+      "OID": ".1.3.6.1.2.1.4.36.1.7",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexOrganizationLocal",
+      "OID": ".1.3.6.1.2.1.4.36.1.8",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndex9",
+      "OID": ".1.3.6.1.2.1.4.36.1.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexA",
+      "OID": ".1.3.6.1.2.1.4.36.1.10",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexB",
+      "OID": ".1.3.6.1.2.1.4.36.1.11",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexC",
+      "OID": ".1.3.6.1.2.1.4.36.1.12",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6ScopeZoneIndexD",
+      "OID": ".1.3.6.1.2.1.4.36.1.13",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipDefaultRouterAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.37.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "ipDefaultRouterAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.37.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "ipDefaultRouterIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.37.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipDefaultRouterLifetime",
+      "OID": ".1.3.6.1.2.1.4.37.1.4",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipDefaultRouterPreference",
+      "OID": ".1.3.6.1.2.1.4.37.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "reserved",
+          "Value": -2
+        },
+        {
+          "Name": "low",
+          "Value": -1
+        },
+        {
+          "Name": "medium",
+          "Value": 0
+        },
+        {
+          "Name": "high",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "ipv6RouterAdvertSpinLock",
+      "OID": ".1.3.6.1.2.1.4.38",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipv6RouterAdvertIfIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.4.39.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "ipv6RouterAdvertSendAdverts",
+      "OID": ".1.3.6.1.2.1.4.39.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipv6RouterAdvertMaxInterval",
+      "OID": ".1.3.6.1.2.1.4.39.1.3",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 1800,
+        "Min": 4
+      }
+    },
+    {
+      "Name": "ipv6RouterAdvertMinInterval",
+      "OID": ".1.3.6.1.2.1.4.39.1.4",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 1350,
+        "Min": 3
+      }
+    },
+    {
+      "Name": "ipv6RouterAdvertManagedFlag",
+      "OID": ".1.3.6.1.2.1.4.39.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipv6RouterAdvertOtherConfigFlag",
+      "OID": ".1.3.6.1.2.1.4.39.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ipv6RouterAdvertLinkMTU",
+      "OID": ".1.3.6.1.2.1.4.39.1.7",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6RouterAdvertReachableTime",
+      "OID": ".1.3.6.1.2.1.4.39.1.8",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 3600000,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipv6RouterAdvertRetransmitTime",
+      "OID": ".1.3.6.1.2.1.4.39.1.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "ipv6RouterAdvertCurHopLimit",
+      "OID": ".1.3.6.1.2.1.4.39.1.10",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipv6RouterAdvertDefaultLifetime",
+      "OID": ".1.3.6.1.2.1.4.39.1.11",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 0,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipv6RouterAdvertRowStatus",
+      "OID": ".1.3.6.1.2.1.4.39.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "icmpStatsIPVersion",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.5.29.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "icmpStatsInMsgs",
+      "OID": ".1.3.6.1.2.1.5.29.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpStatsInErrors",
+      "OID": ".1.3.6.1.2.1.5.29.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpStatsOutMsgs",
+      "OID": ".1.3.6.1.2.1.5.29.1.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpStatsOutErrors",
+      "OID": ".1.3.6.1.2.1.5.29.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpMsgStatsIPVersion",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.5.30.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "icmpMsgStatsType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.5.30.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "icmpMsgStatsInPkts",
+      "OID": ".1.3.6.1.2.1.5.30.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpMsgStatsOutPkts",
+      "OID": ".1.3.6.1.2.1.5.30.1.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipInReceives",
+      "OID": ".1.3.6.1.2.1.4.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipInHdrErrors",
+      "OID": ".1.3.6.1.2.1.4.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipInAddrErrors",
+      "OID": ".1.3.6.1.2.1.4.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipForwDatagrams",
+      "OID": ".1.3.6.1.2.1.4.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipInUnknownProtos",
+      "OID": ".1.3.6.1.2.1.4.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipInDiscards",
+      "OID": ".1.3.6.1.2.1.4.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipInDelivers",
+      "OID": ".1.3.6.1.2.1.4.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipOutRequests",
+      "OID": ".1.3.6.1.2.1.4.10",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipOutDiscards",
+      "OID": ".1.3.6.1.2.1.4.11",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipOutNoRoutes",
+      "OID": ".1.3.6.1.2.1.4.12",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipReasmReqds",
+      "OID": ".1.3.6.1.2.1.4.14",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipReasmOKs",
+      "OID": ".1.3.6.1.2.1.4.15",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipReasmFails",
+      "OID": ".1.3.6.1.2.1.4.16",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipFragOKs",
+      "OID": ".1.3.6.1.2.1.4.17",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipFragFails",
+      "OID": ".1.3.6.1.2.1.4.18",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipFragCreates",
+      "OID": ".1.3.6.1.2.1.4.19",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipRoutingDiscards",
+      "OID": ".1.3.6.1.2.1.4.23",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "ipAdEntAddr",
+      "OID": ".1.3.6.1.2.1.4.20.1.1",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "ipAdEntIfIndex",
+      "OID": ".1.3.6.1.2.1.4.20.1.2",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "ipAdEntNetMask",
+      "OID": ".1.3.6.1.2.1.4.20.1.3",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "ipAdEntBcastAddr",
+      "OID": ".1.3.6.1.2.1.4.20.1.4",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 1,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipAdEntReasmMaxSize",
+      "OID": ".1.3.6.1.2.1.4.20.1.5",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "ipNetToMediaIfIndex",
+      "OID": ".1.3.6.1.2.1.4.22.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "ipNetToMediaPhysAddress",
+      "OID": ".1.3.6.1.2.1.4.22.1.2",
+      "Syntax": "SNMPv2-TC::PhysAddress"
+    },
+    {
+      "Name": "ipNetToMediaNetAddress",
+      "OID": ".1.3.6.1.2.1.4.22.1.3",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "ipNetToMediaType",
+      "OID": ".1.3.6.1.2.1.4.22.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "invalid",
+          "Value": 2
+        },
+        {
+          "Name": "dynamic",
+          "Value": 3
+        },
+        {
+          "Name": "static",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "icmpInMsgs",
+      "OID": ".1.3.6.1.2.1.5.1",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInErrors",
+      "OID": ".1.3.6.1.2.1.5.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInDestUnreachs",
+      "OID": ".1.3.6.1.2.1.5.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInTimeExcds",
+      "OID": ".1.3.6.1.2.1.5.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInParmProbs",
+      "OID": ".1.3.6.1.2.1.5.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInSrcQuenchs",
+      "OID": ".1.3.6.1.2.1.5.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInRedirects",
+      "OID": ".1.3.6.1.2.1.5.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInEchos",
+      "OID": ".1.3.6.1.2.1.5.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInEchoReps",
+      "OID": ".1.3.6.1.2.1.5.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInTimestamps",
+      "OID": ".1.3.6.1.2.1.5.10",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInTimestampReps",
+      "OID": ".1.3.6.1.2.1.5.11",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInAddrMasks",
+      "OID": ".1.3.6.1.2.1.5.12",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpInAddrMaskReps",
+      "OID": ".1.3.6.1.2.1.5.13",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutMsgs",
+      "OID": ".1.3.6.1.2.1.5.14",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutErrors",
+      "OID": ".1.3.6.1.2.1.5.15",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutDestUnreachs",
+      "OID": ".1.3.6.1.2.1.5.16",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutTimeExcds",
+      "OID": ".1.3.6.1.2.1.5.17",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutParmProbs",
+      "OID": ".1.3.6.1.2.1.5.18",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutSrcQuenchs",
+      "OID": ".1.3.6.1.2.1.5.19",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutRedirects",
+      "OID": ".1.3.6.1.2.1.5.20",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutEchos",
+      "OID": ".1.3.6.1.2.1.5.21",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutEchoReps",
+      "OID": ".1.3.6.1.2.1.5.22",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutTimestamps",
+      "OID": ".1.3.6.1.2.1.5.23",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutTimestampReps",
+      "OID": ".1.3.6.1.2.1.5.24",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutAddrMasks",
+      "OID": ".1.3.6.1.2.1.5.25",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "icmpOutAddrMaskReps",
+      "OID": ".1.3.6.1.2.1.5.26",
+      "Syntax": "Counter32"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "ipv4InterfaceEntry",
+      "EntryObjects": [
+        "IP-MIB::ipv4InterfaceIfIndex",
+        "IP-MIB::ipv4InterfaceReasmMaxSize",
+        "IP-MIB::ipv4InterfaceEnableStatus",
+        "IP-MIB::ipv4InterfaceRetransmitTime"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipv4InterfaceIfIndex"
+      ],
+      "Name": "ipv4InterfaceTable",
+      "OID": ".1.3.6.1.2.1.4.28"
+    },
+    {
+      "EntryName": "ipv6InterfaceEntry",
+      "EntryObjects": [
+        "IP-MIB::ipv6InterfaceIfIndex",
+        "IP-MIB::ipv6InterfaceReasmMaxSize",
+        "IP-MIB::ipv6InterfaceIdentifier",
+        "IP-MIB::ipv6InterfaceEnableStatus",
+        "IP-MIB::ipv6InterfaceReachableTime",
+        "IP-MIB::ipv6InterfaceRetransmitTime",
+        "IP-MIB::ipv6InterfaceForwarding"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipv6InterfaceIfIndex"
+      ],
+      "Name": "ipv6InterfaceTable",
+      "OID": ".1.3.6.1.2.1.4.30"
+    },
+    {
+      "EntryName": "ipSystemStatsEntry",
+      "EntryObjects": [
+        "IP-MIB::ipSystemStatsIPVersion",
+        "IP-MIB::ipSystemStatsInReceives",
+        "IP-MIB::ipSystemStatsHCInReceives",
+        "IP-MIB::ipSystemStatsInOctets",
+        "IP-MIB::ipSystemStatsHCInOctets",
+        "IP-MIB::ipSystemStatsInHdrErrors",
+        "IP-MIB::ipSystemStatsInNoRoutes",
+        "IP-MIB::ipSystemStatsInAddrErrors",
+        "IP-MIB::ipSystemStatsInUnknownProtos",
+        "IP-MIB::ipSystemStatsInTruncatedPkts",
+        "IP-MIB::ipSystemStatsInForwDatagrams",
+        "IP-MIB::ipSystemStatsHCInForwDatagrams",
+        "IP-MIB::ipSystemStatsReasmReqds",
+        "IP-MIB::ipSystemStatsReasmOKs",
+        "IP-MIB::ipSystemStatsReasmFails",
+        "IP-MIB::ipSystemStatsInDiscards",
+        "IP-MIB::ipSystemStatsInDelivers",
+        "IP-MIB::ipSystemStatsHCInDelivers",
+        "IP-MIB::ipSystemStatsOutRequests",
+        "IP-MIB::ipSystemStatsHCOutRequests",
+        "IP-MIB::ipSystemStatsOutNoRoutes",
+        "IP-MIB::ipSystemStatsOutForwDatagrams",
+        "IP-MIB::ipSystemStatsHCOutForwDatagrams",
+        "IP-MIB::ipSystemStatsOutDiscards",
+        "IP-MIB::ipSystemStatsOutFragReqds",
+        "IP-MIB::ipSystemStatsOutFragOKs",
+        "IP-MIB::ipSystemStatsOutFragFails",
+        "IP-MIB::ipSystemStatsOutFragCreates",
+        "IP-MIB::ipSystemStatsOutTransmits",
+        "IP-MIB::ipSystemStatsHCOutTransmits",
+        "IP-MIB::ipSystemStatsOutOctets",
+        "IP-MIB::ipSystemStatsHCOutOctets",
+        "IP-MIB::ipSystemStatsInMcastPkts",
+        "IP-MIB::ipSystemStatsHCInMcastPkts",
+        "IP-MIB::ipSystemStatsInMcastOctets",
+        "IP-MIB::ipSystemStatsHCInMcastOctets",
+        "IP-MIB::ipSystemStatsOutMcastPkts",
+        "IP-MIB::ipSystemStatsHCOutMcastPkts",
+        "IP-MIB::ipSystemStatsOutMcastOctets",
+        "IP-MIB::ipSystemStatsHCOutMcastOctets",
+        "IP-MIB::ipSystemStatsInBcastPkts",
+        "IP-MIB::ipSystemStatsHCInBcastPkts",
+        "IP-MIB::ipSystemStatsOutBcastPkts",
+        "IP-MIB::ipSystemStatsHCOutBcastPkts",
+        "IP-MIB::ipSystemStatsDiscontinuityTime",
+        "IP-MIB::ipSystemStatsRefreshRate"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipSystemStatsIPVersion"
+      ],
+      "Name": "ipSystemStatsTable",
+      "OID": ".1.3.6.1.2.1.4.31.1"
+    },
+    {
+      "EntryName": "ipIfStatsEntry",
+      "EntryObjects": [
+        "IP-MIB::ipIfStatsIPVersion",
+        "IP-MIB::ipIfStatsIfIndex",
+        "IP-MIB::ipIfStatsInReceives",
+        "IP-MIB::ipIfStatsHCInReceives",
+        "IP-MIB::ipIfStatsInOctets",
+        "IP-MIB::ipIfStatsHCInOctets",
+        "IP-MIB::ipIfStatsInHdrErrors",
+        "IP-MIB::ipIfStatsInNoRoutes",
+        "IP-MIB::ipIfStatsInAddrErrors",
+        "IP-MIB::ipIfStatsInUnknownProtos",
+        "IP-MIB::ipIfStatsInTruncatedPkts",
+        "IP-MIB::ipIfStatsInForwDatagrams",
+        "IP-MIB::ipIfStatsHCInForwDatagrams",
+        "IP-MIB::ipIfStatsReasmReqds",
+        "IP-MIB::ipIfStatsReasmOKs",
+        "IP-MIB::ipIfStatsReasmFails",
+        "IP-MIB::ipIfStatsInDiscards",
+        "IP-MIB::ipIfStatsInDelivers",
+        "IP-MIB::ipIfStatsHCInDelivers",
+        "IP-MIB::ipIfStatsOutRequests",
+        "IP-MIB::ipIfStatsHCOutRequests",
+        "IP-MIB::ipIfStatsOutForwDatagrams",
+        "IP-MIB::ipIfStatsHCOutForwDatagrams",
+        "IP-MIB::ipIfStatsOutDiscards",
+        "IP-MIB::ipIfStatsOutFragReqds",
+        "IP-MIB::ipIfStatsOutFragOKs",
+        "IP-MIB::ipIfStatsOutFragFails",
+        "IP-MIB::ipIfStatsOutFragCreates",
+        "IP-MIB::ipIfStatsOutTransmits",
+        "IP-MIB::ipIfStatsHCOutTransmits",
+        "IP-MIB::ipIfStatsOutOctets",
+        "IP-MIB::ipIfStatsHCOutOctets",
+        "IP-MIB::ipIfStatsInMcastPkts",
+        "IP-MIB::ipIfStatsHCInMcastPkts",
+        "IP-MIB::ipIfStatsInMcastOctets",
+        "IP-MIB::ipIfStatsHCInMcastOctets",
+        "IP-MIB::ipIfStatsOutMcastPkts",
+        "IP-MIB::ipIfStatsHCOutMcastPkts",
+        "IP-MIB::ipIfStatsOutMcastOctets",
+        "IP-MIB::ipIfStatsHCOutMcastOctets",
+        "IP-MIB::ipIfStatsInBcastPkts",
+        "IP-MIB::ipIfStatsHCInBcastPkts",
+        "IP-MIB::ipIfStatsOutBcastPkts",
+        "IP-MIB::ipIfStatsHCOutBcastPkts",
+        "IP-MIB::ipIfStatsDiscontinuityTime",
+        "IP-MIB::ipIfStatsRefreshRate"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipIfStatsIPVersion",
+        "IP-MIB::ipIfStatsIfIndex"
+      ],
+      "Name": "ipIfStatsTable",
+      "OID": ".1.3.6.1.2.1.4.31.3"
+    },
+    {
+      "EntryName": "ipAddressPrefixEntry",
+      "EntryObjects": [
+        "IP-MIB::ipAddressPrefixIfIndex",
+        "IP-MIB::ipAddressPrefixType",
+        "IP-MIB::ipAddressPrefixPrefix",
+        "IP-MIB::ipAddressPrefixLength",
+        "IP-MIB::ipAddressPrefixOrigin",
+        "IP-MIB::ipAddressPrefixOnLinkFlag",
+        "IP-MIB::ipAddressPrefixAutonomousFlag",
+        "IP-MIB::ipAddressPrefixAdvPreferredLifetime",
+        "IP-MIB::ipAddressPrefixAdvValidLifetime"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipAddressPrefixIfIndex",
+        "IP-MIB::ipAddressPrefixType",
+        "IP-MIB::ipAddressPrefixPrefix",
+        "IP-MIB::ipAddressPrefixLength"
+      ],
+      "Name": "ipAddressPrefixTable",
+      "OID": ".1.3.6.1.2.1.4.32"
+    },
+    {
+      "EntryName": "ipAddressEntry",
+      "EntryObjects": [
+        "IP-MIB::ipAddressAddrType",
+        "IP-MIB::ipAddressAddr",
+        "IP-MIB::ipAddressIfIndex",
+        "IP-MIB::ipAddressType",
+        "IP-MIB::ipAddressPrefix",
+        "IP-MIB::ipAddressOrigin",
+        "IP-MIB::ipAddressStatus",
+        "IP-MIB::ipAddressCreated",
+        "IP-MIB::ipAddressLastChanged",
+        "IP-MIB::ipAddressRowStatus",
+        "IP-MIB::ipAddressStorageType"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipAddressAddrType",
+        "IP-MIB::ipAddressAddr"
+      ],
+      "Name": "ipAddressTable",
+      "OID": ".1.3.6.1.2.1.4.34"
+    },
+    {
+      "EntryName": "ipNetToPhysicalEntry",
+      "EntryObjects": [
+        "IP-MIB::ipNetToPhysicalIfIndex",
+        "IP-MIB::ipNetToPhysicalNetAddressType",
+        "IP-MIB::ipNetToPhysicalNetAddress",
+        "IP-MIB::ipNetToPhysicalPhysAddress",
+        "IP-MIB::ipNetToPhysicalLastUpdated",
+        "IP-MIB::ipNetToPhysicalType",
+        "IP-MIB::ipNetToPhysicalState",
+        "IP-MIB::ipNetToPhysicalRowStatus"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipNetToPhysicalIfIndex",
+        "IP-MIB::ipNetToPhysicalNetAddressType",
+        "IP-MIB::ipNetToPhysicalNetAddress"
+      ],
+      "Name": "ipNetToPhysicalTable",
+      "OID": ".1.3.6.1.2.1.4.35"
+    },
+    {
+      "EntryName": "ipv6ScopeZoneIndexEntry",
+      "EntryObjects": [
+        "IP-MIB::ipv6ScopeZoneIndexIfIndex",
+        "IP-MIB::ipv6ScopeZoneIndexLinkLocal",
+        "IP-MIB::ipv6ScopeZoneIndex3",
+        "IP-MIB::ipv6ScopeZoneIndexAdminLocal",
+        "IP-MIB::ipv6ScopeZoneIndexSiteLocal",
+        "IP-MIB::ipv6ScopeZoneIndex6",
+        "IP-MIB::ipv6ScopeZoneIndex7",
+        "IP-MIB::ipv6ScopeZoneIndexOrganizationLocal",
+        "IP-MIB::ipv6ScopeZoneIndex9",
+        "IP-MIB::ipv6ScopeZoneIndexA",
+        "IP-MIB::ipv6ScopeZoneIndexB",
+        "IP-MIB::ipv6ScopeZoneIndexC",
+        "IP-MIB::ipv6ScopeZoneIndexD"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipv6ScopeZoneIndexIfIndex"
+      ],
+      "Name": "ipv6ScopeZoneIndexTable",
+      "OID": ".1.3.6.1.2.1.4.36"
+    },
+    {
+      "EntryName": "ipDefaultRouterEntry",
+      "EntryObjects": [
+        "IP-MIB::ipDefaultRouterAddressType",
+        "IP-MIB::ipDefaultRouterAddress",
+        "IP-MIB::ipDefaultRouterIfIndex",
+        "IP-MIB::ipDefaultRouterLifetime",
+        "IP-MIB::ipDefaultRouterPreference"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipDefaultRouterAddressType",
+        "IP-MIB::ipDefaultRouterAddress",
+        "IP-MIB::ipDefaultRouterIfIndex"
+      ],
+      "Name": "ipDefaultRouterTable",
+      "OID": ".1.3.6.1.2.1.4.37"
+    },
+    {
+      "EntryName": "ipv6RouterAdvertEntry",
+      "EntryObjects": [
+        "IP-MIB::ipv6RouterAdvertIfIndex",
+        "IP-MIB::ipv6RouterAdvertSendAdverts",
+        "IP-MIB::ipv6RouterAdvertMaxInterval",
+        "IP-MIB::ipv6RouterAdvertMinInterval",
+        "IP-MIB::ipv6RouterAdvertManagedFlag",
+        "IP-MIB::ipv6RouterAdvertOtherConfigFlag",
+        "IP-MIB::ipv6RouterAdvertLinkMTU",
+        "IP-MIB::ipv6RouterAdvertReachableTime",
+        "IP-MIB::ipv6RouterAdvertRetransmitTime",
+        "IP-MIB::ipv6RouterAdvertCurHopLimit",
+        "IP-MIB::ipv6RouterAdvertDefaultLifetime",
+        "IP-MIB::ipv6RouterAdvertRowStatus"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipv6RouterAdvertIfIndex"
+      ],
+      "Name": "ipv6RouterAdvertTable",
+      "OID": ".1.3.6.1.2.1.4.39"
+    },
+    {
+      "EntryName": "icmpStatsEntry",
+      "EntryObjects": [
+        "IP-MIB::icmpStatsIPVersion",
+        "IP-MIB::icmpStatsInMsgs",
+        "IP-MIB::icmpStatsInErrors",
+        "IP-MIB::icmpStatsOutMsgs",
+        "IP-MIB::icmpStatsOutErrors"
+      ],
+      "IndexObjects": [
+        "IP-MIB::icmpStatsIPVersion"
+      ],
+      "Name": "icmpStatsTable",
+      "OID": ".1.3.6.1.2.1.5.29"
+    },
+    {
+      "EntryName": "icmpMsgStatsEntry",
+      "EntryObjects": [
+        "IP-MIB::icmpMsgStatsIPVersion",
+        "IP-MIB::icmpMsgStatsType",
+        "IP-MIB::icmpMsgStatsInPkts",
+        "IP-MIB::icmpMsgStatsOutPkts"
+      ],
+      "IndexObjects": [
+        "IP-MIB::icmpMsgStatsIPVersion",
+        "IP-MIB::icmpMsgStatsType"
+      ],
+      "Name": "icmpMsgStatsTable",
+      "OID": ".1.3.6.1.2.1.5.30"
+    },
+    {
+      "EntryName": "ipAddrEntry",
+      "EntryObjects": [
+        "IP-MIB::ipAdEntAddr",
+        "IP-MIB::ipAdEntIfIndex",
+        "IP-MIB::ipAdEntNetMask",
+        "IP-MIB::ipAdEntBcastAddr",
+        "IP-MIB::ipAdEntReasmMaxSize"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipAdEntAddr"
+      ],
+      "Name": "ipAddrTable",
+      "OID": ".1.3.6.1.2.1.4.20"
+    },
+    {
+      "EntryName": "ipNetToMediaEntry",
+      "EntryObjects": [
+        "IP-MIB::ipNetToMediaIfIndex",
+        "IP-MIB::ipNetToMediaPhysAddress",
+        "IP-MIB::ipNetToMediaNetAddress",
+        "IP-MIB::ipNetToMediaType"
+      ],
+      "IndexObjects": [
+        "IP-MIB::ipNetToMediaIfIndex",
+        "IP-MIB::ipNetToMediaNetAddress"
+      ],
+      "Name": "ipNetToMediaTable",
+      "OID": ".1.3.6.1.2.1.4.22"
+    }
+  ]
+}

@@ -1,0 +1,266 @@
+{
+  "Name": "SNMPv2-MIB",
+  "OID": ".1.3.6.1.6.3.1",
+  "Objects": [
+    {
+      "Name": "sysDescr",
+      "OID": ".1.3.6.1.2.1.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "sysObjectID",
+      "OID": ".1.3.6.1.2.1.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "sysUpTime",
+      "OID": ".1.3.6.1.2.1.1.3",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "sysContact",
+      "OID": ".1.3.6.1.2.1.1.4",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "sysName",
+      "OID": ".1.3.6.1.2.1.1.5",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "sysLocation",
+      "OID": ".1.3.6.1.2.1.1.6",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "sysServices",
+      "OID": ".1.3.6.1.2.1.1.7",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 127,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "sysORLastChange",
+      "OID": ".1.3.6.1.2.1.1.8",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "sysORIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.1.9.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "sysORID",
+      "OID": ".1.3.6.1.2.1.1.9.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "sysORDescr",
+      "OID": ".1.3.6.1.2.1.1.9.1.3",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "sysORUpTime",
+      "OID": ".1.3.6.1.2.1.1.9.1.4",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "snmpInPkts",
+      "OID": ".1.3.6.1.2.1.11.1",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInBadVersions",
+      "OID": ".1.3.6.1.2.1.11.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInBadCommunityNames",
+      "OID": ".1.3.6.1.2.1.11.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInBadCommunityUses",
+      "OID": ".1.3.6.1.2.1.11.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInASNParseErrs",
+      "OID": ".1.3.6.1.2.1.11.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpEnableAuthenTraps",
+      "OID": ".1.3.6.1.2.1.11.30",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "snmpSilentDrops",
+      "OID": ".1.3.6.1.2.1.11.31",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpProxyDrops",
+      "OID": ".1.3.6.1.2.1.11.32",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpTrapOID",
+      "OID": ".1.3.6.1.6.3.1.1.4.1",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "snmpTrapEnterprise",
+      "OID": ".1.3.6.1.6.3.1.1.4.3",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "snmpSetSerialNo",
+      "OID": ".1.3.6.1.6.3.1.1.6.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "snmpOutPkts",
+      "OID": ".1.3.6.1.2.1.11.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInTooBigs",
+      "OID": ".1.3.6.1.2.1.11.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInNoSuchNames",
+      "OID": ".1.3.6.1.2.1.11.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInBadValues",
+      "OID": ".1.3.6.1.2.1.11.10",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInReadOnlys",
+      "OID": ".1.3.6.1.2.1.11.11",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInGenErrs",
+      "OID": ".1.3.6.1.2.1.11.12",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInTotalReqVars",
+      "OID": ".1.3.6.1.2.1.11.13",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInTotalSetVars",
+      "OID": ".1.3.6.1.2.1.11.14",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInGetRequests",
+      "OID": ".1.3.6.1.2.1.11.15",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInGetNexts",
+      "OID": ".1.3.6.1.2.1.11.16",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInSetRequests",
+      "OID": ".1.3.6.1.2.1.11.17",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInGetResponses",
+      "OID": ".1.3.6.1.2.1.11.18",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpInTraps",
+      "OID": ".1.3.6.1.2.1.11.19",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutTooBigs",
+      "OID": ".1.3.6.1.2.1.11.20",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutNoSuchNames",
+      "OID": ".1.3.6.1.2.1.11.21",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutBadValues",
+      "OID": ".1.3.6.1.2.1.11.22",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutGenErrs",
+      "OID": ".1.3.6.1.2.1.11.24",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutGetRequests",
+      "OID": ".1.3.6.1.2.1.11.25",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutGetNexts",
+      "OID": ".1.3.6.1.2.1.11.26",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutSetRequests",
+      "OID": ".1.3.6.1.2.1.11.27",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutGetResponses",
+      "OID": ".1.3.6.1.2.1.11.28",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "snmpOutTraps",
+      "OID": ".1.3.6.1.2.1.11.29",
+      "Syntax": "Counter32"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "sysOREntry",
+      "EntryObjects": [
+        "SNMPv2-MIB::sysORIndex",
+        "SNMPv2-MIB::sysORID",
+        "SNMPv2-MIB::sysORDescr",
+        "SNMPv2-MIB::sysORUpTime"
+      ],
+      "IndexObjects": [
+        "SNMPv2-MIB::sysORIndex"
+      ],
+      "Name": "sysORTable",
+      "OID": ".1.3.6.1.2.1.1.9"
+    }
+  ]
+}
