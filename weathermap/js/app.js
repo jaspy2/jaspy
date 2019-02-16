@@ -30,12 +30,22 @@ class WeatherMap extends PIXI.Application {
         this.lastPositionUpdate = 0;
 
         document.body.appendChild(this.renderer.view);
+        this.bindDeviceSearch();
+    }
+
+    bindDeviceSearch() {
+        let deviceGraph = this.deviceGraph;
+        document.getElementById("devicesearch").addEventListener("submit", function(ev) {
+            ev.preventDefault();
+            let devices = deviceGraph.findDevicesByName(ev.target[0].value);
+            devices.forEach(function(d) { d.highlight(); });
+        });
     }
 
     viewportInit() {
         this.viewport = new PIXI.extras.Viewport({
             screenWidth: window.innerWidth,
-            screenHeight: window.innerHeight,        
+            screenHeight: window.innerHeight,
             interaction: this.renderer.interaction
         });
         this.viewport

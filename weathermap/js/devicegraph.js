@@ -49,6 +49,15 @@ export default class DeviceGraph {
         this.updateBatch = {};
     }
 
+    findDevicesByName(name) {
+        let ret = [];
+        for(let [fqdn, device] of Object.entries(this.devices)) {
+            if(fqdn.match(name) === null) continue;
+            ret.push(device);
+        }
+        return ret;
+    }
+
     commitStatisticsUpdate() {
         for(let [fqdn, data] of Object.entries(this.updateBatch)) {
             if(!(fqdn in this.devices)) {

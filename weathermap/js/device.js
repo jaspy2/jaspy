@@ -383,6 +383,14 @@ export default class Device {
         }
     }
 
+    highlight() {
+        let radius = simulationGlobals.viewport.screenHeight > simulationGlobals.viewport.screenWidth ? simulationGlobals.viewport.screenHeight : simulationGlobals.viewport.screenWidth;
+        let color = 0x00aaff;
+        this.attachedEffects.push(new FocusEffect(radius, color, this.graphicsObjectInfo["object"]));
+        simulationGlobals.requestGraphicsUpdate = true;
+        simulationGlobals.requestAnimationUpdate = true;
+    }
+
     setStatus(newStatus) {
         this.lastUpdate = ((new Date()).getTime()/1000.0);
         if(this.status != newStatus["state"]) {

@@ -2,10 +2,15 @@
 <html>
     <head>
         <style>
-            body { margin: 0; overflow: hidden; }
+            body { margin: 0; overflow: hidden; background-color: #000; }
+            form { z-index: 1000; }
+            input { background-color: #555555; border: 1px solid #000; }
+            button { background-color: #555555; border: 1px solid #000; }
+            #devicesearch { position: absolute; text-align: center; }
         </style>
     </head>
     <body>
+        <form id="devicesearch"><input id="targetdev" name="targetdev"><button>find</button></form>
         <script src="js/pixi.js"></script>
         <script src="js/pixi-viewport.js"></script>
         <script src="js/victor.js"></script>
