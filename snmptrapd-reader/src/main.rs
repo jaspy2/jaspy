@@ -55,13 +55,29 @@ fn handle_parsed_trap(jaspy_url: String, unix_time : f64, hostname : &String, tr
     let is_link_up = trap_type.starts_with("IF-MIB::linkUp");
     let is_link_down = trap_type.starts_with("IF-MIB::linkDown");
     if is_link_up || is_link_down {
-        let ifindex : i64 = match trap.get("IF-MIB::ifIndex") {
+        let ifindex_ifmib : Option<i64> = match trap.get("IF-MIB::ifIndex") {
             Some(value) => match value.parse() {
-                Ok(value) => value,
-                Err(_) => { println!("failed to parse ifIndex from trap"); return; }
+                Ok(value) => Some(value),
+                Err(_) => None
             },
-            None => { println!("failed to find ifIndex field in trap"); return; }
+            None => None
         };
+        let ifindex_rfc1213mib : Option<i64> = match trap.get("RFC1213-MIB::ifIndex") {
+            Some(value) => match value.parse() {
+                Ok(value) => Some(value),
+                Err(_) => None
+            },
+            None => None
+        };
+        let ifindex;
+        if let Some(ifindex_ifmib) = ifindex_ifmib {
+            ifindex = ifindex_ifmib;
+        } else if let Some(ifindex_rfc1213mib) = ifindex_rfc1213mib {
+            ifindex = ifindex_rfc1213mib;
+        } else {
+            println!("failed to find/parse ifIndex from trap");
+            return;
+        }
         if is_link_up {
             send_link_up_event(jaspy_url, unix_time, hostname, ifindex);
         } else if is_link_down {
