@@ -1,0 +1,15 @@
+[Unit]
+Description=jaspy-pinger
+After=jaspy-nexus.service
+Requisite=jaspy-nexus.service
+
+[Service]
+Type=simple
+User=jaspy
+Group=jaspy
+ExecStart=/usr/lib/jaspy/jaspy-pinger http://0.0.0.0:8000/device/monitor
+AmbientCapabilities=CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,15 @@
+[Unit]
+Description=jaspy-nexus
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=jaspy
+Group=jaspy
+Environment=DATABASE_URL=postgresql:///jaspy
+Environment=EVENT_PUBLISH=tcp://0.0.0.0:31337
+ExecStart=/usr/lib/jaspy/jaspy-nexus
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,14 @@
+[Unit]
+Description=jaspy-poller
+After=jaspy-poller.service
+Requisite=jaspy-poller.service
+
+[Service]
+Type=simple
+User=jaspy
+Group=jaspy
+ExecStart=/usr/lib/jaspy/jaspy-poller http://127.0.0.1:8000/ http://127.0.0.1:8286/
+
+[Install]
+WantedBy=multi-user.target
+
