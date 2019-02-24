@@ -3,14 +3,13 @@ extern crate reqwest;
 extern crate serde_json;
 use crate_rand::prelude::*;
 use models;
+use std::env;
 use std::sync;
 use std::thread;
 use std::time;
 use util;
 use HashMap;
 use std::sync::{Arc, mpsc, atomic};
-
-const POLL_LOOP_MSECS : u64 = 30000;
 
 pub struct PollThreadInfo {
     pub thd : thread::JoinHandle<()>,
@@ -140,7 +139,18 @@ fn poll_device(snmpbot_url: &String, device_info: &models::json::Device) -> Opti
 
 pub fn poller(jaspy_url : String, snmpbot_url: String, device_info : models::json::Device, running : sync::Arc<sync::atomic::AtomicBool>, done : sync::mpsc::Sender<bool>) {
     let fqdn = format!("{}.{}", device_info.name, device_info.dns_domain);
-    let start_sleep = crate_rand::prelude::thread_rng().gen_range(0.0, POLL_LOOP_MSECS as f64);
+    let poll_loop_msecs: u64;
+    if let Ok(poll_loop_msecs_parsed) = env::var("POLL_LOOP_MSECS") {
+        let parse_result: Result<u64, _> = poll_loop_msecs_parsed.parse();
+        if let Ok(parse_result) = parse_result {
+            poll_loop_msecs = parse_result;
+        } else {
+            panic!("could not parse env variable POLL_LOOP_MSECS as u64");
+        }
+    } else {
+        panic!("could not find env variable POLL_LOOP_MSECS");
+    }
+    let start_sleep = crate_rand::prelude::thread_rng().gen_range(0.0, poll_loop_msecs as f64);
     println!("[{}] start polling thread, delay={:.2}ms", fqdn, start_sleep);
     thread::sleep(time::Duration::from_millis(start_sleep as u64));
     while running.load(sync::atomic::Ordering::Relaxed) {
@@ -159,7 +169,7 @@ pub fn poller(jaspy_url : String, snmpbot_url: String, device_info : models::jso
         }
 
         let diff = util::get_time_msecs() - start;
-        let loop_time = POLL_LOOP_MSECS;
+        let loop_time = poll_loop_msecs;
         if diff <= loop_time {
             thread::sleep(time::Duration::from_millis(loop_time - diff));
         }
