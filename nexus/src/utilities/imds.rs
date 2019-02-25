@@ -425,6 +425,7 @@ impl IMDS {
                 let device_up : i64;
                 let mut labels: HashMap<String,String> = HashMap::new();
                 labels.insert("fqdn".to_string(), device_metrics.fqdn.clone());
+                labels.insert("hostname".to_string(), device_metrics.hostname.clone());
                 if device_up_bool { device_up = 1; } else { device_up = 0; }
                 let metric = models::metrics::LabeledMetric::new(
                     &jaspy_device_up, models::metrics::MetricValue::Int64(device_up),
@@ -436,7 +437,6 @@ impl IMDS {
             for (_interface_key, interface_metrics) in device_metrics.interfaces.iter() {
                 let mut labels: HashMap<String,String> = HashMap::new();
                 labels.insert("fqdn".to_string(), device_metrics.fqdn.clone());
-                labels.insert("hostname".to_string(), device_metrics.hostname.clone());
                 labels.insert("interface_type".to_string(), interface_metrics.interface_type.clone());
                 if interface_metrics.neighbors { labels.insert("neighbors".to_string(), "yes".to_string()); }
                 else { labels.insert("neighbors".to_string(), "no".to_string()); }
