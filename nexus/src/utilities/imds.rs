@@ -438,6 +438,7 @@ impl IMDS {
                 let mut labels: HashMap<String,String> = HashMap::new();
                 labels.insert("fqdn".to_string(), device_metrics.fqdn.clone());
                 labels.insert("name".to_string(), interface_metrics.name.clone());
+                labels.insert("hostname".to_string(), device_metrics.hostname.clone());
                 labels.insert("interface_type".to_string(), interface_metrics.interface_type.clone());
                 if interface_metrics.neighbors { labels.insert("neighbors".to_string(), "yes".to_string()); }
                 else { labels.insert("neighbors".to_string(), "no".to_string()); }
