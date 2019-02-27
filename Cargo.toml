@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "kerosiini",
+    # "nexus", # Not Windows compatible without zmq
+    # "pinger", # Not Windows compatible without oping
+    "poller",
+    "snmptrapd-reader",
+    "switchmaster"
+]

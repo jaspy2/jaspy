@@ -1,0 +1,17 @@
+[package]
+name = "switchmaster"
+version = "0.1.0"
+authors = ["Joona Romppanen <joona.romppanen@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+serde = "*"
+serde_json = "*"
+serde_derive = "*"
+rocket = "*"
+rocket_codegen = "*"
+rocket_contrib = { version = "*", default-features = false, features = ["json"] }
+diesel = { version = "*", features = ["postgres"] }
+r2d2 = "*"
+r2d2-diesel = "*"
+kerosiini = { path = "../kerosiini" }

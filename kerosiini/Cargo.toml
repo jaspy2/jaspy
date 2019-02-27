@@ -1,0 +1,11 @@
+[package]
+name = "kerosiini"
+version = "0.1.0"
+authors = ["Joona Romppanen <joona.romppanen@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rocket = "*"
+diesel = { version = "*", features = ["postgres"] }
+r2d2 = "*"
+r2d2-diesel = "*"
