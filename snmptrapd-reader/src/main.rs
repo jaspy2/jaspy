@@ -1,9 +1,12 @@
 #[macro_use] extern crate serde_derive;
 extern crate serde_json;
 extern crate reqwest;
+extern crate config;
 use std::io::{self, Read};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
+use config::{ConfigError, Config, File, Environment};
+
 mod models;
 
 fn send_interface_event(jaspy_url: String, ifm: models::json::InterfaceMonitorReport) {
@@ -88,7 +91,7 @@ fn handle_parsed_trap(jaspy_url: String, unix_time : f64, hostname : &String, tr
 
 fn handle_trap(jaspy_url: String, trap : String, unix_time : f64) {
     let mut lines = trap.split("\n");
-    
+
     let hostname = match lines.next() {
         Some(line) => line.trim(),
         None => return
@@ -148,12 +151,22 @@ fn print_usage() {
 }
 
 fn main() {
+    let mut c = Config::new();
     let jaspy_url;
-    if let Some(argv1) = std::env::args().nth(1) {
-        jaspy_url = argv1;
-    } else {
-        print_usage();
-        return;
+
+    c.merge(File::with_name("/etc/jaspy/poller.yml").required(false)).unwrap()
+        .merge(File::with_name("~/.config/jaspy/poller.yml").required(false)).unwrap()
+        .merge(Environment::with_prefix("JASPY")).unwrap();
+
+    match c.get_str("url") {
+        Ok(v) => { jaspy_url = v },
+        Err(e) => { if let Some(argv1) = std::env::args().nth(1) {
+            jaspy_url = argv1;
+            } else {
+                println!("JASPY_URL not defined!");
+                return;
+            }
+        },
     }
 
     let mut buffer_tmp = String::new();

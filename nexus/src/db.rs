@@ -11,7 +11,7 @@ use diesel::pg::PgConnection;
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 pub fn connect() -> Pool {
-    let env_opt = env::var("DATABASE_URL");
+    let env_opt = env::var("JASPY_DB_URL");
     match env_opt {
         Ok(env_opt) => {
             let manager = ConnectionManager::<PgConnection>::new(env_opt);

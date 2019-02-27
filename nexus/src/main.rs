@@ -12,6 +12,7 @@ extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate time;
 extern crate zmq;
+extern crate config;
 mod routes;
 mod models;
 mod db;
@@ -20,6 +21,7 @@ mod utilities;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
 use std::collections::HashMap;
+use config::{ConfigError, Config, File, Environment};
 
 fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
     return running.load(std::sync::atomic::Ordering::Relaxed);
@@ -81,8 +83,9 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
 }
 
 fn main() {
+    let mut c = Config::new();
     let running = Arc::new(AtomicBool::new(true));
-    
+
     let msgbus : Arc<Mutex<utilities::msgbus::MessageBus>> = Arc::new(Mutex::new(utilities::msgbus::MessageBus::new()));
     let imds : Arc<Mutex<utilities::imds::IMDS>> = Arc::new(Mutex::new(utilities::imds::IMDS::new(msgbus.clone())));
     let metric_miss_cache : Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>> = Arc::new(Mutex::new(models::metrics::DeviceMetricRefreshCacheMiss::new()));
@@ -97,7 +100,11 @@ fn main() {
     let cache_controller : Arc<Mutex<utilities::cache::CacheController>> = Arc::new(Mutex::new(utilities::cache::CacheController::new()));
 
     let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
-    
+
+    c.merge(File::with_name("/etc/jaspy/poller.yml").required(false)).unwrap()
+        .merge(File::with_name("~/.config/jaspy/poller.yml").required(false)).unwrap()
+        .merge(Environment::with_prefix("JASPY")).unwrap();
+
     rocket::ignite()
         .mount(
             "/v1/device",
