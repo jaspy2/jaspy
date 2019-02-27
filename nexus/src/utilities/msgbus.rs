@@ -34,8 +34,6 @@ impl MessageBus {
             panic!("Failed to bind ZMQ PUB socket!");
         }
 
-        
-
         return MessageBus {
             zmq_socket: zmq_socket,
         };
