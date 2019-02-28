@@ -1,7 +1,7 @@
-pub mod clientlocation;
+pub mod clientlocation; // TODO: Separate to standalone service
 pub mod discovery;
 pub mod device;
 pub mod metrics;
 pub mod interface;
-pub mod weathermap;
+pub mod weathermap; // TODO: Separate to standalone service
 pub mod v1;
