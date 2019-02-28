@@ -100,6 +100,14 @@ fn main() {
     
     rocket::ignite()
         .mount(
+            "/v1",
+            routes![
+                routes::v1::device_status,
+                routes::v1::interface_list,
+                routes::v1::device_interface_status,
+            ]
+        )
+        .mount(
             "/clientlocation",
             routes![
                 routes::clientlocation::put_clientlocation,

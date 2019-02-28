@@ -2,6 +2,23 @@ use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DeviceStatus {
+    pub fqdn: String,
+    pub up: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceInterfaceStatus {
+    pub name: String,
+    pub neighbors: bool,
+    pub up: Option<bool>,
+    pub speed: Option<i32>,
+    pub interface_type: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DiscoveredDevice {
     pub name: String,
     pub dns_domain: String,

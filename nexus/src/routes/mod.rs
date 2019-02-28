@@ -4,3 +4,4 @@ pub mod device;
 pub mod metrics;
 pub mod interface;
 pub mod weathermap;
+pub mod v1;
