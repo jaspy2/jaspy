@@ -90,6 +90,7 @@ impl IMDS {
         match self.metrics_storage.devices.get_mut(device_fqdn) {
             Some(device) => {
                 device.expiry = utilities::tools::get_time() + 60.0;
+                device.last_report = utilities::tools::get_time_msecs();
                 return;
             },
             None => {}
