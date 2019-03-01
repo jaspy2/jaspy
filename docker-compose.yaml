@@ -6,6 +6,8 @@ services:
       context: ./discover
     env_file:
       - jaspy.env
+    external_links:
+      - snmpbot:snmpbot
   nexus:
     build:
       context: ./nexus
@@ -13,6 +15,7 @@ services:
       - jaspy.env
     depends_on:
       - db
+    restart: always
   pinger:
     build:
       context: ./pinger
@@ -23,6 +26,8 @@ services:
       context: ./poller
     env_file:
       - jaspy.env
+    depends_on:
+      - nexus
   snmptrapd-reader:
     build:
       context: ./snmptrapd-reader
@@ -43,8 +48,11 @@ services:
       driver: none
     env_file:
       - jaspy.env
-    network_mode: host
+#    network_mode: host
     volumes:
       - ./snmpbot/mibs:/opt/qmsk/snmpbot/mibs
   db:
     image: postgres:11.2-alpine
+    env_file:
+      - jaspy.env
+

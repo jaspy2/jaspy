@@ -1,6 +1,16 @@
-FROM python:3.6
+FROM alpine:latest
 
 WORKDIR /usr/src/jaspy-discover
 COPY . .
-RUN pip install -r requirements.txt --upgrade
-CMD ["python", "discover.py", "-s", "$JASPY_SNMPBOT_URL", "-j", "$JASPY_URL", "-c", "$JASPY_COMMUNITY", "-r", "$JASPY_ROOT_DEVICE", "-d", "$JASPY_DNS_DOMAIN", "-D", "-S", "-n"]
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    apk add --no-cache python3 && \
+		python3 -m ensurepip && \
+    rm -r /usr/lib/python*/ensurepip && \
+    pip3 install --upgrade pip setuptools && \
+		if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi && \
+    if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi && \
+    rm -r /root/.cache && \
+    pip install -r requirements.txt --upgrade
+
+ENTRYPOINT ["/entrypoint.sh"]

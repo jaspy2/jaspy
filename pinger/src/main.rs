@@ -330,7 +330,6 @@ fn check_if_worker_needed(source_url : &String, devices : &HashMap<String, Devic
 fn main() {
     let mut c = Config::new();
     let source_url;
-    let mut source_url_option: Option<std::string::String> = None;
     let mut ping_workers : HashMap<String, PingThreadInfo> = HashMap::new();
     let mut reap_threads : Vec<PingThreadInfo> = Vec::new();
     let mut devices : HashMap<String, DeviceInfo> = HashMap::new();
