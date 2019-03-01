@@ -102,9 +102,9 @@ fn main() {
         .mount(
             "/v1/device",
             routes![
-                routes::v1::device_status,
-                routes::v1::interface_list,
-                routes::v1::device_interface_status,
+                routes::v1::device::device_status,
+                routes::v1::device::interface_list,
+                routes::v1::device::device_interface_status,
             ]
         )
         .mount(
