@@ -7,6 +7,7 @@ use std::sync::{Arc,Mutex};
 use rocket::State;
 use utilities;
 
+// TODO: GH#9 Move everything to v1 API
 #[get("/?<device_fqdn>")]
 pub fn interface_list(connection: db::Connection, device_fqdn: Option<String>) -> json::Json<Vec<models::dbo::Interface>> {
     match device_fqdn {

@@ -53,6 +53,7 @@ fn get_topology_data(connection: &db::Connection) -> models::json::WeathermapBas
     return wmap;
 }
 
+// TODO: GH#9 Move everything to v1 API
 #[get("/")]
 pub fn full_topology_data(connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> json::Json<models::json::WeathermapBase> {
     let cached_weathermap_topology_arc: Arc<Mutex<Option<utilities::cache::CachedWeathermapTopology>>>;

@@ -4,6 +4,7 @@ use models;
 use db;
 use rocket_contrib::json;
 
+// TODO: GH#9 Move everything to v1 API
 #[put("/", data = "<client_location_info_json>")]
 pub fn put_clientlocation(connection: db::Connection, client_location_info_json: json::Json<models::json::ClientLocationInfo>) {
     let client_location_info: models::json::ClientLocationInfo = client_location_info_json.into_inner();

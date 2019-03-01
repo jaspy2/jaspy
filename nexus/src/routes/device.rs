@@ -7,7 +7,7 @@ use std::sync::{Arc,Mutex};
 use rocket::State;
 use utilities;
 
-// TODO: Move everything to v1 API
+// TODO: GH#9 Move everything to v1 API
 #[get("/")]
 pub fn device_list(connection: db::Connection) -> json::Json<Vec<models::dbo::Device>> {
     return json::Json(models::dbo::Device::all(&connection));

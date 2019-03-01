@@ -5,7 +5,7 @@ use rocket::State;
 use models;
 use rocket::{get, put};
 
-
+// TODO: GH#9 Move everything to v1 API
 #[get("/fast")]
 pub fn metrics_fast(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
     let mut ret : String = String::new();
