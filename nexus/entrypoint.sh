@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 cd /opt/jaspy
-diesel migration run
+diesel --database-url $JASPY_DB_URL migration run
 /usr/bin/jaspy-nexus

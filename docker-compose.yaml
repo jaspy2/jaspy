@@ -16,8 +16,6 @@ services:
     depends_on:
       - db
     restart: always
-    ports:
-      - "80:8000"
   pinger:
     build:
       context: ./pinger
@@ -37,11 +35,11 @@ services:
       - jaspy.env
     ports:
       - "162:162/udp"
-  weathermap:
+  front:
     build:
       context: ./weathermap
     ports:
-      - "8080:80"
+      - "80:80"
     env_file:
       - jaspy.env
   snmpbot:
@@ -50,11 +48,19 @@ services:
       driver: none
     env_file:
       - jaspy.env
-#    network_mode: host
     volumes:
       - ./snmpbot/mibs:/opt/qmsk/snmpbot/mibs
   db:
     image: postgres:11.2-alpine
+    volumes:
+      - pg-data:/var/lib/postgresql/data
     env_file:
       - jaspy.env
 
+volumes:
+  pg-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./pg-data
+      o: bind
