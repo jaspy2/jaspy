@@ -7,7 +7,7 @@ use std::sync::{Arc,Mutex};
 use rocket::State;
 use utilities;
 
-#[get("/device/<device_fqdn>/status")]
+#[get("/<device_fqdn>/status")]
 pub fn device_status(device_fqdn: String, imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<json::Json<models::json::DeviceStatus>> {
     if let Ok(ref mut imds) = imds.inner().lock() {
         if let Some(device_metric) = imds.get_device(&device_fqdn) {
@@ -21,7 +21,7 @@ pub fn device_status(device_fqdn: String, imds: State<Arc<Mutex<utilities::imds:
     return None;
 }
 
-#[get("/device/<device_fqdn>/interfaces")]
+#[get("/<device_fqdn>/interfaces")]
 pub fn interface_list(connection: db::Connection, device_fqdn: Option<String>) -> json::Json<Vec<models::dbo::Interface>> {
     match device_fqdn {
         Some(device_fqdn) => {
@@ -37,7 +37,7 @@ pub fn interface_list(connection: db::Connection, device_fqdn: Option<String>) -
     };
 }
 
-#[get("/device/<device_fqdn>/status/interfaces")]
+#[get("/<device_fqdn>/status/interfaces")]
 pub fn device_interface_status(device_fqdn: String, imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<json::Json<Vec<models::json::DeviceInterfaceStatus>>> {
     if let Ok(ref mut imds) = imds.inner().lock() {
         if let Some(device_metric) = imds.get_device(&device_fqdn) {

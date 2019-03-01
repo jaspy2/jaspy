@@ -7,6 +7,7 @@ use std::collections::{HashSet,HashMap};
 use rocket::State;
 use utilities;
 
+// TODO: GH#9 Move everything to v1 API
 #[put("/device", data = "<discovery_json>")]
 pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
     let discovered_device : &models::json::DiscoveredDevice = &discovery_json.into_inner();
