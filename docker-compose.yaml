@@ -16,6 +16,8 @@ services:
     depends_on:
       - db
     restart: always
+    ports:
+      - "80:8000"
   pinger:
     build:
       context: ./pinger
