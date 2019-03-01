@@ -97,6 +97,7 @@ impl IMDS {
         let fqdn_splitted : Vec<&str> = device_fqdn.split('.').collect();
         let hostname = fqdn_splitted[0];
         let dm = models::metrics::DeviceMetrics {
+            last_report: 0,
             expiry: utilities::tools::get_time() + 60.0,
             fqdn: device_fqdn.clone(),
             hostname: hostname.to_string(),
@@ -111,6 +112,7 @@ impl IMDS {
         match self.metrics_storage.devices.get_mut(&dmr.fqdn) {
             Some(value) => {
                 device = value;
+                device.last_report = utilities::tools::get_time_msecs();
             },
             None => {
                 // TODO: log? this means we got a report from a host that is not being monitored, it is possible this is normal on device removal
@@ -163,6 +165,7 @@ impl IMDS {
             None => {}
         }
         device.interfaces.insert(if_index, models::metrics::InterfaceMetrics {
+            last_report: 0,
             expiry: utilities::tools::get_time() + 60.0,
             name: name.clone(),
             neighbors: neighbors,
@@ -187,6 +190,7 @@ impl IMDS {
 
     pub fn report_interfaces(self: &mut IMDS, connection: &db::Connection, imr: models::json::InterfaceMonitorReport) {
         let device;
+        let last_report = utilities::tools::get_time_msecs();
         match self.metrics_storage.devices.get_mut(&imr.device_fqdn) {
             Some(value) => {
                 device = value;
@@ -206,7 +210,7 @@ impl IMDS {
                     continue;
                 }
             }
-
+            interface.last_report = last_report;
             // TODO: statechanges should be emitted for errors?
             if interface_report.in_octets.is_some() { interface.in_octets = interface_report.in_octets; }
             if interface_report.out_octets.is_some() { interface.out_octets = interface_report.out_octets; }
@@ -328,84 +332,96 @@ impl IMDS {
                 if let Some(interface_metrics_reported_speed) = reported_speed {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_speed, models::metrics::MetricValue::Int64(interface_metrics_reported_speed as i64),
-                        &labels
+                        &labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_in_octets) = interface_metrics.in_octets {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_octets, models::metrics::MetricValue::Uint64(interface_metrics_in_octets),
-                        &in_labels
+                        &in_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_out_octets) = interface_metrics.out_octets {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_octets, models::metrics::MetricValue::Uint64(interface_metrics_out_octets),
-                        &out_labels
+                        &out_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_in_unicast_packets) = interface_metrics.in_unicast_packets {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_unicast_packets, models::metrics::MetricValue::Uint64(interface_metrics_in_unicast_packets),
-                        &in_labels
+                        &in_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_in_multicast_packets) = interface_metrics.in_multicast_packets {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_multicast_packets, models::metrics::MetricValue::Uint64(interface_metrics_in_multicast_packets),
-                        &in_labels
+                        &in_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_in_broadcast_packets) = interface_metrics.in_broadcast_packets {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_broadcast_packets, models::metrics::MetricValue::Uint64(interface_metrics_in_broadcast_packets),
-                        &in_labels
+                        &in_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_out_unicast_packets) = interface_metrics.out_unicast_packets {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_unicast_packets, models::metrics::MetricValue::Uint64(interface_metrics_out_unicast_packets),
-                        &out_labels
+                        &out_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_out_multicast_packets) = interface_metrics.out_multicast_packets {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_multicast_packets, models::metrics::MetricValue::Uint64(interface_metrics_out_multicast_packets),
-                        &out_labels
+                        &out_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_out_broadcast_packets) = interface_metrics.out_broadcast_packets {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_broadcast_packets, models::metrics::MetricValue::Uint64(interface_metrics_out_broadcast_packets),
-                        &out_labels
+                        &out_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_in_errors) = interface_metrics.in_errors {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_errors, models::metrics::MetricValue::Uint64(interface_metrics_in_errors),
-                        &in_labels
+                        &in_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_out_errors) = interface_metrics.out_errors {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_errors, models::metrics::MetricValue::Uint64(interface_metrics_out_errors),
-                        &out_labels
+                        &out_labels,
+                        interface_metrics.last_report,
                     ));
                 }
 
                 if let Some(interface_metrics_out_discards) = interface_metrics.out_discards {
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_discards, models::metrics::MetricValue::Uint64(interface_metrics_out_discards),
-                        &out_labels
+                        &out_labels,
+                        interface_metrics.last_report,
                     ));
                 }
             }
@@ -429,7 +445,8 @@ impl IMDS {
                 if device_up_bool { device_up = 1; } else { device_up = 0; }
                 let metric = models::metrics::LabeledMetric::new(
                     &jaspy_device_up, models::metrics::MetricValue::Int64(device_up),
-                    &labels
+                    &labels,
+                    device_metrics.last_report,
                 );
                 metric_values.push(metric);
             }
@@ -448,7 +465,8 @@ impl IMDS {
                     if interface_metrics_up { val = 1; } else { val = 0; }
                     metric_values.push(models::metrics::LabeledMetric::new(
                         &jaspy_interface_up, models::metrics::MetricValue::Int64(val),
-                        &labels
+                        &labels,
+                        interface_metrics.last_report,
                     ));
                 }
             }

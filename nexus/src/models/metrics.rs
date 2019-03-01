@@ -7,6 +7,7 @@ pub struct InterfaceMetrics {
     pub name: String,
     pub neighbors: bool,
     pub interface_type: String,
+    pub last_report: u64,
     pub speed_override: Option<i32>,
 
     pub in_octets: Option<u64>,
@@ -32,6 +33,8 @@ pub struct DeviceMetrics {
     pub hostname: String,
 
     pub up: Option<bool>,
+
+    pub last_report: u64,
 
     pub interfaces: HashMap<i32, InterfaceMetrics>,
 }
@@ -62,14 +65,16 @@ pub struct LabeledMetric {
     pub name: String,
     pub labels: HashMap<String, String>,
     pub value: MetricValue,
+    pub timestamp: u64,
 }
 
 impl LabeledMetric {
-    pub fn new(name: &String, value: MetricValue, labels: &HashMap<String,String>) -> LabeledMetric {
+    pub fn new(name: &String, value: MetricValue, labels: &HashMap<String,String>, timestamp: u64) -> LabeledMetric {
         return LabeledMetric {
             name: name.clone(),
             value: value,
             labels: labels.clone(),
+            timestamp: timestamp,
         }
     }
 
@@ -82,10 +87,10 @@ impl LabeledMetric {
         let body;
         match self.value {
             MetricValue::Int64(value) => {
-                body = format!("{}{{{}}} {}", self.name, labeltext, value);
+                body = format!("{}{{{}}} {} {}", self.name, labeltext, value, self.timestamp);
             },
             MetricValue::Uint64(value) => {
-                body = format!("{}{{{}}} {}", self.name, labeltext, value);
+                body = format!("{}{{{}}} {} {}", self.name, labeltext, value, self.timestamp);
             }
         }
         return format!("{}", body);
