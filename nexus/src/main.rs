@@ -100,7 +100,7 @@ fn main() {
     
     rocket::ignite()
         .mount(
-            "/v1",
+            "/v1/device",
             routes![
                 routes::v1::device_status,
                 routes::v1::interface_list,
