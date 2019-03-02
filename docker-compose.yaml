@@ -59,14 +59,6 @@ services:
   db:
     image: postgres:11.2-alpine
     volumes:
-      - pg-data:/var/lib/postgresql/data
+      - ./pg-data:/var/lib/postgresql/data
     env_file:
       - jaspy.env
-
-volumes:
-  pg-data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ./pg-data
-      o: bind
