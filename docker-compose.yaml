@@ -1,0 +1,72 @@
+version: '3'
+
+services:
+  discover:
+    image: jaspy/discover
+    build:
+      context: ./discover
+    env_file:
+      - jaspy.env
+    external_links:
+      - snmpbot:snmpbot
+  nexus:
+    image: jaspy/nexus
+    build:
+      context: ./nexus
+    env_file:
+      - jaspy.env
+    depends_on:
+      - db
+    restart: always
+  pinger:
+    image: jaspy/pinger
+    build:
+      context: ./pinger
+    env_file:
+      - jaspy.env
+  poller:
+    image: jaspy/poller
+    build:
+      context: ./poller
+    env_file:
+      - jaspy.env
+    depends_on:
+      - nexus
+  snmptrapd-reader:
+    image: jaspy/snmptrapd-reader
+    build:
+      context: ./snmptrapd-reader
+    env_file:
+      - jaspy.env
+    ports:
+      - "162:162/udp"
+  front:
+    image: jaspy/front
+    build:
+      context: ./weathermap
+    ports:
+      - "80:80"
+    env_file:
+      - jaspy.env
+  snmpbot:
+    image: qmsk/snmpbot
+    logging:
+      driver: none
+    env_file:
+      - jaspy.env
+    volumes:
+      - ./snmpbot/mibs:/opt/qmsk/snmpbot/mibs
+  db:
+    image: postgres:11.2-alpine
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    env_file:
+      - jaspy.env
+
+volumes:
+  pg-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./pg-data
+      o: bind

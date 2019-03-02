@@ -1,6 +1,6 @@
 config = {
-    "prometheusQueryURL": "https://blah/prometheus/api/v1/query?query=",
-    "jaspyNexusURL": "https://blah/jaspy-api/weathermap",
+    "prometheusQueryURL": "JASPY_PROMETHEUS_URL",
+    "jaspyNexusURL": "JASPY_NEXUS_URL",
     "deviceIconSize": 20,
     "arrowWidth": 8.0,
     "arrowLength": 16.0,

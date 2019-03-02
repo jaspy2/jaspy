@@ -1,15 +1,15 @@
-#[macro_use]
-extern crate serde_derive;
+#[macro_use] extern crate serde_derive;
 extern crate serde_json;
 extern crate reqwest;
 extern crate oping;
+extern crate config;
 
 use std::collections::HashMap;
 use std::thread;
 use std::time;
 use std::sync;
 use std::time::{SystemTime, UNIX_EPOCH};
-
+use config::{ConfigError, Config, File, Environment};
 
 const MAIN_LOOP_MSECS : u64 = 1000;
 const PING_LOOP_MSECS : u64 = 1000;
@@ -213,7 +213,7 @@ fn pinger(source_url : String, device_info : DeviceInfo, running : sync::Arc<syn
     println!("[{}] start monitoring", device_info.fqdn);
     while running.load(std::sync::atomic::Ordering::Relaxed) {
         let start = get_time_msecs();
-        
+
         match pinger_prepare_instance(&device_info.fqdn) {
             Ok(oping_instance) => {
                 pinger_perform_ping(&source_url, &device_info.fqdn, &mut ping_accounting_info, oping_instance);
@@ -246,7 +246,7 @@ fn start_ping_worker(source_url: &String, device_info: &DeviceInfo, ping_workers
     };
     let source_url_copy = source_url.clone();
     ping_workers.insert(
-        device_info.fqdn.clone(), 
+        device_info.fqdn.clone(),
         PingThreadInfo {
             state_id: *state_id,
             thd: thread::spawn(|| {
@@ -328,19 +328,28 @@ fn check_if_worker_needed(source_url : &String, devices : &HashMap<String, Devic
 }
 
 fn main() {
+    let mut c = Config::new();
     let source_url;
     let mut ping_workers : HashMap<String, PingThreadInfo> = HashMap::new();
     let mut reap_threads : Vec<PingThreadInfo> = Vec::new();
     let mut devices : HashMap<String, DeviceInfo> = HashMap::new();
     let mut state_id : i64 = 0;
 
-    if let Some(argv1) = std::env::args().nth(1) {
-        source_url = argv1;
-    } else {
-        println!("usage: {} <device_source_url>", std::env::args().nth(0).unwrap());
-        return;
+    c.merge(File::with_name("/etc/jaspy/pinger.yml").required(false)).unwrap()
+        .merge(File::with_name("~/.config/jaspy/pinger.yml").required(false)).unwrap()
+        .merge(Environment::with_prefix("JASPY")).unwrap();
+
+    match c.get_str("source_url") {
+        Ok(v) => { source_url = v },
+        Err(e) => { if let Some(argv1) = std::env::args().nth(1) {
+            source_url = argv1;
+            } else {
+                println!("SOURCE_URL not defined!");
+                return;
+            }
+        },
     }
-    
+
     loop {
         match get_devices(&source_url) {
             Ok(received_devices) => {

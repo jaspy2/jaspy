@@ -9,14 +9,14 @@ pub struct MessageBus {
 
 impl MessageBus {
     pub fn new() -> MessageBus {
-        let env_opt = env::var("EVENT_PUBLISH");
+        let env_opt = env::var("JASPY_EVENT_PUBLISH");
         let event_publish;
         match env_opt {
             Ok(env_opt) => {
                 event_publish = env_opt.clone();
             },
             Err(_) => {
-                panic!("EVENT_PUBLISH env var not set!");
+                panic!("JASPY_EVENT_PUBLISH env var not set!");
             }
         }
 
@@ -33,8 +33,6 @@ impl MessageBus {
         } else {
             panic!("Failed to bind ZMQ PUB socket!");
         }
-
-        
 
         return MessageBus {
             zmq_socket: zmq_socket,
