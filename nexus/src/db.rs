@@ -18,7 +18,7 @@ pub fn connect() -> Pool {
             r2d2::Pool::builder().build(manager).expect("Failed to create pool")
         },
         Err(_) => {
-            panic!("DATABASE_URL env var not set!");
+            panic!("JASPY_DB_URL env var not set!");
         }
     }
 }
