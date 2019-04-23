@@ -1,7 +1,7 @@
 #!/bin/bash -e
 tmpdir=$(mktemp -d)
 echo ${tmpdir}
-which diesel || cargo install diesel_cli
+which diesel || cargo install diesel_cli --no-default-features --features "postgres"
 mkdir -p ${tmpdir}/usr/lib/jaspy
 mkdir -p ${tmpdir}/var/lib/jaspy
 mkdir -p ${tmpdir}/var/lib/jaspy/nexus
