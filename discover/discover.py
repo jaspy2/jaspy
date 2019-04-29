@@ -102,7 +102,7 @@ def send_device_info(device):
     device_json['interfaces'] = interfaces_json
 
     if not args.noop:
-        requests.put('%s/discovery/device' % (args.jaspy_url), json=device_json)
+        requests.put('%s/dev/discovery/device' % (args.jaspy_url), json=device_json)
 
 
 def discover_device(device_fqdn, detected_devices, detector_threads, detector_lock):
@@ -286,7 +286,7 @@ def send_device_topology_info(device):
     out = {'deviceFqdn': device.device_fqdn, 'topologyStable': args.stable, 'interfaces': device_link_info['interfaces']}
 
     if not args.noop:
-        requests.put('%s/discovery/links' % (args.jaspy_url), json=out)
+        requests.put('%s/dev/discovery/links' % (args.jaspy_url), json=out)
 
 
 def send_topology_info(detected_devices):
