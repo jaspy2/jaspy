@@ -9,7 +9,7 @@ cp -a $(which diesel) ${tmpdir}/usr/lib/jaspy/diesel
 for item in nexus poller pinger snmptrapd-reader; do
     pushd ../${item}
     cargo build --release
-    cp -a target/release/jaspy-${item} ${tmpdir}/usr/lib/jaspy/
+    cp -a ../target/release/jaspy-${item} ${tmpdir}/usr/lib/jaspy/
     popd
 done
 cp -a ../discover ${tmpdir}/usr/lib/jaspy/

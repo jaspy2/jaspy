@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "nexus",
-    # "pinger", # Not Windows compatible without oping
+    "pinger",
     "poller",
     "snmptrapd-reader"
 ]
