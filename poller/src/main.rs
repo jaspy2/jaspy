@@ -18,7 +18,7 @@ fn print_usage() {
 }
 
 fn get_devices(jaspy_url : &String) -> Result<HashMap<String, models::json::Device>, String> {
-    let source_url = format!("{}/device", jaspy_url);
+    let source_url = format!("{}/dev/device", jaspy_url);
     let mut devices : HashMap<String, models::json::Device> = HashMap::new();
     if let Ok(mut response) = reqwest::get(&source_url) {
         let resp_json : Result<Vec<models::json::Device>, _> = response.json();
