@@ -10,7 +10,7 @@ Group=jaspy
 Environment=POLL_LOOP_MSECS=10000
 Environment=JASPY_URL=http://127.0.0.1:8000/
 Environment=JASPY_SNMPBOT_URL=http://127.0.0.1:8286/
-ExecStart=/usr/lib/jaspy/jaspy-poller http://127.0.0.1:8000/ http://127.0.0.1:8286/
+ExecStart=/usr/lib/jaspy/jaspy-poller
 
 [Install]
 WantedBy=multi-user.target
