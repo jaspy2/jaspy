@@ -1,0 +1,171 @@
+#!/usr/bin/python3
+import argparse
+import requests
+import socket
+import logging
+import json
+
+
+JASPY_DEVICE_DELETE_ENDPOINT_URL = '/dev/device/{}'
+JASPY_DEVICE_CREATE_ENDPOINT_URL = '/dev/device'
+JASPY_DEVICE_UPDATE_ENDPOINT_URL = '/dev/device/{}'
+JASPY_DEVICE_LIST_ENDPOINT_URL = '/dev/device'
+JASPY_DEVICE_SINGLE_ENDPOINT_URL = '/dev/device/{}'
+
+
+logging.basicConfig()
+logger = logging.getLogger('jaspy-devices')
+parser = argparse.ArgumentParser(description='manage jaspy devices')
+parser.add_argument('-A', '--api-url', required=False, default='http://127.0.0.1:8000', help='API url for jaspy')
+action_group = parser.add_argument_group()
+action_group.add_argument('-a', '--add', required=False, default=None, action='append')
+action_group.add_argument('-d', '--delete', required=False, default=None, action='append')
+action_group.add_argument('--polling-enable', required=False, default=None, action='append')
+action_group.add_argument('--polling-disable', required=False, default=None, action='append')
+action_group.add_argument('--polling-default', required=False, default=None, action='append')
+parser.add_argument('-f', '--force', required=False, default=False, action='store_true')
+parser.add_argument('--with-disabled-polling', required=False, default=False, action='store_true')
+args = parser.parse_args()
+
+
+def device_exists(device_fqdn):
+    try:
+        res = requests.get('{}{}'.format(args.api_url, JASPY_DEVICE_SINGLE_ENDPOINT_URL.format(device_fqdn)))
+        if res.status_code == 404:
+            return None
+        return res.json()
+    except json.decoder.JSONDecodeError:
+        logger.error('failed to decode as json: %s', res.text)
+        return None
+
+
+def create_device(device_fqdn, hostname, domain_name, disable_polling):
+    create_object = {
+        'name': hostname,
+        'dnsDomain': domain_name,
+    }
+    if disable_polling:
+        create_object['pollingEnabled'] = False
+    created_object = requests.post('{}{}'.format(args.api_url, JASPY_DEVICE_CREATE_ENDPOINT_URL), json=create_object)
+    try:
+        return created_object.json()
+    except json.decoder.JSONDecodeError:
+        logger.error('failed to decode as json: %s', created_object.text)
+        return None
+
+
+def delete_device(device_fqdn):
+    try:
+        device_info = device_exists(device_fqdn)
+        if device_info is None:
+            logger.error('device does not exist: %s', device_fqdn)
+            return None
+        data = requests.delete('{}{}'.format(args.api_url, JASPY_DEVICE_DELETE_ENDPOINT_URL.format(device_fqdn)))
+        if data.status_code != 200:
+            return False
+        data.json()
+        return True
+    except json.decoder.JSONDecodeError:
+        logger.error('failed to decode as json: %s', created_object.text)
+        return None
+
+
+def update_device(device_fqdn, device_info):
+    updated_object = requests.put('{}{}'.format(args.api_url, JASPY_DEVICE_UPDATE_ENDPOINT_URL.format(device_fqdn)), json=device_info)
+    try:
+        return updated_object.json()
+    except json.decoder.JSONDecodeError:
+        logger.error('failed to decode as json: %s', created_object.text)
+        return None
+
+
+def enable_device_polling(device_fqdn):
+    device_info = device_exists(device_fqdn)
+    if device_info is None:
+        logger.error('device does not exist: %s', device_fqdn)
+        return None
+    device_info['pollingEnabled'] = True
+    update_device(device_fqdn, device_info)
+
+
+def disable_device_polling(device_fqdn):
+    device_info = device_exists(device_fqdn)
+    if device_info is None:
+        logger.error('device does not exist: %s', device_fqdn)
+        return None
+    device_info['pollingEnabled'] = False
+    update_device(device_fqdn, device_info)
+
+
+def default_device_polling(device_fqdn):
+    device_info = device_exists(device_fqdn)
+    if device_info is None:
+        logger.error('device does not exist: %s', device_fqdn)
+        return None
+    device_info['pollingEnabled'] = None
+    update_device(device_fqdn, device_info)
+
+
+def main():
+    if args.add is not None:
+        for device in args.add:
+            if not args.force:
+                try:
+                    socket.gethostbyname(device)
+                except socket.gaierror as sgae:
+                    logger.error('Unable to add device: %s (supply force parameter to force addition)', sgae.strerror)
+                    continue
+            hostname = None
+            domain_name = None
+            try:
+                hostname, domain_name = device.split('.', 1)
+            except ValueError:
+                logger.error('Failed to split %s as hostname and domain name, please specify a FQDN', device)
+                continue
+            if device_exists(device) is not None:
+                logger.info('device already exists')
+                continue
+            create_device(device, hostname, domain_name, args.with_disabled_polling)
+
+    if args.delete is not None:
+        for device in args.delete:
+            if delete_device(device) is not None:
+                logger.info('deleted device %s', device)
+            else:
+                logger.error('failed to delete device %s', device)
+
+    if args.polling_enable:
+        for device in args.polling_enable:
+            enable_device_polling(device)
+
+    if args.polling_disable:
+        for device in args.polling_disable:
+            disable_device_polling(device)
+
+    if args.polling_default:
+        for device in args.polling_default:
+            default_device_polling(device)
+
+    if args.delete is None and args.add is None:
+        data = requests.get('{}{}'.format(args.api_url, JASPY_DEVICE_LIST_ENDPOINT_URL)).json()
+        header = '{:8} {:32} {}'
+        print(header.format('enabled', 'fqdn', 'os'))
+        for device in data:
+            if device['osInfo'] is None:
+                device['osInfo'] = '-'
+            if device['pollingEnabled'] is None:
+                device['pollingEnabled'] = 'default'
+            elif device['pollingEnabled']:
+                device['pollingEnabled'] = 'yes'
+            elif not device['pollingEnabled']:
+                device['pollingEnabled'] = 'no'
+
+            print(header.format(
+                device['pollingEnabled'],
+                '{}.{}'.format(device['name'], device['dnsDomain']),
+                device['osInfo']
+            ))
+
+
+if __name__ == '__main__':
+    main()
