@@ -11,7 +11,7 @@ mod models;
 
 fn send_interface_event(jaspy_url: String, ifm: models::json::InterfaceMonitorReport) {
     let client = reqwest::Client::new();
-    let response = client.request(reqwest::Method::PUT, &format!("{}/interface/monitor", jaspy_url))
+    let response = client.request(reqwest::Method::PUT, &format!("{}/dev/interface/monitor", jaspy_url))
         .json(&ifm)
         .send();
     match response {
