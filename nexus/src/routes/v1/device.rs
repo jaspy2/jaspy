@@ -12,6 +12,21 @@ pub fn list(connection: db::Connection) -> json::Json<Vec<models::dbo::Device>> 
     return json::Json(models::dbo::Device::all(&connection));
 }
 
+#[get("/<device_fqdn>")]
+pub fn get_device(connection: db::Connection, device_fqdn: String) -> Option<json::Json<models::dbo::Device>> {
+    if let Some(device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
+        if let Err(d) = device.delete(&connection) {
+            println!("{}", d);
+            // TODO: return 500
+            return None;
+        } else {
+            return Some(json::Json(device));
+        }
+    } else {
+        return None;
+    }
+}
+
 #[post("/", data = "<device_json>")]
 pub fn create(device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
     if let Ok(created_device) = models::dbo::Device::create(&device_json, &connection) {
@@ -80,15 +95,14 @@ pub fn update(device_fqdn: String, device_json: rocket_contrib::json::Json<model
     return None;
 }
 
-#[delete("/", data = "<device_json>")]
-pub fn delete(connection: db::Connection, device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
-    if let Some(old_device) = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &device_json.name, &device_json.dns_domain) {
+#[delete("/<device_fqdn>")]
+pub fn delete(connection: db::Connection, device_fqdn: String, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
+    if let Some(old_device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
         if let Err(d) = old_device.delete(&connection) {
             println!("{}", d);
             // TODO: return 500
             return None;
         } else {
-            let device_fqdn = format!("{}.{}", old_device.name, old_device.dns_domain);
             if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
             let event = models::events::Event::device_deleted_event(&device_fqdn);
             if let Ok(ref mut msgbus) = msgbus.lock() {

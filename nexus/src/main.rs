@@ -110,6 +110,7 @@ fn main() {
             "/v1/device",
             routes![
                 routes::v1::device::list,
+                routes::v1::device::get_device,
                 routes::v1::device::create,
                 routes::v1::device::update,
                 routes::v1::device::delete,
