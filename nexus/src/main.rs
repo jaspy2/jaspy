@@ -109,8 +109,14 @@ fn main() {
         .mount(
             "/v1/device",
             routes![
+                routes::v1::device::list,
+                routes::v1::device::create,
+                routes::v1::device::update,
+                routes::v1::device::delete,
+                routes::v1::device::interfaces,
+                routes::v1::device::monitored_device_list,
+                routes::v1::device::monitored_device_report,
                 routes::v1::device::device_status,
-                routes::v1::device::interface_list,
                 routes::v1::device::device_interface_status,
             ]
         )
@@ -125,16 +131,6 @@ fn main() {
             routes![
                 routes::discovery::discovery_device,
                 routes::discovery::discovery_links,
-            ]
-        )
-        .mount(
-            "/device",
-            routes![
-                routes::device::device_list,
-                routes::device::device_create_or_modify,
-                routes::device::device_delete,
-                routes::device::monitored_device_list,
-                routes::device::monitored_device_report,
             ]
         )
         .mount(
