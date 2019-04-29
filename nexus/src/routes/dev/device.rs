@@ -15,13 +15,7 @@ pub fn list(connection: db::Connection) -> json::Json<Vec<models::dbo::Device>> 
 #[get("/<device_fqdn>")]
 pub fn get_device(connection: db::Connection, device_fqdn: String) -> Option<json::Json<models::dbo::Device>> {
     if let Some(device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
-        if let Err(d) = device.delete(&connection) {
-            println!("{}", d);
-            // TODO: return 500
-            return None;
-        } else {
-            return Some(json::Json(device));
-        }
+        return Some(json::Json(device));
     } else {
         return None;
     }
