@@ -107,54 +107,54 @@ fn main() {
 
     rocket::ignite()
         .mount(
-            "/v1/device",
+            "/dev/device",
             routes![
-                routes::v1::device::list,
-                routes::v1::device::get_device,
-                routes::v1::device::create,
-                routes::v1::device::update,
-                routes::v1::device::delete,
-                routes::v1::device::interfaces,
-                routes::v1::device::monitored_device_list,
-                routes::v1::device::monitored_device_report,
-                routes::v1::device::device_status,
-                routes::v1::device::device_interface_status,
+                routes::dev::device::list,
+                routes::dev::device::get_device,
+                routes::dev::device::create,
+                routes::dev::device::update,
+                routes::dev::device::delete,
+                routes::dev::device::interfaces,
+                routes::dev::device::monitored_device_list,
+                routes::dev::device::monitored_device_report,
+                routes::dev::device::device_status,
+                routes::dev::device::device_interface_status,
             ]
         )
         .mount(
-            "/clientlocation",
+            "/dev/clientlocation",
             routes![
-                routes::clientlocation::put_clientlocation,
+                routes::dev::clientlocation::put_clientlocation,
             ]
         )
         .mount(
-            "/discovery",
+            "/dev/discovery",
             routes![
-                routes::discovery::discovery_device,
-                routes::discovery::discovery_links,
+                routes::dev::discovery::discovery_device,
+                routes::dev::discovery::discovery_links,
             ]
         )
         .mount(
-            "/interface",
+            "/dev/interface",
             routes![
-                routes::interface::interface_list,
-                routes::interface::interface_monitor_report,
+                routes::dev::interface::interface_list,
+                routes::dev::interface::interface_monitor_report,
             ]
         )
         .mount(
-            "/metrics",
+            "/dev/metrics",
             routes![
-                routes::metrics::metrics_fast,
-                routes::metrics::metrics,
+                routes::dev::metrics::metrics_fast,
+                routes::dev::metrics::metrics,
             ]
         )
         .mount(
-            "/weathermap",
+            "/dev/weathermap",
             routes![
-                routes::weathermap::full_topology_data,
-                routes::weathermap::state_information,
-                routes::weathermap::get_position_data,
-                routes::weathermap::put_position_data,
+                routes::dev::weathermap::full_topology_data,
+                routes::dev::weathermap::state_information,
+                routes::dev::weathermap::get_position_data,
+                routes::dev::weathermap::put_position_data,
             ]
         )
         .manage(db::connect())
