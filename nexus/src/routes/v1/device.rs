@@ -13,16 +13,15 @@ pub fn list(connection: db::Connection) -> json::Json<Vec<models::dbo::Device>> 
 }
 
 #[post("/", data = "<device_json>")]
-pub fn create(device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
+pub fn create(device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
     if let Ok(created_device) = models::dbo::Device::create(&device_json, &connection) {
         let device_fqdn = format!("{}.{}", created_device.name, created_device.dns_domain);
         if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
-        device = created_device;
         let event = models::events::Event::device_created_event(&device_fqdn);
         if let Ok(ref mut msgbus) = msgbus.lock() {
             msgbus.event(event);
         }
-        return Some(json::Json(device));
+        return Some(json::Json(created_device));
     }
     // TODO: Return 400 or 500, need details from creation failure
     return None;
