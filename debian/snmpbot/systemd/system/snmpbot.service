@@ -1,0 +1,13 @@
+[Unit]
+Description=snmpbot
+After=network.target
+
+[Service]
+Type=simple
+User=snmpbot
+Group=snmpbot
+ExecStart=/usr/bin/snmpbot -snmp-mibs /usr/share/snmpbot/mibs
+
+[Install]
+WantedBy=multi-user.target
+
