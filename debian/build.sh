@@ -16,6 +16,6 @@ cp -a ../discover ${tmpdir}/usr/lib/jaspy/
 cp -a ../snmpbot/mibs ${tmpdir}/var/lib/jaspy/
 cp -a ../weathermap ${tmpdir}/var/lib/jaspy/
 cp -a ../nexus/migrations ${tmpdir}/var/lib/jaspy/nexus/
-version=$(git describe --tags)
+version=$(git describe --tags | grep -oE '[0-9].+')
 fpm --force -t deb -s dir -n "jaspy" -v "${version}" -m "Antti Tönkyrä <daedalus@pingtimeout.net>" --after-remove ./postremove.sh --after-install ./postinst.sh systemd/system/=/etc/systemd/system/ ${tmpdir}/=/
 rm -rf ${tmpdir}

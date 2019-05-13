@@ -2,9 +2,10 @@
 
 ## Usage
 
-Drop this to your snmptrapd.conf
+Example (minimal) snmptrapd.conf with default (deb) install
 
 ```
-traphandle IF-MIB::linkUp /path/to/trapreader/binary
-traphandle IF-MIB::linkDown /path/to/trapreader/binary
+authCommunity log,execute,net somecommunityhere
+traphandle IF-MIB::linkUp JASPY_URL=http://127.0.0.1:8000 /usr/lib/jaspy/jaspy-snmptrapd-reader
+traphandle IF-MIB::linkDown JASPY_URL=http://127.0.0.1:8000 /usr/lib/jaspy/jaspy-snmptrapd-reader
 ```

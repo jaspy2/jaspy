@@ -163,7 +163,7 @@ def main():
             print(header.format(
                 device['pollingEnabled'],
                 '{}.{}'.format(device['name'], device['dnsDomain']),
-                device['osInfo']
+                device['osInfo'].split('\n')[0]
             ))
 
 
