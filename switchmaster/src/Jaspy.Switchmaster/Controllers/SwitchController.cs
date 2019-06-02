@@ -99,7 +99,7 @@ namespace Jaspy.Switchmaster.Controllers
             return Ok(ToViewModel(match));
         }
 
-        [HttpSynchronize("/synchronize")]
+        [HttpSynchronize("synchronize")]
         public async Task<IActionResult> Synchronize()
         {
             var allSwitches = await _nexusClient.ListDevicesAsync();

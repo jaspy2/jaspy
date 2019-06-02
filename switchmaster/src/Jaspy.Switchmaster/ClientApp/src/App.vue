@@ -1,17 +1,34 @@
 <template>
-  <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js + TypeScript App"/>
-  </div>
+  <v-app>
+    <v-content>
+      <a @click="synchronize">Synchronize</a>
+      <SwitchStatePanel v-for="item of switches" switch="item"></SwitchStatePanel>
+    </v-content>
+  </v-app>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
-import HelloWorld from './components/HelloWorld.vue';
+import SwitchStatePanel from '@/components/SwitchStatePanel.vue';
+import { mapActions, mapState } from 'vuex';
 
 @Component({
   components: {
-    HelloWorld,
+    SwitchStatePanel,
+  },
+  async beforeCreate() {
+    await this.$store.dispatch('switch/fetch');
+  },
+  computed: {
+    ...mapState({
+      switches: (state: any) => state.switch.items,
+      processing: (state: any) => state.switch.processing,
+    })
+  },
+  methods: {
+    ...mapActions('switch', [
+      'synchronize',
+    ]),
   },
 })
 export default class App extends Vue {}

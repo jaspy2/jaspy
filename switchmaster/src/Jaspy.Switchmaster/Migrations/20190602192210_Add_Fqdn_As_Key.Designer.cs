@@ -2,15 +2,17 @@
 using Jaspy.Switchmaster.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Jaspy.Switchmaster.Migrations
 {
     [DbContext(typeof(SwitchmasterDbContext))]
-    partial class SwitchmasterDbContextModelSnapshot : ModelSnapshot
+    [Migration("20190602192210_Add_Fqdn_As_Key")]
+    partial class Add_Fqdn_As_Key
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

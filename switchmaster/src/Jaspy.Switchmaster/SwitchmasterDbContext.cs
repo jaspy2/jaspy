@@ -14,5 +14,11 @@ namespace Jaspy.Switchmaster.Data
         public SwitchmasterDbContext(DbContextOptions options) : base(options)
         {
         }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Switch>()
+                .HasKey(t => t.Fqdn);
+        }
     }
 }

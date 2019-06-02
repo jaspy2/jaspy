@@ -46,7 +46,10 @@ namespace Jaspy.Switchmaster
                 configuration.RootPath = "ClientApp/dist";
             });
 
-            services.AddSingleton(new NexusClient(_configuration["NexusApiRoot"]));
+            var nexusConfig = new NexusConfiguration();
+            _configuration.Bind("Nexus", nexusConfig);
+            services.AddSingleton(nexusConfig);
+            services.AddSingleton<NexusClient>();
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
