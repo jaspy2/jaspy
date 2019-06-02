@@ -1,0 +1,43 @@
+﻿{
+  "version": "1.0.0",
+  "restore": {
+    "projectUniqueName": "/home/muta/Projects/jaspy/switchmaster/src/Jaspy.Nexus.Client/Jaspy.Nexus.Client.csproj",
+    "projectName": "Jaspy.Nexus.Client",
+    "projectPath": "/home/muta/Projects/jaspy/switchmaster/src/Jaspy.Nexus.Client/Jaspy.Nexus.Client.csproj",
+    "outputPath": "/home/muta/Projects/jaspy/switchmaster/src/Jaspy.Nexus.Client/obj/",
+    "projectStyle": "PackageReference",
+    "originalTargetFrameworks": [
+      "netcoreapp2.2"
+    ],
+    "sources": {
+      "https://api.nuget.org/v3/index.json": {}
+    },
+    "frameworks": {
+      "netcoreapp2.2": {
+        "projectReferences": {}
+      }
+    },
+    "warningProperties": {
+      "warnAsError": [
+        "NU1605"
+      ]
+    }
+  },
+  "frameworks": {
+    "netcoreapp2.2": {
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "suppressParent": "All",
+          "target": "Package",
+          "version": "[2.2.0, )",
+          "autoReferenced": true
+        }
+      },
+      "imports": [
+        "net461"
+      ],
+      "assetTargetFallback": true,
+      "warn": true
+    }
+  }
+}
