@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using VueCliMiddleware;
 
 namespace Jaspy.Switchmaster
 {
@@ -39,6 +40,11 @@ namespace Jaspy.Switchmaster
             services
                 .AddMvc()
                 .SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            
+            services.AddSpaStaticFiles(configuration =>
+            {
+                configuration.RootPath = "ClientApp/dist";
+            });
 
             services.AddSingleton(new NexusClient(_configuration["NexusApiRoot"]));
         }
@@ -52,10 +58,29 @@ namespace Jaspy.Switchmaster
             {
                 app.UseDeveloperExceptionPage();
             }
+            else
+            {
+                app.UseExceptionHandler("/Error");
+                //app.UseHsts();
+            }
+            
+            //app.UseHttpsRedirection();
+            app.UseStaticFiles();
+            app.UseSpaStaticFiles();
 
             app.UseMvc(routes =>
             {
                 routes.MapRoute("default", "{controller}/{action}/{id?}");
+            });
+
+            app.UseSpa(spa =>
+            {
+                spa.Options.SourcePath = "ClientApp";
+
+                if (env.IsDevelopment())
+                {
+                    spa.UseVueCli(npmScript: "serve");
+                }
             });
         }
     }
