@@ -225,3 +225,6 @@ __pycache__/
 # Windows thumbnail cache files
 Thumbs.db
 
+# Non-base or development appsettings
+appsettings.*.json
+!appsettings.Development.json
