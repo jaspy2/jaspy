@@ -1,9 +1,15 @@
 <template>
   <v-app>
-    <v-content>
-      <a @click="synchronize">Synchronize</a>
-      <SwitchStatePanel v-for="item of switches" switch="item"></SwitchStatePanel>
-    </v-content>
+      <v-container fluid grid-list-xl>
+          <v-layout row wrap>
+              <v-flex xs12>
+                  <a @click="synchronize">Synchronize</a>
+              </v-flex>
+              <v-flex v-for="item in switches" xs4>
+                  <SwitchStatePanel :fqdn="item.fqdn" :deployState="item.deployState" :configured="item.configured" :activePorts="0"></SwitchStatePanel>
+              </v-flex>
+          </v-layout>
+      </v-container>
   </v-app>
 </template>
 
@@ -23,7 +29,7 @@ import { mapActions, mapState } from 'vuex';
     ...mapState({
       switches: (state: any) => state.switch.items,
       processing: (state: any) => state.switch.processing,
-    })
+    }),
   },
   methods: {
     ...mapActions('switch', [
@@ -36,11 +42,8 @@ export default class App extends Vue {}
 
 <style lang="scss">
 #app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Roboto', Helvetica, Arial, sans-serif;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
 }
 </style>

@@ -36,7 +36,8 @@ const actions = {
     try {
       commit('setProcessing', true);
       const response = await fetch('/api/switch');
-      commit('setItems', await response.json());
+      const items = await response.json();
+      commit('setItems', items);
     } catch (err) {
       commit('addError', err);
     } finally {
@@ -49,7 +50,8 @@ const actions = {
       const response = await fetch('/api/switch/synchronize', {
         method: 'SYNCHRONIZE',
       });
-      commit('setSyncResult', await response.json());
+      const result = await response.json();
+      commit('setSyncResult', result);
     } catch (err) {
       commit('addError', err);
     } finally {
