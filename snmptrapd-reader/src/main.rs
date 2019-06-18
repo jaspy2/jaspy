@@ -2,6 +2,8 @@
 extern crate serde_json;
 extern crate reqwest;
 extern crate config;
+extern crate nix;
+use nix::unistd::{fork, ForkResult};
 use std::io::{self, Read};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -171,8 +173,16 @@ fn main() {
         Ok(_) => {
             let unix_time = get_unixtime_float_with_msecs();
             let buffer = buffer_tmp.clone();
-            do_fork();
-            handle_trap(jaspy_url, buffer, unix_time);
+            match fork() {
+                Ok(ForkResult::Parent { child, .. }) => {
+                },
+                Ok(ForkResult::Child) => {
+                    handle_trap(jaspy_url, buffer, unix_time);
+                },
+                Err(_) => {
+                    println!("error: fork failed");
+                }
+            }
         },
         Err(e) => {
             println!("error: {:?}", e);
