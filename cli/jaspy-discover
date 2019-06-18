@@ -1,0 +1,3 @@
+#!/bin/sh
+cd /usr/lib/jaspy/discover
+python3 /usr/lib/jaspy/discover/discover.py $*

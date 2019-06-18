@@ -3,6 +3,7 @@ tmpdir=$(mktemp -d)
 echo ${tmpdir}
 which diesel || cargo install diesel_cli --no-default-features --features "postgres"
 mkdir -p ${tmpdir}/usr/lib/jaspy
+mkdir -p ${tmpdir}/usr/local/bin
 mkdir -p ${tmpdir}/var/lib/jaspy
 mkdir -p ${tmpdir}/var/lib/jaspy/nexus
 cp -a $(which diesel) ${tmpdir}/usr/lib/jaspy/diesel
@@ -13,6 +14,7 @@ for item in nexus poller pinger snmptrapd-reader; do
     popd
 done
 cp -a ../discover ${tmpdir}/usr/lib/jaspy/
+cp -a ../cli/* ${tmpdir}/usr/local/bin/
 cp -a ../snmpbot/mibs ${tmpdir}/var/lib/jaspy/
 cp -a ../weathermap ${tmpdir}/var/lib/jaspy/
 cp -a ../nexus/migrations ${tmpdir}/var/lib/jaspy/nexus/
