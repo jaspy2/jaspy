@@ -73,7 +73,7 @@ pub fn update(device_fqdn: String, device_json: rocket_contrib::json::Json<model
             device.base_mac = device_json.base_mac.clone();
         }
         if device.snmp_community != device_json.snmp_community {
-            // TODO: this MUST NOT raise an event!
+            // This MUST NOT raise an event!
             changed = true;
             device.snmp_community = device_json.snmp_community.clone();
         }
