@@ -1,15 +1,16 @@
 use models;
 use std::env;
+use rumqtt::{MqttClient, MqttOptions, QoS, ReconnectOptions};
 extern crate serde_json;
 extern crate zmq;
 
 pub struct MessageBus {
-    zmq_socket: zmq::Socket,
+    mqtt_client: rumqtt::MqttClient,
 }
 
 impl MessageBus {
     pub fn new() -> MessageBus {
-        let env_opt = env::var("JASPY_EVENT_PUBLISH");
+        let env_opt = env::var("JASPY_MQTT_SERVER");
         let event_publish;
         match env_opt {
             Ok(env_opt) => {
@@ -20,30 +21,24 @@ impl MessageBus {
             }
         }
 
-        let zmq_context = zmq::Context::new();
-        let zmq_socket;
-        if let Ok(successful_socket) = zmq_context.socket(zmq::PUB) {
-            zmq_socket = successful_socket;
-        } else {
-            panic!("Failed to create ZMQ PUB socket!");
-        }
+        let reconnection_options = ReconnectOptions::Always(10);
+        let mqtt_options = MqttOptions::new("jaspy-nexus", event_publish, 1883)
+            .set_keep_alive(10)
+            .set_reconnect_opts(reconnection_options)
+            .set_clean_session(false);
 
-        if let Ok(_) = zmq_socket.bind(&event_publish) {
-
-        } else {
-            panic!("Failed to bind ZMQ PUB socket!");
-        }
+        let (mqtt_client, _notifications) = MqttClient::start(mqtt_options).unwrap();
 
         return MessageBus {
-            zmq_socket: zmq_socket,
+            mqtt_client: mqtt_client,
         };
     }
 
 
-    pub fn event(self: &MessageBus, event: models::events::Event) {
+    pub fn event(self: &mut MessageBus, event: models::events::Event) {
         let json_data = format!("{}", json!(event));
-        if let Ok(_) = self.zmq_socket.send(&event.event_type.to_uppercase(), zmq::SNDMORE) {
-            if let Ok(_) = self.zmq_socket.send(&json_data, 0) {}
+        if let Ok(_) = self.mqtt_client.publish(format!("jaspy/nexus/{}", event.event_type), QoS::AtLeastOnce, false, json_data) {
+            // ..
         }
     }
 }

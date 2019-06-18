@@ -14,7 +14,7 @@ diesel = { version = "*", features = ["postgres"] }
 r2d2 = "*"
 r2d2-diesel = "*"
 time = "*"
-zmq = "*"
+rumqtt = "*"
 
 [dependencies.rocket_contrib]
 version = "*"
