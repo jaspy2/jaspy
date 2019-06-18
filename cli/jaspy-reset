@@ -1,0 +1,47 @@
+#!/usr/bin/python3
+import argparse
+import requests
+import socket
+import logging
+import json
+
+
+JASPY_DEVICE_DELETE_ENDPOINT_URL = '/dev/device/{}'
+JASPY_DEVICE_LIST_ENDPOINT_URL = '/dev/device'
+
+
+logging.basicConfig()
+logger = logging.getLogger('jaspy-reset')
+logger.setLevel(logging.INFO)
+parser = argparse.ArgumentParser(description='cleanup all devices from jaspy database')
+parser.add_argument('-A', '--api-url', required=False, default='http://127.0.0.1:8000', help='API url for jaspy')
+action_group = parser.add_argument_group()
+action_group.add_argument('--cleanup-devices', required=False, default=False, action='store_true', help='cleanup all jaspy devices')
+args = parser.parse_args()
+
+
+def delete_device(device_fqdn):
+    try:
+        device_info = device_exists(device_fqdn)
+        if device_info is None:
+            logger.error('device does not exist: %s', device_fqdn)
+            return None
+        data = requests.delete('{}{}'.format(args.api_url, JASPY_DEVICE_DELETE_ENDPOINT_URL.format(device_fqdn)))
+        if data.status_code != 200:
+            return False
+        data.json()
+        return True
+    except json.decoder.JSONDecodeError:
+        logger.error('failed to decode as json: %s', created_object.text)
+        return None
+
+
+def main():
+    all_devices = requests.get('{}{}'.format(args.api_url, JASPY_DEVICE_LIST_ENDPOINT_URL)).json()
+    for device in all_devices:
+        fqdn = '{}.{}'.format(device['name'], device['dnsDomain'])
+        logger.info('deleting %s', fqdn)
+        delete_device(fqdn)
+
+if __name__ == '__main__':
+    main()
