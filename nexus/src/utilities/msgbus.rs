@@ -2,7 +2,6 @@ use models;
 use std::env;
 use rumqtt::{MqttClient, MqttOptions, QoS, ReconnectOptions};
 extern crate serde_json;
-extern crate zmq;
 
 pub struct MessageBus {
     mqtt_client: rumqtt::MqttClient,

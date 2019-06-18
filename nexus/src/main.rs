@@ -3,7 +3,7 @@
 #![feature(decl_macro)]
 #![feature(proc_macro_hygiene)]
 #![allow(proc_macro_derive_resolution_fallback)] // remove when able
-#[macro_use] extern crate serde_derive;
+#[macro_use] extern crate serde;
 #[macro_use] extern crate serde_json;
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate rocket;
