@@ -9,13 +9,9 @@ mod util;
 use std::time;
 use std::collections::HashMap;
 use std::thread;
-use config::{ConfigError, Config, File, Environment};
+use config::{Config, File, Environment};
 
 const MAIN_LOOP_MSECS : u64 = 1000;
-
-fn print_usage() {
-    println!("usage: {} <jaspy_url> <snmpbot_url>", std::env::args().nth(0).unwrap());
-}
 
 fn get_devices(jaspy_url : &String) -> Result<HashMap<String, models::json::Device>, String> {
     let source_url = format!("{}/dev/device", jaspy_url);
@@ -56,8 +52,9 @@ fn main() {
 
     match c.get_str("url") {
         Ok(v) => { jaspy_url = v },
-        Err(e) => { if let Some(argv1) = std::env::args().nth(1) {
-            jaspy_url = argv1;
+        Err(_) => {
+            if let Some(argv1) = std::env::args().nth(1) {
+                jaspy_url = argv1;
             } else {
                 println!("JASPY_URL not defined!");
                 return;
@@ -67,8 +64,9 @@ fn main() {
 
     match c.get_str("snmpbot_url") {
         Ok(v) => { snmpbot_url = v },
-        Err(e) => { if let Some(argv1) = std::env::args().nth(1) {
-            snmpbot_url = argv1;
+        Err(_) => {
+            if let Some(argv1) = std::env::args().nth(1) {
+                snmpbot_url = argv1;
             } else {
                 println!("JASPY_SNMPBOT_URL not defined!");
                 return;

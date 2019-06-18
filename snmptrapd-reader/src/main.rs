@@ -5,7 +5,7 @@ extern crate config;
 use std::io::{self, Read};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use config::{ConfigError, Config, File, Environment};
+use config::{Config, File, Environment};
 
 mod models;
 
@@ -146,10 +146,6 @@ fn get_unixtime_float_with_msecs() -> f64 {
     }
 }
 
-fn print_usage() {
-    println!("usage: {} <jaspy_url>", std::env::args().nth(0).unwrap());
-}
-
 fn main() {
     let mut c = Config::new();
     let jaspy_url;
@@ -160,8 +156,9 @@ fn main() {
 
     match c.get_str("url") {
         Ok(v) => { jaspy_url = v },
-        Err(e) => { if let Some(argv1) = std::env::args().nth(1) {
-            jaspy_url = argv1;
+        Err(_) => {
+            if let Some(argv1) = std::env::args().nth(1) {
+                jaspy_url = argv1;
             } else {
                 println!("JASPY_URL not defined!");
                 return;

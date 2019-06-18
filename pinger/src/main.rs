@@ -9,7 +9,7 @@ use std::thread;
 use std::time;
 use std::sync;
 use std::time::{SystemTime, UNIX_EPOCH};
-use config::{ConfigError, Config, File, Environment};
+use config::{Config, File, Environment};
 
 const MAIN_LOOP_MSECS : u64 = 1000;
 const PING_LOOP_MSECS : u64 = 1000;
@@ -341,8 +341,9 @@ fn main() {
 
     match c.get_str("source_url") {
         Ok(v) => { source_url = v },
-        Err(e) => { if let Some(argv1) = std::env::args().nth(1) {
-            source_url = argv1;
+        Err(_) => { 
+            if let Some(argv1) = std::env::args().nth(1) {
+                source_url = argv1;
             } else {
                 println!("SOURCE_URL not defined!");
                 return;
