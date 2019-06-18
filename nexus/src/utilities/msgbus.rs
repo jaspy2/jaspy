@@ -42,8 +42,8 @@ impl MessageBus {
 
     pub fn event(self: &MessageBus, event: models::events::Event) {
         let json_data = format!("{}", json!(event));
-        if let Ok(_) = self.zmq_socket.send_str(&event.event_type.to_uppercase(), zmq::SNDMORE) {
-            if let Ok(_) = self.zmq_socket.send_str(&json_data, 0) {}
+        if let Ok(_) = self.zmq_socket.send(&event.event_type.to_uppercase(), zmq::SNDMORE) {
+            if let Ok(_) = self.zmq_socket.send(&json_data, 0) {}
         }
     }
 }

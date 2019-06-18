@@ -37,7 +37,7 @@ pub fn create(device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, c
 }
 
 #[put("/<device_fqdn>", data = "<device_json>")]
-pub fn update(device_fqdn: String, device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
+pub fn update(device_fqdn: String, device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, connection: db::Connection, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
     if let Some(mut device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
         if format!("{}.{}", device.name, device.dns_domain) != device_fqdn {
             // TODO: return 400

@@ -36,7 +36,7 @@ fn get_topology_data(connection: &db::Connection) -> models::json::WeathermapBas
                     None
                 }
             };
-            let mut weathermap_interface = models::json::WeathermapDeviceInterface {
+            let weathermap_interface = models::json::WeathermapDeviceInterface {
                 name: interface.name(),
                 if_index: interface.index,
                 connected_to: connected_interface
@@ -69,7 +69,7 @@ pub fn full_topology_data(connection: db::Connection, cache_controller: State<Ar
     };
 
     if let Ok(ref mut cached_weathermap_topology_option_mutex) = cached_weathermap_topology_arc.lock() {
-        let mut cached_weathermap_topology_option: &mut Option<utilities::cache::CachedWeathermapTopology> = cached_weathermap_topology_option_mutex.deref_mut();
+        let cached_weathermap_topology_option: &mut Option<utilities::cache::CachedWeathermapTopology> = cached_weathermap_topology_option_mutex.deref_mut();
         let cache_refresh: bool;
         if let Some(cached_weathermap_topology_data) = cached_weathermap_topology_option {
             let current_time = utilities::tools::get_time();

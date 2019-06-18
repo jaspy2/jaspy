@@ -1,5 +1,4 @@
 extern crate rocket_contrib;
-use rocket::get;
 use models;
 use db;
 use rocket_contrib::json;

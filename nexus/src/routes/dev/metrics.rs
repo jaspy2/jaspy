@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use utilities;
 use rocket::State;
 use models;
-use rocket::{get, put};
+use rocket::get;
 
 // TODO: GH#9 Move everything to v1 API
 #[get("/fast")]

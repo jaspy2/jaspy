@@ -21,7 +21,7 @@ mod utilities;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
 use std::collections::HashMap;
-use config::{ConfigError, Config, File, Environment};
+use config::{Config, File, Environment};
 
 fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
     return running.load(std::sync::atomic::Ordering::Relaxed);

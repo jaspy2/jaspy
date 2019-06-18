@@ -1,7 +1,6 @@
 extern crate rocket_contrib;
 use models;
 use db;
-use rocket::{get, put};
 use std::sync::{Arc,Mutex};
 use std::collections::{HashSet,HashMap};
 use rocket::State;

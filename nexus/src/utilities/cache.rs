@@ -31,7 +31,7 @@ impl CacheController {
 
     pub fn invalidate_weathermap_cache(self: &CacheController) {
         if let Ok(ref mut cached_weathermap_topology_option_mutex) = self.cached_weathermap_topology.lock() {
-            let mut cached_weathermap_topology_option: &mut Option<CachedWeathermapTopology> = cached_weathermap_topology_option_mutex.deref_mut();
+            let cached_weathermap_topology_option: &mut Option<CachedWeathermapTopology> = cached_weathermap_topology_option_mutex.deref_mut();
             if let Some(cached_weathermap_topology_data) = cached_weathermap_topology_option {
                 cached_weathermap_topology_data.valid_until = 0.0;
             }
