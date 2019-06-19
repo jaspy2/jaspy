@@ -23,7 +23,7 @@ docker-compose up -d
 
 #### Install necessary build-dependencies (stretch)
 ```
-apt install libpq-dev libzmq3-dev liboping-dev libtool
+apt install libpq-dev liboping-dev libtool
 
 # Install golang-go if you need to build snmpbot (you probably do)
 apt install -t stretch-backports golang-go
