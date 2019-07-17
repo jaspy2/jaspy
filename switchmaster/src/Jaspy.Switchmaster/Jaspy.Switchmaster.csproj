@@ -16,19 +16,27 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="ClientApp\dist\**" />
     <Compile Remove="ClientApp\node_modules\**" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Remove="ClientApp\dist\**" />
     <EmbeddedResource Remove="ClientApp\node_modules\**" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="ClientApp\dist\**" />
     <None Remove="ClientApp\node_modules\**" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Remove="ClientApp\dist\**" />
     <Content Remove="ClientApp\node_modules\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="ClientApp\src\**\*.js.map" />
   </ItemGroup>
 
   <ItemGroup>

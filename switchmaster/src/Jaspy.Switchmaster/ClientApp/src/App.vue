@@ -1,12 +1,12 @@
 <template>
-  <v-app>
+  <v-app dark>
       <v-container fluid grid-list-xl>
           <v-layout row wrap>
-              <v-flex xs12>
-                  <a @click="synchronize">Synchronize</a>
-              </v-flex>
               <v-flex v-for="item in switches" xs4>
-                  <SwitchStatePanel :fqdn="item.fqdn" :deployState="item.deployState" :configured="item.configured" :activePorts="0"></SwitchStatePanel>
+                  <SwitchStatePanel :fqdn="item.fqdn" :deployState="item.deployState" :isConfigured="item.configured" :activePorts="0"></SwitchStatePanel>
+              </v-flex>
+              <v-flex xs12>
+                  <v-btn color="warning" flat @click="synchronize">Synchronize</v-btn>
               </v-flex>
           </v-layout>
       </v-container>
