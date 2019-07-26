@@ -2,23 +2,6 @@
 
 ## Deployment
 
-### Docker
-Install [Docker](https://docs.docker.com/install/) and
-[docker-compose](https://docs.docker.com/compose/install/)
-##### Clone repo
-```
-git clone https://github.com/jaspy2/jaspy.git
-```
-##### Modify config
-```
-cd jaspy
-$EDITOR jaspy.env
-```
-##### Run compose
-```
-docker-compose up -d  
-```
-
 ### Debian package from sources
 
 #### Install necessary build-dependencies (stretch)
@@ -38,5 +21,22 @@ cd jaspy/debian
 # If you are building snmpbot, proceed to run following
 cd snmpbot
 ./build.sh
+```
+
+### Docker (outdated, incomplete)
+Install [Docker](https://docs.docker.com/install/) and
+[docker-compose](https://docs.docker.com/compose/install/)
+##### Clone repo
+```
+git clone https://github.com/jaspy2/jaspy.git
+```
+##### Modify config
+```
+cd jaspy
+$EDITOR jaspy.env
+```
+##### Run compose
+```
+docker-compose up -d  
 ```
 

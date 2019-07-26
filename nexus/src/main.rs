@@ -124,6 +124,7 @@ fn main() {
         .mount(
             "/dev/clientlocation",
             routes![
+                routes::dev::clientlocation::get_clientlocation,
                 routes::dev::clientlocation::put_clientlocation,
             ]
         )
