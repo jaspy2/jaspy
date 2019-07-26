@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use utilities::tools::{get_time};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,6 +79,7 @@ pub struct DeviceDeletedEvent {
 #[serde(rename_all = "camelCase")]
 pub struct Event {
     pub event_type: String,
+    pub create_time: f64,
 
     #[serde(skip_serializing_if="Option::is_none")]
     ping_change: Option<PingChangeEvent>,
@@ -108,6 +110,7 @@ impl Event {
     pub fn new_empty(event_type: &str) -> Event {
         let event = Event {
             event_type: event_type.to_string(),
+            create_time: get_time(),
             ping_change: None,
             interface_up_down: None,
             interface_speed: None,
