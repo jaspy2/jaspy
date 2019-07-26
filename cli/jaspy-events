@@ -1,0 +1,52 @@
+#!/usr/bin/python3
+import json
+import paho.mqtt.client as mqtt
+import logging
+import sys
+
+
+class JaspyListener:
+
+    def __init__(self):
+        self._logger = logging.getLogger('jaspy-events')
+        self.running = False
+        self._mq_client = None
+
+    def request_stop(self):
+        self.running = False
+        if self._mq_client is not None:
+            self._mq_client.disconnect()
+
+    def run(self):
+        self.running = True
+        mqtt_server_address = '127.0.0.1'
+        mqtt_server_port = int(1883)
+
+        def _mq_on_connect(client, userdata, flags, result_code):
+            self._logger.info('connected to MQ with result code %s', result_code)
+            client.subscribe('jaspy/#')
+
+        def _mq_on_message(client, userdata, message_raw):
+            try:
+                topic = message_raw.topic
+                message_payload = message_raw.payload.decode()
+                message = json.loads(message_payload)
+                sys.stdout.write('{}\n'.format(json.dumps(message)))
+                sys.stdout.flush()
+            except BaseException as be:
+                self._logger.exception(be)
+                raise
+
+        try:
+            self._mq_client = mqtt.Client()
+            self._mq_client.on_connect = _mq_on_connect
+            self._mq_client.on_message = _mq_on_message
+            self._mq_client.connect(mqtt_server_address, mqtt_server_port, 60)
+            self._mq_client.loop_forever()
+        except KeyboardInterrupt:
+            self.request_stop()
+
+
+jl = JaspyListener()
+jl.run()
+
