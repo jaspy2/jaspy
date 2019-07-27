@@ -8,7 +8,7 @@ use utilities;
 
 // TODO: GH#9 Move everything to v1 API
 #[put("/device", data = "<discovery_json>")]
-pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>) {
+pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
     let discovered_device : &models::json::DiscoveredDevice = &discovery_json.into_inner();
     let discovered_device_interfaces : &HashMap<String, models::json::DiscoveredInterface> = &discovered_device.interfaces;
 
@@ -32,7 +32,6 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
             }
         },
         None => {
-            // TODO: crate device event
             let new_device = models::dbo::NewDevice {
                 name: discovered_device.name.clone(),
                 dns_domain: discovered_device.dns_domain.clone(),
@@ -41,6 +40,13 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
                 os_info: discovered_device.os_info.clone(),
                 polling_enabled: None,
             };
+
+            let device_fqdn = format!("{}.{}", new_device.name, new_device.dns_domain);
+            let event = models::events::Event::device_created_event(&device_fqdn);
+            if let Ok(ref mut msgbus) = msgbus.lock() {
+                msgbus.event(event);
+            }
+
             match models::dbo::Device::create(&new_device, &connection) {
                 Ok(created_device) => {
                     device = created_device;
