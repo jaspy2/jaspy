@@ -43,7 +43,7 @@ pub struct Device {
     pub snmp_community: Option<String>,
     pub base_mac: Option<String>,
     pub polling_enabled: Option<bool>,
-    pub os_info: Option<String>
+    pub os_info: Option<String>,
     pub device_type: Option<String>,
     pub software_version: Option<String>,
 }
