@@ -108,7 +108,12 @@ class SNMPDataSource(object):
         local_kv = {}
         for candidate in data:
             obj = candidate['Objects']
-            if 'ENTITY-MIB::entPhysicalClass' not in obj or obj['ENTITY-MIB::entPhysicalClass'] != 'chassis':
+            valid_item = False
+            if 'ENTITY-MIB::entPhysicalClass' in obj and obj['ENTITY-MIB::entPhysicalClass'] == 'chassis':
+                valid_item = True
+            if 'ENTITY-MIB::entPhysicalDescr' in obj and 'Wireless LAN Controller' in obj['ENTITY-MIB::entPhysicalDescr']:
+                valid_item = True
+            if not valid_item:
                 continue
             if 'ENTITY-MIB::entPhysicalModelName' in obj:
                 data = obj['ENTITY-MIB::entPhysicalModelName'].strip()
