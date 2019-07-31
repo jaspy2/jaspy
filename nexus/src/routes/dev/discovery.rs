@@ -20,6 +20,9 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
             existing_device.base_mac = discovered_device.base_mac.clone();
             existing_device.os_info = discovered_device.os_info.clone();
             existing_device.snmp_community = discovered_device.snmp_community.clone();
+            existing_device.software_version = discovered_device.software_version.clone();
+            existing_device.device_type = discovered_device.device_type.clone();
+
             match existing_device.update(&connection) {
                 Ok(_) => {
                     // TODO: Log update?
@@ -80,8 +83,6 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
                 updated_interface.name = interface.name.clone();
                 updated_interface.alias = interface.alias.clone();
                 updated_interface.description = interface.description.clone();
-                updated_interface.software_version = discovered_device.software_version.clone();
-                updated_interface.device_type = discovered_device.device_type.clone();
                 match updated_interface.update(&connection) {
                     Ok(_) => {},
                     Err(_) => {

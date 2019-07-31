@@ -148,8 +148,8 @@ def main():
 
     if args.delete is None and args.add is None:
         data = requests.get('{}{}'.format(args.api_url, JASPY_DEVICE_LIST_ENDPOINT_URL)).json()
-        header = '{:8} {:32} {}'
-        print(header.format('enabled', 'fqdn', 'os'))
+        header = '{:8} {:32} {:24} {}'
+        print(header.format('enabled', 'fqdn', 'type', 'software'))
         for device in data:
             if device['osInfo'] is None:
                 device['osInfo'] = '-'
@@ -159,11 +159,15 @@ def main():
                 device['pollingEnabled'] = 'yes'
             elif not device['pollingEnabled']:
                 device['pollingEnabled'] = 'no'
-
+            if device['deviceType'] is None:
+                device['deviceType'] = '-'
+            if device['softwareVersion'] is None:
+                device['softwareVersion'] = '-'
             print(header.format(
                 device['pollingEnabled'],
                 '{}.{}'.format(device['name'], device['dnsDomain']),
-                device['osInfo'].split('\n')[0]
+                device['deviceType'],
+                device['softwareVersion'],
             ))
 
 
