@@ -26,6 +26,8 @@ pub struct DiscoveredDevice {
     pub base_mac: Option<String>,
     pub os_info: Option<String>,
     pub interfaces : HashMap<String, DiscoveredInterface>,
+    pub device_type: Option<String>,
+    pub software_version: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]

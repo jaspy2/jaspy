@@ -39,6 +39,8 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
                 base_mac: discovered_device.base_mac.clone(),
                 os_info: discovered_device.os_info.clone(),
                 polling_enabled: None,
+                software_version: discovered_device.software_version.clone(),
+                device_type: discovered_device.device_type.clone(),
             };
 
             let device_fqdn = format!("{}.{}", new_device.name, new_device.dns_domain);
