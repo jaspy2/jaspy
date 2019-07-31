@@ -16,6 +16,8 @@ table! {
         base_mac -> Nullable<Varchar>,
         polling_enabled -> Nullable<Bool>,
         os_info -> Nullable<Varchar>,
+        device_type -> Nullable<Varchar>,
+        software_version -> Nullable<Varchar>,
     }
 }
 
