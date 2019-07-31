@@ -80,6 +80,8 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
                 updated_interface.name = interface.name.clone();
                 updated_interface.alias = interface.alias.clone();
                 updated_interface.description = interface.description.clone();
+                updated_interface.software_version = discovered_device.software_version.clone();
+                updated_interface.device_type = discovered_device.device_type.clone();
                 match updated_interface.update(&connection) {
                     Ok(_) => {},
                     Err(_) => {
