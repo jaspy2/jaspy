@@ -105,12 +105,21 @@ class SNMPDataSource(object):
                 self.interfaces[ifindex][key] = value
 
     def _entmib_handle_physical_names(self, data):
-        chassis = data[0]
-        obj = chassis['Objects']
-        if 'ENTITY-MIB::entPhysicalModelName' in obj:
-            self._kvdata['VENDOR-AGNOSTIC::deviceType'] = obj['ENTITY-MIB::entPhysicalModelName']
-        if 'ENTITY-MIB::entPhysicalSoftwareRev' in obj:
-            self._kvdata['VENDOR-AGNOSTIC::softwareVersion'] = obj['ENTITY-MIB::entPhysicalSoftwareRev']
+        for candidate in data:
+            valid_data = False
+            obj = chassis['Objects']
+            if 'ENTITY-MIB::entPhysicalModelName' in obj:
+                data = strip(obj['ENTITY-MIB::entPhysicalModelName'])
+                if data != '':
+                    self._kvdata['VENDOR-AGNOSTIC::deviceType'] = data
+                    valid_data = True
+            if 'ENTITY-MIB::entPhysicalSoftwareRev' in obj:
+                data = strip(obj['ENTITY-MIB::entPhysicalSoftwareRev'])
+                if data != '':
+                    self._kvdata['VENDOR-AGNOSTIC::softwareVersion'] = data
+                    valid_data = True
+            if valid_data:
+                return
 
     def __init__(self, device_fqdn, snmpbot_address, community):
         self._lldp_reliability = 100
