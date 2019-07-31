@@ -105,9 +105,11 @@ class SNMPDataSource(object):
                 self.interfaces[ifindex][key] = value
 
     def _entmib_handle_physical_names(self, data):
-        local_kv = {''}
+        local_kv = {}
         for candidate in data:
             obj = candidate['Objects']
+            if 'ENTITY-MIB::entPhysicalClass' not in obj or obj['ENTITY-MIB::entPhysicalClass'] != 'chassis':
+                continue
             if 'ENTITY-MIB::entPhysicalModelName' in obj:
                 data = obj['ENTITY-MIB::entPhysicalModelName'].strip()
                 if data != '':
