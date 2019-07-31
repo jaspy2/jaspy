@@ -24,7 +24,12 @@ parser.add_argument('-D', '--debug', required=False, action='store_const', const
 parser.add_argument('-S', '--stable', required=False, action='store_const', const=True, default=False)
 parser.add_argument('-n', '--noop', required=False, action='store_const', const=True, default=False)
 parser.add_argument('-i', '--ignore', required=False, help='ignored devices', action='append', default=[])
+parser.add_argument('-M', '--map', required=False, help='fqdn-remapped devices', action='append', default=[])
 args = parser.parse_args()
+
+
+remap = {}
+
 
 if args.debug:
     logger.setLevel(logging.DEBUG)
@@ -33,6 +38,9 @@ else:
 
 
 def try_resolve(device_name):
+    global remap
+    if device_name in remap:
+        device_name = remap[device_name]
     if device_name is None:
         return None
     if device_name.strip() == '':
@@ -80,7 +88,8 @@ def send_device_info(device):
         'dnsDomain': device_domain,
         'snmpCommunity': device.community(),
         'baseMac': device.get_chassis_id(),
-        'osInfo': device.os_info()
+        'osInfo': device.os_info(),
+        'softwareVersion': device.software_version()
     }
     interfaces_json = {}
 
@@ -296,6 +305,11 @@ def send_topology_info(detected_devices):
 
 
 def main():
+    global remap
+    for item in args.map:
+        src, dst = item.split(':')
+        remap[src] = dst
+    build_remap = args.map
     rdev = try_resolve(args.root_device)
     if rdev is None:
         logger.error('failed to resolve root device, aborting!')

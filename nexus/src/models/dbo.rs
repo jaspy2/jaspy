@@ -17,6 +17,8 @@ pub struct NewDevice {
     pub base_mac: Option<String>,
     pub polling_enabled: Option<bool>,
     pub os_info: Option<String>,
+    pub device_type: Option<String>,
+    pub software_version: Option<String>,
 }
 
 #[table_name = "interfaces"]
@@ -42,6 +44,8 @@ pub struct Device {
     pub base_mac: Option<String>,
     pub polling_enabled: Option<bool>,
     pub os_info: Option<String>
+    pub device_type: Option<String>,
+    pub software_version: Option<String>,
 }
 
 pub struct UpdatedWeathermapDeviceInfo {

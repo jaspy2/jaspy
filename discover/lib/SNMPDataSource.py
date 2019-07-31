@@ -104,6 +104,14 @@ class SNMPDataSource(object):
                     self.interfaces[ifindex] = {'_neighbors': {}, 'IF-MIB::ifIndex': ifindex}
                 self.interfaces[ifindex][key] = value
 
+    def _entmib_handle_physical_names(self, data):
+        chassis = data[0]
+        obj = chassis['Objects']
+        if 'ENTITY-MIB::entPhysicalModelName' in obj:
+            self._kvdata['VENDOR-AGNOSTIC::deviceType'] = obj['ENTITY-MIB::entPhysicalModelName']
+        if 'ENTITY-MIB::entPhysicalSoftwareRev' in obj:
+            self._kvdata['VENDOR-AGNOSTIC::softwareVersion'] = obj['ENTITY-MIB::entPhysicalSoftwareRev']
+
     def __init__(self, device_fqdn, snmpbot_address, community):
         self._lldp_reliability = 100
         self._cdp_reliability = 100
@@ -124,6 +132,7 @@ class SNMPDataSource(object):
             'CISCO-CDP-MIB::cdpCacheTable': self._cdp_handle_cachetable,
             'IF-MIB::ifXTable': self._ifmib_handle_ifindex_tables,
             'IF-MIB::ifTable': self._ifmib_handle_ifindex_tables,
+            'ENTITY-MIB::entPhysicalTable': self._entmib_handle_physical_names,
         }
 
     def community(self):
@@ -133,6 +142,8 @@ class SNMPDataSource(object):
         return self._polling_valid
 
     def device_type(self):
+        if 'VENDOR-AGNOSTIC::deviceType' in self._kvdata:
+            return self._kvdata['VENDOR-AGNOSTIC::deviceType']
         return 'UNKNOWN'
 
     def os_info(self):
@@ -140,6 +151,11 @@ class SNMPDataSource(object):
             return self._kvdata['SNMPv2-MIB::sysDescr']
         except KeyError:
             return 'UNKNOWN'
+
+    def software_version(self):
+        if 'VENDOR-AGNOSTIC::softwareVersion' in self._kvdata:
+            return self._kvdata['VENDOR-AGNOSTIC::softwareVersion']
+        return 'UNKNOWN'
 
     def discovery_success(self):
         return 'SNMPv2-MIB::sysDescr' in self._kvdata
@@ -192,6 +208,7 @@ class SNMPDataSource(object):
         self._build_anything_to_interface()
         self._get_lldp_tables()
         self._get_cdp_tables()
+        self._get_entmib_tables()
         self._ensure_interface_sanity()
 
     def _ensure_interface_sanity(self):
@@ -308,6 +325,13 @@ class SNMPDataSource(object):
         tables = []
         for candidate in list(self._table_handlers.keys()):
             if candidate.startswith('CISCO-CDP-MIB::'):
+                tables.append(candidate)
+        self._walk_tables(tables)
+
+    def _get_entmib_tables(self):
+        tables = []
+        for candidate in list(self._table_handlers.keys()):
+            if candidate.startswith('ENTITY-MIB::'):
                 tables.append(candidate)
         self._walk_tables(tables)
 

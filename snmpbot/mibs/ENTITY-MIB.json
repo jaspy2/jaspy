@@ -1,0 +1,329 @@
+{
+  "Name": "ENTITY-MIB",
+  "OID": ".1.3.6.1.2.1.47",
+  "Objects": [
+    {
+      "Name": "entPhysicalIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "entPhysicalDescr",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalVendorType",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.3",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "entPhysicalContainedIn",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.4",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "entPhysicalClass",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "unknown",
+          "Value": 2
+        },
+        {
+          "Name": "chassis",
+          "Value": 3
+        },
+        {
+          "Name": "backplane",
+          "Value": 4
+        },
+        {
+          "Name": "container",
+          "Value": 5
+        },
+        {
+          "Name": "powerSupply",
+          "Value": 6
+        },
+        {
+          "Name": "fan",
+          "Value": 7
+        },
+        {
+          "Name": "sensor",
+          "Value": 8
+        },
+        {
+          "Name": "module",
+          "Value": 9
+        },
+        {
+          "Name": "port",
+          "Value": 10
+        },
+        {
+          "Name": "stack",
+          "Value": 11
+        }
+      ]
+    },
+    {
+      "Name": "entPhysicalParentRelPos",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.6",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": -1
+      }
+    },
+    {
+      "Name": "entPhysicalName",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.7",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalHardwareRev",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.8",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalFirmwareRev",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.9",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalSoftwareRev",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.10",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalSerialNum",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.11",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalMfgName",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.12",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalModelName",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.13",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalAlias",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.14",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalAssetID",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.15",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhysicalIsFRU",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "entLogicalIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.47.1.2.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "entLogicalDescr",
+      "OID": ".1.3.6.1.2.1.47.1.2.1.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entLogicalType",
+      "OID": ".1.3.6.1.2.1.47.1.2.1.1.3",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "entLogicalCommunity",
+      "OID": ".1.3.6.1.2.1.47.1.2.1.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "entLogicalTAddress",
+      "OID": ".1.3.6.1.2.1.47.1.2.1.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "entLogicalTDomain",
+      "OID": ".1.3.6.1.2.1.47.1.2.1.1.6",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "entLogicalContextEngineID",
+      "OID": ".1.3.6.1.2.1.47.1.2.1.1.7",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "entLogicalContextName",
+      "OID": ".1.3.6.1.2.1.47.1.2.1.1.8",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entLPPhysicalIndex",
+      "OID": ".1.3.6.1.2.1.47.1.3.1.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "entAliasLogicalIndexOrZero",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.47.1.3.2.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "entAliasMappingIdentifier",
+      "OID": ".1.3.6.1.2.1.47.1.3.2.1.2",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "entPhysicalChildIndex",
+      "OID": ".1.3.6.1.2.1.47.1.3.3.1.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "entLastChangeTime",
+      "OID": ".1.3.6.1.2.1.47.1.4.1",
+      "Syntax": "TimeTicks"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "entPhysicalEntry",
+      "EntryObjects": [
+        "ENTITY-MIB::entPhysicalIndex",
+        "ENTITY-MIB::entPhysicalDescr",
+        "ENTITY-MIB::entPhysicalVendorType",
+        "ENTITY-MIB::entPhysicalContainedIn",
+        "ENTITY-MIB::entPhysicalClass",
+        "ENTITY-MIB::entPhysicalParentRelPos",
+        "ENTITY-MIB::entPhysicalName",
+        "ENTITY-MIB::entPhysicalHardwareRev",
+        "ENTITY-MIB::entPhysicalFirmwareRev",
+        "ENTITY-MIB::entPhysicalSoftwareRev",
+        "ENTITY-MIB::entPhysicalSerialNum",
+        "ENTITY-MIB::entPhysicalMfgName",
+        "ENTITY-MIB::entPhysicalModelName",
+        "ENTITY-MIB::entPhysicalAlias",
+        "ENTITY-MIB::entPhysicalAssetID",
+        "ENTITY-MIB::entPhysicalIsFRU"
+      ],
+      "IndexObjects": [
+        "ENTITY-MIB::entPhysicalIndex"
+      ],
+      "Name": "entPhysicalTable",
+      "OID": ".1.3.6.1.2.1.47.1.1.1"
+    },
+    {
+      "EntryName": "entLogicalEntry",
+      "EntryObjects": [
+        "ENTITY-MIB::entLogicalIndex",
+        "ENTITY-MIB::entLogicalDescr",
+        "ENTITY-MIB::entLogicalType",
+        "ENTITY-MIB::entLogicalCommunity",
+        "ENTITY-MIB::entLogicalTAddress",
+        "ENTITY-MIB::entLogicalTDomain",
+        "ENTITY-MIB::entLogicalContextEngineID",
+        "ENTITY-MIB::entLogicalContextName"
+      ],
+      "IndexObjects": [
+        "ENTITY-MIB::entLogicalIndex"
+      ],
+      "Name": "entLogicalTable",
+      "OID": ".1.3.6.1.2.1.47.1.2.1"
+    },
+    {
+      "EntryName": "entLPMappingEntry",
+      "EntryObjects": [
+        "ENTITY-MIB::entLPPhysicalIndex"
+      ],
+      "IndexObjects": [
+        "ENTITY-MIB::entLogicalIndex",
+        "ENTITY-MIB::entLPPhysicalIndex"
+      ],
+      "Name": "entLPMappingTable",
+      "OID": ".1.3.6.1.2.1.47.1.3.1"
+    },
+    {
+      "EntryName": "entAliasMappingEntry",
+      "EntryObjects": [
+        "ENTITY-MIB::entAliasLogicalIndexOrZero",
+        "ENTITY-MIB::entAliasMappingIdentifier"
+      ],
+      "IndexObjects": [
+        "ENTITY-MIB::entPhysicalIndex",
+        "ENTITY-MIB::entAliasLogicalIndexOrZero"
+      ],
+      "Name": "entAliasMappingTable",
+      "OID": ".1.3.6.1.2.1.47.1.3.2"
+    },
+    {
+      "EntryName": "entPhysicalContainsEntry",
+      "EntryObjects": [
+        "ENTITY-MIB::entPhysicalChildIndex"
+      ],
+      "IndexObjects": [
+        "ENTITY-MIB::entPhysicalIndex",
+        "ENTITY-MIB::entPhysicalChildIndex"
+      ],
+      "Name": "entPhysicalContainsTable",
+      "OID": ".1.3.6.1.2.1.47.1.3.3"
+    }
+  ]
+}
