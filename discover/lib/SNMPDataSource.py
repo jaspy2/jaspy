@@ -130,7 +130,7 @@ class SNMPDataSource(object):
                         local_kv['VENDOR-AGNOSTIC::softwareVersion'] = []
                     local_kv['VENDOR-AGNOSTIC::softwareVersion'].append(data)
         for k, v in local_kv.items():
-            self._kvdata[k] = ', '.join(v)
+            self._kvdata[k] = ','.join(v)
 
     def __init__(self, device_fqdn, snmpbot_address, community):
         self._lldp_reliability = 100
