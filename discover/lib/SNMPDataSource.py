@@ -113,7 +113,7 @@ class SNMPDataSource(object):
                 valid_item = True
             if 'ENTITY-MIB::entPhysicalClass' in obj and obj['ENTITY-MIB::entPhysicalClass'] == 'module' and 'ENTITY-MIB::entPhysicalDescr' in obj and 'Supervisor' in obj['ENTITY-MIB::entPhysicalDescr']:
                 valid_item = True
-            if 'ENTITY-MIB::entPhysicalClass' in obj and obj['ENTITY-MIB::entPhysicalClass'] == 'module' and 'ENTITY-MIB::entPhysicalModelName' in obj and 'SUP' in obj['ENTITY-MIB::entPhysicalModelName']:
+            if 'ENTITY-MIB::entPhysicalClass' in obj and obj['ENTITY-MIB::entPhysicalClass'] == 'module' and 'ENTITY-MIB::entPhysicalModelName' in obj and 'SUP' in obj['ENTITY-MIB::entPhysicalModelName'] and 'ENTITY-MIB::entPhysicalDescr' in obj and 'Daughterboard' not in obj['ENTITY-MIB::entPhysicalDescr']:
                 valid_item = True
             if 'ENTITY-MIB::entPhysicalDescr' in obj and 'Wireless LAN Controller' in obj['ENTITY-MIB::entPhysicalDescr']:
                 valid_item = True
