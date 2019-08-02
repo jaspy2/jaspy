@@ -60,6 +60,7 @@ pub fn put_clientlocation(connection: db::Connection, client_location_info_json:
         if let Some(mut existing_client_info) = models::dbo::ClientLocation::by_ip(&client_location_info.yiaddr, &connection) {
             if existing_client_info.port_info != port_info || existing_client_info.device_id != device.id {
                 existing_client_info.port_info = port_info;
+                existing_client_info.hw_address = client_location_info.chaddr.clone();
                 existing_client_info.device_id = device.id;
                 if let Err(_update_error) = existing_client_info.update(&connection) {
                     // TODO: log
@@ -69,6 +70,7 @@ pub fn put_clientlocation(connection: db::Connection, client_location_info_json:
             let l = models::dbo::NewClientLocation {
                 device_id: device.id,
                 ip_address: client_location_info.yiaddr.clone(),
+                hw_address: client_location_info.chaddr.clone(),
                 port_info: port_info.clone()
             };
             if let Ok(_new_client_location) = models::dbo::ClientLocation::create(&l, &connection) {

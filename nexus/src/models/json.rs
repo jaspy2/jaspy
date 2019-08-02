@@ -180,5 +180,6 @@ pub struct WeathermapPositionInfoBase {
 #[serde(rename_all = "camelCase")]
 pub struct ClientLocationInfo {
     pub yiaddr: String,
+    pub chaddr: String,
     pub option82: HashMap<String, String>,
 }
