@@ -70,8 +70,8 @@ pub struct NewWeathermapDeviceInfo {
 pub struct NewClientLocation {
     pub device_id: i32,
     pub ip_address: String,
-    pub hw_address: String,
     pub port_info: String,
+    pub hw_address: String,
 }
 
 #[belongs_to(Device)]
@@ -82,8 +82,8 @@ pub struct ClientLocation {
     pub id: i32,
     pub device_id: i32,
     pub ip_address: String,
-    pub hw_address: String,
     pub port_info: String,
+    pub hw_address: String,
 }
 
 #[belongs_to(Device)]

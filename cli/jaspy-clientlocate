@@ -29,7 +29,7 @@ def main():
     client_location = locate_client(args.address)
     for device in devices:
         if device['id'] == client_location['deviceId']:
-            print('{} @ {}.{} {}'.format(args.address, device['name'], device['dnsDomain'], client_location['portInfo']))
+            print('{} {} @ {}.{} {}'.format(args.address, client_location['hwAddress'], device['name'], device['dnsDomain'], client_location['portInfo']))
 
 if __name__ == '__main__':
     main()
