@@ -18,6 +18,7 @@ for item in entitypoller; do
     ./build.linux
     popd
 done
+cp -a ../entitypoller/build/entitypoller-linux ${tmpdir}/usr/local/bin/jaspy-entitypoller
 cp -a ../discover ${tmpdir}/usr/lib/jaspy/
 cp -a ../cli/* ${tmpdir}/usr/local/bin/
 cp -a ../snmpbot/mibs ${tmpdir}/var/lib/jaspy/
