@@ -42,6 +42,7 @@ type JaspyDevice struct {
 	OsInfo string `json:"osInfo"`
 	DeviceType string `json:"deviceType"`
 	SoftwareVersion string `json:"softwareVersion"`
+	FQDN string `json:"omitempty"`
 }
 
 func SNMPBotGetTable(httpClient *http.Client, fqdn string, community string, table string) (*api.Table, error) {
@@ -66,45 +67,41 @@ func SNMPBotGetTable(httpClient *http.Client, fqdn string, community string, tab
 	return &tableIndex, nil
 }
 
-func makeFQDN(device *JaspyDevice) string {
-	return fmt.Sprintf("%s.%s", device.Name, device.DnsDomain)
-}
-
-func GetEntities(httpClient *http.Client, device JaspyDevice) error {
-
-	log.Printf("Started polling device '%s'", device.Name)
-	defer log.Printf("Finished polling device '%s'", device.Name)
-
-	var EntityIdentities = make(map[int64]EntityIdentity)
-	var fqdn = makeFQDN(&device)
-
-	table, err := SNMPBotGetTable(httpClient, device.SNMPCommunity, fqdn,"ENTITY-MIB::entPhysicalTable")
+func GetEntitiesByPhysicalIndex(httpClient *http.Client,  device *JaspyDevice,
+	entityIdentities *map[int64]EntityIdentity, valueField string, scaleField string, precisionField string,
+	valueTypeField string, tableField string) error {
+	table, err := SNMPBotGetTable(httpClient, device.SNMPCommunity, device.FQDN,
+		tableField)
 	if err != nil {
 		return err
 	}
-
-	for _, entity := range table.Entries {
-		entityId := int64(entity.Index["ENTITY-MIB::entPhysicalIndex"].(float64))
-		EntityIdentities[entityId] = EntityIdentity{
-			Name: entity.Objects["ENTITY-MIB::entPhysicalName"].(string),
-			Description: entity.Objects["ENTITY-MIB::entPhysicalDescr"].(string),
-			Id: entityId,
-		}
-	}
-
-
-	table, err = SNMPBotGetTable(httpClient, device.SNMPCommunity, fqdn, "ENTITY-SENSOR-MIB::entPhySensorTable")
-	if err != nil {
-		return err
-	}
-
 	for _, entity := range table.Entries  {
 		entityId := int64(entity.Index["ENTITY-MIB::entPhysicalIndex"].(float64))
-		entityIdentity := EntityIdentities[entityId]
+		entityIdentity := (*entityIdentities)[entityId]
 
-		value := entity.Objects["ENTITY-SENSOR-MIB::entPhySensorValue"].(float64)
-		scale := entity.Objects["ENTITY-SENSOR-MIB::entPhySensorScale"]
-		precision := entity.Objects["ENTITY-SENSOR-MIB::entPhySensorPrecision"].(float64)
+		if entity.Objects[valueField] == nil {
+			log.Printf("Skipping entity %d with nil value", entityId)
+			continue
+		}
+		value := entity.Objects[valueField].(float64)
+
+		if entity.Objects[valueTypeField] == nil {
+			log.Printf("Skipping entity %d with nil valuetype", entityId)
+			continue
+		}
+		valueType := entity.Objects[valueTypeField].(string)
+
+		if entity.Objects[scaleField] == nil {
+			log.Printf("Skipping entity %d with nil scale", entityId)
+			continue
+		}
+		scale := entity.Objects[scaleField].(string)
+
+		if entity.Objects[precisionField] == nil {
+			log.Printf("Skipping entity %d with nil precision", entityId)
+			continue
+		}
+		precision := entity.Objects[precisionField].(float64)
 
 		if scale == "milli" {
 			value = value / 1000.0
@@ -114,26 +111,85 @@ func GetEntities(httpClient *http.Client, device JaspyDevice) error {
 			value = value / (math.Pow(10, precision))
 		}
 
-		if _, ok := metrics[fqdn][entityIdentity.Id]; !ok {
-			metrics[fqdn][entityIdentity.Id] = prometheus.NewGauge(prometheus.GaugeOpts{
+		if _, ok := metrics[device.FQDN][entityIdentity.Id]; !ok {
+			metrics[device.FQDN][entityIdentity.Id] = prometheus.NewGauge(prometheus.GaugeOpts{
 				Namespace: "jaspy",
 				Name: "sensors",
 				ConstLabels: map[string]string{
 					"hostname": device.Name,
-					"fqdn": fqdn,
+					"fqdn": device.FQDN,
 					"sensor_id": fmt.Sprintf("%d", entityIdentity.Id),
 					"sensor_name": entityIdentity.Name,
 					"sensor_description": entityIdentity.Description,
-					"value_type": entity.Objects["ENTITY-SENSOR-MIB::entPhySensorType"].(string),
+					"value_type": valueType,
 				},
 			})
-			prometheus.MustRegister(metrics[fqdn][entityIdentity.Id])
+			prometheus.MustRegister(metrics[device.FQDN][entityIdentity.Id])
 		}
 
-		metrics[fqdn][entityIdentity.Id].Set(value)
+		metrics[device.FQDN][entityIdentity.Id].Set(value)
 
 
 	}
+	return nil
+}
+
+func GetCiscoEntities(httpClient *http.Client,  device *JaspyDevice, entityIdentities *map[int64]EntityIdentity) error {
+	return GetEntitiesByPhysicalIndex(
+		httpClient,
+		device,
+		entityIdentities,
+		"CISCO-ENTITY-SENSOR-MIB::entSensorValue",
+		"CISCO-ENTITY-SENSOR-MIB::entSensorScale",
+		"CISCO-ENTITY-SENSOR-MIB::entSensorPrecision",
+		"CISCO-ENTITY-SENSOR-MIB::entSensorType",
+		"CISCO-ENTITY-SENSOR-MIB::entSensorValueTable")
+}
+
+func GetStandardEntities(httpClient *http.Client,  device *JaspyDevice, entityIdentities *map[int64]EntityIdentity) error {
+	return GetEntitiesByPhysicalIndex(
+		httpClient,
+		device,
+		entityIdentities,
+		"ENTITY-SENSOR-MIB::entPhySensorValue",
+		"ENTITY-SENSOR-MIB::entPhySensorScale",
+		"ENTITY-SENSOR-MIB::entPhySensorPrecision",
+		"ENTITY-SENSOR-MIB::entPhySensorType",
+		"ENTITY-SENSOR-MIB::entPhySensorTable")
+}
+
+func GetEntities(httpClient *http.Client, device JaspyDevice) error {
+
+	log.Printf("Started polling device '%s'", device.Name)
+	defer log.Printf("Finished polling device '%s'", device.Name)
+
+	var entityIdentities = make(map[int64]EntityIdentity)
+
+	table, err := SNMPBotGetTable(httpClient, device.SNMPCommunity, device.FQDN,"ENTITY-MIB::entPhysicalTable")
+	if err != nil {
+		return err
+	}
+
+	for _, entity := range table.Entries {
+		entityId := int64(entity.Index["ENTITY-MIB::entPhysicalIndex"].(float64))
+		entityIdentities[entityId] = EntityIdentity{
+			Name: entity.Objects["ENTITY-MIB::entPhysicalName"].(string),
+			Description: entity.Objects["ENTITY-MIB::entPhysicalDescr"].(string),
+			Id: entityId,
+		}
+	}
+
+
+	err = GetStandardEntities(httpClient, &device, &entityIdentities)
+	if err != nil {
+		log.Printf("Failed to get standard entities")
+	}
+
+	err = GetCiscoEntities(httpClient, &device, &entityIdentities)
+	if err != nil {
+		log.Printf("Failed to get cisco entities")
+	}
+
 	return nil
 }
 
@@ -181,9 +237,9 @@ func runOnce(interval time.Duration, httpTransport *http.Transport) error {
 				continue
 			}
 		}
-		var fqdn = makeFQDN(&device)
-		if _, ok := metrics[fqdn]; !ok {
-			metrics[fqdn] = make(metricMap)
+		device.FQDN = fmt.Sprintf("%s.%s", device.Name, device.DnsDomain)
+		if _, ok := metrics[device.FQDN]; !ok {
+			metrics[device.FQDN] = make(metricMap)
 		}
 
 		go func(client JaspyDevice) {
