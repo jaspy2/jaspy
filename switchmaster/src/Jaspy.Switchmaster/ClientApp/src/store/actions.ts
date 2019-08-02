@@ -39,7 +39,6 @@ export default {
                 method: 'SYNCHRONIZE'
             });
             const result = await response.json();
-            commit('setSyncResult', result);
         } catch (err) {
             commit('addError', err);
         } finally {

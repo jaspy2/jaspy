@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -110,45 +111,55 @@ namespace Jaspy.Switchmaster.Controllers
         [HttpSynchronize("synchronize")]
         public async Task<IActionResult> Synchronize()
         {
-            var allSwitches = await _nexusClient.ListDevicesAsync();
+            await _hubContext.Clients.All.SendAsync("StartingSynchronization");
 
-            var added = 0;
-            var existing = 0;
-            var newSwitches = new List<SwitchViewModel>();
-            foreach (var entry in allSwitches)
+            try
             {
-                var fqdn = $"{entry.Name}.{entry.DnsDomain}";
-                var match = await _dbContext.Switches.FindAsync(fqdn);
-                if (match == null)
+                var allSwitches = await _nexusClient.ListDevicesAsync();
+
+                var added = 0;
+                var existing = 0;
+                var newSwitches = new List<SwitchViewModel>();
+                foreach (var entry in allSwitches)
                 {
-                    var newSwitch = new Switch
+                    var fqdn = $"{entry.Name}.{entry.DnsDomain}";
+                    var match = await _dbContext.Switches.FindAsync(fqdn);
+                    if (match == null)
                     {
-                        Fqdn = fqdn,
-                        Configured = true,
-                        DeployState = DeployState.Stationed
-                    };
-                    var result = await _dbContext.AddAsync(newSwitch);
-                    added++;
-                    newSwitches.Add(ToViewModel(result.Entity));
+                        var newSwitch = new Switch
+                        {
+                            Fqdn = fqdn,
+                            Configured = true,
+                            DeployState = DeployState.Stationed
+                        };
+                        var result = await _dbContext.AddAsync(newSwitch);
+                        added++;
+                        newSwitches.Add(ToViewModel(result.Entity));
+                    }
+                    else
+                    {
+                        existing++;
+                    }
                 }
-                else
+
+                await _dbContext.SaveChangesAsync();
+
+                var synchronizationResult = new SynchronizationResult
                 {
-                    existing++;
-                }
+                    Added = added,
+                    Existing = existing,
+                    NewSwitches = newSwitches
+                };
+
+                await _hubContext.Clients.All.SendAsync("Synchronize", synchronizationResult);
+
+                return Ok(synchronizationResult);
             }
-
-            await _dbContext.SaveChangesAsync();
-
-            var synchronizationResult = new SynchronizationResult
+            catch (Exception ex)
             {
-                Added = added,
-                Existing = existing,
-                NewSwitches = newSwitches
-            };
-
-            await _hubContext.Clients.All.SendAsync("Synchronize", synchronizationResult);
-
-            return Ok(synchronizationResult);
+                await _hubContext.Clients.All.SendAsync("Synchronize", null);
+                throw;
+            }
         }
 
         #endregion

@@ -11,6 +11,11 @@ export default {
     },
     setSyncResult(state, result: SynchronizationResult) {
         state.syncResult = result;
+        state.items = state.items.concat(result.newSwitches).sort((a, b) => {
+            const fqdnA = a.fqdn.toLowerCase();
+            const fqdnB = b.fqdn.toLowerCase();
+            return (fqdnA < fqdnB) ? -1 : (fqdnA > fqdnB) ? 1 : 0;
+        });
     },
     setItems(state, items: Switch[]) {
         state.items = items.sort((a, b) => {

@@ -38,12 +38,16 @@ let hubConnection: HubConnection;
       .withUrl('/hubs/switch')
       .build();
     hubConnection.on('Update', (updatedSwitch: Switch) => {
-      console.log('update!', updatedSwitch);
       this.$store.commit('updateItem', updatedSwitch);
     });
+    hubConnection.on('StartingSynchronization', () => {
+      this.$store.commit('setProcessing', true);
+    });
     hubConnection.on('Synchronize', (result: SynchronizationResult) => {
-      console.log('Synchronize!', result);
-      this.$store.commit('setSyncResult', result);
+      if (result !== null) {
+        this.$store.commit('setSyncResult', result);
+      }
+      this.$store.commit('setProcessing', false);
     });
     await hubConnection.start();
     await this.$store.dispatch('fetch');
