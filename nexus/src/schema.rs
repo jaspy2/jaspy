@@ -4,7 +4,7 @@ table! {
         device_id -> Int4,
         ip_address -> Varchar,
         port_info -> Varchar,
-        hw_address -> Nullable<Varchar>,
+        hw_address -> Varchar,
     }
 }
 

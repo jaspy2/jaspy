@@ -1,2 +1,2 @@
-ALTER TABLE client_locations ADD COLUMN hw_address varchar DEFAULT NULL;
+ALTER TABLE client_locations ADD COLUMN hw_address varchar NOT NULL DEFAULT '';
 
