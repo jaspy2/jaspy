@@ -5,6 +5,7 @@ set -x
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 mkdir -p ${DIR}/build/src/github.com/jaspy2/jaspy
+rm -rf ${DIR}/build/src/github.com/jaspy2/jaspy/entitypoller
 cp -r ${DIR}/src ${DIR}/build/src/github.com/jaspy2/jaspy/entitypoller
 cp -r ${DIR}/Gopkg.{lock,toml} ${DIR}/build/src/github.com/jaspy2/jaspy/entitypoller/
 
