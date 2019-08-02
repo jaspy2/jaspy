@@ -26,7 +26,7 @@ import StatusOverlay from '@/components/StatusOverlay.vue';
 import { HubConnection, HubConnectionBuilder } from '@aspnet/signalr';
 import { Switch, SynchronizationResult } from '@/store/models';
 
-let hubConnection: HubConnection;
+let hubConnection: HubConnection | undefined;
 
 @Component({
   components: {
@@ -53,8 +53,9 @@ let hubConnection: HubConnection;
     await this.$store.dispatch('fetch');
   },
   async beforeDestroy() {
-    await hubConnection.stop();
-    // noinspection TypeScriptValidateTypes
+    if (hubConnection) {
+      await hubConnection.stop();
+    }
     hubConnection = undefined;
   },
   computed: {
