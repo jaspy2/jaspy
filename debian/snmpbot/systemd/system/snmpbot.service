@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=snmpbot
 Group=snmpbot
-ExecStart=/usr/bin/snmpbot -snmp-mibs /usr/share/snmpbot/mibs
+ExecStart=/usr/bin/snmpbot -snmp-mibs /var/lib/jaspy/mibs
 
 [Install]
 WantedBy=multi-user.target
