@@ -3,5 +3,5 @@
 export default {
     items: [],
     processing: false,
-    errors: [],
+    errors: []
 } as SwitchStoreState;

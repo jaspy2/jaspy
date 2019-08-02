@@ -2,45 +2,78 @@
   <v-app dark>
       <v-container fluid grid-list-xl>
           <v-layout row wrap>
-              <v-flex v-for="item in switches" xs4>
-                  <SwitchStatePanel :fqdn="item.fqdn" :deployState="item.deployState" :isConfigured="item.configured" :activePorts="0"></SwitchStatePanel>
+              <v-flex v-for="item in switches">
+                  <SwitchStatePanel :fqdn="item.fqdn"
+                                    :deployState="item.deployState"
+                                    :isConfigured="item.configured"
+                                    :activePorts="0"
+                                    :update-item="update"></SwitchStatePanel>
               </v-flex>
               <v-flex xs12>
                   <v-btn color="warning" flat @click="synchronize">Synchronize</v-btn>
               </v-flex>
           </v-layout>
       </v-container>
+      <StatusOverlay :visible="processing"></StatusOverlay>
   </v-app>
 </template>
 
 <script lang="ts">
+import { mapActions, mapState } from 'vuex';
 import { Component, Vue } from 'vue-property-decorator';
 import SwitchStatePanel from '@/components/SwitchStatePanel.vue';
-import { mapActions, mapState } from 'vuex';
+import StatusOverlay from '@/components/StatusOverlay.vue';
+import { HubConnection, HubConnectionBuilder } from '@aspnet/signalr';
+import { Switch, SynchronizationResult } from '@/store/models';
+
+let hubConnection: HubConnection;
 
 @Component({
   components: {
-    SwitchStatePanel,
+    StatusOverlay,
+    SwitchStatePanel
   },
   async beforeCreate() {
-    await this.$store.dispatch('switch/fetch');
+    hubConnection = new HubConnectionBuilder()
+      .withUrl('/hubs/switch')
+      .build();
+    hubConnection.on('Update', (updatedSwitch: Switch) => {
+      console.log('update!', updatedSwitch);
+      this.$store.commit('updateItem', updatedSwitch);
+    });
+    hubConnection.on('Synchronize', (result: SynchronizationResult) => {
+      console.log('Synchronize!', result);
+      this.$store.commit('setSyncResult', result);
+    });
+    await hubConnection.start();
+    await this.$store.dispatch('fetch');
+  },
+  async beforeDestroy() {
+    await hubConnection.stop();
+    // noinspection TypeScriptValidateTypes
+    hubConnection = undefined;
   },
   computed: {
     ...mapState({
-      switches: (state: any) => state.switch.items,
-      processing: (state: any) => state.switch.processing,
-    }),
+      switches: (state: any) => state.items,
+      processing: (state: any) => state.processing
+    })
   },
   methods: {
-    ...mapActions('switch', [
+    ...mapActions([
       'synchronize',
-    ]),
-  },
+      'update'
+    ])
+  }
 })
 export default class App extends Vue {}
 </script>
 
 <style lang="scss">
+body {
+    background-color: #303030;
+}
+
 #app {
   font-family: 'Roboto', Helvetica, Arial, sans-serif;
   text-align: center;

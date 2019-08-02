@@ -40,8 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <TypeScriptCompile Include="ClientApp\src\store\index.ts" />
-    <TypeScriptCompile Include="ClientApp\src\store\modules\switch.ts" />
+    <TypeScriptCompile Include="ClientApp\src\store\store.ts" />
   </ItemGroup>
 
 </Project>

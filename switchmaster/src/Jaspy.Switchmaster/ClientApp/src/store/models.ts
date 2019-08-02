@@ -1,5 +1,8 @@
 ﻿export enum DeployState {
     Stationed = 0,
+    InTransitToStorage,
+    InStorage,
+    InTransitToStation
 }
 
 export interface Switch {

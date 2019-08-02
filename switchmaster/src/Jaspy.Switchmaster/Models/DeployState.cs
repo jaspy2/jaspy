@@ -2,6 +2,9 @@ namespace Jaspy.Switchmaster.Data.Models
 {
     public enum DeployState
     {
-        Stationed
+        Stationed,
+        InTransitToStorage,
+        InStorage,
+        InTransitToStation
     }
 }

@@ -1,38 +1,38 @@
+import {DeployState} from "@/store/models";
 <template>
     <div class="state-panel elevation-2">
-        <div class="fqdn" title="Device FQDN">{{ fqdn }}</div>
+        <div class="fqdn" title="Device FQDN"><span>{{ fqdn }}</span></div>
         <div class="spacer"></div>
         <div class="state" title="Deployment state">
             <v-select
-                label="Select State"
-                v-model="deployState"
-                :items="deployStates"
-                item-text="label"
-                item-value="value"
-                flat solo
-                hide-details></v-select>
+                    label="Select State"
+                    v-model="deployState"
+                    :items="deployStates"
+                    item-text="label"
+                    item-value="value"
+                    flat solo
+                    hide-details></v-select>
         </div>
-        <div class="transition" title="Transition to next state">
+        <div class="transition" title="Transition to next state" @click="moveToNextState">
             <button>
                 <v-icon>chevron_right</v-icon>
             </button>
         </div>
-        <div class="configured" :class="{ configured: isConfigured }" title="Configured">
-            <v-icon>settings</v-icon>
-        </div>
-        <div class="active-ports" :class="{ active: activePorts > 0 }" title="Connected interfaces">
-            <v-icon>device_hub</v-icon>
-            {{ activePorts }}
+        <div class="configured" title="Configured" @click="toggleConfigured" :class="{ ok: isConfigured }">
+            <button>
+                <v-icon>settings</v-icon>
+            </button>
         </div>
     </div>
 </template>
 
 <script lang="ts">
-  import { Component, Prop, Vue } from 'vue-property-decorator';
-  import { DeployState, Switch } from '@/store/modules/switch';
+import { Component, Prop, Vue } from 'vue-property-decorator';
+import { DeployState, Switch } from '@/store/models';
 
-  @Component
-  export default class SwitchStatePanel extends Vue {
+@Component
+export default class SwitchStatePanel extends Vue {
+
     @Prop(String)
     public readonly fqdn!: string;
     @Prop(Number)
@@ -42,77 +42,125 @@
     @Prop(Number)
     public readonly activePorts!: number;
 
-    get configured(): string {
-      return this.isConfigured ? 'Configured' : 'Unconfigured';
+    get state(): string {
+        return this.deployStateToString(this.deployState);
     }
 
-    get state(): string {
-      switch (this.deployState) {
-        case DeployState.Stationed:
-          return 'Stationed';
-        default:
-          return 'Unknown';
-      }
-    }
+    @Prop(Function)
+    public readonly updateItem!: (arg0: Switch) => Promise<void>;
 
     get deployStates(): Array<{label: string, value: number}> {
-      const result = [] as Array<{label: string, value: number}>;
-      for (const key in DeployState) {
-        if (typeof(DeployState[key]) === 'number') {
-          result.push({
-            label: key,
-            value: DeployState[key] as any as number,
-          });
+        const result = [] as Array<{label: string, value: number}>;
+        for (const key in DeployState) {
+            if (typeof(DeployState[key]) === 'number') {
+                result.push({
+                    label: this.deployStateToString(DeployState[key] as any as number),
+                    value: DeployState[key] as any as number
+                });
+            }
         }
-      }
-      return result;
+        return result;
     }
-  }
+
+    public async moveToNextState() {
+        let newState: DeployState;
+        switch (this.deployState) {
+            case DeployState.Stationed:
+                newState = DeployState.InTransitToStorage;
+                break;
+            case DeployState.InTransitToStorage:
+                newState = DeployState.InStorage;
+                break;
+            case DeployState.InStorage:
+                newState = DeployState.InTransitToStation;
+                break;
+            case DeployState.InTransitToStation:
+                newState = DeployState.Stationed;
+                break;
+            default:
+                throw Error('Invalid deploy state during update.');
+        }
+
+        await this.updateItem({
+            fqdn: this.fqdn,
+            deployState: newState,
+            configured: !!this.isConfigured
+        });
+    }
+
+    public async toggleConfigured() {
+        await this.updateItem({
+            fqdn: this.fqdn,
+            deployState: this.deployState,
+            configured: !this.isConfigured
+        });
+    }
+
+    private deployStateToString(state: DeployState): string {
+        switch (state) {
+            case DeployState.Stationed:
+                return 'Stationed';
+            case DeployState.InTransitToStorage:
+                return 'To Storage';
+            case DeployState.InStorage:
+                return 'In Storage';
+            case DeployState.InTransitToStation:
+                return 'To Station';
+            default:
+                return 'Unknown';
+        }
+    }
+}
 </script>
 
 <style scoped lang="scss">
 .state-panel {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(100px, 200px) auto 150px 70px 54px;
+
     background-color: #424242;
     color: rgba(255, 255, 255, 0.9);
-    
+
     .fqdn {
-        padding: 10px 15px;
+        display: flex;
+        margin: 0 15px;
+        align-items: center;
+
+        span {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
     }
-    
+
     .spacer {
         flex: 1;
     }
-    
+
     .state {
-        width: 150px;
+        min-width: 100px;
     }
-    
+
     .transition {
+        padding-left: 15px;
+
         button {
+            height: 48px;
             padding: 10px 15px;
             background-color: rgba(255, 255, 255, 0.1);
         }
     }
-    
-    .configured {
-        padding: 10px 15px;
-        background-color: #FF5252;
 
-        &.configured {
-            background-color: #4CAF50;
+    .configured {
+        button {
+            height: 48px;
+            padding: 10px 15px;
+            background-color: rgba(255, 0, 0, 0.5);
         }
-    }
-    
-    .active-ports {
-        padding: 10px 15px;
-        font-size: 1.3em;
-        background-color: #FF5252;
-        
-        &.active {
-            background-color: #4CAF50;
+
+        &.ok button {
+            background-color: rgba(0, 255, 0, 0.25);
         }
     }
 }

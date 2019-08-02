@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Jaspy.Switchmaster.Data;
+using Jaspy.Switchmaster.Hubs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -40,7 +41,9 @@ namespace Jaspy.Switchmaster
             services
                 .AddMvc()
                 .SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
-            
+
+            services.AddSignalR();
+
             services.AddSpaStaticFiles(configuration =>
             {
                 configuration.RootPath = "ClientApp/dist";
@@ -56,7 +59,7 @@ namespace Jaspy.Switchmaster
         {
             _logger.LogInformation("Starting Switchmaster");
             _logger.LogInformation($"Environment: {_env.EnvironmentName}");
-            
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -66,10 +69,15 @@ namespace Jaspy.Switchmaster
                 app.UseExceptionHandler("/Error");
                 //app.UseHsts();
             }
-            
+
             //app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseSpaStaticFiles();
+
+            app.UseSignalR(routes =>
+            {
+                routes.MapHub<SwitchHub>("/hubs/switch");
+            });
 
             app.UseMvc(routes =>
             {

@@ -5,8 +5,10 @@ using Jaspy.Switchmaster.Attributes;
 using Jaspy.Switchmaster.Data;
 using Jaspy.Switchmaster.Data.Entities;
 using Jaspy.Switchmaster.Data.Models;
+using Jaspy.Switchmaster.Hubs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jaspy.Switchmaster.Controllers
@@ -17,11 +19,13 @@ namespace Jaspy.Switchmaster.Controllers
     {
         private readonly SwitchmasterDbContext _dbContext;
         private readonly NexusClient _nexusClient;
+        private readonly IHubContext<SwitchHub> _hubContext;
 
-        public SwitchController(SwitchmasterDbContext dbContext, NexusClient nexusClient)
+        public SwitchController(SwitchmasterDbContext dbContext, NexusClient nexusClient, IHubContext<SwitchHub> hubContext)
         {
             _dbContext = dbContext;
             _nexusClient = nexusClient;
+            _hubContext = hubContext;
         }
 
         #region Accessors
@@ -58,11 +62,11 @@ namespace Jaspy.Switchmaster.Controllers
 
             return Ok(ToViewModel(match));
         }
-        
+
         #endregion
 
         #region Mutators
-        
+
         [HttpPatch("{fqdn}")]
         public async Task<IActionResult> Patch([FromRoute] string fqdn, [FromBody] SwitchViewModel model)
         {
@@ -81,6 +85,8 @@ namespace Jaspy.Switchmaster.Controllers
             match.Configured = model.Configured;
             await _dbContext.SaveChangesAsync();
 
+            await _hubContext.Clients.All.SendAsync("Update", model);
+
             return Ok();
         }
 
@@ -95,6 +101,8 @@ namespace Jaspy.Switchmaster.Controllers
 
             _dbContext.Switches.Remove(match);
             await _dbContext.SaveChangesAsync();
+
+            await _hubContext.Clients.All.SendAsync("Delete", fqdn);
 
             return Ok(ToViewModel(match));
         }
@@ -131,14 +139,18 @@ namespace Jaspy.Switchmaster.Controllers
 
             await _dbContext.SaveChangesAsync();
 
-            return Ok(new SynchronizationResult
+            var synchronizationResult = new SynchronizationResult
             {
                 Added = added,
                 Existing = existing,
                 NewSwitches = newSwitches
-            });
+            };
+
+            await _hubContext.Clients.All.SendAsync("Synchronize", synchronizationResult);
+
+            return Ok(synchronizationResult);
         }
-        
+
         #endregion
 
         #region Helpers
@@ -152,7 +164,7 @@ namespace Jaspy.Switchmaster.Controllers
 
         private IEnumerable<SwitchViewModel> ToViewModel(IEnumerable<Switch> entities) =>
             entities.Select(ToViewModel);
-        
+
         #endregion
     }
 }
