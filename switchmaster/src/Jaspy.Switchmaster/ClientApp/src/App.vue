@@ -35,7 +35,7 @@ let hubConnection: HubConnection | undefined;
   },
   async beforeCreate() {
     hubConnection = new HubConnectionBuilder()
-      .withUrl('/hubs/switch')
+      .withUrl('hubs/switch')
       .build();
     hubConnection.on('Update', (updatedSwitch: Switch) => {
       this.$store.commit('updateItem', updatedSwitch);
