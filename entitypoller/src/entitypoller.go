@@ -9,6 +9,7 @@ import (
 	"github.com/qmsk/snmpbot/api"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -160,18 +161,11 @@ func getJaspyDevices(httpClient *http.Client) (*[]JaspyDevice, error) {
 	return &jaspyDevices, nil
 }
 
-func runOnce() error {
+func runOnce(interval time.Duration, httpTransport *http.Transport) error {
 
 	var wg sync.WaitGroup
 
-	var httpTransport = &http.Transport{
-		MaxIdleConns:       10,
-		IdleConnTimeout:    30 * time.Second,
-		DisableCompression: true,
-	}
-
-	var httpClient = http.Client{Transport: httpTransport}
-
+	var httpClient = http.Client{Transport: httpTransport, Timeout: time.Second * 30}
 
 	clients, err := getJaspyDevices(&httpClient)
 
@@ -194,6 +188,8 @@ func runOnce() error {
 
 		go func(client JaspyDevice) {
 			defer wg.Done()
+			sleep := (rand.Int63() % int64(interval/time.Millisecond)) / 2
+			<-time.After(time.Duration(sleep) * time.Millisecond)
 			err := GetEntities(&httpClient, client)
 			if err != nil {
 				log.Printf("Error %+v", err)
@@ -222,6 +218,13 @@ func main() {
 	http.Handle("/metrics", promhttp.Handler())
 	go http.ListenAndServe(listenAddress, nil)
 
+	var httpTransport = &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    30 * time.Second,
+		DisableCompression: true,
+		TLSHandshakeTimeout: 5 * time.Second,
+	}
+
 	var timer chan bool = make(chan bool, 1024)
 
 	go func(timer chan bool) {
@@ -232,7 +235,7 @@ func main() {
 	}(timer)
 
 	for {
-		runOnce()
+		runOnce(PollInterval, httpTransport)
 		<-timer
 	}
 }
