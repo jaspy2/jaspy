@@ -255,7 +255,7 @@ export default class Device {
                 let nbrDV = nbrNbr.getPosition().clone().subtract(clusterCenter.getPosition()).normalize();
                 let invNbrDV = nbrDV.clone().invert();
                 let angle = Math.acos(selfDV.clone().dot(invNbrDV))*Math.sign(invNbrDV.clone().cross(selfDV));
-                let angleFactor = -angle * (springDistance / 20.0);
+                let angleFactor = -angle * (springDistance / 20.0)*0.5;
                 forceOffset.add(selfPerp.clone().multiply(new Victor(angleFactor, angleFactor)));
             }
             offsetVector.add(forceOffset);
