@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -x 
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+mkdir -p ${DIR}/build/src/github.com/jaspy2/jaspy
+cp -r ${DIR}/src ${DIR}/build/src/github.com/jaspy2/jaspy/entitypoller
+cp -r ${DIR}/Gopkg.{lock,toml} ${DIR}/build/src/github.com/jaspy2/jaspy/entitypoller/
+
+
+export GOPATH="${DIR}/build"
+
+cd ${DIR}/build/src/github.com/jaspy2/jaspy/entitypoller
+
+export PATH=$PATH:${DIR}/build/bin
+
+which deb || go get -u github.com/golang/dep/cmd/dep
+
+dep ensure -vendor-only
+
+CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o ${DIR}/build/entitypoller-linux github.com/jaspy2/jaspy/entitypoller
+

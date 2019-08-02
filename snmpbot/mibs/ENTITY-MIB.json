@@ -6,7 +6,7 @@
       "Name": "entPhysicalIndex",
       "NotAccessible": true,
       "OID": ".1.3.6.1.2.1.47.1.1.1.1.1",
-      "Syntax": "INTEGER",
+      "Syntax": "Integer32",
       "SyntaxOptions": {
         "Max": 2147483647,
         "Min": 1
@@ -25,7 +25,7 @@
     {
       "Name": "entPhysicalContainedIn",
       "OID": ".1.3.6.1.2.1.47.1.1.1.1.4",
-      "Syntax": "INTEGER",
+      "Syntax": "Integer32",
       "SyntaxOptions": {
         "Max": 2147483647,
         "Min": 0
@@ -79,13 +79,29 @@
         {
           "Name": "stack",
           "Value": 11
+        },
+        {
+          "Name": "cpu",
+          "Value": 12
+        },
+        {
+          "Name": "energyObject",
+          "Value": 13
+        },
+        {
+          "Name": "battery",
+          "Value": 14
+        },
+        {
+          "Name": "storageDrive",
+          "Value": 15
         }
       ]
     },
     {
       "Name": "entPhysicalParentRelPos",
       "OID": ".1.3.6.1.2.1.47.1.1.1.1.6",
-      "Syntax": "INTEGER",
+      "Syntax": "Integer32",
       "SyntaxOptions": {
         "Max": 2147483647,
         "Min": -1
@@ -152,10 +168,25 @@
       ]
     },
     {
+      "Name": "entPhysicalMfgDate",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.17",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "entPhysicalUris",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.18",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "entPhysicalUUID",
+      "OID": ".1.3.6.1.2.1.47.1.1.1.1.19",
+      "Syntax": "OCTET STRING"
+    },
+    {
       "Name": "entLogicalIndex",
       "NotAccessible": true,
       "OID": ".1.3.6.1.2.1.47.1.2.1.1.1",
-      "Syntax": "INTEGER",
+      "Syntax": "Integer32",
       "SyntaxOptions": {
         "Max": 2147483647,
         "Min": 1
@@ -207,7 +238,7 @@
     {
       "Name": "entLPPhysicalIndex",
       "OID": ".1.3.6.1.2.1.47.1.3.1.1.1",
-      "Syntax": "INTEGER",
+      "Syntax": "Integer32",
       "SyntaxOptions": {
         "Max": 2147483647,
         "Min": 1
@@ -217,7 +248,7 @@
       "Name": "entAliasLogicalIndexOrZero",
       "NotAccessible": true,
       "OID": ".1.3.6.1.2.1.47.1.3.2.1.1",
-      "Syntax": "INTEGER",
+      "Syntax": "Integer32",
       "SyntaxOptions": {
         "Max": 2147483647,
         "Min": 0
@@ -231,7 +262,7 @@
     {
       "Name": "entPhysicalChildIndex",
       "OID": ".1.3.6.1.2.1.47.1.3.3.1.1",
-      "Syntax": "INTEGER",
+      "Syntax": "Integer32",
       "SyntaxOptions": {
         "Max": 2147483647,
         "Min": 1
@@ -262,7 +293,10 @@
         "ENTITY-MIB::entPhysicalModelName",
         "ENTITY-MIB::entPhysicalAlias",
         "ENTITY-MIB::entPhysicalAssetID",
-        "ENTITY-MIB::entPhysicalIsFRU"
+        "ENTITY-MIB::entPhysicalIsFRU",
+        "ENTITY-MIB::entPhysicalMfgDate",
+        "ENTITY-MIB::entPhysicalUris",
+        "ENTITY-MIB::entPhysicalUUID"
       ],
       "IndexObjects": [
         "ENTITY-MIB::entPhysicalIndex"
