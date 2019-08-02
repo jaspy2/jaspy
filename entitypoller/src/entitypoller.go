@@ -60,7 +60,6 @@ func SNMPBotGetTable(httpClient *http.Client, fqdn string, community string, tab
 	if err != nil {
 		return nil, fmt.Errorf("Failed to decode JSON from SNMPBOT API, %v", err)
 	}
-	//log.Printf("%+v", tableIndex)
 
 	return &tableIndex, nil
 }
@@ -113,15 +112,6 @@ func GetEntities(httpClient *http.Client, device JaspyDevice) error {
 			value = value / (math.Pow(10, precision))
 		}
 
-		log.Printf("jaspy_sensors{hostname=\"%s\", fqdn=\"%s\", sensor_id=\"%d\", sensor_name=\"%s\", sensor_description=\"%s\", value_type=\"%s\"} %v",
-			device.Name,
-			fqdn,
-			entityIdentity.Id,
-			entityIdentity.Name,
-			entityIdentity.Description,
-			entity.Objects["ENTITY-SENSOR-MIB::entPhySensorType"],
-			value)
-
 		if _, ok := metrics[fqdn][entityIdentity.Id]; !ok {
 			metrics[fqdn][entityIdentity.Id] = prometheus.NewGauge(prometheus.GaugeOpts{
 				Namespace: "jaspy",
@@ -165,7 +155,6 @@ func getJaspyDevices(httpClient *http.Client) (*[]JaspyDevice, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to decode JSON from jaspy devices API, %v", err)
 	}
-	log.Printf("%+v", jaspyDevices)
 	return &jaspyDevices, nil
 }
 
