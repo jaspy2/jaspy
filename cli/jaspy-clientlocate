@@ -1,0 +1,35 @@
+#!/usr/bin/python3
+import argparse
+import requests
+import socket
+import logging
+import json
+
+
+JASPY_CLIENTLOCATION_URL = '/dev/clientlocation'
+JASPY_DEVICE_LIST_ENDPOINT_URL = '/dev/device'
+
+logging.basicConfig()
+logger = logging.getLogger('jaspy-clientlocate')
+parser = argparse.ArgumentParser(description='locate clients')
+parser.add_argument('-A', '--api-url', required=False, default='http://127.0.0.1:8000', help='API url for jaspy')
+parser.add_argument('address', type=str, help='ip address', default=None)
+args = parser.parse_args()
+
+
+def locate_client(address):
+    res = requests.get('{}{}'.format(args.api_url, JASPY_CLIENTLOCATION_URL), params={'client_address': address})
+    if res.status_code == 404:
+        return None
+    return res.json()
+
+
+def main():
+    devices = requests.get('{}{}'.format(args.api_url, JASPY_DEVICE_LIST_ENDPOINT_URL)).json()
+    client_location = locate_client(args.address)
+    for device in devices:
+        if device['id'] == client_location['deviceId']:
+            print('{} @ {}.{} {}'.format(args.address, device['name'], device['dnsDomain'], client_location['portInfo']))
+
+if __name__ == '__main__':
+    main()
