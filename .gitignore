@@ -1,3 +1,7 @@
 /target/
 Cargo.lock
 jaspy.env
+/env
+.idea/
+vendor/
+build/

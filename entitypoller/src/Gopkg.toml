@@ -1,0 +1,11 @@
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/qmsk/snmpbot"
+  version = "0.1.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true

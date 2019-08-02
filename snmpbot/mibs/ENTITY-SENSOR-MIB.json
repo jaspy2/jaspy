@@ -1,0 +1,208 @@
+{
+  "Name": "ENTITY-SENSOR-MIB",
+  "OID": ".1.3.6.1.2.1.99",
+  "Objects": [
+    {
+      "Name": "entPhySensorType",
+      "OID": ".1.3.6.1.2.1.99.1.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "unknown",
+          "Value": 2
+        },
+        {
+          "Name": "voltsAC",
+          "Value": 3
+        },
+        {
+          "Name": "voltsDC",
+          "Value": 4
+        },
+        {
+          "Name": "amperes",
+          "Value": 5
+        },
+        {
+          "Name": "watts",
+          "Value": 6
+        },
+        {
+          "Name": "hertz",
+          "Value": 7
+        },
+        {
+          "Name": "celsius",
+          "Value": 8
+        },
+        {
+          "Name": "percentRH",
+          "Value": 9
+        },
+        {
+          "Name": "rpm",
+          "Value": 10
+        },
+        {
+          "Name": "cmm",
+          "Value": 11
+        },
+        {
+          "Name": "truthvalue",
+          "Value": 12
+        }
+      ]
+    },
+    {
+      "Name": "entPhySensorScale",
+      "OID": ".1.3.6.1.2.1.99.1.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "yocto",
+          "Value": 1
+        },
+        {
+          "Name": "zepto",
+          "Value": 2
+        },
+        {
+          "Name": "atto",
+          "Value": 3
+        },
+        {
+          "Name": "femto",
+          "Value": 4
+        },
+        {
+          "Name": "pico",
+          "Value": 5
+        },
+        {
+          "Name": "nano",
+          "Value": 6
+        },
+        {
+          "Name": "micro",
+          "Value": 7
+        },
+        {
+          "Name": "milli",
+          "Value": 8
+        },
+        {
+          "Name": "units",
+          "Value": 9
+        },
+        {
+          "Name": "kilo",
+          "Value": 10
+        },
+        {
+          "Name": "mega",
+          "Value": 11
+        },
+        {
+          "Name": "giga",
+          "Value": 12
+        },
+        {
+          "Name": "tera",
+          "Value": 13
+        },
+        {
+          "Name": "exa",
+          "Value": 14
+        },
+        {
+          "Name": "peta",
+          "Value": 15
+        },
+        {
+          "Name": "zetta",
+          "Value": 16
+        },
+        {
+          "Name": "yotta",
+          "Value": 17
+        }
+      ]
+    },
+    {
+      "Name": "entPhySensorPrecision",
+      "OID": ".1.3.6.1.2.1.99.1.1.1.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 9,
+        "Min": -8
+      }
+    },
+    {
+      "Name": "entPhySensorValue",
+      "OID": ".1.3.6.1.2.1.99.1.1.1.4",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 1000000000,
+        "Min": -1000000000
+      }
+    },
+    {
+      "Name": "entPhySensorOperStatus",
+      "OID": ".1.3.6.1.2.1.99.1.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "ok",
+          "Value": 1
+        },
+        {
+          "Name": "unavailable",
+          "Value": 2
+        },
+        {
+          "Name": "nonoperational",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "entPhySensorUnitsDisplay",
+      "OID": ".1.3.6.1.2.1.99.1.1.1.6",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "entPhySensorValueTimeStamp",
+      "OID": ".1.3.6.1.2.1.99.1.1.1.7",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "entPhySensorValueUpdateRate",
+      "OID": ".1.3.6.1.2.1.99.1.1.1.8",
+      "Syntax": "Unsigned32"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "entPhySensorEntry",
+      "EntryObjects": [
+        "ENTITY-SENSOR-MIB::entPhySensorType",
+        "ENTITY-SENSOR-MIB::entPhySensorScale",
+        "ENTITY-SENSOR-MIB::entPhySensorPrecision",
+        "ENTITY-SENSOR-MIB::entPhySensorValue",
+        "ENTITY-SENSOR-MIB::entPhySensorOperStatus",
+        "ENTITY-SENSOR-MIB::entPhySensorUnitsDisplay",
+        "ENTITY-SENSOR-MIB::entPhySensorValueTimeStamp",
+        "ENTITY-SENSOR-MIB::entPhySensorValueUpdateRate"
+      ],
+      "IndexObjects": [
+        "ENTITY-MIB::entPhysicalIndex"
+      ],
+      "Name": "entPhySensorTable",
+      "OID": ".1.3.6.1.2.1.99.1.1"
+    }
+  ]
+}

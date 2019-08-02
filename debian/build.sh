@@ -13,6 +13,11 @@ for item in nexus poller pinger snmptrapd-reader; do
     cp -a ../target/release/jaspy-${item} ${tmpdir}/usr/lib/jaspy/
     popd
 done
+for item in entitypoller; do
+    pushd ../${item}
+    ./build.linux
+    popd
+done
 cp -a ../discover ${tmpdir}/usr/lib/jaspy/
 cp -a ../cli/* ${tmpdir}/usr/local/bin/
 cp -a ../snmpbot/mibs ${tmpdir}/var/lib/jaspy/
