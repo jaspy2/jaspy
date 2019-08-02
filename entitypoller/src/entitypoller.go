@@ -46,9 +46,11 @@ type JaspyDevice struct {
 func SNMPBotGetTable(httpClient *http.Client, fqdn string, community string, table string) (*api.Table, error) {
 	var url = fmt.Sprintf("%s/api/hosts/%s@%s/tables/%s", snmpBotAPI,  fqdn, community, table)
 	resp, err := httpClient.Get(url)
+
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP returned '%s' response while requesting %s!", resp.Status, url)
@@ -60,7 +62,6 @@ func SNMPBotGetTable(httpClient *http.Client, fqdn string, community string, tab
 	if err != nil {
 		return nil, fmt.Errorf("Failed to decode JSON from SNMPBOT API, %v", err)
 	}
-
 	return &tableIndex, nil
 }
 
@@ -140,10 +141,11 @@ func getJaspyDevices(httpClient *http.Client) (*[]JaspyDevice, error) {
 	log.Printf("Started getting jaspy devices")
 	defer log.Printf("Finished getting jaspy devices")
 	resp, err := httpClient.Get(fmt.Sprintf("%s/dev/device/", jaspyAPI))
+
 	if err != nil {
 		return nil, err
 	}
-
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP returned '%s' response whie requesting devices from Jaspy API!",
 			resp.Status)
@@ -200,6 +202,9 @@ func runOnce() error {
 		wg.Add(1)
 	}
 	wg.Wait()
+
+	httpClient.CloseIdleConnections()
+
 	return nil
 }
 
@@ -207,7 +212,7 @@ func main() {
 
 	metrics = make(deviceMetricMap)
 
-	flag.StringVar(&snmpBotAPI, "snmbot-api", "http://localhost:8286", "Base path to SNMPBot API")
+	flag.StringVar(&snmpBotAPI, "snmpbot-api", "http://localhost:8286", "Base path to SNMPBot API")
 	flag.StringVar(&jaspyAPI, "jaspy-api", "http://0.0.0.0:8000", "Base path to Jaspy API")
 	flag.DurationVar(&PollInterval, "poll-interval", 120*time.Second, "Polling interval")
 	flag.StringVar(&listenAddress, "listen-address", "localhost:8098", "metrics listen address")
