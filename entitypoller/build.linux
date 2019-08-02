@@ -19,5 +19,7 @@ which deb || go get -u github.com/golang/dep/cmd/dep
 
 dep ensure -vendor-only
 
+rm "${DIR}/build/entitypoller-linux" || true
+
 CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o ${DIR}/build/entitypoller-linux github.com/jaspy2/jaspy/entitypoller
 

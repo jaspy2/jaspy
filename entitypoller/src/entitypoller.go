@@ -199,8 +199,6 @@ func runOnce(interval time.Duration, httpTransport *http.Transport) error {
 	}
 	wg.Wait()
 
-	httpClient.CloseIdleConnections()
-
 	return nil
 }
 
