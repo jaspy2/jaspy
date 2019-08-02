@@ -5,7 +5,7 @@ export default {
     async fetch({ commit }) {
         try {
             commit('setProcessing', true);
-            const response = await fetch('/api/switch');
+            const response = await fetch('api/switch');
             const items = await response.json();
             commit('setItems', items);
         } catch (err) {
@@ -17,7 +17,7 @@ export default {
     async update({ commit }, payload: Switch) {
         try {
             commit('setProcessing', true);
-            await fetch(`/api/switch/${payload.fqdn}`, {
+            await fetch(`api/switch/${payload.fqdn}`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
@@ -35,7 +35,7 @@ export default {
     async synchronize({ commit }) {
         try {
             commit('setProcessing', true);
-            const response = await fetch('/api/switch/synchronize', {
+            const response = await fetch('api/switch/synchronize', {
                 method: 'SYNCHRONIZE'
             });
             const result = await response.json();
