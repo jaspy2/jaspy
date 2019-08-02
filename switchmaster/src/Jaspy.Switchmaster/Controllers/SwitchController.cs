@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Jaspy.Switchmaster.Controllers
 {
@@ -18,12 +19,14 @@ namespace Jaspy.Switchmaster.Controllers
     [Route("api/[controller]")]
     public class SwitchController : ControllerBase
     {
+        private readonly ILogger<SwitchController> _logger;
         private readonly SwitchmasterDbContext _dbContext;
         private readonly NexusClient _nexusClient;
         private readonly IHubContext<SwitchHub> _hubContext;
 
-        public SwitchController(SwitchmasterDbContext dbContext, NexusClient nexusClient, IHubContext<SwitchHub> hubContext)
+        public SwitchController(ILoggerFactory loggerFactory, SwitchmasterDbContext dbContext, NexusClient nexusClient, IHubContext<SwitchHub> hubContext)
         {
+            _logger = loggerFactory.CreateLogger<SwitchController>();
             _dbContext = dbContext;
             _nexusClient = nexusClient;
             _hubContext = hubContext;
@@ -157,6 +160,7 @@ namespace Jaspy.Switchmaster.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to synchronize switches.");
                 await _hubContext.Clients.All.SendAsync("Synchronize", null);
                 throw;
             }
