@@ -3,7 +3,7 @@ import {DeployState} from "@/store/models";
     <div class="state-panel elevation-2">
         <div class="fqdn" title="Device FQDN"><span>{{ fqdn }}</span></div>
         <div class="spacer"></div>
-        <div class="state" title="Deployment state">
+        <div class="state" :class="{ [deployStateClass]: true }" title="Deployment state">
             <v-select
                     label="Select State"
                     v-model="deployState"
@@ -62,6 +62,21 @@ export default class SwitchStatePanel extends Vue {
         return result;
     }
 
+    get deployStateClass(): string {
+      switch (this.deployState) {
+        case DeployState.Stationed:
+          return 'stationed';
+        case DeployState.InTransitToStorage:
+          return 'tostorage';
+        case DeployState.InStorage:
+          return 'instorage';
+        case DeployState.InTransitToStation:
+          return 'tostation';
+        default:
+          return 'unknown';
+      }
+    }
+
     public async moveToNextState() {
         let newState: DeployState;
         switch (this.deployState) {
@@ -113,6 +128,30 @@ export default class SwitchStatePanel extends Vue {
 }
 </script>
 
+<style lang="scss">
+.state-panel {
+    .state {
+        min-width: 100px;
+
+        &.stationed .v-input__slot {
+            background-color: rgba(0, 255, 0, 0.5);
+        }
+
+        &.tostorage .v-input__slot {
+            background-color: rgba(127, 0, 127, 0.5);
+        }
+
+        &.instorage .v-input__slot {
+            background-color: rgba(0, 0, 255, 0.5);
+        }
+
+        &.tostation .v-input__slot {
+            background-color: rgba(0, 127, 127, 0.5);
+        }
+    }
+}
+</style>
+
 <style scoped lang="scss">
 .state-panel {
     display: grid;
@@ -140,6 +179,24 @@ export default class SwitchStatePanel extends Vue {
 
     .state {
         min-width: 100px;
+
+        &.stationed .v-input__slot {
+            background-color: green;
+        }
+
+        &.tostorage {
+            .v-input__slot {
+                background-color: red;
+            }
+        }
+
+        &.instorage .v-input__slot {
+            background-color: yellow;
+        }
+
+        &.tostation .v-input__slot {
+            background-color: pink;
+        }
     }
 
     .transition {
