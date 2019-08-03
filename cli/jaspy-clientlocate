@@ -27,6 +27,9 @@ def locate_client(address):
 def main():
     devices = requests.get('{}{}'.format(args.api_url, JASPY_DEVICE_LIST_ENDPOINT_URL)).json()
     client_location = locate_client(args.address)
+    if client_location is None:
+        print('not found')
+        return
     for device in devices:
         if device['id'] == client_location['deviceId']:
             print('{} {} @ {}.{} {}'.format(args.address, client_location['hwAddress'], device['name'], device['dnsDomain'], client_location['portInfo']))
