@@ -11,6 +11,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -32,6 +33,21 @@ type EntityIdentity struct {
 	Description string
 }
 
+
+type JaspyInterface struct {
+	Id int64 `json:"id"`
+	Index int64 `json:"index"`
+	InterfaceType string `json:"interfaceType"`
+	DeviceId int64 `json:"deviceId"`
+	DisplayName string `json:"displayName"`
+	Name string `json:"name"`
+	Alias string `json:"alias"`
+	Description string `json:"description"`
+	PollingEnabled *bool `json:"pollingEnabled"`
+	SpeedOverride *int64 `json:"speedOverride"`
+	VirtualConnection *int64 `json:"virtualConnection"`
+}
+
 type JaspyDevice struct {
 	Id int64 `json:"id"`
 	Name string `json:"name"`
@@ -43,7 +59,9 @@ type JaspyDevice struct {
 	DeviceType string `json:"deviceType"`
 	SoftwareVersion string `json:"softwareVersion"`
 	FQDN string `json:"omitempty"`
+	Interfaces map[string]*JaspyInterface `json:"omitempty"`
 }
+
 
 func SNMPBotGetTable(httpClient *http.Client, fqdn string, community string, table string) (*api.Table, error) {
 	var url = fmt.Sprintf("%s/api/hosts/%s@%s/tables/%s", snmpBotAPI,  fqdn, community, table)
@@ -111,6 +129,17 @@ func GetEntitiesByPhysicalIndex(httpClient *http.Client,  device *JaspyDevice,
 			value = value / (math.Pow(10, precision))
 		}
 
+		// Check if name starts with interface name
+		nameToCheck := strings.Split(entityIdentity.Name, " ")[0]
+
+		var interfaceName string
+		var interfaceId int64
+		iface, ok := device.Interfaces[nameToCheck]
+		if ok {
+			interfaceName = iface.Name
+			interfaceId = iface.Id
+		}
+
 		if _, ok := metrics[device.FQDN][entityIdentity.Id]; !ok {
 			metrics[device.FQDN][entityIdentity.Id] = prometheus.NewGauge(prometheus.GaugeOpts{
 				Namespace: "jaspy",
@@ -122,14 +151,14 @@ func GetEntitiesByPhysicalIndex(httpClient *http.Client,  device *JaspyDevice,
 					"sensor_name": entityIdentity.Name,
 					"sensor_description": entityIdentity.Description,
 					"value_type": valueType,
+					"interface_name": interfaceName,
+					"interface_id": fmt.Sprintf("%d", interfaceId),
 				},
 			})
 			prometheus.MustRegister(metrics[device.FQDN][entityIdentity.Id])
 		}
 
 		metrics[device.FQDN][entityIdentity.Id].Set(value)
-
-
 	}
 	return nil
 }
@@ -159,9 +188,11 @@ func GetStandardEntities(httpClient *http.Client,  device *JaspyDevice, entityId
 }
 
 func GetEntities(httpClient *http.Client, device JaspyDevice) error {
-
+	tstart := time.Now()
 	log.Printf("Started polling device '%s'", device.Name)
-	defer log.Printf("Finished polling device '%s'", device.Name)
+	defer func () {
+		log.Printf("Finished polling device '%s' in %.2f s", device.Name, float64(time.Now().Sub(tstart)/1000/1000)/1000.0)
+	}()
 
 	var entityIdentities = make(map[int64]EntityIdentity)
 
@@ -212,10 +243,37 @@ func getJaspyDevices(httpClient *http.Client) (*[]JaspyDevice, error) {
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(&jaspyDevices)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode JSON from jaspy devices API, %v", err)
+		return nil, fmt.Errorf("failed to decode JSON from jaspy devices API, %v", err)
 	}
 	return &jaspyDevices, nil
 }
+
+func getJaspyDeviceInterfaces(httpClient *http.Client, device *JaspyDevice) error {
+	log.Printf("Started getting jaspy interfaces for %s", device.FQDN)
+	defer log.Printf("Finished getting jaspy interfaces %s", device.FQDN)
+	resp, err := httpClient.Get(fmt.Sprintf("%s/dev/device/%s/interfaces", jaspyAPI, device.FQDN))
+
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var jaspyInterfaces []JaspyInterface
+	dec := json.NewDecoder(resp.Body)
+	err = dec.Decode(&jaspyInterfaces)
+	if err != nil {
+		return fmt.Errorf("failed to decode JSON from jaspy device interfaces API, %v", err)
+	}
+
+	device.Interfaces = make(map[string]*JaspyInterface)
+
+	for idx, iface := range jaspyInterfaces {
+		device.Interfaces[iface.Name] = &jaspyInterfaces[idx]
+		device.Interfaces[iface.Description] = &jaspyInterfaces[idx]
+	}
+	return nil
+}
+
 
 func runOnce(interval time.Duration, httpTransport *http.Transport) error {
 
@@ -238,6 +296,14 @@ func runOnce(interval time.Duration, httpTransport *http.Transport) error {
 			}
 		}
 		device.FQDN = fmt.Sprintf("%s.%s", device.Name, device.DnsDomain)
+
+		err = getJaspyDeviceInterfaces(&httpClient, &device)
+
+		if err != nil {
+			log.Printf("Failed to fetch jaspy interfaces for device %s", device.FQDN)
+			continue
+		}
+
 		if _, ok := metrics[device.FQDN]; !ok {
 			metrics[device.FQDN] = make(metricMap)
 		}
@@ -248,7 +314,7 @@ func runOnce(interval time.Duration, httpTransport *http.Transport) error {
 			<-time.After(time.Duration(sleep) * time.Millisecond)
 			err := GetEntities(&httpClient, client)
 			if err != nil {
-				log.Printf("Error %+v", err)
+				log.Printf("Error %+v while fetching device %s", err, client.FQDN)
 			}
 		}(device)
 		wg.Add(1)
