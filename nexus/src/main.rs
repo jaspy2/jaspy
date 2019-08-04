@@ -119,6 +119,7 @@ fn main() {
                 routes::dev::device::monitored_device_report,
                 routes::dev::device::device_status,
                 routes::dev::device::device_interface_status,
+                routes::dev::device::clear_device_connection,
             ]
         )
         .mount(

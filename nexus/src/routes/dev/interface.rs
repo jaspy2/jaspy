@@ -30,3 +30,4 @@ pub fn interface_monitor_report(connection: db::Connection, imds: State<Arc<Mute
         imds.report_interfaces(&connection, interface_monitor_report.into_inner());
     }
 }
+

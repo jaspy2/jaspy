@@ -189,3 +189,23 @@ pub fn device_interface_status(device_fqdn: String, imds: State<Arc<Mutex<utilit
     }
     return None;
 }
+
+#[delete("/connections?<device_fqdn>")]
+pub fn clear_device_connection(connection: db::Connection, device_fqdn: String) {
+    if let Some(device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
+        let interfaces = device.interfaces(&connection);
+        for mut interface in interfaces {
+            if let Some(mut peer_interface) = interface.peer_interface(&connection) {
+                peer_interface.connected_interface = None;
+                if let Err(_) = peer_interface.update(&connection) {
+                    // TODO: log
+                }
+                interface.connected_interface = None;
+                if let Err(_) = interface.update(&connection) {
+                    // TODO: log
+                }
+            }
+        }
+    };
+}
+
