@@ -1,6 +1,6 @@
 [package]
 name = "jaspy-nexus"
-version = "2.1.2"
+version = "2.2.0"
 authors = ["Antti Tönkyrä <daedalus@pingtimeout.net>"]
 
 [dependencies]
