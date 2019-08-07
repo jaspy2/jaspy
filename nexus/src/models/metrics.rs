@@ -1,9 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 
 #[derive(Clone)]
 pub struct InterfaceMetrics {
-    pub expiry: f64,
-
     pub name: String,
     pub neighbors: bool,
     pub interface_type: String,
@@ -26,8 +24,6 @@ pub struct InterfaceMetrics {
 }
 
 pub struct DeviceMetrics {
-    pub expiry: f64,
-
     pub fqdn: String,
 
     pub hostname: String,
@@ -41,19 +37,6 @@ pub struct DeviceMetrics {
 
 pub struct Metrics {
     pub devices: HashMap<String, DeviceMetrics>,
-}
-
-pub struct DeviceMetricRefreshCacheMiss {
-    pub miss_set: HashSet<String>,
-}
-
-impl DeviceMetricRefreshCacheMiss {
-    pub fn new() -> DeviceMetricRefreshCacheMiss {
-        let dmrcm = DeviceMetricRefreshCacheMiss {
-            miss_set: HashSet::new()
-        };
-        return dmrcm;
-    }
 }
 
 pub enum MetricValue {

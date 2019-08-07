@@ -8,7 +8,7 @@ use utilities;
 
 // TODO: GH#9 Move everything to v1 API
 #[put("/device", data = "<discovery_json>")]
-pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::Connection, metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
+pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::Connection, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
     let discovered_device : &models::json::DiscoveredDevice = &discovery_json.into_inner();
     let discovered_device_interfaces : &HashMap<String, models::json::DiscoveredInterface> = &discovered_device.interfaces;
 
@@ -121,12 +121,6 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
             }
         }
     }
-
-    // TODO: optimize: only invalidate metric miss cache if stuff changes
-    let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
-    if let Ok(ref mut metric_miss_cache) = metric_miss_cache.inner().lock() {
-        if !metric_miss_cache.miss_set.contains(&device_fqdn) { metric_miss_cache.miss_set.insert(device_fqdn); }
-    }
 }
 
 // TODO: this might be better placed in an utility module or maybe in dbo logic?
@@ -147,7 +141,6 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connect
 pub fn discovery_links(
     links_json: rocket_contrib::json::Json<models::json::LinkInfo>,
     connection: db::Connection,
-    metric_miss_cache: State<Arc<Mutex<models::metrics::DeviceMetricRefreshCacheMiss>>>,
     cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>
 ) {
     let link_infos : &HashMap<String, Option<models::json::LinkPeerInfo>> = &links_json.interfaces;
@@ -271,12 +264,6 @@ pub fn discovery_links(
                 }
             }
         }
-    }
-
-    // TODO: optimize: only invalidate metric miss cache if stuff changes
-    let device_fqdn = format!("{}.{}", local_device.name, local_device.dns_domain);
-    if let Ok(ref mut metric_miss_cache) = metric_miss_cache.inner().lock() {
-        if !metric_miss_cache.miss_set.contains(&device_fqdn) { metric_miss_cache.miss_set.insert(device_fqdn); }
     }
 
     // Invalidate weathermap topology cache

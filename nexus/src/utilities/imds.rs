@@ -59,29 +59,6 @@ impl IMDS {
         return imds;
     }
 
-    pub fn prune(self: &mut IMDS) {
-        let current_time = utilities::tools::get_time();
-        let mut delete_device_keys: Vec<String> = Vec::new();
-        for (fqdn, device_metrics) in self.metrics_storage.devices.iter_mut() {
-            let mut delete_ifindex_keys: Vec<i32> = Vec::new();
-            if current_time > device_metrics.expiry {
-                delete_device_keys.push(fqdn.clone());
-            } else {
-                for (ifindex, interface_metrics) in device_metrics.interfaces.iter() {
-                    if current_time > interface_metrics.expiry {
-                        delete_ifindex_keys.push(*ifindex);
-                    }
-                }
-                for iface_key in delete_ifindex_keys.iter() {
-                    device_metrics.interfaces.remove(iface_key);
-                }
-            }
-        }
-        for device_key in delete_device_keys.iter() {
-            self.metrics_storage.devices.remove(device_key);
-        }
-    }
-
     pub fn get_device(self: &IMDS, device_fqdn: &String) -> Option<&models::metrics::DeviceMetrics> {
         return self.metrics_storage.devices.get(device_fqdn);
     }
@@ -89,7 +66,6 @@ impl IMDS {
     pub fn refresh_device(self: &mut IMDS, device_fqdn: &String) {
         match self.metrics_storage.devices.get_mut(device_fqdn) {
             Some(device) => {
-                device.expiry = utilities::tools::get_time() + 60.0;
                 device.last_report = utilities::tools::get_time_msecs();
                 return;
             },
@@ -99,7 +75,6 @@ impl IMDS {
         let hostname = fqdn_splitted[0];
         let dm = models::metrics::DeviceMetrics {
             last_report: 0,
-            expiry: utilities::tools::get_time() + 60.0,
             fqdn: device_fqdn.clone(),
             hostname: hostname.to_string(),
             up: None,
@@ -160,14 +135,12 @@ impl IMDS {
                 if target_interface.name != *name { target_interface.name = name.clone(); }
                 target_interface.neighbors = neighbors;
                 target_interface.speed_override = speed_override;
-                target_interface.expiry = utilities::tools::get_time() + 60.0;
                 return;
             },
             None => {}
         }
         device.interfaces.insert(if_index, models::metrics::InterfaceMetrics {
             last_report: 0,
-            expiry: utilities::tools::get_time() + 60.0,
             name: name.clone(),
             neighbors: neighbors,
             speed_override: speed_override,
