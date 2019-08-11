@@ -130,6 +130,11 @@ impl ClientLocation {
     pub fn update(self: &ClientLocation, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
         return diesel::update(client_locations::table.find(self.id)).set(self).execute(connection);
     }
+
+    pub fn delete(self: &ClientLocation, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+        return diesel::delete(client_locations::table.find(self.id)).execute(connection);
+    }
+
     pub fn by_ip(ip_address: &String, connection: &PgConnection) -> Option<ClientLocation> {
         match client_locations::table
             .filter(client_locations::ip_address.eq(ip_address))
@@ -286,9 +291,19 @@ impl Device {
                     // TODO: log
                 }
             }
-            for interface in self.interfaces(connection).iter() {
-                if let Err(d) = interface.delete(connection) {
-                    // TODO: log
+        }
+
+        for interface in self.interfaces(connection).iter() {
+            if let Err(d) = interface.delete(connection) {
+                // TODO: log
+                println!("{}", d);
+            }
+        }
+
+        if let Ok(client_location_infos) = ClientLocation::belonging_to(self).load(connection) {
+            let cl_info_vec: Vec<ClientLocation> = client_location_infos;
+            for client_location_info in cl_info_vec.iter() {
+                if let Err(d) = client_location_info.delete(connection) {
                     println!("{}", d);
                 }
             }
