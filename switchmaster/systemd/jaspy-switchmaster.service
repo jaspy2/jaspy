@@ -1,0 +1,13 @@
+[Unit]
+Description=jaspy-switchmaster
+After=jaspy-nexus.service
+Requisite=jaspy-nexus.service
+
+[Service]
+Type=simple
+User=jaspy
+Group=jaspy
+ExecStart=/usr/lib/jaspy/switchmaster/Jaspy.Switchmaster
+
+[Install]
+WantedBy=multi-user.target
