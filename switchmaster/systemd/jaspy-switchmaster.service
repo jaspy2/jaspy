@@ -7,6 +7,7 @@ Requisite=jaspy-nexus.service
 Type=simple
 User=jaspy
 Group=jaspy
+WorkingDirectory=/usr/lib/jaspy/switchmaster
 ExecStart=/usr/lib/jaspy/switchmaster/Jaspy.Switchmaster
 
 [Install]

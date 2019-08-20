@@ -85,8 +85,16 @@ namespace Jaspy.Switchmaster.Controllers
                 return NotFound();
             }
 
-            match.DeployState = model.DeployState;
-            match.Configured = model.Configured;
+            if (model.DeployState.HasValue)
+            {
+                match.DeployState = model.DeployState.Value;                
+            }
+
+            if (model.Configured.HasValue)
+            {
+                match.Configured = model.Configured.Value;
+            }
+            
             await _dbContext.SaveChangesAsync();
 
             await _hubContext.Clients.All.SendAsync("Update", model);

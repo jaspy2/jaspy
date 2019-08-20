@@ -6,8 +6,8 @@ namespace Jaspy.Switchmaster.Data.Models
     public class SwitchViewModel
     {
         public string Fqdn { get; set; }
-        public bool Configured { get; set; }
-        public DeployState DeployState { get; set; }
+        public bool? Configured { get; set; }
+        public DeployState? DeployState { get; set; }
     }
     
     public class SynchronizationResult

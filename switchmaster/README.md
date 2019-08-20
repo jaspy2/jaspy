@@ -25,12 +25,16 @@ After installing the requirements publish `Jaspy.Switchmaster` for your target p
 
 ### Example Apache reverse proxy configuration
 ```
-ProxyPass "/switchmaster/" "http://127.0.0.1:5000/"
-ProxyPassReverse "/switchmaster/" "http://127.0.0.1:5000/"
+    ProxyPass "/switchmaster/" "http://127.0.0.1:5000/"
+    ProxyPassReverse "/switchmaster/" "http://127.0.0.1:5000/"
+    
+    RewriteEngine on
+    RewriteCond %{HTTP:Upgrade} websocket               [NC]
+    RewriteRule /hubs/(.*)      ws://localhost:5000/hubs/$1  [P]
 
-ProxyPass "/hubs/switch" "http://127.0.0.1:5000/hubs/switch"
-ProxyPassReverse "/hubs/switch" "http://127.0.0.1:5000/switch"
+    ProxyPass "/hubs/switch" "http://127.0.0.1:5000/hubs/switch"
+    ProxyPassReverse "/hubs/switch" "http://127.0.0.1:5000/switch"
 
-ProxyPass "/hubs" "ws://127.0.0.1:5000/hubs"
-ProxyPassReverse "/hubs" "ws://127.0.0.1:5000/hubs"
+    ProxyPass "/hubs" "ws://127.0.0.1:5000/hubs"
+    ProxyPassReverse "/hubs" "ws://127.0.0.1:5000/hubs"
 ```
