@@ -1,42 +1,15 @@
 # jaspy
 
-## Deployment
+## Debian package (you need docker for the build)
 
-### Debian package from sources
-
-#### Install necessary build-dependencies (stretch)
 ```
-apt install libpq-dev liboping-dev libtool
-
-# Install golang-go if you need to build snmpbot (you probably do)
-apt install -t stretch-backports golang-go
+$ cd /jaspy-source
+$ cd build
+$ ./build-debian.sh
+$ ls output/debian/
+jaspy_2.2.0-10-gc6fafaf_amd64.deb  snmpbot_2.2.0-10-gc6fafaf_amd64.deb
 ```
 
-#### Clone and build jaspy deb-package
-```
-git clone https://github.com/jaspy2/jaspy.git
-cd jaspy/debian
-./build.sh
+And then just `dpkg -i` :)
 
-# If you are building snmpbot, proceed to run following
-cd snmpbot
-./build.sh
-```
-
-### Docker (outdated, incomplete)
-Install [Docker](https://docs.docker.com/install/) and
-[docker-compose](https://docs.docker.com/compose/install/)
-##### Clone repo
-```
-git clone https://github.com/jaspy2/jaspy.git
-```
-##### Modify config
-```
-cd jaspy
-$EDITOR jaspy.env
-```
-##### Run compose
-```
-docker-compose up -d  
-```
 
