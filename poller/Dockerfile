@@ -1,11 +1,7 @@
-FROM alpine:latest AS builder
-
-WORKDIR /usr/src/jaspy-poller
+FROM rust:1-slim-buster AS poller_builder
+WORKDIR /usr/src/poller
+RUN apt-get update && apt-get -y install pkg-config libssl-dev
+RUN rustup default nightly
 COPY . .
-RUN apk add --no-cache cargo libgcc openssl-dev rust && \
-    cargo build --release
-
-FROM alpine:latest
-RUN apk add --no-cache libgcc
-COPY --from=builder /usr/src/jaspy-poller/target/release/jaspy-poller /usr/bin/jaspy-poller
-ENTRYPOINT ["jaspy-poller"]
+RUN cargo build --release
+CMD cp target/release/jaspy-poller /output/jaspy-poller

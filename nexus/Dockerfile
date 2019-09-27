@@ -1,18 +1,16 @@
-FROM rust:1.32.0-slim-stretch AS builder
+FROM rust:1-slim-buster AS nexus_builder
 WORKDIR /usr/src/nexus
-COPY . .
-RUN apt-get update && apt-get -y install default-libmysqlclient-dev libpq-dev libsqlite3-dev libzmq3-dev pkg-config && \
-    # Temporarily bump to nightly because of Pear
-    rustup update nightly && \
-    rustup default nightly && \
-    cargo build --release
-
-FROM alpine:latest
-RUN apk add --no-cache cargo zeromq-dev postgresql-dev mariadb-dev sqlite-dev pkgconfig && \
-    cargo install diesel_cli && \
-    rm -rf /var/lib/apt/lists/*
-COPY --from=builder /usr/src/nexus/target/release/jaspy-nexus /usr/bin/jaspy-nexus
-COPY --from=builder /usr/src/nexus/migrations /opt/jaspy/migrations
-COPY ./entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+RUN apt-get update
+RUN apt-get -y install man
+RUN for man in $(seq 0 9); do mkdir /usr/share/man/man${man}; done
+RUN apt-get -y install libpq-dev pkg-config postgresql
+RUN rustup default nightly
+RUN cargo install diesel_cli --no-default-features --features "postgres"
+COPY ./Cargo.toml ./Cargo.toml
+COPY ./src ./src
+COPY ./diesel.toml ./diesel.toml
+COPY ./migrations ./migrations
+RUN su -c 'pg_ctlcluster 11 main start && createuser root && createdb root -O root' postgres && diesel --database-url postgresql:///root migration run && diesel --database-url postgresql:///root print-schema
+RUN cat /usr/src/nexus/src/schema.rs
+RUN cargo build --release
+CMD cp -a target/release/jaspy-nexus /output/jaspy-nexus && cp -a /usr/local/cargo/bin/diesel /output/diesel && cp -a migrations /output/migrations

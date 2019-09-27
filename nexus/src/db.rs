@@ -29,7 +29,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Connection {
     type Error = ();
 
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Connection, ()> {
-        let pool = request.guard::<State<Pool>>()?;
+        let pool = try_outcome!(request.guard::<State<Pool>>());
         match pool.get() {
             Ok(conn) => Outcome::Success(Connection(conn)),
             Err(_) => Outcome::Failure((Status::ServiceUnavailable, ()))

@@ -1,14 +1,8 @@
-FROM alpine:latest AS builder
-
-WORKDIR /usr/src/snmptrapd-reader
+FROM rust:1-slim-buster AS snmptrapd_reader_builder
+WORKDIR /usr/src/snmptrapd_reader
+RUN apt-get update && apt-get -y install libssl-dev pkg-config
+RUN rustup default nightly
 COPY . .
-RUN apk add --no-cache libgcc openssl-dev pkgconfig rust cargo && \
-    cargo build --release
+RUN cargo build --release
+CMD cp target/release/jaspy-snmptrapd-reader /output/jaspy-snmptrapd-reader
 
-FROM alpine:latest
-COPY --from=builder /usr/src/snmptrapd-reader/target/release/jaspy-snmptrapd-reader /usr/bin/jaspy-snmptrapd-reader
-RUN apk --no-cache add net-snmp && \
-		echo "traphandle IF-MIB::linkUp /usr/bin/jaspy-snmptrapd-reader ${JASPY_URL}" >> /etc/snmp/snmptrapd.conf && \
-		echo "traphandle IF-MIB::linkDown /usr/bin/jaspy-snmptrapd-reader ${JASPY_URL}" >> /etc/snmp/snmptrapd.conf
-
-ENTRYPOINT ["snmptrapd", "-L", "o", "-f"]
