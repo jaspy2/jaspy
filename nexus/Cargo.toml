@@ -6,7 +6,8 @@ authors = ["Antti Tönkyrä <daedalus@pingtimeout.net>"]
 [dependencies]
 config = "*"
 dotenv = "*"
-rocket = "*"
+rocket = { git = "https://github.com/SergioBenitez/Rocket?rev=4e6a7ddd" }
+rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket?rev=4e6a7ddd" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
 diesel = { version = "*", features = ["postgres"] }
@@ -14,9 +15,4 @@ r2d2 = "*"
 r2d2-diesel = "*"
 time = "*"
 rumqtt = "*"
-
-[dependencies.rocket_contrib]
-version = "*"
-default-features = false
-features = ["json"]
 

@@ -1,9 +1,0 @@
-FROM nexus_builder AS builder
-
-FROM rust:1.32.0-slim
-RUN apt-get update && \
-    apt-get -y install libzmq5 libpq5
-COPY --from=builder /usr/src/nexus/target/release/jaspy-nexus /usr/bin/jaspy-nexus
-COPY ./entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
