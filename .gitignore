@@ -4,5 +4,4 @@ jaspy.env
 /env
 .idea/
 vendor/
-build/
 /build/output/*
