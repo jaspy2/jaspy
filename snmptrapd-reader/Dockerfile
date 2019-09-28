@@ -2,7 +2,8 @@ FROM rust:1-slim-buster AS builder
 WORKDIR /usr/src/snmptrapd_reader
 RUN apt-get update && apt-get -y install libssl-dev pkg-config
 RUN rustup default nightly
-COPY . .
+COPY ./Cargo.toml ./Cargo.toml
+COPY ./src ./src
 RUN cargo build --release
 CMD cp target/release/jaspy-snmptrapd-reader /output/jaspy-snmptrapd-reader
 
