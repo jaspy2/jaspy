@@ -1,4 +1,4 @@
-FROM rust:1-slim-buster AS nexus_builder
+FROM rust:1-slim-buster AS builder
 WORKDIR /usr/src/nexus
 RUN apt-get update
 RUN apt-get -y install man

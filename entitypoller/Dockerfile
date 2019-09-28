@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:buster-slim AS builder
 WORKDIR /usr/src/entitypoller
 RUN apt-get update && apt-get -y install golang-go git
 ENV GOPATH="/usr/src/entitypoller/build"

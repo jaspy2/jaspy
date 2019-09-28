@@ -1,4 +1,5 @@
-FROM debian:buster-slim
+ARG DEBIAN_VERSION=buster-slim
+FROM debian:${DEBIAN_VERSION}
 WORKDIR /usr/src/jaspy/root
 RUN apt-get update && apt-get -y install ruby ruby-dev libffi-dev build-essential
 RUN gem install fpm
@@ -18,6 +19,9 @@ COPY output/nexus/diesel ./usr/lib/jaspy/diesel
 COPY output/poller/jaspy-poller ./usr/lib/jaspy/jaspy-poller
 COPY output/pinger/jaspy-pinger ./usr/lib/jaspy/jaspy-pinger
 COPY output/snmptrapd-reader/jaspy-snmptrapd-reader ./usr/lib/jaspy/jaspy-snmptrapd-reader
+
+RUN mkdir ./usr/lib/jaspy/switchmaster
+COPY output/switchmaster/* ./usr/lib/jaspy/switchmaster/
 
 COPY debian/systemd.jaspy/*.service ./etc/systemd/system/
 

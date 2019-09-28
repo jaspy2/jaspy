@@ -6,10 +6,10 @@ version="$(git describe --tags | grep -oE '[0-9].+')"
 built_components=""
 
 # buildable components
-buildable_components="nexus poller pinger snmptrapd-reader discover snmpbot entitypoller"
+buildable_components="nexus poller pinger snmptrapd-reader discover snmpbot entitypoller switchmaster"
 for build_component in ${buildable_components}; do
     pushd "${current_dir}/../${build_component}"
-    docker build -f Dockerfile -t "jaspy/${build_component}:${version}" .
+    docker build -f Dockerfile --target builder -t "jaspy/${build_component}_builder:${version}" .
     built_components="${built_components} ${build_component}"
     popd
 done
@@ -18,7 +18,7 @@ for component in ${built_components}; do
     component_target="${build_target}/${component}"
     mkdir -p "${component_target}"
     rm -rf "${component_target}/" 2>/dev/null || true
-    docker run --rm -v "${component_target}:/output" "jaspy/${component}:${version}"
+    docker run --rm -v "${component_target}:/output" "jaspy/${component}_builder:${version}"
 done
 
 # cli
