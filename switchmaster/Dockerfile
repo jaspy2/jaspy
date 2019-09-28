@@ -27,7 +27,7 @@ COPY . .
 
 RUN dotnet publish --self-contained -r $RuntimeIdentifier -c $Configuration -o /app ./src/Jaspy.Switchmaster
 
-CMD cp -r /app/* /output
+CMD cp -r /app/* /output && chmod +x /output/Jaspy.Switchmaster
 
 FROM mcr.microsoft.com/dotnet/core/aspnet:latest
 
