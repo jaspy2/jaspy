@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:buster-slim AS builder
 WORKDIR /usr/lib/jaspy/discover
 COPY discover.py discover.py
 COPY lib lib

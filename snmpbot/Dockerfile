@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:buster-slim AS builder
 WORKDIR /usr/src/snmpbot
 RUN apt-get update && apt-get -y install golang-go git
 RUN go get github.com/qmsk/snmpbot/cmd/snmpbot

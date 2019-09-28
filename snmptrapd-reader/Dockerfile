@@ -1,4 +1,4 @@
-FROM rust:1-slim-buster AS snmptrapd_reader_builder
+FROM rust:1-slim-buster AS builder
 WORKDIR /usr/src/snmptrapd_reader
 RUN apt-get update && apt-get -y install libssl-dev pkg-config
 RUN rustup default nightly

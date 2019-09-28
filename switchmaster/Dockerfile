@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/core/sdk:latest AS builder
+FROM mcr.microsoft.com/dotnet/core/sdk:2.2 AS builder
 ARG Configuration=Release
 ARG RuntimeIdentifier=linux-x64
 
