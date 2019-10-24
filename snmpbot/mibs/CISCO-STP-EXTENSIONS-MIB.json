@@ -1,0 +1,1888 @@
+{
+  "Name": "CISCO-STP-EXTENSIONS-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.82",
+  "Objects": [
+    {
+      "Name": "stpxUplinkFastEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxUplinkFastTransitions",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "stpxUplinkStationLearningGenRate",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.1.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 32000,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxUplinkStationLearningFrames",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.1.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "stpxUplinkFastOperEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxPreferredVlansMap",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.2.1.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 128
+      }
+    },
+    {
+      "Name": "stpxPreferredVlansMap2k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.2.1.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxPreferredVlansMap3k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.2.1.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxPreferredVlansMap4k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.2.1.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxPVSTVlanIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.2.2.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "stpxPVSTVlanEnable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.2.2.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxVlanIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.3.1.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "stpxPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.3.1.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxInconsistentState",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.3.1.1.3",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "typeInconsistent"
+        },
+        {
+          "Bit": 1,
+          "Name": "pvidInconsistent"
+        }
+      ]
+    },
+    {
+      "Name": "stpxBackboneFastEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.4.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxBackboneFastInInferiorBPDUs",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.4.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "stpxBackboneFastInRLQRequestPDUs",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.4.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "stpxBackboneFastInRLQResponsePDUs",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.4.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "stpxBackboneFastOutRLQRequestPDUs",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.4.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "stpxBackboneFastOutRLQResponsePDUs",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.4.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "stpxBackboneFastOperEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.4.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxRootGuardConfigPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.5.1.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxRootGuardConfigEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.5.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxRootInconsistencyIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.5.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxRootInconsistencyPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.5.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxRootInconsistencyState",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.5.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxSpanningTreeType",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.6.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "pvstPlus",
+          "Value": 1
+        },
+        {
+          "Name": "mistp",
+          "Value": 2
+        },
+        {
+          "Name": "mistpPvstPlus",
+          "Value": 3
+        },
+        {
+          "Name": "mst",
+          "Value": 4
+        },
+        {
+          "Name": "rapidPvstPlus",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "stpxSpanningTreePathCostMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.6.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "short",
+          "Value": 1
+        },
+        {
+          "Name": "long",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxLongStpPortPathCost",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.6.3.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxExtendedSysIDAdminEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.6.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxExtendedSysIDOperEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.6.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxNotificationEnable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.6.6",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "newRoot"
+        },
+        {
+          "Bit": 1,
+          "Name": "topologyChange"
+        },
+        {
+          "Bit": 2,
+          "Name": "inconsistency"
+        },
+        {
+          "Bit": 3,
+          "Name": "rootInconsistency"
+        },
+        {
+          "Bit": 4,
+          "Name": "loopInconsistency"
+        }
+      ]
+    },
+    {
+      "Name": "stpxSpanningTreePathCostOperMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.6.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "short",
+          "Value": 1
+        },
+        {
+          "Name": "long",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxMISTPInstanceNumber",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxMISTPInstanceIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxMISTPInstanceEnable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.2.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxMISTPInstanceVlansMapped",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.2.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMISTPInstanceVlansMapped2k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.2.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMISTPInstanceVlansMapped3k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.2.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMISTPInstanceVlansMapped4k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.2.1.6",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxVlanMISTPInstMapInstIndex",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.3.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxVlanMISTPInstMapEditInstIndex",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.4.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxPreferredMISTPInstancesMap",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.5.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxLoopGuardConfigPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.1.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxLoopGuardConfigEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxLoopGuardConfigMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        },
+        {
+          "Name": "default",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxLoopInconsistencyIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxLoopInconsistencyPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxLoopInconsistencyState",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxLoopGuardGlobalDefaultMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxFastStartBpduGuardEnable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxFastStartBpduFilterEnable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxFastStartPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.3.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxFastStartPortEnable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.3.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxFastStartPortMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.3.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        },
+        {
+          "Name": "enableForTrunk",
+          "Value": 3
+        },
+        {
+          "Name": "default",
+          "Value": 4
+        },
+        {
+          "Name": "network",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "stpxFastStartPortBpduGuardMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.3.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        },
+        {
+          "Name": "default",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxFastStartPortBpduFilterMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.3.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        },
+        {
+          "Name": "default",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxFastStartGlobalDefaultMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxFastStartOperModeInstIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.5.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxFastStartOperModePortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.5.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxFastStartOperMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.5.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxBpduSkewingDetectionEnable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.10.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxBpduSkewingInstanceIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.10.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxBpduSkewingPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.10.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxBpduSkewingLastSkewDuration",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.10.2.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxBpduSkewingWorstSkewDuration",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.10.2.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxBpduSkewingWorstSkewTime",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.10.2.1.5",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "stpxMSTMaxInstanceNumber",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxMSTRegionName",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "stpxMSTRegionRevision",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.4.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceVlansMapped",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.4.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceVlansMapped2k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.4.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceVlansMapped3k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.4.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceVlansMapped4k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.4.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceRemainingHopCount",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.4.1.6",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 40,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTRegionEditBufferStatus",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "released",
+          "Value": 1
+        },
+        {
+          "Name": "acquiredBySnmp",
+          "Value": 2
+        },
+        {
+          "Name": "acquiredByNonSnmp",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxMSTRegionEditBufferOperation",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "acquire",
+          "Value": 2
+        },
+        {
+          "Name": "releaseWithForce",
+          "Value": 3
+        },
+        {
+          "Name": "commit",
+          "Value": 4
+        },
+        {
+          "Name": "rollBack",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "stpxMSTRegionEditName",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.7",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "stpxMSTRegionEditRevision",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.8",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceEditIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.9.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceEditVlansMap",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.9.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceEditVlansMap2k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.9.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceEditVlansMap3k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.9.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTInstanceEditVlansMap4k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.9.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxPreferredMSTInstancesMap",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.10.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxMSTPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.11.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxMSTPortAdminLinkType",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.11.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "pointToPoint",
+          "Value": 1
+        },
+        {
+          "Name": "shared",
+          "Value": 2
+        },
+        {
+          "Name": "auto",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxMSTPortOperLinkType",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.11.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "pointToPoint",
+          "Value": 1
+        },
+        {
+          "Name": "shared",
+          "Value": 2
+        },
+        {
+          "Name": "other",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxMSTPortProtocolMigration",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.11.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxMSTPortStatus",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.11.1.5",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "edge"
+        },
+        {
+          "Bit": 1,
+          "Name": "boundary"
+        },
+        {
+          "Bit": 2,
+          "Name": "pvst"
+        },
+        {
+          "Bit": 3,
+          "Name": "stp"
+        }
+      ]
+    },
+    {
+      "Name": "stpxMSTPortRoleInstanceIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.12.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxMSTPortRolePortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.12.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxMSTPortRoleValue",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.12.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 1
+        },
+        {
+          "Name": "root",
+          "Value": 2
+        },
+        {
+          "Name": "designated",
+          "Value": 3
+        },
+        {
+          "Name": "alternate",
+          "Value": 4
+        },
+        {
+          "Name": "backUp",
+          "Value": 5
+        },
+        {
+          "Name": "boundary",
+          "Value": 6
+        },
+        {
+          "Name": "master",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "stpxMSTMaxHopCount",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.13",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 40,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxRSTPPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.1.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxRSTPPortAdminLinkType",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "pointToPoint",
+          "Value": 1
+        },
+        {
+          "Name": "shared",
+          "Value": 2
+        },
+        {
+          "Name": "auto",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxRSTPPortOperLinkType",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "pointToPoint",
+          "Value": 1
+        },
+        {
+          "Name": "shared",
+          "Value": 2
+        },
+        {
+          "Name": "other",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxRSTPPortProtocolMigration",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxRSTPPortRoleInstanceIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxRSTPPortRolePortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxRSTPPortRoleValue",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 1
+        },
+        {
+          "Name": "root",
+          "Value": 2
+        },
+        {
+          "Name": "designated",
+          "Value": 3
+        },
+        {
+          "Name": "alternate",
+          "Value": 4
+        },
+        {
+          "Name": "backUp",
+          "Value": 5
+        },
+        {
+          "Name": "boundary",
+          "Value": 6
+        },
+        {
+          "Name": "master",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "stpxRSTPTransmitHoldCount",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxRPVSTPortVlanIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.13.1.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "stpxRPVSTPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.13.1.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxRPVSTPortStatus",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.13.1.1.3",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "edge"
+        },
+        {
+          "Bit": 1,
+          "Name": "unused1"
+        },
+        {
+          "Bit": 2,
+          "Name": "unused2"
+        },
+        {
+          "Bit": 3,
+          "Name": "stp"
+        },
+        {
+          "Bit": 4,
+          "Name": "dispute"
+        }
+      ]
+    },
+    {
+      "Name": "stpxSMSTMaxInstances",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTMaxInstanceID",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTRegionRevision",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTRegionEditRevision",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTInstanceIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.5.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTInstanceVlansMapped1k2k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.5.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxSMSTInstanceVlansMapped3k4k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.5.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxSMSTInstanceRemainingHopCount",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.5.1.4",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": -1
+      }
+    },
+    {
+      "Name": "stpxSMSTInstanceCISTRegionalRoot",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.5.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 8,
+        "Min": 8
+      }
+    },
+    {
+      "Name": "stpxSMSTInstanceCISTIntRootCost",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.5.1.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTInstanceEditIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.6.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTInstanceEditVlansMap1k2k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.6.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxSMSTInstanceEditVlansMap3k4k",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.6.1.3",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 256,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "stpxSMSTInstanceEditRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.6.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "stpxSMSTPortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.7.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "stpxSMSTPortStatus",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.7.1.2",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "edge"
+        },
+        {
+          "Bit": 1,
+          "Name": "boundary"
+        },
+        {
+          "Bit": 2,
+          "Name": "pvst"
+        },
+        {
+          "Bit": 3,
+          "Name": "stp"
+        },
+        {
+          "Bit": 4,
+          "Name": "dispute"
+        },
+        {
+          "Bit": 5,
+          "Name": "rstp"
+        }
+      ]
+    },
+    {
+      "Name": "stpxSMSTPortAdminHelloTime",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.7.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTPortConfigedHelloTime",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.7.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTPortOperHelloTime",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.7.1.5",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": -1
+      }
+    },
+    {
+      "Name": "stpxSMSTPortAdminMSTMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.7.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "preStandard",
+          "Value": 1
+        },
+        {
+          "Name": "auto",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "stpxSMSTPortOperMSTMode",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.7.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "preStandard",
+          "Value": 2
+        },
+        {
+          "Name": "standard",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "stpxSMSTMaxHopCount",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.8",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "stpxSMSTConfigDigest",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.9",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 16,
+        "Min": 16
+      }
+    },
+    {
+      "Name": "stpxSMSTConfigPreStandardDigest",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.10",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 16,
+        "Min": 16
+      }
+    }
+  ],
+  "Tables": [
+    {
+      "AugmentsEntry": "CISCO-VTP-MIB::vlanTrunkPortEntry",
+      "EntryName": "stpxPreferredVlansEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxPreferredVlansMap",
+        "CISCO-STP-EXTENSIONS-MIB::stpxPreferredVlansMap2k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxPreferredVlansMap3k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxPreferredVlansMap4k"
+      ],
+      "Name": "stpxPreferredVlansTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.2.1"
+    },
+    {
+      "EntryName": "stpxPVSTVlanEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxPVSTVlanIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxPVSTVlanEnable"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxPVSTVlanIndex"
+      ],
+      "Name": "stpxPVSTVlanTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.2.2"
+    },
+    {
+      "EntryName": "stpxInconsistencyEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxVlanIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxInconsistentState"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxVlanIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxPortIndex"
+      ],
+      "Name": "stpxInconsistencyTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.3.1"
+    },
+    {
+      "EntryName": "stpxRootGuardConfigEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRootGuardConfigPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRootGuardConfigEnabled"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRootGuardConfigPortIndex"
+      ],
+      "Name": "stpxRootGuardConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.5.1"
+    },
+    {
+      "EntryName": "stpxRootInconsistencyEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRootInconsistencyIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRootInconsistencyPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRootInconsistencyState"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRootInconsistencyIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRootInconsistencyPortIndex"
+      ],
+      "Name": "stpxRootInconsistencyTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.5.2"
+    },
+    {
+      "AugmentsEntry": "BRIDGE-MIB::dot1dStpPortEntry",
+      "EntryName": "stpxLongStpPortPathCostEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxLongStpPortPathCost"
+      ],
+      "Name": "stpxLongStpPortPathCostTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.6.3"
+    },
+    {
+      "EntryName": "stpxMISTPInstanceEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMISTPInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMISTPInstanceEnable",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMISTPInstanceVlansMapped",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMISTPInstanceVlansMapped2k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMISTPInstanceVlansMapped3k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMISTPInstanceVlansMapped4k"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMISTPInstanceIndex"
+      ],
+      "Name": "stpxMISTPInstanceTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.2"
+    },
+    {
+      "AugmentsEntry": "CISCO-VTP-MIB::vtpVlanEntry",
+      "EntryName": "stpxVlanMISTPInstMapEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxVlanMISTPInstMapInstIndex"
+      ],
+      "Name": "stpxVlanMISTPInstMapTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.3"
+    },
+    {
+      "AugmentsEntry": "CISCO-VTP-MIB::vtpVlanEditEntry",
+      "EntryName": "stpxVlanMISTPInstMapEditEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxVlanMISTPInstMapEditInstIndex"
+      ],
+      "Name": "stpxVlanMISTPInstMapEditTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.4"
+    },
+    {
+      "AugmentsEntry": "CISCO-VTP-MIB::vlanTrunkPortEntry",
+      "EntryName": "stpxPreferredMISTPInstancesEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxPreferredMISTPInstancesMap"
+      ],
+      "Name": "stpxPreferredMISTPInstancesTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.7.5"
+    },
+    {
+      "EntryName": "stpxLoopGuardConfigEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopGuardConfigPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopGuardConfigEnabled",
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopGuardConfigMode"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopGuardConfigPortIndex"
+      ],
+      "Name": "stpxLoopGuardConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.1"
+    },
+    {
+      "EntryName": "stpxLoopInconsistencyEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopInconsistencyIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopInconsistencyPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopInconsistencyState"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopInconsistencyIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxLoopInconsistencyPortIndex"
+      ],
+      "Name": "stpxLoopInconsistencyTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.8.2"
+    },
+    {
+      "EntryName": "stpxFastStartPortEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartPortEnable",
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartPortMode",
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartPortBpduGuardMode",
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartPortBpduFilterMode"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartPortIndex"
+      ],
+      "Name": "stpxFastStartPortTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.3"
+    },
+    {
+      "EntryName": "stpxFastStartOperModeEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartOperModeInstIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartOperModePortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartOperMode"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartOperModeInstIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxFastStartOperModePortIndex"
+      ],
+      "Name": "stpxFastStartOperModeTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.9.5"
+    },
+    {
+      "EntryName": "stpxBpduSkewingEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxBpduSkewingInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxBpduSkewingPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxBpduSkewingLastSkewDuration",
+        "CISCO-STP-EXTENSIONS-MIB::stpxBpduSkewingWorstSkewDuration",
+        "CISCO-STP-EXTENSIONS-MIB::stpxBpduSkewingWorstSkewTime"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxBpduSkewingInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxBpduSkewingPortIndex"
+      ],
+      "Name": "stpxBpduSkewingTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.10.2"
+    },
+    {
+      "EntryName": "stpxMSTInstanceEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceVlansMapped",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceVlansMapped2k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceVlansMapped3k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceVlansMapped4k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceRemainingHopCount"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceIndex"
+      ],
+      "Name": "stpxMSTInstanceTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.4"
+    },
+    {
+      "EntryName": "stpxMSTInstanceEditEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceEditIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceEditVlansMap",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceEditVlansMap2k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceEditVlansMap3k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceEditVlansMap4k"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTInstanceEditIndex"
+      ],
+      "Name": "stpxMSTInstanceEditTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.9"
+    },
+    {
+      "AugmentsEntry": "CISCO-VTP-MIB::vlanTrunkPortEntry",
+      "EntryName": "stpxPreferredMSTInstancesEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxPreferredMSTInstancesMap"
+      ],
+      "Name": "stpxPreferredMSTInstancesTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.10"
+    },
+    {
+      "EntryName": "stpxMSTPortEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortAdminLinkType",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortOperLinkType",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortProtocolMigration",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortIndex"
+      ],
+      "Name": "stpxMSTPortTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.11"
+    },
+    {
+      "EntryName": "stpxMSTPortRoleEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortRoleInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortRolePortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortRoleValue"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortRoleInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxMSTPortRolePortIndex"
+      ],
+      "Name": "stpxMSTPortRoleTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.11.12"
+    },
+    {
+      "EntryName": "stpxRSTPPortEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortAdminLinkType",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortOperLinkType",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortProtocolMigration"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortIndex"
+      ],
+      "Name": "stpxRSTPPortTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.1"
+    },
+    {
+      "EntryName": "stpxRSTPPortRoleEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRolePortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleValue"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRolePortIndex"
+      ],
+      "Name": "stpxRSTPPortRoleTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.12.2"
+    },
+    {
+      "EntryName": "stpxRPVSTPortEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRPVSTPortVlanIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRPVSTPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRPVSTPortStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxRPVSTPortVlanIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxRPVSTPortIndex"
+      ],
+      "Name": "stpxRPVSTPortTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.13.1"
+    },
+    {
+      "EntryName": "stpxSMSTInstanceEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceVlansMapped1k2k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceVlansMapped3k4k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceRemainingHopCount",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceCISTRegionalRoot",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceCISTIntRootCost"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceIndex"
+      ],
+      "Name": "stpxSMSTInstanceTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.5"
+    },
+    {
+      "EntryName": "stpxSMSTInstanceEditEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceEditIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceEditVlansMap1k2k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceEditVlansMap3k4k",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceEditRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTInstanceEditIndex"
+      ],
+      "Name": "stpxSMSTInstanceEditTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.6"
+    },
+    {
+      "EntryName": "stpxSMSTPortEntry",
+      "EntryObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTPortIndex",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTPortStatus",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTPortAdminHelloTime",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTPortConfigedHelloTime",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTPortOperHelloTime",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTPortAdminMSTMode",
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTPortOperMSTMode"
+      ],
+      "IndexObjects": [
+        "CISCO-STP-EXTENSIONS-MIB::stpxSMSTPortIndex"
+      ],
+      "Name": "stpxSMSTPortTable",
+      "OID": ".1.3.6.1.4.1.9.9.82.1.14.7"
+    }
+  ]
+}

@@ -1046,6 +1046,134 @@
         {
           "Name": "capwapWtpVirtualRadio",
           "Value": 254
+        },
+        {
+          "Name": "bits",
+          "Value": 255
+        },
+        {
+          "Name": "docsCableUpstreamRfPort",
+          "Value": 256
+        },
+        {
+          "Name": "cableDownstreamRfPort",
+          "Value": 257
+        },
+        {
+          "Name": "vmwareVirtualNic",
+          "Value": 258
+        },
+        {
+          "Name": "ieee802154",
+          "Value": 259
+        },
+        {
+          "Name": "otnOdu",
+          "Value": 260
+        },
+        {
+          "Name": "otnOtu",
+          "Value": 261
+        },
+        {
+          "Name": "ifVfiType",
+          "Value": 262
+        },
+        {
+          "Name": "g9981",
+          "Value": 263
+        },
+        {
+          "Name": "g9982",
+          "Value": 264
+        },
+        {
+          "Name": "g9983",
+          "Value": 265
+        },
+        {
+          "Name": "aluEpon",
+          "Value": 266
+        },
+        {
+          "Name": "aluEponOnu",
+          "Value": 267
+        },
+        {
+          "Name": "aluEponPhysicalUni",
+          "Value": 268
+        },
+        {
+          "Name": "aluEponLogicalLink",
+          "Value": 269
+        },
+        {
+          "Name": "aluGponOnu",
+          "Value": 270
+        },
+        {
+          "Name": "aluGponPhysicalUni",
+          "Value": 271
+        },
+        {
+          "Name": "vmwareNicTeam",
+          "Value": 272
+        },
+        {
+          "Name": "docsOfdmDownstream",
+          "Value": 277
+        },
+        {
+          "Name": "docsOfdmaUpstream",
+          "Value": 278
+        },
+        {
+          "Name": "gfast",
+          "Value": 279
+        },
+        {
+          "Name": "sdci",
+          "Value": 280
+        },
+        {
+          "Name": "xboxWireless",
+          "Value": 281
+        },
+        {
+          "Name": "fastdsl",
+          "Value": 282
+        },
+        {
+          "Name": "docsCableScte55d1FwdOob",
+          "Value": 283
+        },
+        {
+          "Name": "docsCableScte55d1RetOob",
+          "Value": 284
+        },
+        {
+          "Name": "docsCableScte55d2DsOob",
+          "Value": 285
+        },
+        {
+          "Name": "docsCableScte55d2UsOob",
+          "Value": 286
+        },
+        {
+          "Name": "docsCableNdf",
+          "Value": 287
+        },
+        {
+          "Name": "docsCableNdr",
+          "Value": 288
+        },
+        {
+          "Name": "ptm",
+          "Value": 289
+        },
+        {
+          "Name": "ghn",
+          "Value": 290
         }
       ]
     },
