@@ -164,12 +164,12 @@ func SNMPBotGetTable(httpClient *http.Client, fqdn string, community string, tab
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(&tableIndex)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode JSON from SNMPBOT API, %v", err)
+		return nil, fmt.Errorf("Failed to decode JSON from SNMPBOT API (%s), %v", url, err)
 	}
 	return &tableIndex, nil
 }
 
-func GetEntitiesByPhysicalIndex(httpClient *http.Client,  device *JaspyDevice,
+func GetEntitiesByPhysicalIndex(httpClient *http.Client, device *JaspyDevice,
 	entityIdentities *map[int64]EntityIdentity, valueField string, scaleField string, precisionField string,
 	valueTypeField string, tableField string) error {
 	table, err := SNMPBotGetTable(httpClient, device.SNMPCommunity, device.FQDN,
