@@ -60,12 +60,12 @@
     {
       "Name": "dot1dBasePortDelayExceededDiscards",
       "OID": ".1.3.6.1.2.1.17.1.4.1.4",
-      "Syntax": "Integer32"
+      "Syntax": "Counter32"
     },
     {
       "Name": "dot1dBasePortMtuExceededDiscards",
       "OID": ".1.3.6.1.2.1.17.1.4.1.5",
-      "Syntax": "Integer32"
+      "Syntax": "Counter32"
     },
     {
       "Name": "dot1dStpProtocolSpecification",
