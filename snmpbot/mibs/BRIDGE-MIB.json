@@ -1,16 +1,19 @@
 {
   "Name": "BRIDGE-MIB",
-  "OID": ".1.3.6.1.2.1.17",
   "Objects": [
     {
       "Name": "dot1dBaseBridgeAddress",
       "OID": ".1.3.6.1.2.1.17.1.1",
-      "Syntax": "SNMPv2-TC::MacAddress"
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
     },
     {
       "Name": "dot1dBaseNumPorts",
       "OID": ".1.3.6.1.2.1.17.1.2",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dBaseType",
@@ -38,7 +41,7 @@
     {
       "Name": "dot1dBasePort",
       "OID": ".1.3.6.1.2.1.17.1.4.1.1",
-      "Syntax": "Integer32",
+      "Syntax": "INTEGER",
       "SyntaxOptions": {
         "Max": 65535,
         "Min": 1
@@ -47,7 +50,7 @@
     {
       "Name": "dot1dBasePortIfIndex",
       "OID": ".1.3.6.1.2.1.17.1.4.1.2",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dBasePortCircuit",
@@ -57,12 +60,12 @@
     {
       "Name": "dot1dBasePortDelayExceededDiscards",
       "OID": ".1.3.6.1.2.1.17.1.4.1.4",
-      "Syntax": "Counter32"
+      "Syntax": "Integer32"
     },
     {
       "Name": "dot1dBasePortMtuExceededDiscards",
       "OID": ".1.3.6.1.2.1.17.1.4.1.5",
-      "Syntax": "Counter32"
+      "Syntax": "Integer32"
     },
     {
       "Name": "dot1dStpProtocolSpecification",
@@ -86,7 +89,7 @@
     {
       "Name": "dot1dStpPriority",
       "OID": ".1.3.6.1.2.1.17.2.2",
-      "Syntax": "Integer32",
+      "Syntax": "INTEGER",
       "SyntaxOptions": {
         "Max": 65535,
         "Min": 0
@@ -100,7 +103,7 @@
     {
       "Name": "dot1dStpTopChanges",
       "OID": ".1.3.6.1.2.1.17.2.4",
-      "Syntax": "Counter32"
+      "Syntax": "Integer32"
     },
     {
       "Name": "dot1dStpDesignatedRoot",
@@ -114,52 +117,52 @@
     {
       "Name": "dot1dStpRootCost",
       "OID": ".1.3.6.1.2.1.17.2.6",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpRootPort",
       "OID": ".1.3.6.1.2.1.17.2.7",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpMaxAge",
       "OID": ".1.3.6.1.2.1.17.2.8",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpHelloTime",
       "OID": ".1.3.6.1.2.1.17.2.9",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpHoldTime",
       "OID": ".1.3.6.1.2.1.17.2.10",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpForwardDelay",
       "OID": ".1.3.6.1.2.1.17.2.11",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpBridgeMaxAge",
       "OID": ".1.3.6.1.2.1.17.2.12",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpBridgeHelloTime",
       "OID": ".1.3.6.1.2.1.17.2.13",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpBridgeForwardDelay",
       "OID": ".1.3.6.1.2.1.17.2.14",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpPort",
       "OID": ".1.3.6.1.2.1.17.2.15.1.1",
-      "Syntax": "Integer32",
+      "Syntax": "INTEGER",
       "SyntaxOptions": {
         "Max": 65535,
         "Min": 1
@@ -168,7 +171,7 @@
     {
       "Name": "dot1dStpPortPriority",
       "OID": ".1.3.6.1.2.1.17.2.15.1.2",
-      "Syntax": "Integer32",
+      "Syntax": "INTEGER",
       "SyntaxOptions": {
         "Max": 255,
         "Min": 0
@@ -223,7 +226,7 @@
     {
       "Name": "dot1dStpPortPathCost",
       "OID": ".1.3.6.1.2.1.17.2.15.1.5",
-      "Syntax": "Integer32",
+      "Syntax": "INTEGER",
       "SyntaxOptions": {
         "Max": 65535,
         "Min": 1
@@ -241,7 +244,7 @@
     {
       "Name": "dot1dStpPortDesignatedCost",
       "OID": ".1.3.6.1.2.1.17.2.15.1.7",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStpPortDesignatedBridge",
@@ -264,26 +267,17 @@
     {
       "Name": "dot1dStpPortForwardTransitions",
       "OID": ".1.3.6.1.2.1.17.2.15.1.10",
-      "Syntax": "Counter32"
-    },
-    {
-      "Name": "dot1dStpPortPathCost32",
-      "OID": ".1.3.6.1.2.1.17.2.15.1.11",
-      "Syntax": "Integer32",
-      "SyntaxOptions": {
-        "Max": 200000000,
-        "Min": 1
-      }
+      "Syntax": "Integer32"
     },
     {
       "Name": "dot1dTpLearnedEntryDiscards",
       "OID": ".1.3.6.1.2.1.17.4.1",
-      "Syntax": "Counter32"
+      "Syntax": "Integer32"
     },
     {
       "Name": "dot1dTpAgingTime",
       "OID": ".1.3.6.1.2.1.17.4.2",
-      "Syntax": "Integer32",
+      "Syntax": "INTEGER",
       "SyntaxOptions": {
         "Max": 1000000,
         "Min": 10
@@ -292,12 +286,16 @@
     {
       "Name": "dot1dTpFdbAddress",
       "OID": ".1.3.6.1.2.1.17.4.3.1.1",
-      "Syntax": "SNMPv2-TC::MacAddress"
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
     },
     {
       "Name": "dot1dTpFdbPort",
       "OID": ".1.3.6.1.2.1.17.4.3.1.2",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dTpFdbStatus",
@@ -329,7 +327,7 @@
     {
       "Name": "dot1dTpPort",
       "OID": ".1.3.6.1.2.1.17.4.4.1.1",
-      "Syntax": "Integer32",
+      "Syntax": "INTEGER",
       "SyntaxOptions": {
         "Max": 65535,
         "Min": 1
@@ -338,45 +336,41 @@
     {
       "Name": "dot1dTpPortMaxInfo",
       "OID": ".1.3.6.1.2.1.17.4.4.1.2",
-      "Syntax": "Integer32"
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dTpPortInFrames",
       "OID": ".1.3.6.1.2.1.17.4.4.1.3",
-      "Syntax": "Counter32"
+      "Syntax": "Integer32"
     },
     {
       "Name": "dot1dTpPortOutFrames",
       "OID": ".1.3.6.1.2.1.17.4.4.1.4",
-      "Syntax": "Counter32"
+      "Syntax": "Integer32"
     },
     {
       "Name": "dot1dTpPortInDiscards",
       "OID": ".1.3.6.1.2.1.17.4.4.1.5",
-      "Syntax": "Counter32"
+      "Syntax": "Integer32"
     },
     {
       "Name": "dot1dStaticAddress",
       "OID": ".1.3.6.1.2.1.17.5.1.1.1",
-      "Syntax": "SNMPv2-TC::MacAddress"
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
     },
     {
       "Name": "dot1dStaticReceivePort",
       "OID": ".1.3.6.1.2.1.17.5.1.1.2",
-      "Syntax": "Integer32",
-      "SyntaxOptions": {
-        "Max": 65535,
-        "Min": 0
-      }
+      "Syntax": "INTEGER"
     },
     {
       "Name": "dot1dStaticAllowedToGoTo",
       "OID": ".1.3.6.1.2.1.17.5.1.1.3",
-      "Syntax": "OCTET STRING",
-      "SyntaxOptions": {
-        "Max": 512,
-        "Min": 0
-      }
+      "Syntax": "OCTET STRING"
     },
     {
       "Name": "dot1dStaticStatus",
@@ -434,8 +428,7 @@
         "BRIDGE-MIB::dot1dStpPortDesignatedCost",
         "BRIDGE-MIB::dot1dStpPortDesignatedBridge",
         "BRIDGE-MIB::dot1dStpPortDesignatedPort",
-        "BRIDGE-MIB::dot1dStpPortForwardTransitions",
-        "BRIDGE-MIB::dot1dStpPortPathCost32"
+        "BRIDGE-MIB::dot1dStpPortForwardTransitions"
       ],
       "IndexObjects": [
         "BRIDGE-MIB::dot1dStpPort"
