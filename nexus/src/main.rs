@@ -1,4 +1,3 @@
-#![feature(custom_attribute)]
 #![feature(plugin)]
 #![feature(proc_macro_hygiene)]
 #[macro_use] extern crate serde;
