@@ -1,0 +1,352 @@
+{
+  "Name": "JUNIPER-DOM-MIB",
+  "OID": ".1.3.6.1.4.1.2636.3.60.1",
+  "Objects": [
+    {
+      "Name": "jnxDomCurrentAlarms",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.1",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "domRxLossSignalAlarm"
+        },
+        {
+          "Bit": 1,
+          "Name": "domRxCDRLossLockAlarm"
+        },
+        {
+          "Bit": 2,
+          "Name": "domRxNotReadyAlarm"
+        },
+        {
+          "Bit": 3,
+          "Name": "domRxLaserPowerHighAlarm"
+        },
+        {
+          "Bit": 4,
+          "Name": "domRxLaserPowerLowAlarm"
+        },
+        {
+          "Bit": 5,
+          "Name": "domTxLaserBiasCurrentHighAlarm"
+        },
+        {
+          "Bit": 6,
+          "Name": "domTxLaserBiasCurrentLowAlarm"
+        },
+        {
+          "Bit": 7,
+          "Name": "domTxLaserOutputPowerHighAlarm"
+        },
+        {
+          "Bit": 8,
+          "Name": "domTxLaserOutputPowerLowAlarm"
+        },
+        {
+          "Bit": 9,
+          "Name": "domTxDataNotReadyAlarm"
+        },
+        {
+          "Bit": 10,
+          "Name": "domTxNotReadyAlarm"
+        },
+        {
+          "Bit": 11,
+          "Name": "domTxLaserFaultAlarm"
+        },
+        {
+          "Bit": 12,
+          "Name": "domTxCDRLossLockAlarm"
+        },
+        {
+          "Bit": 13,
+          "Name": "domModuleTemperatureHighAlarm"
+        },
+        {
+          "Bit": 14,
+          "Name": "domModuleTemperatureLowAlarm"
+        },
+        {
+          "Bit": 15,
+          "Name": "domModuleNotReadyAlarm"
+        },
+        {
+          "Bit": 16,
+          "Name": "domModulePowerDownAlarm"
+        },
+        {
+          "Bit": 17,
+          "Name": "domLinkDownAlarm"
+        },
+        {
+          "Bit": 18,
+          "Name": "domModuleRemovedAlarm"
+        }
+      ]
+    },
+    {
+      "Name": "jnxDomCurrentAlarmDate",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "jnxDomLastAlarms",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.3",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "domRxLossSignalAlarm"
+        },
+        {
+          "Bit": 1,
+          "Name": "domRxCDRLossLockAlarm"
+        },
+        {
+          "Bit": 2,
+          "Name": "domRxNotReadyAlarm"
+        },
+        {
+          "Bit": 3,
+          "Name": "domRxLaserPowerHighAlarm"
+        },
+        {
+          "Bit": 4,
+          "Name": "domRxLaserPowerLowAlarm"
+        },
+        {
+          "Bit": 5,
+          "Name": "domTxLaserBiasCurrentHighAlarm"
+        },
+        {
+          "Bit": 6,
+          "Name": "domTxLaserBiasCurrentLowAlarm"
+        },
+        {
+          "Bit": 7,
+          "Name": "domTxLaserOutputPowerHighAlarm"
+        },
+        {
+          "Bit": 8,
+          "Name": "domTxLaserOutputPowerLowAlarm"
+        },
+        {
+          "Bit": 9,
+          "Name": "domTxDataNotReadyAlarm"
+        },
+        {
+          "Bit": 10,
+          "Name": "domTxNotReadyAlarm"
+        },
+        {
+          "Bit": 11,
+          "Name": "domTxLaserFaultAlarm"
+        },
+        {
+          "Bit": 12,
+          "Name": "domTxCDRLossLockAlarm"
+        },
+        {
+          "Bit": 13,
+          "Name": "domModuleTemperatureHighAlarm"
+        },
+        {
+          "Bit": 14,
+          "Name": "domModuleTemperatureLowAlarm"
+        },
+        {
+          "Bit": 15,
+          "Name": "domModuleNotReadyAlarm"
+        },
+        {
+          "Bit": 16,
+          "Name": "domModulePowerDownAlarm"
+        },
+        {
+          "Bit": 17,
+          "Name": "domLinkDownAlarm"
+        },
+        {
+          "Bit": 18,
+          "Name": "domModuleRemovedAlarm"
+        }
+      ]
+    },
+    {
+      "Name": "jnxDomCurrentWarnings",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.4",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "domRxLaserPowerHighWarning"
+        },
+        {
+          "Bit": 1,
+          "Name": "domRxLaserPowerLowWarning"
+        },
+        {
+          "Bit": 2,
+          "Name": "domTxLaserBiasCurrentHighWarning"
+        },
+        {
+          "Bit": 3,
+          "Name": "domTxLaserBiasCurrentLowWarning"
+        },
+        {
+          "Bit": 4,
+          "Name": "domTxLaserOutputPowerHighWarning"
+        },
+        {
+          "Bit": 5,
+          "Name": "domTxLaserOutputPowerLowWarning"
+        },
+        {
+          "Bit": 6,
+          "Name": "domModuleTemperatureHighWarning"
+        },
+        {
+          "Bit": 7,
+          "Name": "domModuleTemperatureLowWarning"
+        }
+      ]
+    },
+    {
+      "Name": "jnxDomCurrentRxLaserPower",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserBiasCurrent",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserOutputPower",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentModuleTemperature",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentRxLaserPowerHighAlarmThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentRxLaserPowerLowAlarmThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentRxLaserPowerHighWarningThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentRxLaserPowerLowWarningThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserBiasCurrentHighAlarmThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserBiasCurrentLowAlarmThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.14",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserBiasCurrentHighWarningThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserBiasCurrentLowWarningThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.16",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserOutputPowerHighAlarmThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.17",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserOutputPowerLowAlarmThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserOutputPowerHighWarningThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.19",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentTxLaserOutputPowerLowWarningThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.20",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentModuleTemperatureHighAlarmThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.21",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentModuleTemperatureLowAlarmThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.22",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentModuleTemperatureHighWarningThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.23",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "jnxDomCurrentModuleTemperatureLowWarningThreshold",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1.1.24",
+      "Syntax": "Integer32"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "jnxDomCurrentEntry",
+      "EntryObjects": [
+        "JUNIPER-DOM-MIB::jnxDomCurrentAlarms",
+        "JUNIPER-DOM-MIB::jnxDomCurrentAlarmDate",
+        "JUNIPER-DOM-MIB::jnxDomLastAlarms",
+        "JUNIPER-DOM-MIB::jnxDomCurrentWarnings",
+        "JUNIPER-DOM-MIB::jnxDomCurrentRxLaserPower",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserBiasCurrent",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserOutputPower",
+        "JUNIPER-DOM-MIB::jnxDomCurrentModuleTemperature",
+        "JUNIPER-DOM-MIB::jnxDomCurrentRxLaserPowerHighAlarmThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentRxLaserPowerLowAlarmThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentRxLaserPowerHighWarningThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentRxLaserPowerLowWarningThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserBiasCurrentHighAlarmThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserBiasCurrentLowAlarmThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserBiasCurrentHighWarningThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserBiasCurrentLowWarningThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserOutputPowerHighAlarmThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserOutputPowerLowAlarmThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserOutputPowerHighWarningThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentTxLaserOutputPowerLowWarningThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentModuleTemperatureHighAlarmThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentModuleTemperatureLowAlarmThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentModuleTemperatureHighWarningThreshold",
+        "JUNIPER-DOM-MIB::jnxDomCurrentModuleTemperatureLowWarningThreshold"
+      ],
+      "IndexObjects": [
+        "IF-MIB::ifIndex"
+      ],
+      "Name": "jnxDomCurrentTable",
+      "OID": ".1.3.6.1.4.1.2636.3.60.1.1.1"
+    }
+  ]
+}
