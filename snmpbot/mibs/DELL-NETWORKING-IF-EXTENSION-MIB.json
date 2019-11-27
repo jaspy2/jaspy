@@ -68,7 +68,7 @@
     {
       "Name": "dellNetIfDescr",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.1.1.1.6",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -272,7 +272,7 @@
     {
       "Name": "dellNetIfTransDeviceName",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.1",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -281,7 +281,7 @@
     {
       "Name": "dellNetIfTransPort",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.2",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -305,7 +305,7 @@
     {
       "Name": "dellNetIfTransOpticsType",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.4",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -314,7 +314,7 @@
     {
       "Name": "dellNetIfTransVendorName",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.5",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -323,7 +323,7 @@
     {
       "Name": "dellNetIfTransPartNumber",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.6",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -332,7 +332,7 @@
     {
       "Name": "dellNetIfTransSerialNumber",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.7",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -341,7 +341,7 @@
     {
       "Name": "dellNetIfTransTransmitPowerLane1",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.8",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -350,7 +350,7 @@
     {
       "Name": "dellNetIfTransTransmitPowerLane2",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.9",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -359,7 +359,7 @@
     {
       "Name": "dellNetIfTransTransmitPowerLane3",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.10",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -368,7 +368,7 @@
     {
       "Name": "dellNetIfTransTransmitPowerLane4",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.11",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -377,7 +377,7 @@
     {
       "Name": "dellNetIfTransReceivePowerLane1",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.12",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -386,7 +386,7 @@
     {
       "Name": "dellNetIfTransReceivePowerLane2",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.13",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -395,7 +395,7 @@
     {
       "Name": "dellNetIfTransReceivePowerLane3",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.14",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -404,7 +404,7 @@
     {
       "Name": "dellNetIfTransReceivePowerLane4",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.15",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -413,7 +413,7 @@
     {
       "Name": "dellNetIfTransTemperature",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.16",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -422,7 +422,7 @@
     {
       "Name": "dellNetIfTransVoltage",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.17",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -431,7 +431,7 @@
     {
       "Name": "dellNetIfTransTransmitBiasCurrentLane1",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.18",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -440,7 +440,7 @@
     {
       "Name": "dellNetIfTransTransmitBiasCurrentLane2",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.19",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -449,7 +449,7 @@
     {
       "Name": "dellNetIfTransTransmitBiasCurrentLane3",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.20",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
@@ -458,7 +458,7 @@
     {
       "Name": "dellNetIfTransTransmitBiasCurrentLane4",
       "OID": ".1.3.6.1.4.1.6027.3.11.1.3.1.1.21",
-      "Syntax": "OCTET STRING",
+      "Syntax": "SNMPv2-TC::DisplayString",
       "SyntaxOptions": {
         "Max": 241,
         "Min": 0
