@@ -88,7 +88,10 @@ class SNMPDataSource(object):
                 local_interface = self._lldp_index_to_interface[lldp_index]
                 if local_interface['IF-MIB::ifName'].endswith('.0'):
                     local_interface = self._anything_to_interface[local_interface['IF-MIB::ifName'][:-2]]
-                local_interface['_neighbors']['lldp'] = lldp_data
+                if 'lldp' not in local_interface['_neighbors']:
+                    local_interface['_neighbors']['lldp'] = lldp_data
+                else:
+                    self._logger.warning('duplicate lldp index, only first entry is used')
 
     def _cdp_handle_cachetable(self, data):
         for cdp_entry in data:

@@ -66,6 +66,9 @@ def try_resolve(device_name):
     except socket.gaierror:
         logger.info('failed to resolve fqdn %s', device_name)
         return None
+    except UnicodeError as ue:
+        logger.warning('tried to resolve something weird, ignoring: %s', ue)
+        return None
 
 
 def get_remote_name(interface_info, protocol, protocol_field):
