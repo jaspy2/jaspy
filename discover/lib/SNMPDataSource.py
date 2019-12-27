@@ -77,6 +77,8 @@ class SNMPDataSource(object):
             else:
                 if lldp_portid in self._anything_to_interface:
                     self._lldp_index_to_interface[lldp_index] = self._anything_to_interface[lldp_portid]
+                if lldp_data['LLDP-MIB::lldpLocPortDesc'].isdigit() and lldp_porttype == 'local':
+                    self._lldp_local_mapping[lldp_data['LLDP-MIB::lldpLocPortId']] = self.interfaces[int(lldp_data['LLDP-MIB::lldpLocPortDesc'])]
                 if lldp_porttype in ['local', 'interfaceName']:
                     self._lldp_try_map_id_using_anything(lldp_index, lldp_data, lldp_porttype, lldp_portid)
 
@@ -147,6 +149,7 @@ class SNMPDataSource(object):
         self.interfaces = {}
         self._anything_to_interface = {}
         self._lldp_index_to_interface = {}
+        self._lldp_local_mapping = {}
         self._kvdata = {}
         self._logger = logging.getLogger('[{}]'.format(device_fqdn))
         self._critical_tables = ['IF-MIB::ifTable', 'IF-MIB::ifXTable']
@@ -199,6 +202,9 @@ class SNMPDataSource(object):
         if lldp_remote_port_id_subtype == 'macAddress' and DeviceBugs.LLDP_MACADDRESS_DUPLICATE in self._device_bugs:
             self._logger.error('suffering from LLDP-MACADDRESS-DUPLICATE bug, returning None for lookup by macaddr')
             return None
+        if lldp_remote_port_id_subtype == 'local':
+            if lldp_remote_port_id in self._lldp_local_mapping:
+                return self._lldp_local_mapping[lldp_remote_port_id]
         if lldp_remote_port_id in self._anything_to_interface:
             return self._anything_to_interface[lldp_remote_port_id]
         if lldp_remote_port_id_subtype in ['local', 'interfaceName']:
