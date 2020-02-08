@@ -97,7 +97,7 @@ namespace Jaspy.Switchmaster.Controllers
             
             await _dbContext.SaveChangesAsync();
 
-            await _hubContext.Clients.All.SendAsync("Update", model);
+            await _hubContext.Clients.All.SendAsync("Update", ToViewModel(match));
 
             return Ok();
         }

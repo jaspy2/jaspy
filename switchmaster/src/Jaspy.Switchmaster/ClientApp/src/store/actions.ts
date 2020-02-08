@@ -25,7 +25,6 @@ export default {
                 },
                 body: JSON.stringify(payload)
             });
-            commit('updateItem', payload);
         } catch (err) {
             commit('addError', err);
         } finally {

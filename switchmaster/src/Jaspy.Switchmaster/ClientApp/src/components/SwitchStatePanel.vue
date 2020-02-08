@@ -11,6 +11,7 @@ import {DeployState} from "@/store/models";
                     item-text="label"
                     item-value="value"
                     flat solo
+                    disabled="true"
                     hide-details></v-select>
         </div>
         <div class="transition" title="Transition to next state" @click="moveToNextState">
@@ -96,17 +97,15 @@ export default class SwitchStatePanel extends Vue {
                 throw Error('Invalid deploy state during update.');
         }
 
-        await this.updateItem({
+        await this.updateItem(<any>{
             fqdn: this.fqdn,
-            deployState: newState,
-            configured: !!this.isConfigured
+            deployState: newState
         });
     }
 
     public async toggleConfigured() {
-        await this.updateItem({
+        await this.updateItem(<any>{
             fqdn: this.fqdn,
-            deployState: this.deployState,
             configured: !this.isConfigured
         });
     }
