@@ -408,7 +408,7 @@ export default class Device {
 
         for(let [key, value] of Object.entries(newStatus["interfaces"])) {
             if(!(key in this.interfaces)) {
-                console.error("received update for " + fqdn + "/" + key + " which is not in device interfaces");
+                console.error("received update for " + this.fqdn + "/" + key + " which is not in device interfaces");
             } else {
                 this.interfaces[key].setStatus(value);
             }
