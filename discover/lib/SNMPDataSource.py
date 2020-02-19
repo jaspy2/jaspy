@@ -225,9 +225,9 @@ class SNMPDataSource(object):
 
     def get_chassis_id(self):
         if 'LLDP-MIB::lldpLocChassisId' in self._kvdata:
-            return self._kvdata['LLDP-MIB::lldpLocChassisId']
+            return self._kvdata['LLDP-MIB::lldpLocChassisId'].replace(' ', ':')
         elif 'BRIDGE-MIB::dot1dBaseBridgeAddress' in self._kvdata:
-            return self._kvdata['BRIDGE-MIB::dot1dBaseBridgeAddress']
+            return self._kvdata['BRIDGE-MIB::dot1dBaseBridgeAddress'].replace(' ', ':')
         else:
             self._logger.error('could not derive chassis id when requested!')
             return None
