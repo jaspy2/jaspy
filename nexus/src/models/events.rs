@@ -117,8 +117,8 @@ impl Event {
             device_polling_changed: None,
             device_os_info_changed: None,
             device_base_mac_changed: None,
-            device_created_event: None,
-            device_deleted_event: None,
+            device_created: None,
+            device_deleted: None,
         };
 
         return event;
@@ -126,7 +126,7 @@ impl Event {
 
     pub fn device_created_event(fqdn: &String) -> Event {
         let mut event = Event::new_empty("deviceCreated");
-        event.device_created_event = Some(DeviceCreatedEvent {
+        event.device_created = Some(DeviceCreatedEvent {
             fqdn: fqdn.clone(),
         });
         return event;
@@ -134,7 +134,7 @@ impl Event {
 
     pub fn device_deleted_event(fqdn: &String) -> Event {
         let mut event = Event::new_empty("deviceDeleted");
-        event.device_deleted_event = Some(DeviceDeletedEvent {
+        event.device_deleted = Some(DeviceDeletedEvent {
             fqdn: fqdn.clone(),
         });
         return event;

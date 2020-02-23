@@ -10,7 +10,7 @@ COPY ./Cargo.toml ./Cargo.toml
 COPY ./src ./src
 COPY ./diesel.toml ./diesel.toml
 COPY ./migrations ./migrations
-RUN su -c 'pg_ctlcluster 11 main start && createuser root && createdb root -O root' postgres && diesel --database-url postgresql:///root migration run && diesel --database-url postgresql:///root print-schema
+RUN su -c 'pg_ctlcluster 9.6 main start && createuser root && createdb root -O root' postgres && diesel --database-url postgresql:///root migration run && diesel --database-url postgresql:///root print-schema
 RUN cat /usr/src/nexus/src/schema.rs
 RUN cargo build --release
 CMD cp -a target/release/jaspy-nexus /output/jaspy-nexus && cp -a /usr/local/cargo/bin/diesel /output/diesel && cp -a migrations /output/migrations
