@@ -1,11 +1,11 @@
 extern crate rocket_contrib;
-use models;
-use db;
+use crate::models;
+use crate::db;
+use crate::utilities;
 use rocket::{get, put};
 use rocket_contrib::json;
 use std::sync::{Arc,Mutex};
 use rocket::State;
-use utilities;
 
 #[get("/")]
 pub fn list(connection: db::Connection) -> json::Json<Vec<models::dbo::Device>> {

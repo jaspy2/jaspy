@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
-use models::json;
-use utilities::tools;
+use crate::models::json;
+use crate::utilities::tools;
 use std::ops::DerefMut;
 
 pub struct CachedWeathermapTopology {

@@ -1,4 +1,4 @@
-use schema::{devices,interfaces,weathermap_device_infos,client_locations};
+use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations};
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::BelongingToDsl;

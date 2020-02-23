@@ -1,10 +1,10 @@
 extern crate rocket_contrib;
-use models;
-use db;
+use crate::models;
+use crate::db;
+use crate::utilities;
 use std::sync::{Arc,Mutex};
 use std::collections::{HashSet,HashMap};
 use rocket::State;
-use utilities;
 
 // TODO: GH#9 Move everything to v1 API
 #[put("/device", data = "<discovery_json>")]

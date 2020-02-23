@@ -1,8 +1,8 @@
 extern crate rocket_contrib;
 use std::sync::{Arc, Mutex};
-use utilities;
+use crate::utilities;
 use rocket::State;
-use models;
+use crate::models;
 use rocket::get;
 
 // TODO: GH#9 Move everything to v1 API

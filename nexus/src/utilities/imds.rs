@@ -1,8 +1,8 @@
-use models;
+use crate::models;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc,Mutex};
-use utilities;
-use db;
+use crate::utilities;
+use crate::db;
 
 pub struct IMDS {
     metrics_storage : models::metrics::Metrics,

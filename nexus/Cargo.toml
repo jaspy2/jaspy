@@ -2,6 +2,8 @@
 name = "jaspy-nexus"
 version = "2.2.0"
 authors = ["Antti Tönkyrä <daedalus@pingtimeout.net>"]
+edition = "2018"
+
 
 [dependencies]
 config = "*"
@@ -14,5 +16,11 @@ diesel = { version = "*", features = ["postgres"] }
 r2d2 = "*"
 r2d2-diesel = "*"
 time = "*"
-rumqtt = "*"
+tokio = "*"
+async-std = "*"
+futures-util = "*"
+
+[dependencies.rumq-client]
+git = "https://github.com/qm3ster/rumq"
+branch = "patch-1"
 

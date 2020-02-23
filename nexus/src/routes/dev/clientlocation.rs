@@ -1,6 +1,6 @@
 extern crate rocket_contrib;
-use models;
-use db;
+use crate::models;
+use crate::db;
 use rocket_contrib::json;
 
 // TODO: GH#9 Move everything to v1 API

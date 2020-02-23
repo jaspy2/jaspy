@@ -1,11 +1,11 @@
 extern crate rocket_contrib;
 use rocket::{get, put};
-use models;
-use db;
+use crate::models;
+use crate::db;
 use rocket_contrib::json;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use utilities;
+use crate::utilities;
 use rocket::State;
 use std::ops::DerefMut;
 
