@@ -3,7 +3,7 @@ WORKDIR /usr/src/nexus
 RUN apt-get update
 RUN apt-get -y install man
 RUN for man in $(seq 0 9); do mkdir /usr/share/man/man${man}; done
-RUN apt-get -y install libpq-dev pkg-config postgresql
+RUN apt-get update && apt-get -y install libpq-dev pkg-config postgresql libssl-dev
 RUN rustup default nightly
 RUN cargo install diesel_cli --no-default-features --features "postgres"
 COPY ./Cargo.toml ./Cargo.toml
