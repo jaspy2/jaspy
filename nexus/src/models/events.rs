@@ -100,10 +100,10 @@ pub struct Event {
     device_base_mac_changed: Option<DeviceBaseMACChangedEvent>,
 
     #[serde(skip_serializing_if="Option::is_none")]
-    device_created_event: Option<DeviceCreatedEvent>,
+    device_created: Option<DeviceCreatedEvent>,
 
     #[serde(skip_serializing_if="Option::is_none")]
-    device_deleted_event: Option<DeviceDeletedEvent>,
+    device_deleted: Option<DeviceDeletedEvent>,
 }
 
 impl Event {
