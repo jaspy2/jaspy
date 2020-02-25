@@ -1,0 +1,2299 @@
+{
+  "Name": "CISCO-LWAPP-MOBILITY-EXT-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.999999",
+  "Objects": [
+    {
+      "Name": "cLMobilityExtMCMOEnableStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCMOAdminEnableStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCEnableStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCAdminEnableStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCMulticastMode",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCKeepAliveCount",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.6",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 20,
+        "Min": 3
+      }
+    },
+    {
+      "Name": "cLMobilityExtMCKeepAliveInterval",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.7",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 30,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLMobilityExtMCDscpValue",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.8",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 63,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLMobilityExtMCMOPublicAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCMOPublicAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.10",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCApCountLicensesInUse",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.11",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtMCOwnGroupMulticastAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCOwnGroupMulticastAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.13",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCMobilityGroupName",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.1.14",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLMobilityExtMgrAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMgrAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMgrNetmaskType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMgrNetmask",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMgrMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.5",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLMobilityExtMgrVlanId",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtMgrName",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.7",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLMobilityExtMgrInterfaceType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "management",
+          "Value": 1
+        },
+        {
+          "Name": "ap",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtNewArchitectureEnableStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtNewArchitectureAdminEnableStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.2.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtSpgGroupName",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLMobilityExtSpgGroupId",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1.1.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtSpgBridgeDomainId",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtSpgMemberCount",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtSpgMulticastAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtSpgMulticastAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1.1.6",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtSpgMulticastMode",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtSpgRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtSpgMemberPrivateAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.2.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtSpgMemberPrivateAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.2.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtSpgMemberStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notconfigured",
+          "Value": 0
+        },
+        {
+          "Name": "datapathdown",
+          "Value": 1
+        },
+        {
+          "Name": "controlpathdown",
+          "Value": 2
+        },
+        {
+          "Name": "bothdown",
+          "Value": 3
+        },
+        {
+          "Name": "up",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtSpgMemberPublicAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtSpgMemberPublicAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.2.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtSpgMemberRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.2.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberPrivateAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberPrivateAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberGroupName",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberPublicAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberPublicAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notconfigured",
+          "Value": 0
+        },
+        {
+          "Name": "datapathdown",
+          "Value": 1
+        },
+        {
+          "Name": "controlpathdown",
+          "Value": 2
+        },
+        {
+          "Name": "bothdown",
+          "Value": 3
+        },
+        {
+          "Name": "up",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.7",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberMulticastAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberMulticastAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.9",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberHashKey",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.10",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 40,
+        "Min": 4
+      }
+    },
+    {
+      "Name": "cLMobilityExtGroupMemberRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtAnchorAssociatedMCAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.4.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtAnchorAssociatedMCAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.4.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtAnchorStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.4.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notconfigured",
+          "Value": 0
+        },
+        {
+          "Name": "datapathdown",
+          "Value": 1
+        },
+        {
+          "Name": "controlpathdown",
+          "Value": 2
+        },
+        {
+          "Name": "bothdown",
+          "Value": 3
+        },
+        {
+          "Name": "up",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtAnchorRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.4.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMOMCAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.5.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMOMCAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.5.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMOMCMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.5.1.3",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLMobilityExtMOMCLinkStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.5.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notconfigured",
+          "Value": 0
+        },
+        {
+          "Name": "datapathdown",
+          "Value": 1
+        },
+        {
+          "Name": "controlpathdown",
+          "Value": 2
+        },
+        {
+          "Name": "bothdown",
+          "Value": 3
+        },
+        {
+          "Name": "up",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMOMCClientCount",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.5.1.5",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtMCClientMacAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLMobilityExtMCClientAnchorMCPrivateAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCClientAnchorMCPrivateAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCClientAssociatedMCAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCClientAssociatedMCAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCClientAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCClientAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.7",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCClientState",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "init",
+          "Value": 0
+        },
+        {
+          "Name": "local",
+          "Value": 1
+        },
+        {
+          "Name": "foreign",
+          "Value": 2
+        },
+        {
+          "Name": "anchor",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCClientAssociationTime",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.9",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCClientLocalClient",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCClientAnchorMCGroupId",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.11",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtMCClientAssociatedMCGroupId",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.12",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtMCClientAssociatedMAAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCClientAssociatedMAAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.14",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCClientAnchorMAAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.15",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCClientAnchorMAAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.16",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCClientUpTime",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6.1.17",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cLMobilityExtMOClientMacAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLMobilityExtMOClientAnchorMCPublicAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMOClientAnchorMCPublicAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMOClientAnchorMCPrivateAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMOClientAnchorMCPrivateAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMOClientAssociatedMCPublicAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMOClientAssociatedMCPublicAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.7",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMOClientAssociatedMCPrivateAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMOClientAssociatedMCPrivateAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.9",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMOClientAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMOClientAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.11",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMOClientLocalTime",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.12",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMOClientAssociationTime",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.13",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMOClientUpTime",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7.1.14",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cLMobilityExtApMgrName",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLMobilityExtApMgrAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtApMgrAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtApMgrNetmaskType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtApMgrNetmask",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtApMgrMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.6",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLMobilityExtApMgrVlanId",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.7",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtApMgrInterfaceType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "management",
+          "Value": 1
+        },
+        {
+          "Name": "ap",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtApMgrRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtForeignWlcAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.9.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtForeignWlcAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.9.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtForeignWlcMapIf",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.9.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLMobilityExtForeignWlcMapRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.9.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtGroupName",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.10.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLMobilityExtGroupMulticastAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.10.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtGroupMulticastAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.10.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMAPeerPrivateAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.11.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMAPeerPrivateAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.11.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMAPeerPublicAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.11.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMAPeerPublicAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.11.1.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMAPeerLinkStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.11.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notconfigured",
+          "Value": 0
+        },
+        {
+          "Name": "datapathdown",
+          "Value": 1
+        },
+        {
+          "Name": "controlpathdown",
+          "Value": 2
+        },
+        {
+          "Name": "bothdown",
+          "Value": 3
+        },
+        {
+          "Name": "up",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCMAPrivateAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.12.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMCMAPrivateAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.12.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMCMAClientCount",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.12.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtMAMCPublicAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMAMCPublicAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMAMCPrivateAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMAMCPrivateAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMAToMCLinkStatus",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notconfigured",
+          "Value": 0
+        },
+        {
+          "Name": "datapathdown",
+          "Value": 1
+        },
+        {
+          "Name": "controlpathdown",
+          "Value": 2
+        },
+        {
+          "Name": "bothdown",
+          "Value": 3
+        },
+        {
+          "Name": "up",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMASpgPeerCount",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLMobilityExtMASpgName",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.7",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLMobilityExtMAOwnMulticastAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtMAOwnMulticastAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.9",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtMAKeepAliveCount",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.10",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 20,
+        "Min": 3
+      }
+    },
+    {
+      "Name": "cLMobilityExtMAKeepAliveInterval",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.11",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 30,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLMobilityExtMADscpValue",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.3.12",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 63,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLMobilityExtMCReceivedTotal",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.1",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCReceivedDrops",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCProtocolReceiveErrors",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCProtocolTransmitErrors",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCStateErrors",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCProtocolRetransmitted",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCHandoffRequestsReceived",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCHandoffCmplReceived",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCHandoffClientDeleteReceived",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCHandoffRequestsTransmitted",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.10",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCHandoffCmplTransmitted",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.11",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCHandoffClientDeleteTransmitted",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.12",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCTotalClientCount",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.13",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtMCWgbCount",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.1.4.14",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLMobilityExtNotifyObjectSourceIPAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.3.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtNotifyObjectSourceIPAddress",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.3.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLMobilityExtNotifyObjectSourceType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.3.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "mobilityAgent",
+          "Value": 1
+        },
+        {
+          "Name": "mobilityController",
+          "Value": 2
+        },
+        {
+          "Name": "mobilityOracle",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLMobilityExtNotifyObjectDestinationType",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.3.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "mobilityAgent",
+          "Value": 1
+        },
+        {
+          "Name": "mobilityController",
+          "Value": 2
+        },
+        {
+          "Name": "mobilityOracle",
+          "Value": 3
+        }
+      ]
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "cLMobilityExtSpgEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgGroupName",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgGroupId",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgBridgeDomainId",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberCount",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMulticastAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMulticastAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMulticastMode",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgGroupName"
+      ],
+      "Name": "cLMobilityExtSpgTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.1"
+    },
+    {
+      "EntryName": "cLMobilityExtSpgMemberEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberPrivateAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberStatus",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberPublicAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberPublicAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgGroupName",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtSpgMemberPrivateAddress"
+      ],
+      "Name": "cLMobilityExtSpgMemberTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.2"
+    },
+    {
+      "EntryName": "cLMobilityExtGroupMemberEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberPrivateAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberGroupName",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberPublicAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberPublicAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberStatus",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberMacAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberMulticastAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberMulticastAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberHashKey",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMemberPrivateAddress"
+      ],
+      "Name": "cLMobilityExtGroupMemberTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.3"
+    },
+    {
+      "EntryName": "cLMobilityExtAnchorEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtAnchorAssociatedMCAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtAnchorAssociatedMCAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtAnchorStatus",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtAnchorRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtAnchorAssociatedMCAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtAnchorAssociatedMCAddress"
+      ],
+      "Name": "cLMobilityExtAnchorTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.4"
+    },
+    {
+      "EntryName": "cLMobilityExtMOMCEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOMCAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOMCAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOMCMacAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOMCLinkStatus",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOMCClientCount"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOMCAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOMCAddress"
+      ],
+      "Name": "cLMobilityExtMOMCTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.5"
+    },
+    {
+      "EntryName": "cLMobilityExtMCClientEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientMacAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAnchorMCPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAnchorMCPrivateAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAssociatedMCAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAssociatedMCAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientState",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAssociationTime",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientLocalClient",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAnchorMCGroupId",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAssociatedMCGroupId",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAssociatedMAAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAssociatedMAAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAnchorMAAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientAnchorMAAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientUpTime"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCClientMacAddress"
+      ],
+      "Name": "cLMobilityExtMCClientTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.6"
+    },
+    {
+      "EntryName": "cLMobilityExtMOClientEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientMacAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAnchorMCPublicAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAnchorMCPublicAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAnchorMCPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAnchorMCPrivateAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAssociatedMCPublicAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAssociatedMCPublicAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAssociatedMCPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAssociatedMCPrivateAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientLocalTime",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientAssociationTime",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientUpTime"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMOClientMacAddress"
+      ],
+      "Name": "cLMobilityExtMOClientTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.7"
+    },
+    {
+      "EntryName": "cLMobilityExtApMgrEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrName",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrNetmaskType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrNetmask",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrMacAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrVlanId",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrInterfaceType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtApMgrName"
+      ],
+      "Name": "cLMobilityExtApMgrTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.8"
+    },
+    {
+      "EntryName": "cLMobilityExtForeignWlcMapEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtForeignWlcAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtForeignWlcAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtForeignWlcMapIf",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtForeignWlcMapRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtForeignWlcAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtForeignWlcAddress"
+      ],
+      "Name": "cLMobilityExtForeignWlcMapTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.9"
+    },
+    {
+      "EntryName": "cLMobilityExtGroupEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupName",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMulticastAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupMulticastAddress"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtGroupName"
+      ],
+      "Name": "cLMobilityExtGroupTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.10"
+    },
+    {
+      "EntryName": "cLMobilityExtMAPeerEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMAPeerPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMAPeerPrivateAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMAPeerPublicAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMAPeerPublicAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMAPeerLinkStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMAPeerPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMAPeerPrivateAddress"
+      ],
+      "Name": "cLMobilityExtMAPeerTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.11"
+    },
+    {
+      "EntryName": "cLMobilityExtMCMAStatisticsEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCMAPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCMAPrivateAddress",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCMAClientCount"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCMAPrivateAddressType",
+        "CISCO-LWAPP-MOBILITY-EXT-MIB::cLMobilityExtMCMAPrivateAddress"
+      ],
+      "Name": "cLMobilityExtMCMAStatisticsTable",
+      "OID": ".1.3.6.1.4.1.9.9.999999.1.2.12"
+    }
+  ]
+}

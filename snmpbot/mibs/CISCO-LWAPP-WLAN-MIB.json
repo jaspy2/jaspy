@@ -1,0 +1,3044 @@
+{
+  "Name": "CISCO-LWAPP-WLAN-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.512",
+  "Objects": [
+    {
+      "Name": "cLWlanIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 517,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlanRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanProfileName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanSsid",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlanDiagChan",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanStorageType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "volatile",
+          "Value": 2
+        },
+        {
+          "Name": "nonVolatile",
+          "Value": 3
+        },
+        {
+          "Name": "permanent",
+          "Value": 4
+        },
+        {
+          "Name": "readOnly",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanIsWired",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanIngressInterface",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.8",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLWlanNACSupport",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanWepKeyChange",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.10",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cLWlanChdEnable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan802dot11anDTIM",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.12",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlan802dot11bgnDTIM",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.13",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlanLoadBalancingEnable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanBandSelectEnable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.15",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanPassiveClientEnable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanReAnchorRoamedVoiceClientsEnable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.17",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanMulticastInterfaceEnable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.18",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanMulticastInterface",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.19",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanMulticastDirectEnable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanNACPostureSupport",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.21",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanMaxClientsAccepted",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.22",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanScanDeferPriority",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.23",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "bit0"
+        },
+        {
+          "Bit": 1,
+          "Name": "bit1"
+        },
+        {
+          "Bit": 2,
+          "Name": "bit2"
+        },
+        {
+          "Bit": 3,
+          "Name": "bit3"
+        },
+        {
+          "Bit": 4,
+          "Name": "bit4"
+        },
+        {
+          "Bit": 5,
+          "Name": "bit5"
+        },
+        {
+          "Bit": 6,
+          "Name": "bit6"
+        },
+        {
+          "Bit": 7,
+          "Name": "bit7"
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanScanDeferTime",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.24",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 60000,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLWlanLanSubType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.25",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "wirelessLan",
+          "Value": 1
+        },
+        {
+          "Name": "guestLan",
+          "Value": 2
+        },
+        {
+          "Name": "remoteLan",
+          "Value": 3
+        },
+        {
+          "Name": "other",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanWebAuthOnMacFilterFailureEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.26",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanStaticIpTunnelingEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.27",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanKtsCacSupportEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.28",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanWifiDirectPolicyStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.29",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 1
+        },
+        {
+          "Name": "allow",
+          "Value": 2
+        },
+        {
+          "Name": "notAllow",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanWebAuthIPv6AclName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.30",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanHotSpot2Enabled",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.31",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanMaxClientsAllowedPerRadio",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.32",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 200,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlanDhcpDeviceProfiling",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.33",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanMacAuthOverDot1xEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.34",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanUserTimeout",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.35",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanUserIdleThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.36",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanHttpDeviceProfiling",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.37",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanHotSpotClearConfig",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.38",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanRadiusAuthFourthServer",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.39",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanRadiusAuthFifthServer",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.40",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanRadiusAuthSixthServer",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.41",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanRadiusAcctFourthServer",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.42",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanRadiusAcctFifthServer",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.43",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanRadiusAcctSixthServer",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.44",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanSelfAnchorEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.64",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanUniversalAdmin",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.65",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11acMuMimoEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1.1.66",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uInternetAccess",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uNetworkType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "invalid",
+          "Value": 1
+        },
+        {
+          "Name": "private",
+          "Value": 2
+        },
+        {
+          "Name": "privateWithGuestAccess",
+          "Value": 3
+        },
+        {
+          "Name": "chargeablePublicNetwork",
+          "Value": 4
+        },
+        {
+          "Name": "freePublicNetwork",
+          "Value": 5
+        },
+        {
+          "Name": "testOrEquipment",
+          "Value": 6
+        },
+        {
+          "Name": "wildcard",
+          "Value": 7
+        },
+        {
+          "Name": "personnalDeviceNetwork",
+          "Value": 8
+        },
+        {
+          "Name": "emgerencyServiceOnlyNetwork",
+          "Value": 9
+        },
+        {
+          "Name": "notConfigured",
+          "Value": 255
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uVenueGroup",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unspecified",
+          "Value": 1
+        },
+        {
+          "Name": "assembly",
+          "Value": 2
+        },
+        {
+          "Name": "business",
+          "Value": 3
+        },
+        {
+          "Name": "educational",
+          "Value": 4
+        },
+        {
+          "Name": "factoryAndIndustrial",
+          "Value": 5
+        },
+        {
+          "Name": "institutional",
+          "Value": 6
+        },
+        {
+          "Name": "mercantile",
+          "Value": 7
+        },
+        {
+          "Name": "residential",
+          "Value": 8
+        },
+        {
+          "Name": "storage",
+          "Value": 9
+        },
+        {
+          "Name": "utilityAndMisc",
+          "Value": 10
+        },
+        {
+          "Name": "vehicular",
+          "Value": 11
+        },
+        {
+          "Name": "outdoor",
+          "Value": 12
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uVenueType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unspecified",
+          "Value": 1
+        },
+        {
+          "Name": "assembly",
+          "Value": 2
+        },
+        {
+          "Name": "business",
+          "Value": 3
+        },
+        {
+          "Name": "educational",
+          "Value": 4
+        },
+        {
+          "Name": "factoryAndIndustrial",
+          "Value": 5
+        },
+        {
+          "Name": "institutional",
+          "Value": 6
+        },
+        {
+          "Name": "mercantile",
+          "Value": 7
+        },
+        {
+          "Name": "residential",
+          "Value": 8
+        },
+        {
+          "Name": "storage",
+          "Value": 9
+        },
+        {
+          "Name": "utilityAndMisc",
+          "Value": 10
+        },
+        {
+          "Name": "vehicular",
+          "Value": 11
+        },
+        {
+          "Name": "outdoor",
+          "Value": 12
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uVenueName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.6",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlan11uHessid",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.8",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLWlan11uNetworkAuthType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "acceptance",
+          "Value": 1
+        },
+        {
+          "Name": "enrollment",
+          "Value": 2
+        },
+        {
+          "Name": "redirection",
+          "Value": 3
+        },
+        {
+          "Name": "dnsRedirection",
+          "Value": 4
+        },
+        {
+          "Name": "notConfigured",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uIpAddressAvailIpv4",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notAvailable",
+          "Value": 1
+        },
+        {
+          "Name": "public",
+          "Value": 2
+        },
+        {
+          "Name": "portRestricted",
+          "Value": 3
+        },
+        {
+          "Name": "singleNATPrivate",
+          "Value": 4
+        },
+        {
+          "Name": "doubleNATPrivate",
+          "Value": 5
+        },
+        {
+          "Name": "portRestrictedAndSingleNATPrivate",
+          "Value": 6
+        },
+        {
+          "Name": "portRestrictedAndDoubleNATPrivate",
+          "Value": 7
+        },
+        {
+          "Name": "unKnown",
+          "Value": 8
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uIpAddressAvailIpv6",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notAvailable",
+          "Value": 1
+        },
+        {
+          "Name": "available",
+          "Value": 2
+        },
+        {
+          "Name": "unKnown",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uOuiIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.2.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlan11uOui",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.2.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 6,
+        "Min": 6
+      }
+    },
+    {
+      "Name": "cLWlan11uOuiIsBeacon",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uOuiRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uOuiStorageType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.2.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "volatile",
+          "Value": 2
+        },
+        {
+          "Name": "nonVolatile",
+          "Value": 3
+        },
+        {
+          "Name": "permanent",
+          "Value": 4
+        },
+        {
+          "Name": "readOnly",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uRealmIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.3.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlan11uRealmName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.3.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlan11uRealmRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.3.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uRealmEapIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.4.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 4,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlan11uRealmEapMethod",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.4.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "leap",
+          "Value": 2
+        },
+        {
+          "Name": "peap",
+          "Value": 3
+        },
+        {
+          "Name": "eapTls",
+          "Value": 4
+        },
+        {
+          "Name": "eapFast",
+          "Value": 5
+        },
+        {
+          "Name": "eapSim",
+          "Value": 6
+        },
+        {
+          "Name": "eapTtls",
+          "Value": 7
+        },
+        {
+          "Name": "eapAka",
+          "Value": 8
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uRealmEapRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.4.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uRealmEapAuthIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.5.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 10,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlan11uRealmEapAuthMethod",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.5.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "nonEapInnerAuthType",
+          "Value": 1
+        },
+        {
+          "Name": "innerAuthEapType",
+          "Value": 2
+        },
+        {
+          "Name": "credentialType",
+          "Value": 3
+        },
+        {
+          "Name": "tunneledEapCredentialType",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uRealmEapAuthParam",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.5.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "pap",
+          "Value": 2
+        },
+        {
+          "Name": "chap",
+          "Value": 3
+        },
+        {
+          "Name": "mschap",
+          "Value": 4
+        },
+        {
+          "Name": "mschapV2",
+          "Value": 5
+        },
+        {
+          "Name": "leap",
+          "Value": 6
+        },
+        {
+          "Name": "peap",
+          "Value": 7
+        },
+        {
+          "Name": "eapTls",
+          "Value": 8
+        },
+        {
+          "Name": "eapFast",
+          "Value": 9
+        },
+        {
+          "Name": "eapSim",
+          "Value": 10
+        },
+        {
+          "Name": "eapTtls",
+          "Value": 11
+        },
+        {
+          "Name": "eapAka",
+          "Value": 12
+        },
+        {
+          "Name": "sim",
+          "Value": 13
+        },
+        {
+          "Name": "usim",
+          "Value": 14
+        },
+        {
+          "Name": "nfcSecure",
+          "Value": 15
+        },
+        {
+          "Name": "hardwareToken",
+          "Value": 16
+        },
+        {
+          "Name": "softToken",
+          "Value": 17
+        },
+        {
+          "Name": "certificate",
+          "Value": 18
+        },
+        {
+          "Name": "usernamePassword",
+          "Value": 19
+        },
+        {
+          "Name": "reserved",
+          "Value": 20
+        },
+        {
+          "Name": "anonynous",
+          "Value": 21
+        },
+        {
+          "Name": "vendorSpecific",
+          "Value": 22
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uRealmEapAuthCredentialType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.5.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "sim",
+          "Value": 1
+        },
+        {
+          "Name": "usim",
+          "Value": 2
+        },
+        {
+          "Name": "nfcSecure",
+          "Value": 3
+        },
+        {
+          "Name": "hardwareToken",
+          "Value": 4
+        },
+        {
+          "Name": "softToken",
+          "Value": 5
+        },
+        {
+          "Name": "certificate",
+          "Value": 6
+        },
+        {
+          "Name": "usernamePassword",
+          "Value": 7
+        },
+        {
+          "Name": "reserved",
+          "Value": 8
+        },
+        {
+          "Name": "anonynous",
+          "Value": 9
+        },
+        {
+          "Name": "vendorSpecific",
+          "Value": 10
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uRealmEapAuthRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.5.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11uDomainIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.6.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlan11uDomainName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.6.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlan11uDomainRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.6.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlan11u3gppIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.7.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlan11u3gppCountryCode",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.7.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLWlan11u3gppNetworkCode",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.7.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLWlan11u3gppRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.7.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanServiceAdvertisementStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.4.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanServiceAdvertisementMsapServerIndex",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.4.1.1.5",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 10,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlanHotSpot2OperatorIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.1.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLWlanHotSpot2OperatorName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.1.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanHotSpot2OperatorLanguage",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.1.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanHotSpot2OperatorRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanHotSpot2PortConfigIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.2.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanHotSpot2PortConfigIpProtocol",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.2.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "icmp",
+          "Value": 1
+        },
+        {
+          "Name": "ftp",
+          "Value": 6
+        },
+        {
+          "Name": "ikev2",
+          "Value": 17
+        },
+        {
+          "Name": "esp",
+          "Value": 50
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanHotSpot2PortConfigPortNumber",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "icmp-esp",
+          "Value": 0
+        },
+        {
+          "Name": "ftp",
+          "Value": 20
+        },
+        {
+          "Name": "ssh",
+          "Value": 22
+        },
+        {
+          "Name": "ttls-vpn",
+          "Value": 443
+        },
+        {
+          "Name": "ikev2",
+          "Value": 500
+        },
+        {
+          "Name": "pptp-vpn",
+          "Value": 1723
+        },
+        {
+          "Name": "ipsec-nat",
+          "Value": 4500
+        },
+        {
+          "Name": "voip",
+          "Value": 5060
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanHotSpot2PortConfigStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "closed",
+          "Value": 1
+        },
+        {
+          "Name": "open",
+          "Value": 2
+        },
+        {
+          "Name": "unknown",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanHotSpot2PortConfigRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.2.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanHotSpot2WanLinkStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.3.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "linkUp",
+          "Value": 1
+        },
+        {
+          "Name": "linkDown",
+          "Value": 2
+        },
+        {
+          "Name": "linkInTestState",
+          "Value": 3
+        },
+        {
+          "Name": "notConfigured",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanHotSpot2WanSymLinkStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.3.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "different",
+          "Value": 1
+        },
+        {
+          "Name": "same",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanHotSpot2WanDownLinkSpeed",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.3.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanHotSpot2WanUpLinkSpeed",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.3.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLAPGroupsHyperlocationEnable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.8.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsPakRssiThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.8.1.1.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLAPGroupsPakRssiThresholdTrigger",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.8.1.1.3",
+      "Syntax": "Gauge32",
+      "SyntaxOptions": {
+        "Max": 100,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLAPGroupsPakRssiNtpIpAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.8.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsPakRssiNtpAddress",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.8.1.1.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLAPGroupsLANPortNumber",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.1.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLAPGroupsLANPortStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "enabled",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsLANPortPoeStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notsupported",
+          "Value": 0
+        },
+        {
+          "Name": "disabled",
+          "Value": 1
+        },
+        {
+          "Name": "enabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsLANPortRlanName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.1.1.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAPGroupsLANPortRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsExtModuleStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.2.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "enabled",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsExtModuleRlanName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.2.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAPGroupName",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.1.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 64,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLAPGroupsVlanMappingInterfaceName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.1.1.2",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLAPGroupNACSupport",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsVlanConfigRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsVlanConfigStorageType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "volatile",
+          "Value": 2
+        },
+        {
+          "Name": "nonVolatile",
+          "Value": 3
+        },
+        {
+          "Name": "permanent",
+          "Value": 4
+        },
+        {
+          "Name": "readOnly",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsWlanOrderIndex",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.1.1.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLAPGroupsVlanMappingInterfaceNameRev1",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.1.1.7",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 128,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLAPGroupsVenueConfigVenueGroup",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.2.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unspecified",
+          "Value": 1
+        },
+        {
+          "Name": "assembly",
+          "Value": 2
+        },
+        {
+          "Name": "business",
+          "Value": 3
+        },
+        {
+          "Name": "educational",
+          "Value": 4
+        },
+        {
+          "Name": "factoryAndIndustrial",
+          "Value": 5
+        },
+        {
+          "Name": "institutional",
+          "Value": 6
+        },
+        {
+          "Name": "mercantile",
+          "Value": 7
+        },
+        {
+          "Name": "residential",
+          "Value": 8
+        },
+        {
+          "Name": "storage",
+          "Value": 9
+        },
+        {
+          "Name": "utilityAndMisc",
+          "Value": 10
+        },
+        {
+          "Name": "vehicular",
+          "Value": 11
+        },
+        {
+          "Name": "outdoor",
+          "Value": 12
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsVenueConfigVenueType",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.2.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unspecified",
+          "Value": 1
+        },
+        {
+          "Name": "unspecifiedAssembly",
+          "Value": 2
+        },
+        {
+          "Name": "arena",
+          "Value": 3
+        },
+        {
+          "Name": "stadium",
+          "Value": 4
+        },
+        {
+          "Name": "passengerTerminal",
+          "Value": 5
+        },
+        {
+          "Name": "amphitheater",
+          "Value": 6
+        },
+        {
+          "Name": "amusementPark",
+          "Value": 7
+        },
+        {
+          "Name": "placeOfWorship",
+          "Value": 8
+        },
+        {
+          "Name": "conventionCenter",
+          "Value": 9
+        },
+        {
+          "Name": "library",
+          "Value": 10
+        },
+        {
+          "Name": "museum",
+          "Value": 11
+        },
+        {
+          "Name": "restaurant",
+          "Value": 12
+        },
+        {
+          "Name": "theater",
+          "Value": 13
+        },
+        {
+          "Name": "bar",
+          "Value": 14
+        },
+        {
+          "Name": "coffeeShop",
+          "Value": 15
+        },
+        {
+          "Name": "zooOrAquarium",
+          "Value": 16
+        },
+        {
+          "Name": "emergencyCoordinationCenter",
+          "Value": 17
+        },
+        {
+          "Name": "unspecifiedBusiness",
+          "Value": 18
+        },
+        {
+          "Name": "doctorOrDentistOffice",
+          "Value": 19
+        },
+        {
+          "Name": "bank",
+          "Value": 20
+        },
+        {
+          "Name": "fireStation",
+          "Value": 21
+        },
+        {
+          "Name": "policeStation",
+          "Value": 22
+        },
+        {
+          "Name": "postOffice",
+          "Value": 23
+        },
+        {
+          "Name": "professionalOffice",
+          "Value": 24
+        },
+        {
+          "Name": "researchAndDevelopmentFacility",
+          "Value": 25
+        },
+        {
+          "Name": "attorneyOffice",
+          "Value": 26
+        },
+        {
+          "Name": "unspecifiedEducational",
+          "Value": 27
+        },
+        {
+          "Name": "schoolPrimary",
+          "Value": 28
+        },
+        {
+          "Name": "schoolSecondary",
+          "Value": 29
+        },
+        {
+          "Name": "universityOrCollege",
+          "Value": 30
+        },
+        {
+          "Name": "unspecifiedFactoryAndIndustrial",
+          "Value": 31
+        },
+        {
+          "Name": "factory",
+          "Value": 32
+        },
+        {
+          "Name": "unspecifiedInstitutional",
+          "Value": 33
+        },
+        {
+          "Name": "hospital",
+          "Value": 34
+        },
+        {
+          "Name": "longTermCareFacility",
+          "Value": 35
+        },
+        {
+          "Name": "alcoholAndDrugRehabilitationCenter",
+          "Value": 36
+        },
+        {
+          "Name": "groupHome",
+          "Value": 37
+        },
+        {
+          "Name": "prisonOrJail",
+          "Value": 38
+        },
+        {
+          "Name": "unspecifiedMercantile",
+          "Value": 39
+        },
+        {
+          "Name": "retailStore",
+          "Value": 40
+        },
+        {
+          "Name": "groceryMarket",
+          "Value": 41
+        },
+        {
+          "Name": "atomotiveServiceStation",
+          "Value": 42
+        },
+        {
+          "Name": "shoppingMall",
+          "Value": 43
+        },
+        {
+          "Name": "gasStation",
+          "Value": 44
+        },
+        {
+          "Name": "unspecifiedResidential",
+          "Value": 45
+        },
+        {
+          "Name": "privateResidence",
+          "Value": 46
+        },
+        {
+          "Name": "hotelOrMotel",
+          "Value": 47
+        },
+        {
+          "Name": "dormitory",
+          "Value": 48
+        },
+        {
+          "Name": "boardingHouse",
+          "Value": 49
+        },
+        {
+          "Name": "unspecifiedStorage",
+          "Value": 50
+        },
+        {
+          "Name": "unspecifiedUtility",
+          "Value": 51
+        },
+        {
+          "Name": "unspecifiedVehicular",
+          "Value": 52
+        },
+        {
+          "Name": "automobileOrTruck",
+          "Value": 53
+        },
+        {
+          "Name": "airplane",
+          "Value": 54
+        },
+        {
+          "Name": "bus",
+          "Value": 55
+        },
+        {
+          "Name": "ferry",
+          "Value": 56
+        },
+        {
+          "Name": "shipOrBoat",
+          "Value": 57
+        },
+        {
+          "Name": "train",
+          "Value": 58
+        },
+        {
+          "Name": "motorBike",
+          "Value": 59
+        },
+        {
+          "Name": "unspecifiedOutdoor",
+          "Value": 60
+        },
+        {
+          "Name": "muniMeshNetwork",
+          "Value": 61
+        },
+        {
+          "Name": "cityPark",
+          "Value": 62
+        },
+        {
+          "Name": "restArea",
+          "Value": 63
+        },
+        {
+          "Name": "trafficControl",
+          "Value": 64
+        },
+        {
+          "Name": "busStop",
+          "Value": 65
+        },
+        {
+          "Name": "kiosk",
+          "Value": 66
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsVenueConfigVenueName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.2.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAPGroupsVenueConfigLanguage",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.2.1.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAPGroupsOperatingClass",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.2.1.5",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "class81"
+        },
+        {
+          "Bit": 1,
+          "Name": "class83"
+        },
+        {
+          "Bit": 2,
+          "Name": "class84"
+        },
+        {
+          "Bit": 3,
+          "Name": "class112"
+        },
+        {
+          "Bit": 4,
+          "Name": "class113"
+        },
+        {
+          "Bit": 5,
+          "Name": "class115"
+        },
+        {
+          "Bit": 6,
+          "Name": "class116"
+        },
+        {
+          "Bit": 7,
+          "Name": "class117"
+        },
+        {
+          "Bit": 8,
+          "Name": "class118"
+        },
+        {
+          "Bit": 9,
+          "Name": "class119"
+        },
+        {
+          "Bit": 10,
+          "Name": "class120"
+        },
+        {
+          "Bit": 11,
+          "Name": "class121"
+        },
+        {
+          "Bit": 12,
+          "Name": "class122"
+        },
+        {
+          "Bit": 13,
+          "Name": "class123"
+        },
+        {
+          "Bit": 14,
+          "Name": "class124"
+        },
+        {
+          "Bit": 15,
+          "Name": "class125"
+        },
+        {
+          "Bit": 16,
+          "Name": "class126"
+        },
+        {
+          "Bit": 17,
+          "Name": "class127"
+        }
+      ]
+    },
+    {
+      "Name": "cLAPGroupsMultipleVenueLanguage",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.3.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAPGroupsMultipleVenueName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.3.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAPGroupsMultipleVenueRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.3.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanClientAclName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.2.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanP2PBlocking",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.2.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 1
+        },
+        {
+          "Name": "drop",
+          "Value": 2
+        },
+        {
+          "Name": "forwardUp",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanClientIPv6AclName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.2.1.3",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLWlanClientDSAverageDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanClientUSAverageDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanClientDSBurstDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanClientUSBurstDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanClientDSAvgRealTimeDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.5",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanClientUSAvgRealTimeDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanClientDSBurstRealTimeDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.7",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanClientUSBurstRealTimeDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.8",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanSsidDSAverageDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanSsidUSAverageDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.10",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanSsidDSBurstDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.11",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanSsidUSBurstDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.12",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanSsidDSAvgRealTimeDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.13",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanSsidUSAvgRealTimeDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.14",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanSsidDSBurstRealTimeDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.15",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanSsidUSBurstRealTimeDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3.1.16",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanIosAccountingMethodListName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanIosAuthenticationMethodListName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanIosMacFilteringMethodListName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanIosWebAuthMethodListName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanIosQosUpStreamProfileName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.5",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanIosQosDownStreamProfileName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.6",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanIngressDHCPOption82Format",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.7",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanIngressDHCPOption82Ascii",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanIngressDHCPOption82Rid",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanIngressDHCPOption82Enable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanIosScanDeferPriority",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.11",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLWlanIosWebAuthParameterMapName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.12",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanIosQosClientUpStreamProfileName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.13",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanIosQosClientDownStreamProfileName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4.1.14",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanFlexibleNetflowPolicyTypeIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.5.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4InputPolicy",
+          "Value": 1
+        },
+        {
+          "Name": "ipv4OutputPolicy",
+          "Value": 2
+        },
+        {
+          "Name": "ipv6InputPolicy",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6OutputPolicy",
+          "Value": 4
+        },
+        {
+          "Name": "datalinkInputPolicy",
+          "Value": 5
+        },
+        {
+          "Name": "datalinkOutputPolicy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLWlanFlexibleNetflowMonitorName",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.5.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLWlanFlexibleNetflowRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.5.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "cLWlanConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanRowStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanProfileName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsid",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanDiagChan",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanStorageType",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIsWired",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIngressInterface",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanNACSupport",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanWepKeyChange",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanChdEnable",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan802dot11anDTIM",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan802dot11bgnDTIM",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanLoadBalancingEnable",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanBandSelectEnable",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanPassiveClientEnable",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanReAnchorRoamedVoiceClientsEnable",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanMulticastInterfaceEnable",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanMulticastInterface",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanMulticastDirectEnable",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanNACPostureSupport",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanMaxClientsAccepted",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanScanDeferPriority",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanScanDeferTime",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanLanSubType",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanWebAuthOnMacFilterFailureEnabled",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanStaticIpTunnelingEnabled",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanKtsCacSupportEnabled",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanWifiDirectPolicyStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanWebAuthIPv6AclName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2Enabled",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanMaxClientsAllowedPerRadio",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanDhcpDeviceProfiling",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanMacAuthOverDot1xEnabled",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanUserTimeout",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanUserIdleThreshold",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHttpDeviceProfiling",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpotClearConfig",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanRadiusAuthFourthServer",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanRadiusAuthFifthServer",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanRadiusAuthSixthServer",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanRadiusAcctFourthServer",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanRadiusAcctFifthServer",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanRadiusAcctSixthServer",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSelfAnchorEnabled",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanUniversalAdmin",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11acMuMimoEnabled"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex"
+      ],
+      "Name": "cLWlanConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.1"
+    },
+    {
+      "EntryName": "cLWlan11uEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uInternetAccess",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uNetworkType",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uVenueGroup",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uVenueType",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uVenueName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uHessid",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uNetworkAuthType",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uIpAddressAvailIpv4",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uIpAddressAvailIpv6"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex"
+      ],
+      "Name": "cLWlan11uTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.1"
+    },
+    {
+      "EntryName": "cLWlan11uOuiEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uOuiIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uOui",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uOuiIsBeacon",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uOuiRowStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uOuiStorageType"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uOuiIndex"
+      ],
+      "Name": "cLWlan11uOuiTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.2"
+    },
+    {
+      "EntryName": "cLWlan11uRealmEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmIndex"
+      ],
+      "Name": "cLWlan11uRealmTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.3"
+    },
+    {
+      "EntryName": "cLWlan11uRealmEapEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapMethod",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapIndex"
+      ],
+      "Name": "cLWlan11uRealmEapTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.4"
+    },
+    {
+      "EntryName": "cLWlan11uRealmEapAuthEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapAuthIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapAuthMethod",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapAuthParam",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapAuthCredentialType",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapAuthRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uRealmEapAuthIndex"
+      ],
+      "Name": "cLWlan11uRealmEapAuthTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.5"
+    },
+    {
+      "EntryName": "cLWlan11uDomainEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uDomainIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uDomainName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uDomainRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11uDomainIndex"
+      ],
+      "Name": "cLWlan11uDomainTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.6"
+    },
+    {
+      "EntryName": "cLWlan11u3gppEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11u3gppIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11u3gppCountryCode",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11u3gppNetworkCode",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11u3gppRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlan11u3gppIndex"
+      ],
+      "Name": "cLWlan11u3gppTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.3.7"
+    },
+    {
+      "EntryName": "cLWlanServiceAdvertisementEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanServiceAdvertisementStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanServiceAdvertisementMsapServerIndex"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex"
+      ],
+      "Name": "cLWlanServiceAdvertisementTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.4.1"
+    },
+    {
+      "EntryName": "cLWlanHotSpot2OperatorEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2OperatorIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2OperatorName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2OperatorLanguage",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2OperatorRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2OperatorIndex"
+      ],
+      "Name": "cLWlanHotSpot2OperatorTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.1"
+    },
+    {
+      "EntryName": "cLWlanHotSpot2PortConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2PortConfigIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2PortConfigIpProtocol",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2PortConfigPortNumber",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2PortConfigStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2PortConfigRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2PortConfigIndex"
+      ],
+      "Name": "cLWlanHotSpot2PortConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.2"
+    },
+    {
+      "EntryName": "cLWlanHotSpot2ConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2WanLinkStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2WanSymLinkStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2WanDownLinkSpeed",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanHotSpot2WanUpLinkSpeed"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex"
+      ],
+      "Name": "cLWlanHotSpot2ConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.5.3"
+    },
+    {
+      "EntryName": "cLAPGroupsHyperlocationConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsHyperlocationEnable",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsPakRssiThreshold",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsPakRssiThresholdTrigger",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsPakRssiNtpIpAddressType",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsPakRssiNtpAddress"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupName"
+      ],
+      "Name": "cLAPGroupsHyperlocationConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.8.1"
+    },
+    {
+      "EntryName": "cLAPGroupsPortConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsLANPortNumber",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsLANPortStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsLANPortPoeStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsLANPortRlanName",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsLANPortRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupName",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsLANPortNumber"
+      ],
+      "Name": "cLAPGroupsPortConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.1"
+    },
+    {
+      "EntryName": "cLAPGroupsExtModuleConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsExtModuleStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsExtModuleRlanName"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupName"
+      ],
+      "Name": "cLAPGroupsExtModuleConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.9.2"
+    },
+    {
+      "EntryName": "cLAPGroupsVlanConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupName",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsVlanMappingInterfaceName",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupNACSupport",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsVlanConfigRowStatus",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsVlanConfigStorageType",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsWlanOrderIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsVlanMappingInterfaceNameRev1"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanProfileName"
+      ],
+      "Name": "cLAPGroupsVlanConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.1"
+    },
+    {
+      "EntryName": "cLAPGroupsVenueConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsVenueConfigVenueGroup",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsVenueConfigVenueType",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsVenueConfigVenueName",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsVenueConfigLanguage",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsOperatingClass"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupName"
+      ],
+      "Name": "cLAPGroupsVenueConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.2"
+    },
+    {
+      "EntryName": "cLAPGroupsMultipleVenueEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsMultipleVenueLanguage",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsMultipleVenueName",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsMultipleVenueRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupName",
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupsMultipleVenueLanguage"
+      ],
+      "Name": "cLAPGroupsMultipleVenueTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.2.3"
+    },
+    {
+      "EntryName": "cLWlanConfigClientEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientAclName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanP2PBlocking",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientIPv6AclName"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex"
+      ],
+      "Name": "cLWlanConfigClientTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.2"
+    },
+    {
+      "EntryName": "cLWlanConfigQosEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientDSAverageDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientUSAverageDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientDSBurstDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientUSBurstDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientDSAvgRealTimeDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientUSAvgRealTimeDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientDSBurstRealTimeDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanClientUSBurstRealTimeDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsidDSAverageDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsidUSAverageDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsidDSBurstDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsidUSBurstDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsidDSAvgRealTimeDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsidUSAvgRealTimeDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsidDSBurstRealTimeDataRate",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanSsidUSBurstRealTimeDataRate"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex"
+      ],
+      "Name": "cLWlanConfigQosTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.3"
+    },
+    {
+      "EntryName": "cLWlanConfigIosEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosAccountingMethodListName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosAuthenticationMethodListName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosMacFilteringMethodListName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosWebAuthMethodListName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosQosUpStreamProfileName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosQosDownStreamProfileName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIngressDHCPOption82Format",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIngressDHCPOption82Ascii",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIngressDHCPOption82Rid",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIngressDHCPOption82Enable",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosScanDeferPriority",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosWebAuthParameterMapName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosQosClientUpStreamProfileName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIosQosClientDownStreamProfileName"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex"
+      ],
+      "Name": "cLWlanConfigIosTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.4"
+    },
+    {
+      "EntryName": "cLWlanFlexibleNetflowEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanFlexibleNetflowPolicyTypeIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanFlexibleNetflowMonitorName",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanFlexibleNetflowRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLWlanIndex",
+        "CISCO-LWAPP-WLAN-MIB::cLWlanFlexibleNetflowPolicyTypeIndex"
+      ],
+      "Name": "cLWlanFlexibleNetflowTable",
+      "OID": ".1.3.6.1.4.1.9.9.512.1.1.5"
+    }
+  ]
+}

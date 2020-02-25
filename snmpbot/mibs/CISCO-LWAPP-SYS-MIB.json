@@ -1,0 +1,1252 @@
+{
+  "Name": "CISCO-LWAPP-SYS-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.618",
+  "Objects": [
+    {
+      "Name": "clsDot3BridgeEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsDownloadFileType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.2.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "code",
+          "Value": 2
+        },
+        {
+          "Name": "config",
+          "Value": 3
+        },
+        {
+          "Name": "webAuthCert",
+          "Value": 4
+        },
+        {
+          "Name": "webAdminCert",
+          "Value": 5
+        },
+        {
+          "Name": "signatures",
+          "Value": 6
+        },
+        {
+          "Name": "customWebAuth",
+          "Value": 7
+        },
+        {
+          "Name": "vendorDeviceCert",
+          "Value": 8
+        },
+        {
+          "Name": "vendorCaCert",
+          "Value": 9
+        }
+      ]
+    },
+    {
+      "Name": "clsDownloadCertificateKey",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.2.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsUploadFileType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.3.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "config",
+          "Value": 2
+        },
+        {
+          "Name": "errorLog",
+          "Value": 3
+        },
+        {
+          "Name": "systemTrace",
+          "Value": 4
+        },
+        {
+          "Name": "trapLog",
+          "Value": 5
+        },
+        {
+          "Name": "crashFile",
+          "Value": 6
+        },
+        {
+          "Name": "signatures",
+          "Value": 7
+        },
+        {
+          "Name": "pac",
+          "Value": 8
+        },
+        {
+          "Name": "radioCoreDump",
+          "Value": 9
+        },
+        {
+          "Name": "invalidConfig",
+          "Value": 10
+        },
+        {
+          "Name": "debugfile",
+          "Value": 11
+        },
+        {
+          "Name": "pktCapture",
+          "Value": 12
+        },
+        {
+          "Name": "watchdogCrash",
+          "Value": 13
+        },
+        {
+          "Name": "panicCrash",
+          "Value": 14
+        },
+        {
+          "Name": "vendorDevCert",
+          "Value": 15
+        },
+        {
+          "Name": "vendorCaCert",
+          "Value": 16
+        },
+        {
+          "Name": "webAdminCert",
+          "Value": 17
+        },
+        {
+          "Name": "webAuthCert",
+          "Value": 18
+        }
+      ]
+    },
+    {
+      "Name": "clsUploadPacUsername",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.3.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsUploadPacPassword",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.3.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsUploadPacValidity",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.3.4",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "clsTransferConfigFileEncryption",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.4.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 1
+        },
+        {
+          "Name": "enable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsTransferConfigFileEncryptionKey",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.4.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsTransferType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "download",
+          "Value": 1
+        },
+        {
+          "Name": "upload",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsTransferMode",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "tftp",
+          "Value": 1
+        },
+        {
+          "Name": "ftp",
+          "Value": 2
+        },
+        {
+          "Name": "sftp",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "clsTransferServerAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "clsTransferServerAddress",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "clsTransferPath",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.5",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsTransferFilename",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.6",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsTransferFtpUsername",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.7",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsTransferFtpPassword",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.8",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsTransferFtpPortNum",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsTransferTftpMaxRetries",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.10",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 254,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "clsTransferTftpTimeout",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.11",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 254,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "clsTransferStart",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "initiate",
+          "Value": 2
+        },
+        {
+          "Name": "initiatePeer",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "clsTransferStatus",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notInitiated",
+          "Value": 1
+        },
+        {
+          "Name": "transferStarting",
+          "Value": 2
+        },
+        {
+          "Name": "errorStarting",
+          "Value": 3
+        },
+        {
+          "Name": "wrongFileType",
+          "Value": 4
+        },
+        {
+          "Name": "updatingConfig",
+          "Value": 5
+        },
+        {
+          "Name": "invalidConfigFile",
+          "Value": 6
+        },
+        {
+          "Name": "writingToFlash",
+          "Value": 7
+        },
+        {
+          "Name": "failureWritingToFlash",
+          "Value": 8
+        },
+        {
+          "Name": "checkingCRC",
+          "Value": 9
+        },
+        {
+          "Name": "failedCRC",
+          "Value": 10
+        },
+        {
+          "Name": "unknownDirection",
+          "Value": 11
+        },
+        {
+          "Name": "transferSuccessful",
+          "Value": 12
+        },
+        {
+          "Name": "transferFailed",
+          "Value": 13
+        },
+        {
+          "Name": "bootBreakOff",
+          "Value": 14
+        },
+        {
+          "Name": "invalidTarFile",
+          "Value": 15
+        },
+        {
+          "Name": "unknown",
+          "Value": 99
+        }
+      ]
+    },
+    {
+      "Name": "clsTransferStatusString",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1.1.14",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsTimeZone",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.5.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsTimeZoneDescription",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.5.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsMaxClientsTrapThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.5.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsMaxRFIDTagsTrapThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.5.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLSysLogServerIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.6.1.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLSysLogAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.6.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLSysLogAddress",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.6.1.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLSysLogHostRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.6.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLSysArpUnicastEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLSysBroadcastForwardingEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLSysLagModeEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsConfigProductBranchVersion",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.11",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "clsConfigDhcpProxyEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLSysMulticastIGMPSnoopingEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.13.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLSysMulticastIGMPSnoopingTimeout",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.13.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLSysMulticastIGMPQueryInterval",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.13.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsPortDot1dBasePort",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.14.1.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "clsPortModePhysicalMode",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.14.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "autoNegotiate",
+          "Value": 1
+        },
+        {
+          "Name": "half10",
+          "Value": 2
+        },
+        {
+          "Name": "full10",
+          "Value": 3
+        },
+        {
+          "Name": "half100",
+          "Value": 4
+        },
+        {
+          "Name": "full100",
+          "Value": 5
+        },
+        {
+          "Name": "full1000sx",
+          "Value": 6
+        },
+        {
+          "Name": "half1000",
+          "Value": 7
+        },
+        {
+          "Name": "full1000",
+          "Value": 8
+        },
+        {
+          "Name": "half10000",
+          "Value": 9
+        },
+        {
+          "Name": "full10000",
+          "Value": 10
+        }
+      ]
+    },
+    {
+      "Name": "clsPortModePhysicalStatus",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.14.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "autonegotiate",
+          "Value": 2
+        },
+        {
+          "Name": "half10",
+          "Value": 3
+        },
+        {
+          "Name": "full10",
+          "Value": 4
+        },
+        {
+          "Name": "half100",
+          "Value": 5
+        },
+        {
+          "Name": "full100",
+          "Value": 6
+        },
+        {
+          "Name": "full1000sx",
+          "Value": 7
+        },
+        {
+          "Name": "half1000",
+          "Value": 8
+        },
+        {
+          "Name": "full1000",
+          "Value": 9
+        },
+        {
+          "Name": "half10000",
+          "Value": 10
+        },
+        {
+          "Name": "full10000",
+          "Value": 11
+        }
+      ]
+    },
+    {
+      "Name": "clsPortModeSfpType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.14.1.1.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsPortUpDownCount",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.14.1.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "clsCoreDumpTransferEnable",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.15.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsCoreDumpTransferMode",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.15.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "ftp",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsCoreDumpServerIPAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.15.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "clsCoreDumpServerIPAddress",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.15.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "clsCoreDumpFileName",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.15.5",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsCoreDumpUserName",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.15.6",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsCoreDumpPassword",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.15.7",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsConfigMulticastEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLSysMulticastMLDSnoopingEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.17.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLSysMulticastMLDSnoopingTimeout",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.17.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLSysMulticastMLDQueryInterval",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.17.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysRealtimeStatsTimer",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.18.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 5,
+        "Min": 2
+      }
+    },
+    {
+      "Name": "clsSysNormalStatsTimer",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.18.2",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 180,
+        "Min": 10
+      }
+    },
+    {
+      "Name": "clsSysStatsSamplingInterval",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.18.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysStatsAverageInterval",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.18.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsAlarmHoldTime",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.19.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 3600,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "clsAlarmTrapRetransmitInterval",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.19.2",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "clsSysControllerCpuUsageThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.20.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 100,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "clsSysControllerMemoryUsageThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.20.2",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 100,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "clsSysApCpuUsageThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.20.3",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 100,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "clsSysApMemoryUsageThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.20.4",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 100,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "clsNMHeartBeatEnable",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.21.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsNMHeartBeatInterval",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.21.2",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "clsCrashSystem",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.99",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLSysLagModeInTransition",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.2.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsEmergencyImageVersion",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.3.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "clsSecStrongPwdCaseCheck",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.5.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsSecStrongPwdConsecutiveCheck",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.5.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsSecStrongPwdDefaultCheck",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.5.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsSecStrongPwdAsUserNameCheck",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.5.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsSysFlashSize",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysMemoryType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "clsSysMaxClients",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysApConnectCount",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysNetId",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.5",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "clsSysCurrentMemoryUsage",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysAverageMemoryUsage",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.7",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysCurrentCpuUsage",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.8",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysAverageCpuUsage",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSysCpuType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.10",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "clsMaxRFIDTagsCount",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.11",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsMaxClientsCount",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.8.12",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "clsSecStrongPwdCheckTrapEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.7.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsMaxClientsTrapEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.7.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsMaxRFIDTagsTrapEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.7.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsSecStrongPwdManagementUser",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.6.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 24,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "clsSecStrongPwdCheckType",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.6.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "caseCheck",
+          "Value": 1
+        },
+        {
+          "Name": "consecutiveCheck",
+          "Value": 2
+        },
+        {
+          "Name": "defaultCheck",
+          "Value": 3
+        },
+        {
+          "Name": "usernameCheck",
+          "Value": 4
+        },
+        {
+          "Name": "allChecks",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "clsSecStrongPwdCheckOption",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.6.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsSysAlarmSet",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.6.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "clsAllCpuUsage",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.4.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "clsTransferConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-SYS-MIB::clsTransferType",
+        "CISCO-LWAPP-SYS-MIB::clsTransferMode",
+        "CISCO-LWAPP-SYS-MIB::clsTransferServerAddressType",
+        "CISCO-LWAPP-SYS-MIB::clsTransferServerAddress",
+        "CISCO-LWAPP-SYS-MIB::clsTransferPath",
+        "CISCO-LWAPP-SYS-MIB::clsTransferFilename",
+        "CISCO-LWAPP-SYS-MIB::clsTransferFtpUsername",
+        "CISCO-LWAPP-SYS-MIB::clsTransferFtpPassword",
+        "CISCO-LWAPP-SYS-MIB::clsTransferFtpPortNum",
+        "CISCO-LWAPP-SYS-MIB::clsTransferTftpMaxRetries",
+        "CISCO-LWAPP-SYS-MIB::clsTransferTftpTimeout",
+        "CISCO-LWAPP-SYS-MIB::clsTransferStart",
+        "CISCO-LWAPP-SYS-MIB::clsTransferStatus",
+        "CISCO-LWAPP-SYS-MIB::clsTransferStatusString"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-SYS-MIB::clsTransferType",
+        "CISCO-LWAPP-SYS-MIB::clsTransferMode"
+      ],
+      "Name": "clsTransferConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.8.1"
+    },
+    {
+      "EntryName": "cLSysLogConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-SYS-MIB::cLSysLogServerIndex",
+        "CISCO-LWAPP-SYS-MIB::cLSysLogAddressType",
+        "CISCO-LWAPP-SYS-MIB::cLSysLogAddress",
+        "CISCO-LWAPP-SYS-MIB::cLSysLogHostRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-SYS-MIB::cLSysLogServerIndex"
+      ],
+      "Name": "cLSysLogConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.6.1"
+    },
+    {
+      "EntryName": "clsPortModeConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-SYS-MIB::clsPortDot1dBasePort",
+        "CISCO-LWAPP-SYS-MIB::clsPortModePhysicalMode",
+        "CISCO-LWAPP-SYS-MIB::clsPortModePhysicalStatus",
+        "CISCO-LWAPP-SYS-MIB::clsPortModeSfpType",
+        "CISCO-LWAPP-SYS-MIB::clsPortUpDownCount"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-SYS-MIB::clsPortDot1dBasePort"
+      ],
+      "Name": "clsPortModeConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.618.1.1.14.1"
+    }
+  ]
+}

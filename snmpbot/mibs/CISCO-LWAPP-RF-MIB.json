@@ -1,0 +1,757 @@
+{
+  "Name": "CISCO-LWAPP-RF-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.778",
+  "Objects": [
+    {
+      "Name": "cLAPGroups802dot11bgRFProfileName",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.1.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAPGroups802dot11aRFProfileName",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.1.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLRFProfileName",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLRFProfileDescr",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLRFProfileTransmitPowerMin",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 30,
+        "Min": -10
+      }
+    },
+    {
+      "Name": "cLRFProfileTransmitPowerMax",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.4",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 30,
+        "Min": -10
+      }
+    },
+    {
+      "Name": "cLRFProfileTransmitPowerThresholdV1",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.5",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": -50,
+        "Min": -80
+      }
+    },
+    {
+      "Name": "cLRFProfileTransmitPowerThresholdV2",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.6",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": -50,
+        "Min": -80
+      }
+    },
+    {
+      "Name": "cLRFProfileDataRate1Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate2Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate5AndHalfMbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate11Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate6Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate9Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate12Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate18Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate24Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.15",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate36Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate48Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.17",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDataRate54Mbps",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.18",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "supported",
+          "Value": 1
+        },
+        {
+          "Name": "mandatoryRate",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileRadioType",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.19",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "dot11bg",
+          "Value": 1
+        },
+        {
+          "Name": "dot11a",
+          "Value": 2
+        },
+        {
+          "Name": "uwb",
+          "Value": 3
+        },
+        {
+          "Name": "dot11abgn",
+          "Value": 4
+        },
+        {
+          "Name": "dot11ac",
+          "Value": 5
+        },
+        {
+          "Name": "dot11b",
+          "Value": 6
+        },
+        {
+          "Name": "dot11g",
+          "Value": 7
+        },
+        {
+          "Name": "dot11n24",
+          "Value": 8
+        },
+        {
+          "Name": "dot11n5",
+          "Value": 9
+        },
+        {
+          "Name": "unknown",
+          "Value": 10
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileStorageType",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "volatile",
+          "Value": 2
+        },
+        {
+          "Name": "nonVolatile",
+          "Value": 3
+        },
+        {
+          "Name": "permanent",
+          "Value": 4
+        },
+        {
+          "Name": "readOnly",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.21",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileHighDensityMaxRadioClients",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.22",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileBandSelectProbeResponse",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.23",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileBandSelectCycleCount",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.24",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileBandSelectCycleThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.25",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileBandSelectExpireSuppression",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.26",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileBandSelectExpireDualBand",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.27",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileBandSelectClientRSSI",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.28",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLRFProfileLoadBalancingWindowSize",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.29",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileLoadBalancingDenialCount",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.30",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileCHDDataRSSIThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.31",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLRFProfileCHDVoiceRSSIThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.32",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLRFProfileCHDClientExceptionLevel",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.33",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileCHDCoverageExceptionLevel",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.34",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileMulticastDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.35",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfile11nOnly",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.36",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileHDClientTrapThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.37",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileInterferenceThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.38",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 100,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLRFProfileNoiseThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.39",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 0,
+        "Min": -127
+      }
+    },
+    {
+      "Name": "cLRFProfileUtilizationThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.40",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 100,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLRFProfileDCAForeignContribution",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.41",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDCAChannelWidth",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.42",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "min",
+          "Value": 1
+        },
+        {
+          "Name": "medium",
+          "Value": 2
+        },
+        {
+          "Name": "max",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileDCAChannelList",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.43",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLRFProfileRxSopThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2.1.44",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "auto",
+          "Value": 0
+        },
+        {
+          "Name": "low",
+          "Value": 1
+        },
+        {
+          "Name": "medium",
+          "Value": 2
+        },
+        {
+          "Name": "high",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileOutOfBoxAPConfig",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.2.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLRFProfileMcsName",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.3.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLRFProfileMcsRate",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.3.1.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLRFProfileMcsRateSupport",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.3.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "cLAPGroupsRFProfileEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-RF-MIB::cLAPGroups802dot11bgRFProfileName",
+        "CISCO-LWAPP-RF-MIB::cLAPGroups802dot11aRFProfileName"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-WLAN-MIB::cLAPGroupName"
+      ],
+      "Name": "cLAPGroupsRFProfileTable",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.1"
+    },
+    {
+      "EntryName": "cLRFProfileEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-RF-MIB::cLRFProfileName",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDescr",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileTransmitPowerMin",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileTransmitPowerMax",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileTransmitPowerThresholdV1",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileTransmitPowerThresholdV2",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate1Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate2Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate5AndHalfMbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate11Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate6Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate9Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate12Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate18Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate24Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate36Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate48Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDataRate54Mbps",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileRadioType",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileStorageType",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileRowStatus",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileHighDensityMaxRadioClients",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileBandSelectProbeResponse",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileBandSelectCycleCount",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileBandSelectCycleThreshold",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileBandSelectExpireSuppression",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileBandSelectExpireDualBand",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileBandSelectClientRSSI",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileLoadBalancingWindowSize",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileLoadBalancingDenialCount",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileCHDDataRSSIThreshold",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileCHDVoiceRSSIThreshold",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileCHDClientExceptionLevel",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileCHDCoverageExceptionLevel",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileMulticastDataRate",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileHDClientTrapThreshold",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileInterferenceThreshold",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileNoiseThreshold",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileUtilizationThreshold",
+        "CISCO-LWAPP-RF-MIB::cLRFProfile11nOnly",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDCAForeignContribution",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDCAChannelWidth",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileDCAChannelList",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileRxSopThreshold"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-RF-MIB::cLRFProfileName"
+      ],
+      "Name": "cLRFProfileTable",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.2"
+    },
+    {
+      "EntryName": "cLRFProfileMcsDataRateEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-RF-MIB::cLRFProfileMcsName",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileMcsRate",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileMcsRateSupport"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-RF-MIB::cLRFProfileMcsName",
+        "CISCO-LWAPP-RF-MIB::cLRFProfileMcsRate"
+      ],
+      "Name": "cLRFProfileMcsDataRateTable",
+      "OID": ".1.3.6.1.4.1.9.9.778.1.1.3"
+    }
+  ]
+}

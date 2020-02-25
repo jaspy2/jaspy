@@ -1,0 +1,1931 @@
+{
+  "Name": "CISCO-LWAPP-DOT11-CLIENT-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.599",
+  "Objects": [
+    {
+      "Name": "cldcClientMacAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cldcClientStatus",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "idle",
+          "Value": 1
+        },
+        {
+          "Name": "aaaPending",
+          "Value": 2
+        },
+        {
+          "Name": "authenticated",
+          "Value": 3
+        },
+        {
+          "Name": "associated",
+          "Value": 4
+        },
+        {
+          "Name": "powersave",
+          "Value": 5
+        },
+        {
+          "Name": "disassociated",
+          "Value": 6
+        },
+        {
+          "Name": "tobedeleted",
+          "Value": 7
+        },
+        {
+          "Name": "probing",
+          "Value": 8
+        },
+        {
+          "Name": "excluded",
+          "Value": 9
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientWlanProfileName",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientWgbStatus",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "regClient",
+          "Value": 1
+        },
+        {
+          "Name": "wgbClient",
+          "Value": 2
+        },
+        {
+          "Name": "wgb",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientWgbMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.5",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cldcClientProtocol",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "dot11a",
+          "Value": 1
+        },
+        {
+          "Name": "dot11b",
+          "Value": 2
+        },
+        {
+          "Name": "dot11g",
+          "Value": 3
+        },
+        {
+          "Name": "unknown",
+          "Value": 4
+        },
+        {
+          "Name": "mobile",
+          "Value": 5
+        },
+        {
+          "Name": "dot11n24",
+          "Value": 6
+        },
+        {
+          "Name": "dot11n5",
+          "Value": 7
+        },
+        {
+          "Name": "ethernet",
+          "Value": 8
+        },
+        {
+          "Name": "dot3",
+          "Value": 9
+        },
+        {
+          "Name": "dot11ac5",
+          "Value": 10
+        }
+      ]
+    },
+    {
+      "Name": "cldcAssociationMode",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "wep",
+          "Value": 2
+        },
+        {
+          "Name": "wpa",
+          "Value": 3
+        },
+        {
+          "Name": "wpa2",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cldcApMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.8",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cldcIfType",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "dot11bg",
+          "Value": 1
+        },
+        {
+          "Name": "dot11a",
+          "Value": 2
+        },
+        {
+          "Name": "uwb",
+          "Value": 3
+        },
+        {
+          "Name": "dot11abgn",
+          "Value": 4
+        },
+        {
+          "Name": "dot11ac",
+          "Value": 5
+        },
+        {
+          "Name": "dot11b",
+          "Value": 6
+        },
+        {
+          "Name": "dot11g",
+          "Value": 7
+        },
+        {
+          "Name": "dot11n24",
+          "Value": 8
+        },
+        {
+          "Name": "dot11n5",
+          "Value": 9
+        },
+        {
+          "Name": "unknown",
+          "Value": 10
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientIPAddress",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.10",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "cldcClientNacState",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "quarantine",
+          "Value": 1
+        },
+        {
+          "Name": "access",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientQuarantineVLAN",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.12",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cldcClientAccessVLAN",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.13",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cldcClientLoginTime",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.14",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cldcClientUpTime",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.15",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cldcClientPowerSaveMode",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "powersave",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientCurrentTxRateSet",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.17",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 2,
+        "Min": 2
+      }
+    },
+    {
+      "Name": "cldcClientDataRateSet",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.18",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 126,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cldcClientHreapApAuth",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.19",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcClient80211uCapable",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientPostureState",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.21",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientAclName",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.22",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientAclApplied",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.23",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        },
+        {
+          "Name": "notAvailable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientRedirectUrl",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.24",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cldcClientAaaOverrideAclName",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.25",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientAaaOverrideAclApplied",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.26",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        },
+        {
+          "Name": "notAvailable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientUsername",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.27",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientSSID",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.28",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientSecurityTagId",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.29",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cldcClientTypeKTS",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.30",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientIpv6AclName",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.31",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cldcClientIpv6AclApplied",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.32",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        },
+        {
+          "Name": "notAvailable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientDataSwitching",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.33",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "central",
+          "Value": 2
+        },
+        {
+          "Name": "local",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientAuthentication",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.34",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "central",
+          "Value": 2
+        },
+        {
+          "Name": "local",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientChannel",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.35",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cldcClientAuthMode",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.36",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 0
+        },
+        {
+          "Name": "psk",
+          "Value": 1
+        },
+        {
+          "Name": "radius",
+          "Value": 2
+        },
+        {
+          "Name": "cckm",
+          "Value": 3
+        },
+        {
+          "Name": "wapipsk",
+          "Value": 4
+        },
+        {
+          "Name": "wapicert",
+          "Value": 5
+        },
+        {
+          "Name": "ftDot1x",
+          "Value": 6
+        },
+        {
+          "Name": "ftPsk",
+          "Value": 7
+        },
+        {
+          "Name": "pmfDot1x",
+          "Value": 8
+        },
+        {
+          "Name": "pmfPsk",
+          "Value": 9
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientReasonCode",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.37",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unspecified",
+          "Value": 1
+        },
+        {
+          "Name": "previousAuthNotValid",
+          "Value": 2
+        },
+        {
+          "Name": "deauthenticationLeaving",
+          "Value": 3
+        },
+        {
+          "Name": "disassociationDueToInactivity",
+          "Value": 4
+        },
+        {
+          "Name": "disassociationAPBusy",
+          "Value": 5
+        },
+        {
+          "Name": "class2FrameFromNonAuthStation",
+          "Value": 6
+        },
+        {
+          "Name": "class2FrameFromNonAssStation",
+          "Value": 7
+        },
+        {
+          "Name": "disassociationStaHasLeft",
+          "Value": 8
+        },
+        {
+          "Name": "staReqAssociationWithoutAuth",
+          "Value": 9
+        },
+        {
+          "Name": "invalidInformationElement",
+          "Value": 40
+        },
+        {
+          "Name": "groupCipherInvalid",
+          "Value": 41
+        },
+        {
+          "Name": "unicastCipherInvalid",
+          "Value": 42
+        },
+        {
+          "Name": "akmpInvalid",
+          "Value": 43
+        },
+        {
+          "Name": "unsupportedRsnVersion",
+          "Value": 44
+        },
+        {
+          "Name": "invalidRsnIeCapabilities",
+          "Value": 45
+        },
+        {
+          "Name": "cipherSuiteRejected",
+          "Value": 46
+        },
+        {
+          "Name": "missingReasonCode",
+          "Value": 99
+        },
+        {
+          "Name": "maxAssociatedClientsReached",
+          "Value": 101
+        },
+        {
+          "Name": "maxAssociatedClientsReachedOnRadio",
+          "Value": 105
+        },
+        {
+          "Name": "maxAssociatedClientsReachedOnWlan",
+          "Value": 106
+        },
+        {
+          "Name": "unSpecifiedQosFailure",
+          "Value": 200
+        },
+        {
+          "Name": "qosPolicyMismatch",
+          "Value": 201
+        },
+        {
+          "Name": "inSufficientBandwidth",
+          "Value": 202
+        },
+        {
+          "Name": "inValidQosParams",
+          "Value": 203
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientSessionID",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.38",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientApRoamMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.39",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cldcClientMdnsProfile",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.40",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientMdnsAdvCount",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.41",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cldcClientPolicyName",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.42",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientAAARole",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.43",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientDeviceType",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.44",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcUserAuthType",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1.1.45",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "open",
+          "Value": 1
+        },
+        {
+          "Name": "wepPsk",
+          "Value": 2
+        },
+        {
+          "Name": "portal",
+          "Value": 3
+        },
+        {
+          "Name": "simPeap",
+          "Value": 4
+        },
+        {
+          "Name": "other",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientByIpAddressType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.2.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientByIpAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.2.1.3",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cldcClientByIpAddressDiscoverType",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "invalid",
+          "Value": 1
+        },
+        {
+          "Name": "ndp",
+          "Value": 2
+        },
+        {
+          "Name": "dhcp",
+          "Value": 3
+        },
+        {
+          "Name": "packet",
+          "Value": 4
+        },
+        {
+          "Name": "local",
+          "Value": 5
+        },
+        {
+          "Name": "static",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientByIpAddressLastSeen",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.2.1.5",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cldcSleepingClientMacAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.3.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cldcSleepingClientSsid",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.3.1.2",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cldcSleepingClientUserName",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.3.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcSleepingClientRemainingTime",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.3.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cldcSleepingClientRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.3.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientDataRetries",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.1",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRtsRetries",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.2",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientDuplicatePackets",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.3",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientDecryptFailures",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.4",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientMicErrors",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.5",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientMicMissingFrames",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.6",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRaPacketsDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.7",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientInterimUpdatesCount",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.8",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientDataBytesReceived",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.9",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRealtimeBytesReceived",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.10",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRxDataBytesDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.11",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRxRealtimeBytesDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.12",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientDataBytesSent",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.13",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRealtimeBytesSent",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.14",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientTxDataBytesDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.15",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientTxRealtimeBytesDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.16",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientDataPacketsReceived",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.17",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRealtimePacketsReceived",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.18",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRxDataPacketsDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.19",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRxRealtimePacketsDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.20",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientDataPacketsSent",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.21",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRealtimePacketsSent",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.22",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientTxDataPacketsDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.23",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientTxRealtimePacketsDropped",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.24",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientTxDataPackets",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.25",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientTxDataBytes",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.26",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRxDataPackets",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.27",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientRxDataBytes",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1.1.28",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldccCcxFoundationServiceVersion",
+      "OID": ".1.3.6.1.4.1.9.9.599.3.1.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "version1",
+          "Value": 2
+        },
+        {
+          "Name": "version2",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldccCcxLocationServiceVersion",
+      "OID": ".1.3.6.1.4.1.9.9.599.3.1.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "version1",
+          "Value": 2
+        },
+        {
+          "Name": "version2",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldccCcxVoiceServiceVersion",
+      "OID": ".1.3.6.1.4.1.9.9.599.3.1.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "version1",
+          "Value": 2
+        },
+        {
+          "Name": "version2",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldccCcxManagementServiceVersion",
+      "OID": ".1.3.6.1.4.1.9.9.599.3.1.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "version1",
+          "Value": 2
+        },
+        {
+          "Name": "version2",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcKeyDecryptErrorEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcAssocNacAlertEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcDisassocNacAlertEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcMovedToRunStateEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ciscoLwappDot11ClientStaticIpFailTrapEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientRSSI",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cldcClientSNR",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cldcDOT11ClientReasonCode",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unspecified",
+          "Value": 1
+        },
+        {
+          "Name": "previousAuthNotValid",
+          "Value": 2
+        },
+        {
+          "Name": "deauthenticationLeaving",
+          "Value": 3
+        },
+        {
+          "Name": "disassociationDueToInactivity",
+          "Value": 4
+        },
+        {
+          "Name": "disassociationAPBusy",
+          "Value": 5
+        },
+        {
+          "Name": "class2FrameFromNonAuthStation",
+          "Value": 6
+        },
+        {
+          "Name": "class2FrameFromNonAssStation",
+          "Value": 7
+        },
+        {
+          "Name": "disassociationStaHasLeft",
+          "Value": 8
+        },
+        {
+          "Name": "staReqAssociationWithoutAuth",
+          "Value": 9
+        },
+        {
+          "Name": "invalidInformationElement",
+          "Value": 40
+        },
+        {
+          "Name": "groupCipherInvalid",
+          "Value": 41
+        },
+        {
+          "Name": "unicastCipherInvalid",
+          "Value": 42
+        },
+        {
+          "Name": "akmpInvalid",
+          "Value": 43
+        },
+        {
+          "Name": "unsupportedRsnVersion",
+          "Value": 44
+        },
+        {
+          "Name": "invalidRsnIeCapabilities",
+          "Value": 45
+        },
+        {
+          "Name": "cipherSuiteRejected",
+          "Value": 46
+        },
+        {
+          "Name": "missingReasonCode",
+          "Value": 99
+        },
+        {
+          "Name": "maxAssociatedClientsReached",
+          "Value": 101
+        },
+        {
+          "Name": "maxAssociatedClientsReachedOnRadio",
+          "Value": 105
+        },
+        {
+          "Name": "maxAssociatedClientsReachedOnWlan",
+          "Value": 106
+        },
+        {
+          "Name": "unSpecifiedQosFailure",
+          "Value": 200
+        },
+        {
+          "Name": "qosPolicyMismatch",
+          "Value": 201
+        },
+        {
+          "Name": "inSufficientBandwidth",
+          "Value": 202
+        },
+        {
+          "Name": "inValidQosParams",
+          "Value": 203
+        }
+      ]
+    },
+    {
+      "Name": "cldcDOT11ClientTxDataPackets",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cldcDOT11ClientTxDataBytes",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cldcDOT11ClientRxDataPackets",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cldcDOT11ClientRxDataBytes",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cldcClientVlanId",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.8",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4096,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cldcClientPolicyType",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "dot1x",
+          "Value": 1
+        },
+        {
+          "Name": "wpa1",
+          "Value": 2
+        },
+        {
+          "Name": "wpa2",
+          "Value": 3
+        },
+        {
+          "Name": "wpa2vff",
+          "Value": 4
+        },
+        {
+          "Name": "notavailable",
+          "Value": 5
+        },
+        {
+          "Name": "unknown",
+          "Value": 6
+        },
+        {
+          "Name": "wapi",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientEapType",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "eapTls",
+          "Value": 1
+        },
+        {
+          "Name": "ttls",
+          "Value": 2
+        },
+        {
+          "Name": "peap",
+          "Value": 3
+        },
+        {
+          "Name": "leap",
+          "Value": 4
+        },
+        {
+          "Name": "speke",
+          "Value": 5
+        },
+        {
+          "Name": "eapFast",
+          "Value": 6
+        },
+        {
+          "Name": "notavailable",
+          "Value": 7
+        },
+        {
+          "Name": "unknown",
+          "Value": 8
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientAID",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.11",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cldcClientAuthenticationAlgorithm",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "openSystem",
+          "Value": 1
+        },
+        {
+          "Name": "sharedKey",
+          "Value": 2
+        },
+        {
+          "Name": "unknown",
+          "Value": 3
+        },
+        {
+          "Name": "openAndEap",
+          "Value": 129
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientWepState",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientEncryptionCypher",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "ccmpAes",
+          "Value": 1
+        },
+        {
+          "Name": "tkipMic",
+          "Value": 2
+        },
+        {
+          "Name": "wep40",
+          "Value": 3
+        },
+        {
+          "Name": "wep104",
+          "Value": 4
+        },
+        {
+          "Name": "wep128",
+          "Value": 5
+        },
+        {
+          "Name": "none",
+          "Value": 6
+        },
+        {
+          "Name": "notavailable",
+          "Value": 7
+        },
+        {
+          "Name": "unknown",
+          "Value": 8
+        },
+        {
+          "Name": "wapiSMS4",
+          "Value": 9
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientPortNumber",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.15",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cldcClientAnchorAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientAnchorAddress",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.17",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cldcClientEssIndex",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.18",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 517,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cldcClientCcxVersion",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.19",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notSupported",
+          "Value": 1
+        },
+        {
+          "Name": "ccxv1",
+          "Value": 2
+        },
+        {
+          "Name": "ccxv2",
+          "Value": 3
+        },
+        {
+          "Name": "ccxv3",
+          "Value": 4
+        },
+        {
+          "Name": "ccxv4",
+          "Value": 5
+        },
+        {
+          "Name": "ccxv5",
+          "Value": 6
+        },
+        {
+          "Name": "ccxv6",
+          "Value": 7
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientE2eVersion",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notSupported",
+          "Value": 1
+        },
+        {
+          "Name": "e2ev1",
+          "Value": 2
+        },
+        {
+          "Name": "e2ev2",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientInterface",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.21",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cldcClientMobilityStatus",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.22",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unassociated",
+          "Value": 1
+        },
+        {
+          "Name": "local",
+          "Value": 2
+        },
+        {
+          "Name": "anchor",
+          "Value": 3
+        },
+        {
+          "Name": "foreign",
+          "Value": 4
+        },
+        {
+          "Name": "handoff",
+          "Value": 5
+        },
+        {
+          "Name": "unknown",
+          "Value": 6
+        },
+        {
+          "Name": "exportanchor",
+          "Value": 7
+        },
+        {
+          "Name": "exportforeign",
+          "Value": 8
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientStatusCode",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.23",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cldcClientDeleteAction",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.24",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "default",
+          "Value": 1
+        },
+        {
+          "Name": "delete",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientSecurityPolicyStatus",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.25",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "completed",
+          "Value": 1
+        },
+        {
+          "Name": "notcompleted",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientTrapEventTime",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.26",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cldcClientPolicyManagerState",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.27",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientAssocTime",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.28",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cldcClientPmipDataValid",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.29",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientMobilityExtDataValid",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.30",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientPolicyErrors",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.31",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cldcClientSessionId",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.32",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientPmipNai",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.33",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientPmipState",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.34",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientPmipInterface",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.35",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientPmipHomeAddrType",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.36",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientPmipHomeAddr",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.37",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cldcClientPmipAtt",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.38",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "reserved",
+          "Value": 1
+        },
+        {
+          "Name": "logicalNetworkInterface",
+          "Value": 2
+        },
+        {
+          "Name": "pointToPointInterface",
+          "Value": 3
+        },
+        {
+          "Name": "ethernet",
+          "Value": 4
+        },
+        {
+          "Name": "wirelessLan",
+          "Value": 5
+        },
+        {
+          "Name": "wimax",
+          "Value": 6
+        },
+        {
+          "Name": "threeGPPGERAN",
+          "Value": 7
+        },
+        {
+          "Name": "threeGPPUTRAN",
+          "Value": 8
+        },
+        {
+          "Name": "threeGPPETRAN",
+          "Value": 9
+        },
+        {
+          "Name": "threeGPP2eHRPD",
+          "Value": 10
+        },
+        {
+          "Name": "threeGPP2HRPD",
+          "Value": 11
+        },
+        {
+          "Name": "threeGPP21xRTT",
+          "Value": 12
+        },
+        {
+          "Name": "threeGPP2UMB",
+          "Value": 13
+        }
+      ]
+    },
+    {
+      "Name": "cldcClientPmipLocalLinkId",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.39",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cldcClientPmipLmaName",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.40",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientPmipLifeTime",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.41",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cldcClientPmipDomainName",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.42",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldcClientPmipUpKey",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.43",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cldcClientPmipDownKey",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.2.44",
+      "Syntax": "Unsigned32"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "cldcClientEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMacAddress",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientStatus",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientWlanProfileName",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientWgbStatus",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientWgbMacAddress",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientProtocol",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcAssociationMode",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcApMacAddress",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcIfType",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientIPAddress",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientNacState",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientQuarantineVLAN",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientAccessVLAN",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientLoginTime",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientUpTime",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientPowerSaveMode",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientCurrentTxRateSet",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDataRateSet",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientHreapApAuth",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClient80211uCapable",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientPostureState",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientAclName",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientAclApplied",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRedirectUrl",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientAaaOverrideAclName",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientAaaOverrideAclApplied",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientUsername",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientSSID",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientSecurityTagId",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientTypeKTS",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientIpv6AclName",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientIpv6AclApplied",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDataSwitching",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientAuthentication",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientChannel",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientAuthMode",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientReasonCode",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientSessionID",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientApRoamMacAddress",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMdnsProfile",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMdnsAdvCount",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientPolicyName",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientAAARole",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDeviceType",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcUserAuthType"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMacAddress"
+      ],
+      "Name": "cldcClientTable",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.1"
+    },
+    {
+      "EntryName": "cldcClientByIpEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientByIpAddressType",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientByIpAddress",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientByIpAddressDiscoverType",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientByIpAddressLastSeen"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMacAddress",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientByIpAddressType",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientByIpAddress"
+      ],
+      "Name": "cldcClientByIpTable",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.2"
+    },
+    {
+      "EntryName": "cldcSleepingClientEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcSleepingClientMacAddress",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcSleepingClientSsid",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcSleepingClientUserName",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcSleepingClientRemainingTime",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcSleepingClientRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcSleepingClientMacAddress"
+      ],
+      "Name": "cldcSleepingClientTable",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.3.3"
+    },
+    {
+      "EntryName": "cldcClientStatisticEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDataRetries",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRtsRetries",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDuplicatePackets",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDecryptFailures",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMicErrors",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMicMissingFrames",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRaPacketsDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientInterimUpdatesCount",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDataBytesReceived",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRealtimeBytesReceived",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRxDataBytesDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRxRealtimeBytesDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDataBytesSent",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRealtimeBytesSent",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientTxDataBytesDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientTxRealtimeBytesDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDataPacketsReceived",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRealtimePacketsReceived",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRxDataPacketsDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRxRealtimePacketsDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientDataPacketsSent",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRealtimePacketsSent",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientTxDataPacketsDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientTxRealtimePacketsDropped",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientTxDataPackets",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientTxDataBytes",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRxDataPackets",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientRxDataBytes"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMacAddress"
+      ],
+      "Name": "cldcClientStatisticTable",
+      "OID": ".1.3.6.1.4.1.9.9.599.1.4.1"
+    },
+    {
+      "EntryName": "cldccCcxVersionInfoEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldccCcxFoundationServiceVersion",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldccCcxLocationServiceVersion",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldccCcxVoiceServiceVersion",
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldccCcxManagementServiceVersion"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-CLIENT-MIB::cldcClientMacAddress"
+      ],
+      "Name": "cldccCcxVersionInfoTable",
+      "OID": ".1.3.6.1.4.1.9.9.599.3.1.1"
+    }
+  ]
+}

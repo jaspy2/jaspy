@@ -1,0 +1,448 @@
+{
+  "Name": "CISCO-LWAPP-DOT11-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.612",
+  "Objects": [
+    {
+      "Name": "cldHtDot11nBand",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "band2dot4",
+          "Value": 1
+        },
+        {
+          "Name": "band5",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldHtDot11nChannelBandwidth",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "five",
+          "Value": 1
+        },
+        {
+          "Name": "ten",
+          "Value": 2
+        },
+        {
+          "Name": "twenty",
+          "Value": 3
+        },
+        {
+          "Name": "aboveforty",
+          "Value": 4
+        },
+        {
+          "Name": "belowforty",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "cldHtDot11nRifsEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldHtDot11nAmsduEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldHtDot11nAmpduEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldHtDot11nGuardIntervalEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldHtDot11nEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldMultipleCountryCode",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldRegulatoryDomain",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cld11nMcsBand",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.4.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "band2dot4",
+          "Value": 1
+        },
+        {
+          "Name": "band5",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cld11nMcsDataRateIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.4.1.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cld11nMcsDataRate",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.4.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cld11nMcsSupportEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.4.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cld11nMcsChannelWidth",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.4.1.5",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cld11nMcsGuardInterval",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.4.1.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cld11nMcsModulation",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.4.1.7",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 255,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cld11acMcsSpatialStreamIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.6.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cld11acMcsDataRateIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.6.1.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cld11acMcsSupportEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.6.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldVhtDot11acEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.5.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldLoadBalancingEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.8.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldLoadBalancingWindowSize",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.8.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 20,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cldLoadBalancingDenialCount",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.8.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 10,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cldLoadBalancingTrafficThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.8.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cldBandSelectEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.9.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cldBandSelectCycleCount",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.9.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 10,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cldBandSelectCycleThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.9.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 1000,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cldBandSelectAgeOutSuppression",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.9.4",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 200,
+        "Min": 10
+      }
+    },
+    {
+      "Name": "cldBandSelectAgeOutDualBand",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.9.5",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 300,
+        "Min": 10
+      }
+    },
+    {
+      "Name": "cldBandSelectClientRssi",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.9.6",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": -20,
+        "Min": -90
+      }
+    },
+    {
+      "Name": "cldCountryCode",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.612.1.2.1.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldCountryName",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.2.1.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldCountryDot11aChannels",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.2.1.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldCountryDot11bChannels",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.2.1.1.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldCountryDot11aDcaChannels",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.2.1.1.5",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldCountryDot11bDcaChannels",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.2.1.1.6",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cldCountryChangeNotifEnable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "cldHtMacOperationsEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-MIB::cldHtDot11nBand",
+        "CISCO-LWAPP-DOT11-MIB::cldHtDot11nChannelBandwidth",
+        "CISCO-LWAPP-DOT11-MIB::cldHtDot11nRifsEnable",
+        "CISCO-LWAPP-DOT11-MIB::cldHtDot11nAmsduEnable",
+        "CISCO-LWAPP-DOT11-MIB::cldHtDot11nAmpduEnable",
+        "CISCO-LWAPP-DOT11-MIB::cldHtDot11nGuardIntervalEnable",
+        "CISCO-LWAPP-DOT11-MIB::cldHtDot11nEnable"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-MIB::cldHtDot11nBand"
+      ],
+      "Name": "cldHtMacOperationsTable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.1"
+    },
+    {
+      "EntryName": "cld11nMcsEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsBand",
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsDataRateIndex",
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsDataRate",
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsSupportEnable",
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsChannelWidth",
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsGuardInterval",
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsModulation"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsBand",
+        "CISCO-LWAPP-DOT11-MIB::cld11nMcsDataRateIndex"
+      ],
+      "Name": "cld11nMcsTable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.4"
+    },
+    {
+      "EntryName": "cld11acMcsEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-MIB::cld11acMcsSpatialStreamIndex",
+        "CISCO-LWAPP-DOT11-MIB::cld11acMcsDataRateIndex",
+        "CISCO-LWAPP-DOT11-MIB::cld11acMcsSupportEnable"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-MIB::cld11acMcsSpatialStreamIndex",
+        "CISCO-LWAPP-DOT11-MIB::cld11acMcsDataRateIndex"
+      ],
+      "Name": "cld11acMcsTable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.1.6"
+    },
+    {
+      "EntryName": "cldCountryEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-DOT11-MIB::cldCountryCode",
+        "CISCO-LWAPP-DOT11-MIB::cldCountryName",
+        "CISCO-LWAPP-DOT11-MIB::cldCountryDot11aChannels",
+        "CISCO-LWAPP-DOT11-MIB::cldCountryDot11bChannels",
+        "CISCO-LWAPP-DOT11-MIB::cldCountryDot11aDcaChannels",
+        "CISCO-LWAPP-DOT11-MIB::cldCountryDot11bDcaChannels"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-DOT11-MIB::cldCountryCode"
+      ],
+      "Name": "cldCountryTable",
+      "OID": ".1.3.6.1.4.1.9.9.612.1.2.1"
+    }
+  ]
+}

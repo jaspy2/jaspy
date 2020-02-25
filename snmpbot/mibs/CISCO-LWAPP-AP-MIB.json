@@ -1,0 +1,2204 @@
+{
+  "Name": "CISCO-LWAPP-AP-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.513",
+  "Objects": [
+    {
+      "Name": "cLApSysMacAddress",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLApIfMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.2",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLApMaxNumberOfDot11Slots",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApEntPhysicalIndex",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.4",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApName",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.5",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApUpTime",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.6",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cLLwappUpTime",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.7",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cLLwappJoinTakenTime",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.8",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cLApMaxNumberOfEthernetSlots",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApPrimaryControllerAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLApPrimaryControllerAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.11",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLApSecondaryControllerAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLApSecondaryControllerAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.13",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLApTertiaryControllerAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLApTertiaryControllerAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.15",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLApLastRebootReason",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 0
+        },
+        {
+          "Name": "dot11gModeChange",
+          "Value": 1
+        },
+        {
+          "Name": "ipAddressSet",
+          "Value": 2
+        },
+        {
+          "Name": "ipAddressReset",
+          "Value": 3
+        },
+        {
+          "Name": "rebootFromController",
+          "Value": 4
+        },
+        {
+          "Name": "dhcpFallbackFail",
+          "Value": 5
+        },
+        {
+          "Name": "discoveryFail",
+          "Value": 6
+        },
+        {
+          "Name": "noJoinResponse",
+          "Value": 7
+        },
+        {
+          "Name": "denyJoin",
+          "Value": 8
+        },
+        {
+          "Name": "noConfigResponse",
+          "Value": 9
+        },
+        {
+          "Name": "configController",
+          "Value": 10
+        },
+        {
+          "Name": "imageUpgradeSuccess",
+          "Value": 11
+        },
+        {
+          "Name": "imageOpcodeInvalid",
+          "Value": 12
+        },
+        {
+          "Name": "imageCheckSumInvalid",
+          "Value": 13
+        },
+        {
+          "Name": "imageDataTimeout",
+          "Value": 14
+        },
+        {
+          "Name": "configFileInvalid",
+          "Value": 15
+        },
+        {
+          "Name": "imageDownloadError",
+          "Value": 16
+        },
+        {
+          "Name": "rebootFromConsole",
+          "Value": 17
+        },
+        {
+          "Name": "rapOverAir",
+          "Value": 18
+        },
+        {
+          "Name": "powerLow",
+          "Value": 19
+        },
+        {
+          "Name": "crash",
+          "Value": 20
+        },
+        {
+          "Name": "powerHigh",
+          "Value": 21
+        },
+        {
+          "Name": "powerLoss",
+          "Value": 22
+        },
+        {
+          "Name": "powerChange",
+          "Value": 23
+        },
+        {
+          "Name": "componentFailure",
+          "Value": 24
+        },
+        {
+          "Name": "watchdog",
+          "Value": 25
+        }
+      ]
+    },
+    {
+      "Name": "cLApEncryptionEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.18",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApFailoverPriority",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.19",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "low",
+          "Value": 1
+        },
+        {
+          "Name": "medium",
+          "Value": 2
+        },
+        {
+          "Name": "high",
+          "Value": 3
+        },
+        {
+          "Name": "critical",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLApPowerStatus",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "low",
+          "Value": 1
+        },
+        {
+          "Name": "fifteendotfour",
+          "Value": 2
+        },
+        {
+          "Name": "sixteendoteight",
+          "Value": 3
+        },
+        {
+          "Name": "full",
+          "Value": 4
+        },
+        {
+          "Name": "external",
+          "Value": 5
+        },
+        {
+          "Name": "mixedmode",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLApTelnetEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.21",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApSshEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.22",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApPreStdStateEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.23",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApPwrInjectorStateEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.24",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApPwrInjectorSelection",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.25",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "installed",
+          "Value": 2
+        },
+        {
+          "Name": "override",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLApPwrInjectorSwMacAddr",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.26",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLApWipsEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.27",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApMonitorModeOptimization",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.28",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "all",
+          "Value": 1
+        },
+        {
+          "Name": "tracking",
+          "Value": 2
+        },
+        {
+          "Name": "wips",
+          "Value": 3
+        },
+        {
+          "Name": "none",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLApDomainName",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.29",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApNameServerAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.30",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLApNameServerAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.31",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLApAMSDUEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.32",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApEncryptionSupported",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.33",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApRogueDetectionEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.34",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApTcpMss",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.35",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 0,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLApDataEncryptionStatus",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.36",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApNsiKey",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.37",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLApAdminStatus",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.38",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApPortNumber",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.39",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApRetransmitCount",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.40",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApRetransmitTimeout",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1.1.41",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApDot11IfSlotId",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApDot11IfType",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "dot11bg",
+          "Value": 1
+        },
+        {
+          "Name": "dot11a",
+          "Value": 2
+        },
+        {
+          "Name": "uwb",
+          "Value": 3
+        },
+        {
+          "Name": "dot11abgn",
+          "Value": 4
+        },
+        {
+          "Name": "dot11ac",
+          "Value": 5
+        },
+        {
+          "Name": "dot11b",
+          "Value": 6
+        },
+        {
+          "Name": "dot11g",
+          "Value": 7
+        },
+        {
+          "Name": "dot11n24",
+          "Value": 8
+        },
+        {
+          "Name": "dot11n5",
+          "Value": 9
+        },
+        {
+          "Name": "unknown",
+          "Value": 10
+        }
+      ]
+    },
+    {
+      "Name": "cLApDot11IfRegDomain",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.3",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLApDot11nSupport",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLAp11nChannelBandwidth",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "five",
+          "Value": 1
+        },
+        {
+          "Name": "ten",
+          "Value": 2
+        },
+        {
+          "Name": "twenty",
+          "Value": 3
+        },
+        {
+          "Name": "forty",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLApLomEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApLomFirstChannel",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.7",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApLomSecondChannel",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.8",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApLomThirdChannel",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApLomFourthChannel",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.10",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApExtensionChannel",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.11",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApLegacyBeamForming",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLApCdpOverAirEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApDot11IfAdminStatus",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApEthernetIfSlotId",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApEthernetIfName",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApEthernetIfMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.3",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLApEthernetIfAdminStatus",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "up",
+          "Value": 1
+        },
+        {
+          "Name": "down",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApEthernetIfOperStatus",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "up",
+          "Value": 1
+        },
+        {
+          "Name": "down",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApEthernetIfRxUcastPkts",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfRxNUcastPkts",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfTxUcastPkts",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfTxNUcastPkts",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfDuplex",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "halfduplex",
+          "Value": 2
+        },
+        {
+          "Name": "fullduplex",
+          "Value": 3
+        },
+        {
+          "Name": "auto",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "cLApEthernetIfLinkSpeed",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.11",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "cLApEthernetIfPOEPower",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.12",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "drawn",
+          "Value": 2
+        },
+        {
+          "Name": "notdrawn",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLApEthernetIfRxTotalBytes",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.13",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfTxTotalBytes",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.14",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfInputCrc",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.15",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfInputAborts",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.16",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfInputErrors",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.17",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfInputFrames",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.18",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfInputOverrun",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.19",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfInputDrops",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.20",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfInputResource",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.21",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfUnknownProtocol",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.22",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfRunts",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.23",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfGiants",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.24",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfThrottle",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.25",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfResets",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.26",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfOutputCollision",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.27",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfOutputNoBuffer",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.28",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfOutputResource",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.29",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfOutputUnderrun",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.30",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfOutputErrors",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.31",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfOutputTotalDrops",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.32",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "cLApEthernetIfCdpEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2.1.33",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApDot11RadioMACAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.3.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLApDot11RadioSubBand",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.3.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "all",
+          "Value": 1
+        },
+        {
+          "Name": "sub49",
+          "Value": 2
+        },
+        {
+          "Name": "sub52",
+          "Value": 3
+        },
+        {
+          "Name": "sub54",
+          "Value": 4
+        },
+        {
+          "Name": "sub58",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "cLApDot11RadioVersion",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.3.1.3",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLApDot11IsBackhaul",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.3.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApDot11RadioRole",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.3.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "shutdown",
+          "Value": 0
+        },
+        {
+          "Name": "updownlink",
+          "Value": 1
+        },
+        {
+          "Name": "uplink",
+          "Value": 2
+        },
+        {
+          "Name": "downlink",
+          "Value": 3
+        },
+        {
+          "Name": "access",
+          "Value": 4
+        },
+        {
+          "Name": "uplinkaccess",
+          "Value": 5
+        },
+        {
+          "Name": "downlinkaccess",
+          "Value": 6
+        },
+        {
+          "Name": "updownlinkaccess",
+          "Value": 7
+        },
+        {
+          "Name": "unknown",
+          "Value": 8
+        }
+      ]
+    },
+    {
+      "Name": "cLApCredentialGlobalUserName",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.4.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApCredentialGlobalPassword",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.4.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApCredentialGlobalSecret",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.4.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApCredentialUserName",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.4.4.1.1",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApCredentialPassword",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.4.4.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApCredentialSecret",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.4.4.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApCredentialEnableGlobalCredentials",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.4.4.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApLinkLatencyEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApLinkLatencyReset",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApLinkLatencyStatsCurrent",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApLinkLatencyStatsMin",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2.1.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApLinkLatencyStatsMax",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApLinkLatencyTimeStamp",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2.1.4",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cLApDataLinkLatencyStatsCurrent",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApDataLinkLatencyStatsMin",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2.1.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApDataLinkLatencyStatsMax",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApDataLinkLatencyTimeStamp",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2.1.8",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "cLApIfSmtDot11Bssid",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.2.1.1",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLApCountryCode",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.3.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLApCountryAllowed",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.3.1.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "ciscoLwappApIfRegulatoryDomainMismatchNotifEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ciscoLwappApCrashEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ciscoLwappApUnsupportedEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "ciscoLwappApAssociatedEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApSeIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.513.1.8.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApSeClientUserName",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.8.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApSeClientIPAddrType",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.8.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLApSeClientIPAddr",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.8.1.4",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLApSeClientDuration",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.8.1.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cLApSeClientPort",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.8.1.6",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApFastHbTimerApType",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.1.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "local",
+          "Value": 1
+        },
+        {
+          "Name": "hreap",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApFastHbTimerTimeout",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.1.1.2",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 15,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLApFastHbTimerEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApPrimaryDiscoveryTimeout",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.3",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 3600,
+        "Min": 30
+      }
+    },
+    {
+      "Name": "cLApGlobalPrimaryControllerAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLApGlobalPrimaryControllerAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.5",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLApGlobalPrimaryControllerName",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.6",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApGlobalSecondaryControllerAddressType",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 0
+        },
+        {
+          "Name": "ipv4",
+          "Value": 1
+        },
+        {
+          "Name": "ipv6",
+          "Value": 2
+        },
+        {
+          "Name": "ipv4z",
+          "Value": 3
+        },
+        {
+          "Name": "ipv6z",
+          "Value": 4
+        },
+        {
+          "Name": "dns",
+          "Value": 16
+        }
+      ]
+    },
+    {
+      "Name": "cLApGlobalSecondaryControllerAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.8",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "cLApGlobalSecondaryControllerName",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.9",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApGlobalFailoverPriority",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApGlobalTcpMss",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.11",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 0,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLApGlobalDot11IfCdpEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.12.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApGlobalEthernetIfCdpEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.13.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApGlobalRetransmitCount",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.14",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApGlobalRetransmitTimeout",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.15",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApDot11IfAntennaId",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.4.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 3,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "cLApDot11IfAntennaTxEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.4.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApDot11IfAntennaRxEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.4.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApDot11IfAntennaEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.4.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApVlanIfEthernetId",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.5.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 3,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "cLApVlanIfMode",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.5.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "normal",
+          "Value": 1
+        },
+        {
+          "Name": "access",
+          "Value": 2
+        },
+        {
+          "Name": "trunk",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLApVlanIfEnable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.5.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApVlanIfNativeVlanId",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.5.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApVlanListVlanId",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.6.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApVlanListRowStatus",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.6.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "cLApGlobal802dot1xAuthenticationEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.7.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApGlobal802dot1xSupplicantUsername",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.7.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApGlobal802dot1xSupplicantPassword",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.7.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAp802dot1xSupplicantOverrideEnabled",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.7.4.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLAp802dot1xSupplicantOverrideUsername",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.7.4.1.2",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLAp802dot1xSupplicantOverridePassword",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.7.4.1.3",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApNwLegacyBeamForming",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.7.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        },
+        {
+          "Name": "notApplicable",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLApNwTxPowerThreshold",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.7.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": -50,
+        "Min": -80
+      }
+    },
+    {
+      "Name": "cLApAssocFailureReason",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "unknown",
+          "Value": 1
+        },
+        {
+          "Name": "notSupported",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApRogueApMacAddress",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.2",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "cLApDot11RadioChannelNumber",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.3",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cLApRogueApSsid",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.4",
+      "Syntax": "SNMP-FRAMEWORK-MIB::SnmpAdminString"
+    },
+    {
+      "Name": "cLApRogueType",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "asleap",
+          "Value": 1
+        },
+        {
+          "Name": "honeypot",
+          "Value": 2
+        },
+        {
+          "Name": "other",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "cLApWipsReason",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "noMonitoringDevice",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "cLApWipsClear",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApIfUpDownFailureType",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "detectedFailure",
+          "Value": 1
+        },
+        {
+          "Name": "configuredReset",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "cLApIfUpDownCause",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.9",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cLApIfUpDownFailureCode",
+      "OID": ".1.3.6.1.4.1.9.9.513.3.10",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "cLApEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApIfMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApMaxNumberOfDot11Slots",
+        "CISCO-LWAPP-AP-MIB::cLApEntPhysicalIndex",
+        "CISCO-LWAPP-AP-MIB::cLApName",
+        "CISCO-LWAPP-AP-MIB::cLApUpTime",
+        "CISCO-LWAPP-AP-MIB::cLLwappUpTime",
+        "CISCO-LWAPP-AP-MIB::cLLwappJoinTakenTime",
+        "CISCO-LWAPP-AP-MIB::cLApMaxNumberOfEthernetSlots",
+        "CISCO-LWAPP-AP-MIB::cLApPrimaryControllerAddressType",
+        "CISCO-LWAPP-AP-MIB::cLApPrimaryControllerAddress",
+        "CISCO-LWAPP-AP-MIB::cLApSecondaryControllerAddressType",
+        "CISCO-LWAPP-AP-MIB::cLApSecondaryControllerAddress",
+        "CISCO-LWAPP-AP-MIB::cLApTertiaryControllerAddressType",
+        "CISCO-LWAPP-AP-MIB::cLApTertiaryControllerAddress",
+        "CISCO-LWAPP-AP-MIB::cLApLastRebootReason",
+        "CISCO-LWAPP-AP-MIB::cLApEncryptionEnable",
+        "CISCO-LWAPP-AP-MIB::cLApFailoverPriority",
+        "CISCO-LWAPP-AP-MIB::cLApPowerStatus",
+        "CISCO-LWAPP-AP-MIB::cLApTelnetEnable",
+        "CISCO-LWAPP-AP-MIB::cLApSshEnable",
+        "CISCO-LWAPP-AP-MIB::cLApPreStdStateEnabled",
+        "CISCO-LWAPP-AP-MIB::cLApPwrInjectorStateEnabled",
+        "CISCO-LWAPP-AP-MIB::cLApPwrInjectorSelection",
+        "CISCO-LWAPP-AP-MIB::cLApPwrInjectorSwMacAddr",
+        "CISCO-LWAPP-AP-MIB::cLApWipsEnable",
+        "CISCO-LWAPP-AP-MIB::cLApMonitorModeOptimization",
+        "CISCO-LWAPP-AP-MIB::cLApDomainName",
+        "CISCO-LWAPP-AP-MIB::cLApNameServerAddressType",
+        "CISCO-LWAPP-AP-MIB::cLApNameServerAddress",
+        "CISCO-LWAPP-AP-MIB::cLApAMSDUEnable",
+        "CISCO-LWAPP-AP-MIB::cLApEncryptionSupported",
+        "CISCO-LWAPP-AP-MIB::cLApRogueDetectionEnabled",
+        "CISCO-LWAPP-AP-MIB::cLApTcpMss",
+        "CISCO-LWAPP-AP-MIB::cLApDataEncryptionStatus",
+        "CISCO-LWAPP-AP-MIB::cLApNsiKey",
+        "CISCO-LWAPP-AP-MIB::cLApAdminStatus",
+        "CISCO-LWAPP-AP-MIB::cLApPortNumber",
+        "CISCO-LWAPP-AP-MIB::cLApRetransmitCount",
+        "CISCO-LWAPP-AP-MIB::cLApRetransmitTimeout"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress"
+      ],
+      "Name": "cLApTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.1"
+    },
+    {
+      "EntryName": "cLApDot11IfEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfSlotId",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfType",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfRegDomain",
+        "CISCO-LWAPP-AP-MIB::cLApDot11nSupport",
+        "CISCO-LWAPP-AP-MIB::cLAp11nChannelBandwidth",
+        "CISCO-LWAPP-AP-MIB::cLApLomEnabled",
+        "CISCO-LWAPP-AP-MIB::cLApLomFirstChannel",
+        "CISCO-LWAPP-AP-MIB::cLApLomSecondChannel",
+        "CISCO-LWAPP-AP-MIB::cLApLomThirdChannel",
+        "CISCO-LWAPP-AP-MIB::cLApLomFourthChannel",
+        "CISCO-LWAPP-AP-MIB::cLApExtensionChannel",
+        "CISCO-LWAPP-AP-MIB::cLApLegacyBeamForming",
+        "CISCO-LWAPP-AP-MIB::cLApCdpOverAirEnabled",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfAdminStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfSlotId"
+      ],
+      "Name": "cLApDot11IfTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.1"
+    },
+    {
+      "EntryName": "cLApEthernetIfEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfSlotId",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfName",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfAdminStatus",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfOperStatus",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfRxUcastPkts",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfRxNUcastPkts",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfTxUcastPkts",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfTxNUcastPkts",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfDuplex",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfLinkSpeed",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfPOEPower",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfRxTotalBytes",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfTxTotalBytes",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfInputCrc",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfInputAborts",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfInputErrors",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfInputFrames",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfInputOverrun",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfInputDrops",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfInputResource",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfUnknownProtocol",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfRunts",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfGiants",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfThrottle",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfResets",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfOutputCollision",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfOutputNoBuffer",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfOutputResource",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfOutputUnderrun",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfOutputErrors",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfOutputTotalDrops",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfCdpEnabled"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfSlotId"
+      ],
+      "Name": "cLApEthernetIfTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.2"
+    },
+    {
+      "EntryName": "cLApDot11RadioEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApDot11RadioMACAddress",
+        "CISCO-LWAPP-AP-MIB::cLApDot11RadioSubBand",
+        "CISCO-LWAPP-AP-MIB::cLApDot11RadioVersion",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IsBackhaul",
+        "CISCO-LWAPP-AP-MIB::cLApDot11RadioRole"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfSlotId"
+      ],
+      "Name": "cLApDot11RadioTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.3"
+    },
+    {
+      "EntryName": "cLApCredentialsEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApCredentialUserName",
+        "CISCO-LWAPP-AP-MIB::cLApCredentialPassword",
+        "CISCO-LWAPP-AP-MIB::cLApCredentialSecret",
+        "CISCO-LWAPP-AP-MIB::cLApCredentialEnableGlobalCredentials"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress"
+      ],
+      "Name": "cLApCredentialsTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.4.4"
+    },
+    {
+      "EntryName": "cLApLinkLatencyEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApLinkLatencyEnable",
+        "CISCO-LWAPP-AP-MIB::cLApLinkLatencyReset"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress"
+      ],
+      "Name": "cLApLinkLatencyTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.1"
+    },
+    {
+      "EntryName": "cLApLinkLatencyStatsEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApLinkLatencyStatsCurrent",
+        "CISCO-LWAPP-AP-MIB::cLApLinkLatencyStatsMin",
+        "CISCO-LWAPP-AP-MIB::cLApLinkLatencyStatsMax",
+        "CISCO-LWAPP-AP-MIB::cLApLinkLatencyTimeStamp",
+        "CISCO-LWAPP-AP-MIB::cLApDataLinkLatencyStatsCurrent",
+        "CISCO-LWAPP-AP-MIB::cLApDataLinkLatencyStatsMin",
+        "CISCO-LWAPP-AP-MIB::cLApDataLinkLatencyStatsMax",
+        "CISCO-LWAPP-AP-MIB::cLApDataLinkLatencyTimeStamp"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress"
+      ],
+      "Name": "cLApLinkLatencyStatsTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.5.2"
+    },
+    {
+      "EntryName": "cLApIfSmtParamEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApIfSmtDot11Bssid"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfSlotId"
+      ],
+      "Name": "cLApIfSmtParamTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.2"
+    },
+    {
+      "EntryName": "cLApCountryEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApCountryCode",
+        "CISCO-LWAPP-AP-MIB::cLApCountryAllowed"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress"
+      ],
+      "Name": "cLApCountryTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.1.3"
+    },
+    {
+      "EntryName": "cLApSeClientEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSeIndex",
+        "CISCO-LWAPP-AP-MIB::cLApSeClientUserName",
+        "CISCO-LWAPP-AP-MIB::cLApSeClientIPAddrType",
+        "CISCO-LWAPP-AP-MIB::cLApSeClientIPAddr",
+        "CISCO-LWAPP-AP-MIB::cLApSeClientDuration",
+        "CISCO-LWAPP-AP-MIB::cLApSeClientPort"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfSlotId",
+        "CISCO-LWAPP-AP-MIB::cLApSeIndex"
+      ],
+      "Name": "cLApSeClientTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.8"
+    },
+    {
+      "EntryName": "cLApFastHbTimerEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApFastHbTimerApType",
+        "CISCO-LWAPP-AP-MIB::cLApFastHbTimerTimeout",
+        "CISCO-LWAPP-AP-MIB::cLApFastHbTimerEnabled"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApFastHbTimerApType"
+      ],
+      "Name": "cLApFastHbTimerTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.1"
+    },
+    {
+      "EntryName": "cLApGlobalDot11IfEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApGlobalDot11IfCdpEnabled"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfSlotId"
+      ],
+      "Name": "cLApGlobalDot11IfTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.12"
+    },
+    {
+      "EntryName": "cLApGlobalEthernetIfEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApGlobalEthernetIfCdpEnabled"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApEthernetIfSlotId"
+      ],
+      "Name": "cLApGlobalEthernetIfTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.3.13"
+    },
+    {
+      "EntryName": "cLApDot11IfAntennaEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfAntennaId",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfAntennaTxEnable",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfAntennaRxEnable",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfAntennaEnable"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfSlotId",
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfAntennaId"
+      ],
+      "Name": "cLApDot11IfAntennaTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.4"
+    },
+    {
+      "EntryName": "cLApVlanIfEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApVlanIfEthernetId",
+        "CISCO-LWAPP-AP-MIB::cLApVlanIfMode",
+        "CISCO-LWAPP-AP-MIB::cLApVlanIfEnable",
+        "CISCO-LWAPP-AP-MIB::cLApVlanIfNativeVlanId"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApVlanIfEthernetId"
+      ],
+      "Name": "cLApVlanIfTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.5"
+    },
+    {
+      "EntryName": "cLApVlanListEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApVlanListVlanId",
+        "CISCO-LWAPP-AP-MIB::cLApVlanListRowStatus"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress",
+        "CISCO-LWAPP-AP-MIB::cLApVlanIfEthernetId",
+        "CISCO-LWAPP-AP-MIB::cLApVlanListVlanId"
+      ],
+      "Name": "cLApVlanListTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.6"
+    },
+    {
+      "EntryName": "cLAp802dot1xSupplicantEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLAp802dot1xSupplicantOverrideEnabled",
+        "CISCO-LWAPP-AP-MIB::cLAp802dot1xSupplicantOverrideUsername",
+        "CISCO-LWAPP-AP-MIB::cLAp802dot1xSupplicantOverridePassword"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApSysMacAddress"
+      ],
+      "Name": "cLAp802dot1xSupplicantTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.7.4"
+    },
+    {
+      "EntryName": "cLApDot11GlobalConfigEntry",
+      "EntryObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApNwLegacyBeamForming",
+        "CISCO-LWAPP-AP-MIB::cLApNwTxPowerThreshold"
+      ],
+      "IndexObjects": [
+        "CISCO-LWAPP-AP-MIB::cLApDot11IfType"
+      ],
+      "Name": "cLApDot11GlobalConfigTable",
+      "OID": ".1.3.6.1.4.1.9.9.513.1.2.7"
+    }
+  ]
+}
