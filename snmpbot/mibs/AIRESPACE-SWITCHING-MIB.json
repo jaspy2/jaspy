@@ -1,0 +1,4071 @@
+{
+  "Name": "AIRESPACE-SWITCHING-MIB",
+  "OID": ".1.3.6.1.4.1.14179.1",
+  "Objects": [
+    {
+      "Name": "agentInventorySysDescription",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventoryMachineType",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventoryMachineModel",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.3",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventorySerialNumber",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.4",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventoryMaintenanceLevel",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.6",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventoryBurnedInMacAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.9",
+      "Syntax": "SNMPv2-TC::PhysAddress"
+    },
+    {
+      "Name": "agentInventoryOperatingSystem",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.10",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventoryManufacturerName",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.12",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventoryProductName",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.13",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventoryProductVersion",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.14",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInventoryIsGigECardPresent",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.15",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentInventoryIsCryptoCardPresent",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentInventoryIsForeignAPSupported",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.17",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentInventoryMaxNumberOfAPsSupported",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.18",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentInventoryIsCryptoCard2Present",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.19",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentInventoryFipsModeEnabled",
+      "OID": ".1.3.6.1.4.1.14179.1.1.1.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentTrapLogTotal",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentTrapLogTotalSinceLastViewed",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentRadioUpDownTrapCount",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentApAssociateDisassociateTrapCount",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentApLoadProfileFailTrapCount",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentApNoiseProfileFailTrapCount",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentApInterferenceProfileFailTrapCount",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.9",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentApCoverageProfileFailTrapCount",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.10",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentTrapLogIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.4.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentTrapLogSystemTime",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.4.1.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentTrapLogTrap",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.4.1.22",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 512,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentSwitchInfoLwappTransportMode",
+      "OID": ".1.3.6.1.4.1.14179.1.1.3.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "layer2",
+          "Value": 1
+        },
+        {
+          "Name": "layer3",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSwitchInfoPowerSupply1Present",
+      "OID": ".1.3.6.1.4.1.14179.1.1.3.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "false",
+          "Value": 0
+        },
+        {
+          "Name": "true",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentSwitchInfoPowerSupply1Operational",
+      "OID": ".1.3.6.1.4.1.14179.1.1.3.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "false",
+          "Value": 0
+        },
+        {
+          "Name": "true",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentSwitchInfoPowerSupply2Present",
+      "OID": ".1.3.6.1.4.1.14179.1.1.3.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "false",
+          "Value": 0
+        },
+        {
+          "Name": "true",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentSwitchInfoPowerSupply2Operational",
+      "OID": ".1.3.6.1.4.1.14179.1.1.3.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "false",
+          "Value": 0
+        },
+        {
+          "Name": "true",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentCurrentCPUUtilization",
+      "OID": ".1.3.6.1.4.1.14179.1.1.5.1",
+      "Syntax": "INTEGER",
+      "SyntaxOptions": {
+        "Max": 100,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentTotalMemory",
+      "OID": ".1.3.6.1.4.1.14179.1.1.5.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentFreeMemory",
+      "OID": ".1.3.6.1.4.1.14179.1.1.5.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentWcpDeviceName",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentWcpSlotNumber",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.2",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 16,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentWcpPortNumber",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.3",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 2,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentWcpPeerPortNumber",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.4",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 2,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentWcpPeerIpAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.5",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentWcpControllerTableChecksum",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.6",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentWcpControllerInfoSlotNumber",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.7.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 16,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentWcpControllerInfoPortNumber",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.7.1.2",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 2,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentWcpControllerInfoIpAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.7.1.10",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentLoginSessionIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.1.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentLoginSessionUserName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.1.1.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentLoginSessionIPAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.1.1.3",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentLoginSessionConnectionType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.1.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "serial",
+          "Value": 1
+        },
+        {
+          "Name": "telnet",
+          "Value": 2
+        },
+        {
+          "Name": "web",
+          "Value": 3
+        },
+        {
+          "Name": "ssl",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "agentLoginSessionIdleTime",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.1.1.5",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "agentLoginSessionSessionTime",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.1.1.6",
+      "Syntax": "TimeTicks"
+    },
+    {
+      "Name": "agentLoginSessionStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.1.1.26",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentTelnetLoginTimeout",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.2.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 160,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentTelnetMaxSessions",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.2.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 5,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentTelnetAllowNewMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.2.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSSHAllowNewMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.2.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSerialTimeout",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.5.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentSerialBaudrate",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.5.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "baud1200",
+          "Value": 1
+        },
+        {
+          "Name": "baud2400",
+          "Value": 2
+        },
+        {
+          "Name": "baud4800",
+          "Value": 3
+        },
+        {
+          "Name": "baud9600",
+          "Value": 4
+        },
+        {
+          "Name": "baud19200",
+          "Value": 5
+        },
+        {
+          "Name": "baud38400",
+          "Value": 6
+        },
+        {
+          "Name": "baud57600",
+          "Value": 7
+        },
+        {
+          "Name": "baud115200",
+          "Value": 8
+        }
+      ]
+    },
+    {
+      "Name": "agentSerialCharacterSize",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.5.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentSerialHWFlowControlMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.5.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSerialStopBits",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.5.5",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentSerialParityType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.5.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "even",
+          "Value": 1
+        },
+        {
+          "Name": "odd",
+          "Value": 2
+        },
+        {
+          "Name": "none",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "agentLagConfigCreate",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentLagSummaryName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentLagSummaryLagIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentLagSummaryFlushTimer",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.3",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentLagSummaryLinkTrap",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentLagSummaryAdminMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentLagSummaryStpMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "dot1d",
+          "Value": 1
+        },
+        {
+          "Name": "fast",
+          "Value": 2
+        },
+        {
+          "Name": "off",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "agentLagSummaryAddPort",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.7",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentLagSummaryDeletePort",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.8",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentLagSummaryPortsBitMask",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.9",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "agentLagSummaryStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2.1.30",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentLagDetailedLagIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.3.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentLagDetailedIfIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.3.1.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentLagDetailedPortSpeed",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.3.1.22",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "agentLagConfigMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "off",
+          "Value": 1
+        },
+        {
+          "Name": "on",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkIPAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.1",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentNetworkSubnetMask",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.2",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentNetworkDefaultGateway",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.3",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentNetworkBurnedInMacAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.4",
+      "Syntax": "SNMPv2-TC::PhysAddress"
+    },
+    {
+      "Name": "agentNetworkConfigProtocol",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "bootp",
+          "Value": 2
+        },
+        {
+          "Name": "dhcp",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkWebMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkSecureWebMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 0
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkMulticastMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "unicast",
+          "Value": 1
+        },
+        {
+          "Name": "multicast",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkDsPortNumber",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.11",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentNetworkUserIdleTimeout",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.12",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 10
+      }
+    },
+    {
+      "Name": "agentNetworkArpTimeout",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.13",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 2147483647,
+        "Min": 10
+      }
+    },
+    {
+      "Name": "agentNetworkManagementVlan",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.14",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 4095,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentNetworkGvrpStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.15",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 0
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkAllowMgmtViaWireless",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 0
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkBroadcastSsidMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.17",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 0
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkSecureWebPassword",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.18",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentNetworkWebAdminCertType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.19",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentNetworkWebAdminCertRegenerateCmdInvoke",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "default",
+          "Value": 0
+        },
+        {
+          "Name": "activate",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkWebAuthCertType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.21",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentNetworkWebAuthCertRegenerateCmdInvoke",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.22",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "default",
+          "Value": 0
+        },
+        {
+          "Name": "activate",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkPeerToPeerBlockingMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.24",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 0
+        }
+      ]
+    },
+    {
+      "Name": "agentNetworkMulticastGroupAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.25",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentNetworkRouteIPAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.23.1.1",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentNetworkRouteIPNetmask",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.23.1.2",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentNetworkRouteGateway",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.23.1.3",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentNetworkRouteStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.23.1.23",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentInterfaceName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentInterfaceVlanId",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4094,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentInterfaceType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "static",
+          "Value": 0
+        },
+        {
+          "Name": "dynamic",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentInterfaceMacAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.4",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "agentInterfaceIPAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.5",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentInterfaceIPNetmask",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.6",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentInterfaceIPGateway",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.7",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentInterfacePortNo",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.8",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 25,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentInterfacePrimaryDhcpAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.9",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentInterfaceSecondaryDhcpAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.10",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentInterfaceDhcpProtocol",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.11",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disabled",
+          "Value": 0
+        },
+        {
+          "Name": "enabled",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentInterfaceDnsHostName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.12",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInterfaceAclName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.13",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentInterfaceAPManagementFeature",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "enable",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentInterfaceActivePortNo",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.15",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 25,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentInterfaceBackupPortNo",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.16",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 4,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentInterfaceVlanQuarantine",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.17",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "true",
+          "Value": 1
+        },
+        {
+          "Name": "false",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentInterfaceRowStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13.1.31",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentNtpPollingInterval",
+      "OID": ".1.3.6.1.4.1.14179.1.2.14.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 604800,
+        "Min": 3600
+      }
+    },
+    {
+      "Name": "agentNtpServerIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.2.14.2.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 3,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentNtpServerAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.14.2.1.2",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentNtpServerRowStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.14.2.1.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentDhcpScopeIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 15,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentDhcpScopeName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.2",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentDhcpScopeLeaseTime",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.3",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 8640000,
+        "Min": 120
+      }
+    },
+    {
+      "Name": "agentDhcpScopeNetwork",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.4",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeNetmask",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.5",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopePoolStartAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.6",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopePoolEndAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.7",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeDefaultRouterAddress1",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.8",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeDefaultRouterAddress2",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.9",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeDefaultRouterAddress3",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.10",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeDnsDomainName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.11",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentDhcpScopeDnsServerAddress1",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.12",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeDnsServerAddress2",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.13",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeDnsServerAddress3",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.14",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeNetbiosNameServerAddress1",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.15",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeNetbiosNameServerAddress2",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.16",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeNetbiosNameServerAddress3",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.17",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentDhcpScopeState",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.18",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "enable",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentDhcpScopeRowStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1.1.30",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentServicePortIPAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.4.1",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentServicePortSubnetMask",
+      "OID": ".1.3.6.1.4.1.14179.1.2.4.2",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentServicePortDefaultGateway",
+      "OID": ".1.3.6.1.4.1.14179.1.2.4.3",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentServicePortBurnedInMacAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.4.4",
+      "Syntax": "SNMPv2-TC::PhysAddress"
+    },
+    {
+      "Name": "agentServicePortConfigProtocol",
+      "OID": ".1.3.6.1.4.1.14179.1.2.4.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "dhcp",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpTrapPortNumber",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.1",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 65534,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentSnmpVersion1Status",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "enable",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpVersion2cStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "enable",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpCommunityName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.5.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentSnmpCommunityIPAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.5.1.2",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentSnmpCommunityIPMask",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.5.1.3",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentSnmpCommunityAccessMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.5.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "readOnly",
+          "Value": 1
+        },
+        {
+          "Name": "readWrite",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpCommunityEnabled",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.5.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "no",
+          "Value": 0
+        },
+        {
+          "Name": "yes",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpCommunityStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.5.1.25",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpTrapReceiverName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.6.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 16,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentSnmpTrapReceiverIPAddress",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.6.1.2",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentSnmpTrapReceiverEnabled",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.6.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "no",
+          "Value": 0
+        },
+        {
+          "Name": "yes",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpTrapReceiverStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.6.1.23",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpAuthenticationTrapFlag",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.7.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpLinkUpDownTrapFlag",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.7.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpMultipleUsersTrapFlag",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.7.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpSpanningTreeTrapFlag",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.7.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpBroadcastStormTrapFlag",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.7.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpVersion3Status",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "enable",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpV3UserName",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.2.1.1",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentSnmpV3UserAccessMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.2.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "readonly",
+          "Value": 1
+        },
+        {
+          "Name": "readwrite",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpV3UserAuthenticationType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "hmacmd5",
+          "Value": 2
+        },
+        {
+          "Name": "hmacsha",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpV3UserEncryptionType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.2.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "none",
+          "Value": 1
+        },
+        {
+          "Name": "des",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSnmpV3UserAuthenticationPassword",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.2.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentSnmpV3UserEncryptionPassword",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.2.1.6",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {
+        "Max": 32,
+        "Min": 0
+      }
+    },
+    {
+      "Name": "agentSnmpV3UserStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.2.1.26",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "active",
+          "Value": 1
+        },
+        {
+          "Name": "notInService",
+          "Value": 2
+        },
+        {
+          "Name": "notReady",
+          "Value": 3
+        },
+        {
+          "Name": "createAndGo",
+          "Value": 4
+        },
+        {
+          "Name": "createAndWait",
+          "Value": 5
+        },
+        {
+          "Name": "destroy",
+          "Value": 6
+        }
+      ]
+    },
+    {
+      "Name": "agentSpanningTreeMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.7.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSwitchAddressAgingTimeout",
+      "OID": ".1.3.6.1.4.1.14179.1.2.8.4.1.10",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 1000000,
+        "Min": 10
+      }
+    },
+    {
+      "Name": "agentSwitchBroadcastControlMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.8.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSwitchDot3FlowControlMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.8.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSwitchLwappTransportMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.8.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "layer2",
+          "Value": 1
+        },
+        {
+          "Name": "layer3",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferUploadMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "tftp",
+          "Value": 1
+        },
+        {
+          "Name": "xmodem",
+          "Value": 2
+        },
+        {
+          "Name": "ymodem",
+          "Value": 3
+        },
+        {
+          "Name": "zmodem",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferUploadServerIP",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.1.2",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentTransferUploadPath",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.1.3",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentTransferUploadFilename",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.1.4",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentTransferUploadDataType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "config",
+          "Value": 2
+        },
+        {
+          "Name": "errorlog",
+          "Value": 3
+        },
+        {
+          "Name": "systemtrace",
+          "Value": 4
+        },
+        {
+          "Name": "traplog",
+          "Value": 5
+        },
+        {
+          "Name": "crashfile",
+          "Value": 6
+        },
+        {
+          "Name": "signatures",
+          "Value": 7
+        },
+        {
+          "Name": "unknown",
+          "Value": 99
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferUploadStart",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferUploadStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notInitiated",
+          "Value": 1
+        },
+        {
+          "Name": "transferStarting",
+          "Value": 2
+        },
+        {
+          "Name": "errorStarting",
+          "Value": 3
+        },
+        {
+          "Name": "wrongFileType",
+          "Value": 4
+        },
+        {
+          "Name": "updatingConfig",
+          "Value": 5
+        },
+        {
+          "Name": "invalidConfigFile",
+          "Value": 6
+        },
+        {
+          "Name": "writingToFlash",
+          "Value": 7
+        },
+        {
+          "Name": "failureWritingToFlash",
+          "Value": 8
+        },
+        {
+          "Name": "checkingCRC",
+          "Value": 9
+        },
+        {
+          "Name": "failedCRC",
+          "Value": 10
+        },
+        {
+          "Name": "unknownDirection",
+          "Value": 11
+        },
+        {
+          "Name": "transferSuccessful",
+          "Value": 12
+        },
+        {
+          "Name": "transferFailed",
+          "Value": 13
+        },
+        {
+          "Name": "unknown",
+          "Value": 99
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferConfigurationFileEncryption",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "enable",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferConfigurationFileEncryptionKey",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.4",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentTransferDownloadMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "tftp",
+          "Value": 1
+        },
+        {
+          "Name": "xmodem",
+          "Value": 2
+        },
+        {
+          "Name": "ymodem",
+          "Value": 3
+        },
+        {
+          "Name": "zmodem",
+          "Value": 4
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferDownloadServerIP",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.2",
+      "Syntax": "IpAddress"
+    },
+    {
+      "Name": "agentTransferDownloadPath",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.3",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentTransferDownloadFilename",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.4",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "agentTransferDownloadDataType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "code",
+          "Value": 2
+        },
+        {
+          "Name": "config",
+          "Value": 3
+        },
+        {
+          "Name": "webauthcert",
+          "Value": 4
+        },
+        {
+          "Name": "webadmincert",
+          "Value": 5
+        },
+        {
+          "Name": "signatures",
+          "Value": 6
+        },
+        {
+          "Name": "customWebAuth",
+          "Value": 7
+        },
+        {
+          "Name": "unknown",
+          "Value": 99
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferDownloadStart",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferDownloadStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "notInitiated",
+          "Value": 1
+        },
+        {
+          "Name": "transferStarting",
+          "Value": 2
+        },
+        {
+          "Name": "errorStarting",
+          "Value": 3
+        },
+        {
+          "Name": "wrongFileType",
+          "Value": 4
+        },
+        {
+          "Name": "updatingConfig",
+          "Value": 5
+        },
+        {
+          "Name": "invalidConfigFile",
+          "Value": 6
+        },
+        {
+          "Name": "writingToFlash",
+          "Value": 7
+        },
+        {
+          "Name": "failureWritingToFlash",
+          "Value": 8
+        },
+        {
+          "Name": "checkingCRC",
+          "Value": 9
+        },
+        {
+          "Name": "failedCRC",
+          "Value": 10
+        },
+        {
+          "Name": "unknownDirection",
+          "Value": 11
+        },
+        {
+          "Name": "transferSuccessful",
+          "Value": 12
+        },
+        {
+          "Name": "transferFailed",
+          "Value": 13
+        },
+        {
+          "Name": "bootBreakOff",
+          "Value": 14
+        },
+        {
+          "Name": "invalidTarFile",
+          "Value": 15
+        },
+        {
+          "Name": "unknown",
+          "Value": 99
+        }
+      ]
+    },
+    {
+      "Name": "agentTransferDownloadTftpMaxRetries",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.8",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 254,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentTransferDownloadTftpTimeout",
+      "OID": ".1.3.6.1.4.1.14179.1.2.9.2.9",
+      "Syntax": "Unsigned32",
+      "SyntaxOptions": {
+        "Max": 254,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentDot3adAggPort",
+      "OID": ".1.3.6.1.4.1.14179.1.2.11.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentDot3adAggPortLACPMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.11.1.21",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentPortDot1dBasePort",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "agentPortIfIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "agentPortIanaType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "other",
+          "Value": 1
+        },
+        {
+          "Name": "regular1822",
+          "Value": 2
+        },
+        {
+          "Name": "hdh1822",
+          "Value": 3
+        },
+        {
+          "Name": "ddnX25",
+          "Value": 4
+        },
+        {
+          "Name": "rfc877x25",
+          "Value": 5
+        },
+        {
+          "Name": "ethernetCsmacd",
+          "Value": 6
+        },
+        {
+          "Name": "iso88023Csmacd",
+          "Value": 7
+        },
+        {
+          "Name": "iso88024TokenBus",
+          "Value": 8
+        },
+        {
+          "Name": "iso88025TokenRing",
+          "Value": 9
+        },
+        {
+          "Name": "iso88026Man",
+          "Value": 10
+        },
+        {
+          "Name": "starLan",
+          "Value": 11
+        },
+        {
+          "Name": "proteon10Mbit",
+          "Value": 12
+        },
+        {
+          "Name": "proteon80Mbit",
+          "Value": 13
+        },
+        {
+          "Name": "hyperchannel",
+          "Value": 14
+        },
+        {
+          "Name": "fddi",
+          "Value": 15
+        },
+        {
+          "Name": "lapb",
+          "Value": 16
+        },
+        {
+          "Name": "sdlc",
+          "Value": 17
+        },
+        {
+          "Name": "ds1",
+          "Value": 18
+        },
+        {
+          "Name": "e1",
+          "Value": 19
+        },
+        {
+          "Name": "basicISDN",
+          "Value": 20
+        },
+        {
+          "Name": "primaryISDN",
+          "Value": 21
+        },
+        {
+          "Name": "propPointToPointSerial",
+          "Value": 22
+        },
+        {
+          "Name": "ppp",
+          "Value": 23
+        },
+        {
+          "Name": "softwareLoopback",
+          "Value": 24
+        },
+        {
+          "Name": "eon",
+          "Value": 25
+        },
+        {
+          "Name": "ethernet3Mbit",
+          "Value": 26
+        },
+        {
+          "Name": "nsip",
+          "Value": 27
+        },
+        {
+          "Name": "slip",
+          "Value": 28
+        },
+        {
+          "Name": "ultra",
+          "Value": 29
+        },
+        {
+          "Name": "ds3",
+          "Value": 30
+        },
+        {
+          "Name": "sip",
+          "Value": 31
+        },
+        {
+          "Name": "frameRelay",
+          "Value": 32
+        },
+        {
+          "Name": "rs232",
+          "Value": 33
+        },
+        {
+          "Name": "para",
+          "Value": 34
+        },
+        {
+          "Name": "arcnet",
+          "Value": 35
+        },
+        {
+          "Name": "arcnetPlus",
+          "Value": 36
+        },
+        {
+          "Name": "atm",
+          "Value": 37
+        },
+        {
+          "Name": "miox25",
+          "Value": 38
+        },
+        {
+          "Name": "sonet",
+          "Value": 39
+        },
+        {
+          "Name": "x25ple",
+          "Value": 40
+        },
+        {
+          "Name": "iso88022llc",
+          "Value": 41
+        },
+        {
+          "Name": "localTalk",
+          "Value": 42
+        },
+        {
+          "Name": "smdsDxi",
+          "Value": 43
+        },
+        {
+          "Name": "frameRelayService",
+          "Value": 44
+        },
+        {
+          "Name": "v35",
+          "Value": 45
+        },
+        {
+          "Name": "hssi",
+          "Value": 46
+        },
+        {
+          "Name": "hippi",
+          "Value": 47
+        },
+        {
+          "Name": "modem",
+          "Value": 48
+        },
+        {
+          "Name": "aal5",
+          "Value": 49
+        },
+        {
+          "Name": "sonetPath",
+          "Value": 50
+        },
+        {
+          "Name": "sonetVT",
+          "Value": 51
+        },
+        {
+          "Name": "smdsIcip",
+          "Value": 52
+        },
+        {
+          "Name": "propVirtual",
+          "Value": 53
+        },
+        {
+          "Name": "propMultiplexor",
+          "Value": 54
+        },
+        {
+          "Name": "ieee80212",
+          "Value": 55
+        },
+        {
+          "Name": "fibreChannel",
+          "Value": 56
+        },
+        {
+          "Name": "hippiInterface",
+          "Value": 57
+        },
+        {
+          "Name": "frameRelayInterconnect",
+          "Value": 58
+        },
+        {
+          "Name": "aflane8023",
+          "Value": 59
+        },
+        {
+          "Name": "aflane8025",
+          "Value": 60
+        },
+        {
+          "Name": "cctEmul",
+          "Value": 61
+        },
+        {
+          "Name": "fastEther",
+          "Value": 62
+        },
+        {
+          "Name": "isdn",
+          "Value": 63
+        },
+        {
+          "Name": "v11",
+          "Value": 64
+        },
+        {
+          "Name": "v36",
+          "Value": 65
+        },
+        {
+          "Name": "g703at64k",
+          "Value": 66
+        },
+        {
+          "Name": "g703at2mb",
+          "Value": 67
+        },
+        {
+          "Name": "qllc",
+          "Value": 68
+        },
+        {
+          "Name": "fastEtherFX",
+          "Value": 69
+        },
+        {
+          "Name": "channel",
+          "Value": 70
+        },
+        {
+          "Name": "ieee80211",
+          "Value": 71
+        },
+        {
+          "Name": "ibm370parChan",
+          "Value": 72
+        },
+        {
+          "Name": "escon",
+          "Value": 73
+        },
+        {
+          "Name": "dlsw",
+          "Value": 74
+        },
+        {
+          "Name": "isdns",
+          "Value": 75
+        },
+        {
+          "Name": "isdnu",
+          "Value": 76
+        },
+        {
+          "Name": "lapd",
+          "Value": 77
+        },
+        {
+          "Name": "ipSwitch",
+          "Value": 78
+        },
+        {
+          "Name": "rsrb",
+          "Value": 79
+        },
+        {
+          "Name": "atmLogical",
+          "Value": 80
+        },
+        {
+          "Name": "ds0",
+          "Value": 81
+        },
+        {
+          "Name": "ds0Bundle",
+          "Value": 82
+        },
+        {
+          "Name": "bsc",
+          "Value": 83
+        },
+        {
+          "Name": "async",
+          "Value": 84
+        },
+        {
+          "Name": "cnr",
+          "Value": 85
+        },
+        {
+          "Name": "iso88025Dtr",
+          "Value": 86
+        },
+        {
+          "Name": "eplrs",
+          "Value": 87
+        },
+        {
+          "Name": "arap",
+          "Value": 88
+        },
+        {
+          "Name": "propCnls",
+          "Value": 89
+        },
+        {
+          "Name": "hostPad",
+          "Value": 90
+        },
+        {
+          "Name": "termPad",
+          "Value": 91
+        },
+        {
+          "Name": "frameRelayMPI",
+          "Value": 92
+        },
+        {
+          "Name": "x213",
+          "Value": 93
+        },
+        {
+          "Name": "adsl",
+          "Value": 94
+        },
+        {
+          "Name": "radsl",
+          "Value": 95
+        },
+        {
+          "Name": "sdsl",
+          "Value": 96
+        },
+        {
+          "Name": "vdsl",
+          "Value": 97
+        },
+        {
+          "Name": "iso88025CRFPInt",
+          "Value": 98
+        },
+        {
+          "Name": "myrinet",
+          "Value": 99
+        },
+        {
+          "Name": "voiceEM",
+          "Value": 100
+        },
+        {
+          "Name": "voiceFXO",
+          "Value": 101
+        },
+        {
+          "Name": "voiceFXS",
+          "Value": 102
+        },
+        {
+          "Name": "voiceEncap",
+          "Value": 103
+        },
+        {
+          "Name": "voiceOverIp",
+          "Value": 104
+        },
+        {
+          "Name": "atmDxi",
+          "Value": 105
+        },
+        {
+          "Name": "atmFuni",
+          "Value": 106
+        },
+        {
+          "Name": "atmIma",
+          "Value": 107
+        },
+        {
+          "Name": "pppMultilinkBundle",
+          "Value": 108
+        },
+        {
+          "Name": "ipOverCdlc",
+          "Value": 109
+        },
+        {
+          "Name": "ipOverClaw",
+          "Value": 110
+        },
+        {
+          "Name": "stackToStack",
+          "Value": 111
+        },
+        {
+          "Name": "virtualIpAddress",
+          "Value": 112
+        },
+        {
+          "Name": "mpc",
+          "Value": 113
+        },
+        {
+          "Name": "ipOverAtm",
+          "Value": 114
+        },
+        {
+          "Name": "iso88025Fiber",
+          "Value": 115
+        },
+        {
+          "Name": "tdlc",
+          "Value": 116
+        },
+        {
+          "Name": "gigabitEthernet",
+          "Value": 117
+        },
+        {
+          "Name": "hdlc",
+          "Value": 118
+        },
+        {
+          "Name": "lapf",
+          "Value": 119
+        },
+        {
+          "Name": "v37",
+          "Value": 120
+        },
+        {
+          "Name": "x25mlp",
+          "Value": 121
+        },
+        {
+          "Name": "x25huntGroup",
+          "Value": 122
+        },
+        {
+          "Name": "transpHdlc",
+          "Value": 123
+        },
+        {
+          "Name": "interleave",
+          "Value": 124
+        },
+        {
+          "Name": "fast",
+          "Value": 125
+        },
+        {
+          "Name": "ip",
+          "Value": 126
+        },
+        {
+          "Name": "docsCableMaclayer",
+          "Value": 127
+        },
+        {
+          "Name": "docsCableDownstream",
+          "Value": 128
+        },
+        {
+          "Name": "docsCableUpstream",
+          "Value": 129
+        },
+        {
+          "Name": "a12MppSwitch",
+          "Value": 130
+        },
+        {
+          "Name": "tunnel",
+          "Value": 131
+        },
+        {
+          "Name": "coffee",
+          "Value": 132
+        },
+        {
+          "Name": "ces",
+          "Value": 133
+        },
+        {
+          "Name": "atmSubInterface",
+          "Value": 134
+        },
+        {
+          "Name": "l2vlan",
+          "Value": 135
+        },
+        {
+          "Name": "l3ipvlan",
+          "Value": 136
+        },
+        {
+          "Name": "l3ipxvlan",
+          "Value": 137
+        },
+        {
+          "Name": "digitalPowerline",
+          "Value": 138
+        },
+        {
+          "Name": "mediaMailOverIp",
+          "Value": 139
+        },
+        {
+          "Name": "dtm",
+          "Value": 140
+        },
+        {
+          "Name": "dcn",
+          "Value": 141
+        },
+        {
+          "Name": "ipForward",
+          "Value": 142
+        },
+        {
+          "Name": "msdsl",
+          "Value": 143
+        },
+        {
+          "Name": "ieee1394",
+          "Value": 144
+        },
+        {
+          "Name": "if-gsn",
+          "Value": 145
+        },
+        {
+          "Name": "dvbRccMacLayer",
+          "Value": 146
+        },
+        {
+          "Name": "dvbRccDownstream",
+          "Value": 147
+        },
+        {
+          "Name": "dvbRccUpstream",
+          "Value": 148
+        },
+        {
+          "Name": "atmVirtual",
+          "Value": 149
+        },
+        {
+          "Name": "mplsTunnel",
+          "Value": 150
+        },
+        {
+          "Name": "srp",
+          "Value": 151
+        },
+        {
+          "Name": "voiceOverAtm",
+          "Value": 152
+        },
+        {
+          "Name": "voiceOverFrameRelay",
+          "Value": 153
+        },
+        {
+          "Name": "idsl",
+          "Value": 154
+        },
+        {
+          "Name": "compositeLink",
+          "Value": 155
+        },
+        {
+          "Name": "ss7SigLink",
+          "Value": 156
+        },
+        {
+          "Name": "propWirelessP2P",
+          "Value": 157
+        },
+        {
+          "Name": "frForward",
+          "Value": 158
+        },
+        {
+          "Name": "rfc1483",
+          "Value": 159
+        },
+        {
+          "Name": "usb",
+          "Value": 160
+        },
+        {
+          "Name": "ieee8023adLag",
+          "Value": 161
+        },
+        {
+          "Name": "bgppolicyaccounting",
+          "Value": 162
+        },
+        {
+          "Name": "frf16MfrBundle",
+          "Value": 163
+        },
+        {
+          "Name": "h323Gatekeeper",
+          "Value": 164
+        },
+        {
+          "Name": "h323Proxy",
+          "Value": 165
+        },
+        {
+          "Name": "mpls",
+          "Value": 166
+        },
+        {
+          "Name": "mfSigLink",
+          "Value": 167
+        },
+        {
+          "Name": "hdsl2",
+          "Value": 168
+        },
+        {
+          "Name": "shdsl",
+          "Value": 169
+        },
+        {
+          "Name": "ds1FDL",
+          "Value": 170
+        },
+        {
+          "Name": "pos",
+          "Value": 171
+        },
+        {
+          "Name": "dvbAsiIn",
+          "Value": 172
+        },
+        {
+          "Name": "dvbAsiOut",
+          "Value": 173
+        },
+        {
+          "Name": "plc",
+          "Value": 174
+        },
+        {
+          "Name": "nfas",
+          "Value": 175
+        },
+        {
+          "Name": "tr008",
+          "Value": 176
+        },
+        {
+          "Name": "gr303RDT",
+          "Value": 177
+        },
+        {
+          "Name": "gr303IDT",
+          "Value": 178
+        },
+        {
+          "Name": "isup",
+          "Value": 179
+        },
+        {
+          "Name": "propDocsWirelessMaclayer",
+          "Value": 180
+        },
+        {
+          "Name": "propDocsWirelessDownstream",
+          "Value": 181
+        },
+        {
+          "Name": "propDocsWirelessUpstream",
+          "Value": 182
+        },
+        {
+          "Name": "hiperlan2",
+          "Value": 183
+        },
+        {
+          "Name": "propBWAp2Mp",
+          "Value": 184
+        },
+        {
+          "Name": "sonetOverheadChannel",
+          "Value": 185
+        },
+        {
+          "Name": "digitalWrapperOverheadChannel",
+          "Value": 186
+        },
+        {
+          "Name": "aal2",
+          "Value": 187
+        },
+        {
+          "Name": "radioMAC",
+          "Value": 188
+        },
+        {
+          "Name": "atmRadio",
+          "Value": 189
+        },
+        {
+          "Name": "imt",
+          "Value": 190
+        },
+        {
+          "Name": "mvl",
+          "Value": 191
+        },
+        {
+          "Name": "reachDSL",
+          "Value": 192
+        },
+        {
+          "Name": "frDlciEndPt",
+          "Value": 193
+        },
+        {
+          "Name": "atmVciEndPt",
+          "Value": 194
+        },
+        {
+          "Name": "opticalChannel",
+          "Value": 195
+        },
+        {
+          "Name": "opticalTransport",
+          "Value": 196
+        },
+        {
+          "Name": "propAtm",
+          "Value": 197
+        },
+        {
+          "Name": "voiceOverCable",
+          "Value": 198
+        },
+        {
+          "Name": "infiniband",
+          "Value": 199
+        },
+        {
+          "Name": "teLink",
+          "Value": 200
+        },
+        {
+          "Name": "q2931",
+          "Value": 201
+        },
+        {
+          "Name": "virtualTg",
+          "Value": 202
+        },
+        {
+          "Name": "sipTg",
+          "Value": 203
+        },
+        {
+          "Name": "sipSig",
+          "Value": 204
+        },
+        {
+          "Name": "docsCableUpstreamChannel",
+          "Value": 205
+        },
+        {
+          "Name": "econet",
+          "Value": 206
+        },
+        {
+          "Name": "pon155",
+          "Value": 207
+        },
+        {
+          "Name": "pon622",
+          "Value": 208
+        },
+        {
+          "Name": "bridge",
+          "Value": 209
+        },
+        {
+          "Name": "linegroup",
+          "Value": 210
+        },
+        {
+          "Name": "voiceEMFGD",
+          "Value": 211
+        },
+        {
+          "Name": "voiceFGDEANA",
+          "Value": 212
+        },
+        {
+          "Name": "voiceDID",
+          "Value": 213
+        },
+        {
+          "Name": "mpegTransport",
+          "Value": 214
+        },
+        {
+          "Name": "sixToFour",
+          "Value": 215
+        },
+        {
+          "Name": "gtp",
+          "Value": 216
+        },
+        {
+          "Name": "pdnEtherLoop1",
+          "Value": 217
+        },
+        {
+          "Name": "pdnEtherLoop2",
+          "Value": 218
+        },
+        {
+          "Name": "opticalChannelGroup",
+          "Value": 219
+        },
+        {
+          "Name": "homepna",
+          "Value": 220
+        },
+        {
+          "Name": "gfp",
+          "Value": 221
+        },
+        {
+          "Name": "ciscoISLvlan",
+          "Value": 222
+        },
+        {
+          "Name": "actelisMetaLOOP",
+          "Value": 223
+        },
+        {
+          "Name": "fcipLink",
+          "Value": 224
+        },
+        {
+          "Name": "rpr",
+          "Value": 225
+        },
+        {
+          "Name": "qam",
+          "Value": 226
+        },
+        {
+          "Name": "lmp",
+          "Value": 227
+        },
+        {
+          "Name": "cblVectaStar",
+          "Value": 228
+        },
+        {
+          "Name": "docsCableMCmtsDownstream",
+          "Value": 229
+        },
+        {
+          "Name": "adsl2",
+          "Value": 230
+        },
+        {
+          "Name": "macSecControlledIF",
+          "Value": 231
+        },
+        {
+          "Name": "macSecUncontrolledIF",
+          "Value": 232
+        },
+        {
+          "Name": "aviciOpticalEther",
+          "Value": 233
+        },
+        {
+          "Name": "atmbond",
+          "Value": 234
+        },
+        {
+          "Name": "voiceFGDOS",
+          "Value": 235
+        },
+        {
+          "Name": "mocaVersion1",
+          "Value": 236
+        },
+        {
+          "Name": "ieee80216WMAN",
+          "Value": 237
+        },
+        {
+          "Name": "adsl2plus",
+          "Value": 238
+        },
+        {
+          "Name": "dvbRcsMacLayer",
+          "Value": 239
+        },
+        {
+          "Name": "dvbTdm",
+          "Value": 240
+        },
+        {
+          "Name": "dvbRcsTdma",
+          "Value": 241
+        },
+        {
+          "Name": "x86Laps",
+          "Value": 242
+        },
+        {
+          "Name": "wwanPP",
+          "Value": 243
+        },
+        {
+          "Name": "wwanPP2",
+          "Value": 244
+        },
+        {
+          "Name": "voiceEBS",
+          "Value": 245
+        },
+        {
+          "Name": "ifPwType",
+          "Value": 246
+        },
+        {
+          "Name": "ilan",
+          "Value": 247
+        },
+        {
+          "Name": "pip",
+          "Value": 248
+        },
+        {
+          "Name": "aluELP",
+          "Value": 249
+        },
+        {
+          "Name": "gpon",
+          "Value": 250
+        },
+        {
+          "Name": "vdsl2",
+          "Value": 251
+        },
+        {
+          "Name": "capwapDot11Profile",
+          "Value": 252
+        },
+        {
+          "Name": "capwapDot11Bss",
+          "Value": 253
+        },
+        {
+          "Name": "capwapWtpVirtualRadio",
+          "Value": 254
+        },
+        {
+          "Name": "bits",
+          "Value": 255
+        },
+        {
+          "Name": "docsCableUpstreamRfPort",
+          "Value": 256
+        },
+        {
+          "Name": "cableDownstreamRfPort",
+          "Value": 257
+        },
+        {
+          "Name": "vmwareVirtualNic",
+          "Value": 258
+        },
+        {
+          "Name": "ieee802154",
+          "Value": 259
+        },
+        {
+          "Name": "otnOdu",
+          "Value": 260
+        },
+        {
+          "Name": "otnOtu",
+          "Value": 261
+        },
+        {
+          "Name": "ifVfiType",
+          "Value": 262
+        },
+        {
+          "Name": "g9981",
+          "Value": 263
+        },
+        {
+          "Name": "g9982",
+          "Value": 264
+        },
+        {
+          "Name": "g9983",
+          "Value": 265
+        },
+        {
+          "Name": "aluEpon",
+          "Value": 266
+        },
+        {
+          "Name": "aluEponOnu",
+          "Value": 267
+        },
+        {
+          "Name": "aluEponPhysicalUni",
+          "Value": 268
+        },
+        {
+          "Name": "aluEponLogicalLink",
+          "Value": 269
+        },
+        {
+          "Name": "aluGponOnu",
+          "Value": 270
+        },
+        {
+          "Name": "aluGponPhysicalUni",
+          "Value": 271
+        },
+        {
+          "Name": "vmwareNicTeam",
+          "Value": 272
+        },
+        {
+          "Name": "docsOfdmDownstream",
+          "Value": 277
+        },
+        {
+          "Name": "docsOfdmaUpstream",
+          "Value": 278
+        }
+      ]
+    },
+    {
+      "Name": "agentPortSTPMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "dot1d",
+          "Value": 1
+        },
+        {
+          "Name": "fast",
+          "Value": 2
+        },
+        {
+          "Name": "off",
+          "Value": 3
+        }
+      ]
+    },
+    {
+      "Name": "agentPortSTPState",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.5",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "blocking",
+          "Value": 1
+        },
+        {
+          "Name": "listening",
+          "Value": 2
+        },
+        {
+          "Name": "learning",
+          "Value": 3
+        },
+        {
+          "Name": "forwarding",
+          "Value": 4
+        },
+        {
+          "Name": "disabled",
+          "Value": 5
+        }
+      ]
+    },
+    {
+      "Name": "agentPortAdminMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentPortPhysicalMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "autoNegotiate",
+          "Value": 1
+        },
+        {
+          "Name": "half10",
+          "Value": 2
+        },
+        {
+          "Name": "full10",
+          "Value": 3
+        },
+        {
+          "Name": "half100",
+          "Value": 4
+        },
+        {
+          "Name": "full100",
+          "Value": 5
+        },
+        {
+          "Name": "full1000sx",
+          "Value": 8
+        }
+      ]
+    },
+    {
+      "Name": "agentPortPhysicalStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "autonegotiate",
+          "Value": 1
+        },
+        {
+          "Name": "half10",
+          "Value": 2
+        },
+        {
+          "Name": "full10",
+          "Value": 3
+        },
+        {
+          "Name": "half100",
+          "Value": 4
+        },
+        {
+          "Name": "full100",
+          "Value": 5
+        },
+        {
+          "Name": "full1000sx",
+          "Value": 8
+        },
+        {
+          "Name": "unknown",
+          "Value": 9
+        }
+      ]
+    },
+    {
+      "Name": "agentPortLinkTrapMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.9",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentPortClearStats",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentPortDefaultType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.11",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "agentPortType",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.12",
+      "Syntax": "OBJECT IDENTIFIER"
+    },
+    {
+      "Name": "agentPortAutoNegAdminStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.13",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentPortDot3FlowControlMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.14",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentPortPowerMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.15",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 0
+        }
+      ]
+    },
+    {
+      "Name": "agentPortGvrpStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.16",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enabled",
+          "Value": 1
+        },
+        {
+          "Name": "disabled",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentPortGarpJoinTime",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.17",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "agentPortGarpLeaveTime",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.18",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "agentPortGarpLeaveAllTime",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.19",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "agentPortMirrorMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.20",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "enable",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentPortMulticastApplianceMode",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.21",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "disable",
+          "Value": 0
+        },
+        {
+          "Name": "enable",
+          "Value": 1
+        }
+      ]
+    },
+    {
+      "Name": "agentPortOperationalStatus",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12.1.40",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "up",
+          "Value": 1
+        },
+        {
+          "Name": "down",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentSaveConfig",
+      "OID": ".1.3.6.1.4.1.14179.1.3.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentClearConfig",
+      "OID": ".1.3.6.1.4.1.14179.1.3.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentClearLags",
+      "OID": ".1.3.6.1.4.1.14179.1.3.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentClearLoginSessions",
+      "OID": ".1.3.6.1.4.1.14179.1.3.4",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentClearPortStats",
+      "OID": ".1.3.6.1.4.1.14179.1.3.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentClearSwitchStats",
+      "OID": ".1.3.6.1.4.1.14179.1.3.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentClearTrapLog",
+      "OID": ".1.3.6.1.4.1.14179.1.3.8",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "agentResetSystem",
+      "OID": ".1.3.6.1.4.1.14179.1.3.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {
+          "Name": "enable",
+          "Value": 1
+        },
+        {
+          "Name": "disable",
+          "Value": 2
+        }
+      ]
+    },
+    {
+      "Name": "portStatsIndex",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.1",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {
+        "Max": 65535,
+        "Min": 1
+      }
+    },
+    {
+      "Name": "portStatsPktsTx64Octets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.2",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "portStatsPktsTx65to127Octets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.3",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "portStatsPktsTx128to255Octets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.4",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "portStatsPktsTx256to511Octets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.5",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "portStatsPktsTx512to1023Octets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.6",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "portStatsPktsTx1024to1518Octets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.7",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "portStatsPktsRx1519to1530Octets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.8",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "portStatsPktsTx1519to1530Octets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.9",
+      "Syntax": "Counter32"
+    },
+    {
+      "Name": "portStatsPktsTxOversizeOctets",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1.1.30",
+      "Syntax": "Counter32"
+    }
+  ],
+  "Tables": [
+    {
+      "EntryName": "agentTrapLogEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentTrapLogIndex",
+        "AIRESPACE-SWITCHING-MIB::agentTrapLogSystemTime",
+        "AIRESPACE-SWITCHING-MIB::agentTrapLogTrap"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentTrapLogIndex"
+      ],
+      "Name": "agentTrapLogTable",
+      "OID": ".1.3.6.1.4.1.14179.1.1.2.4"
+    },
+    {
+      "EntryName": "agentWcpControllerInfoEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentWcpControllerInfoSlotNumber",
+        "AIRESPACE-SWITCHING-MIB::agentWcpControllerInfoPortNumber",
+        "AIRESPACE-SWITCHING-MIB::agentWcpControllerInfoIpAddress"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentWcpControllerInfoSlotNumber",
+        "AIRESPACE-SWITCHING-MIB::agentWcpControllerInfoPortNumber"
+      ],
+      "Name": "agentWcpControllerInfoTable",
+      "OID": ".1.3.6.1.4.1.14179.1.1.6.7"
+    },
+    {
+      "EntryName": "agentLoginSessionEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentLoginSessionIndex",
+        "AIRESPACE-SWITCHING-MIB::agentLoginSessionUserName",
+        "AIRESPACE-SWITCHING-MIB::agentLoginSessionIPAddress",
+        "AIRESPACE-SWITCHING-MIB::agentLoginSessionConnectionType",
+        "AIRESPACE-SWITCHING-MIB::agentLoginSessionIdleTime",
+        "AIRESPACE-SWITCHING-MIB::agentLoginSessionSessionTime",
+        "AIRESPACE-SWITCHING-MIB::agentLoginSessionStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentLoginSessionIndex"
+      ],
+      "Name": "agentLoginSessionTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.1.1"
+    },
+    {
+      "EntryName": "agentLagSummaryConfigEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryName",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryLagIndex",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryFlushTimer",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryLinkTrap",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryAdminMode",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryStpMode",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryAddPort",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryDeletePort",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryPortsBitMask",
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentLagSummaryName"
+      ],
+      "Name": "agentLagSummaryConfigTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.2"
+    },
+    {
+      "EntryName": "agentLagDetailedConfigEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentLagDetailedLagIndex",
+        "AIRESPACE-SWITCHING-MIB::agentLagDetailedIfIndex",
+        "AIRESPACE-SWITCHING-MIB::agentLagDetailedPortSpeed"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentLagDetailedLagIndex",
+        "AIRESPACE-SWITCHING-MIB::agentLagDetailedIfIndex"
+      ],
+      "Name": "agentLagDetailedConfigTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.2.3"
+    },
+    {
+      "EntryName": "agentNetworkRouteConfigEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentNetworkRouteIPAddress",
+        "AIRESPACE-SWITCHING-MIB::agentNetworkRouteIPNetmask",
+        "AIRESPACE-SWITCHING-MIB::agentNetworkRouteGateway",
+        "AIRESPACE-SWITCHING-MIB::agentNetworkRouteStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentNetworkRouteIPAddress"
+      ],
+      "Name": "agentNetworkRouteConfigTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.3.23"
+    },
+    {
+      "EntryName": "agentInterfaceConfigEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceName",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceVlanId",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceType",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceMacAddress",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceIPAddress",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceIPNetmask",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceIPGateway",
+        "AIRESPACE-SWITCHING-MIB::agentInterfacePortNo",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceActivePortNo",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceBackupPortNo",
+        "AIRESPACE-SWITCHING-MIB::agentInterfacePrimaryDhcpAddress",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceSecondaryDhcpAddress",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceDhcpProtocol",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceDnsHostName",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceAclName",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceAPManagementFeature",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceRowStatus",
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceVlanQuarantine"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentInterfaceName"
+      ],
+      "Name": "agentInterfaceConfigTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.13"
+    },
+    {
+      "EntryName": "agentNtpServerEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentNtpServerIndex",
+        "AIRESPACE-SWITCHING-MIB::agentNtpServerAddress",
+        "AIRESPACE-SWITCHING-MIB::agentNtpServerRowStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentNtpServerIndex"
+      ],
+      "Name": "agentNtpServerTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.14.2"
+    },
+    {
+      "EntryName": "agentDhcpScopeEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeIndex",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeName",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeLeaseTime",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeNetwork",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeNetmask",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopePoolStartAddress",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopePoolEndAddress",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeDefaultRouterAddress1",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeDefaultRouterAddress2",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeDefaultRouterAddress3",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeDnsDomainName",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeDnsServerAddress1",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeDnsServerAddress2",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeDnsServerAddress3",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeNetbiosNameServerAddress1",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeNetbiosNameServerAddress2",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeNetbiosNameServerAddress3",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeState",
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeRowStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentDhcpScopeIndex"
+      ],
+      "Name": "agentDhcpScopeTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.15.1"
+    },
+    {
+      "EntryName": "agentSnmpCommunityConfigEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentSnmpCommunityName",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpCommunityIPAddress",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpCommunityIPMask",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpCommunityAccessMode",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpCommunityEnabled",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpCommunityStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentSnmpCommunityName"
+      ],
+      "Name": "agentSnmpCommunityConfigTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.5"
+    },
+    {
+      "EntryName": "agentSnmpTrapReceiverConfigEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentSnmpTrapReceiverName",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpTrapReceiverIPAddress",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpTrapReceiverEnabled",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpTrapReceiverStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentSnmpTrapReceiverName"
+      ],
+      "Name": "agentSnmpTrapReceiverConfigTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.5.6"
+    },
+    {
+      "EntryName": "agentSnmpV3UserConfigEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentSnmpV3UserName",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpV3UserAccessMode",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpV3UserAuthenticationType",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpV3UserEncryptionType",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpV3UserAuthenticationPassword",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpV3UserEncryptionPassword",
+        "AIRESPACE-SWITCHING-MIB::agentSnmpV3UserStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentSnmpV3UserName"
+      ],
+      "Name": "agentSnmpV3UserConfigTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.6.2"
+    },
+    {
+      "EntryName": "agentSwitchAddressAgingTimeoutEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentSwitchAddressAgingTimeout"
+      ],
+      "IndexObjects": [
+        "Q-BRIDGE-MIB::dot1qFdbId"
+      ],
+      "Name": "agentSwitchAddressAgingTimeoutTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.8.4"
+    },
+    {
+      "EntryName": "agentDot3adAggPortEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentDot3adAggPort",
+        "AIRESPACE-SWITCHING-MIB::agentDot3adAggPortLACPMode"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentDot3adAggPort"
+      ],
+      "Name": "agentDot3adAggPortTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.11"
+    },
+    {
+      "EntryName": "agentPortConfigEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentPortDot1dBasePort",
+        "AIRESPACE-SWITCHING-MIB::agentPortIfIndex",
+        "AIRESPACE-SWITCHING-MIB::agentPortIanaType",
+        "AIRESPACE-SWITCHING-MIB::agentPortSTPMode",
+        "AIRESPACE-SWITCHING-MIB::agentPortSTPState",
+        "AIRESPACE-SWITCHING-MIB::agentPortAdminMode",
+        "AIRESPACE-SWITCHING-MIB::agentPortPhysicalMode",
+        "AIRESPACE-SWITCHING-MIB::agentPortPhysicalStatus",
+        "AIRESPACE-SWITCHING-MIB::agentPortLinkTrapMode",
+        "AIRESPACE-SWITCHING-MIB::agentPortClearStats",
+        "AIRESPACE-SWITCHING-MIB::agentPortDefaultType",
+        "AIRESPACE-SWITCHING-MIB::agentPortType",
+        "AIRESPACE-SWITCHING-MIB::agentPortAutoNegAdminStatus",
+        "AIRESPACE-SWITCHING-MIB::agentPortDot3FlowControlMode",
+        "AIRESPACE-SWITCHING-MIB::agentPortPowerMode",
+        "AIRESPACE-SWITCHING-MIB::agentPortGvrpStatus",
+        "AIRESPACE-SWITCHING-MIB::agentPortGarpJoinTime",
+        "AIRESPACE-SWITCHING-MIB::agentPortGarpLeaveTime",
+        "AIRESPACE-SWITCHING-MIB::agentPortGarpLeaveAllTime",
+        "AIRESPACE-SWITCHING-MIB::agentPortMirrorMode",
+        "AIRESPACE-SWITCHING-MIB::agentPortMulticastApplianceMode",
+        "AIRESPACE-SWITCHING-MIB::agentPortOperationalStatus"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::agentPortDot1dBasePort"
+      ],
+      "Name": "agentPortConfigTable",
+      "OID": ".1.3.6.1.4.1.14179.1.2.12"
+    },
+    {
+      "EntryName": "portStatsEntry",
+      "EntryObjects": [
+        "AIRESPACE-SWITCHING-MIB::portStatsIndex",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsTx64Octets",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsTx65to127Octets",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsTx128to255Octets",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsTx256to511Octets",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsTx512to1023Octets",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsTx1024to1518Octets",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsRx1519to1530Octets",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsTx1519to1530Octets",
+        "AIRESPACE-SWITCHING-MIB::portStatsPktsTxOversizeOctets"
+      ],
+      "IndexObjects": [
+        "AIRESPACE-SWITCHING-MIB::portStatsIndex"
+      ],
+      "Name": "portStatsTable",
+      "OID": ".1.3.6.1.4.1.14179.1.4.1"
+    }
+  ]
+}
