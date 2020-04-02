@@ -19,8 +19,4 @@ time = "*"
 tokio = "*"
 async-std = "*"
 futures-util = "*"
-
-[dependencies.rumq-client]
-git = "https://github.com/qm3ster/rumq"
-branch = "patch-1"
-
+rumq-client = "0.1.0-alpha.9"
