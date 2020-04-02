@@ -38,8 +38,8 @@ fn start_poll_worker(jaspy_url: &String, snmpbot_url: &String, device_info : &mo
 }
 
 fn snmpbot_query(device_fqdn: &String, statistics: &mut HashMap<i32, HashMap<String, models::json::SNMPBotResultEntryObjectValue>>, url: &reqwest::Url) {
-    let mut response;
-    if let Ok(response_parsed) = reqwest::get(url.as_str()) {
+    let response;
+    if let Ok(response_parsed) = reqwest::blocking::get(url.as_str()) {
         response = response_parsed;
     } else {
         // TODO: log?
@@ -158,7 +158,7 @@ pub fn poller(jaspy_url : String, snmpbot_url: String, device_info : models::jso
 
         println!("[{}] polling", fqdn);
         if let Some(poll_result) = poll_device(&snmpbot_url, &device_info) {
-            let client = reqwest::Client::new();
+            let client = reqwest::blocking::Client::new();
             let response = client.request(reqwest::Method::PUT, &format!("{}/dev/interface/monitor", jaspy_url))
                 .json(&poll_result)
                 .send();

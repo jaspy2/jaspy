@@ -46,9 +46,9 @@ struct DeviceInfoResponse {
 
 fn get_devices(source_url : &String) -> Result<(HashMap<String, DeviceInfo>, i64), String> {
     let mut devices : HashMap<String, DeviceInfo> = HashMap::new();
-    let response = reqwest::get(source_url);
+    let response = reqwest::blocking::get(source_url);
     match response {
-        Ok(mut response) => {
+        Ok(response) => {
             let resp_json : Result<DeviceInfoResponse, _> = response.json();
             match resp_json {
                 Ok(device_info_response) => {
@@ -94,7 +94,7 @@ fn pinger_prepare_instance(host : &String) -> Result<oping::Ping, oping::PingErr
 }
 
 fn send_status_update(source_url: &String, host : &String, ping_accounting_info : &mut PingAccountingInfo) {
-    let client = reqwest::Client::new();
+    let client = reqwest::blocking::Client::new();
     let resp_obj = DeviceInfo {
         up: ping_accounting_info.responsive,
         fqdn: host.clone()

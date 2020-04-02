@@ -12,7 +12,7 @@ use config::{Config, File, Environment};
 mod models;
 
 fn send_interface_event(jaspy_url: String, ifm: models::json::InterfaceMonitorReport) {
-    let client = reqwest::Client::new();
+    let client = reqwest::blocking::Client::new();
     let response = client.request(reqwest::Method::PUT, &format!("{}/dev/interface/monitor", jaspy_url))
         .json(&ifm)
         .send();
@@ -132,10 +132,6 @@ fn handle_trap(jaspy_url: String, trap : String, unix_time : f64) {
     handle_parsed_trap(jaspy_url, unix_time, &hostname.to_string(), trap_info);
 }
 
-fn do_fork() {
-
-}
-
 fn get_unixtime_float_with_msecs() -> f64 {
     let start = SystemTime::now();
     match start.duration_since(UNIX_EPOCH) {
@@ -174,7 +170,7 @@ fn main() {
             let unix_time = get_unixtime_float_with_msecs();
             let buffer = buffer_tmp.clone();
             match fork() {
-                Ok(ForkResult::Parent { child, .. }) => {
+                Ok(ForkResult::Parent { child: _, .. }) => {
                 },
                 Ok(ForkResult::Child) => {
                     handle_trap(jaspy_url, buffer, unix_time);

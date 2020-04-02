@@ -16,7 +16,7 @@ const MAIN_LOOP_MSECS : u64 = 1000;
 fn get_devices(jaspy_url : &String) -> Result<HashMap<String, models::json::Device>, String> {
     let source_url = format!("{}/dev/device", jaspy_url);
     let mut devices : HashMap<String, models::json::Device> = HashMap::new();
-    if let Ok(mut response) = reqwest::get(&source_url) {
+    if let Ok(response) = reqwest::blocking::get(&source_url) {
         let resp_json : Result<Vec<models::json::Device>, _> = response.json();
         if let Ok(device_list) = resp_json {
             for device_info in device_list.iter() {
