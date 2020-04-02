@@ -30,32 +30,19 @@ impl MessageBus {
         let mut mqtt_options = MqttOptions::new("jaspy-nexus", event_publish, 1883);
         mqtt_options
             .set_keep_alive(10)
-            .set_clean_session(false);
+            .set_clean_session(false)
+            .set_throttle(std::time::Duration::from_secs(1));
 
         let (requests_tx, requests_rx) = channel(10);
 
         let mut eventloop = eventloop(mqtt_options, requests_rx);
-        
-        runtime.block_on(async {
-            let mut stream = eventloop.stream();
-            while let Some(_item) = stream.next().await {
-                match _item {
-                    rumq_client::Notification::Connected => {
-                        println!("connected to MQTT");
-                        break;
-                    },
-                    _ => {}
-                };
-            }
-        });
 
         std::thread::spawn(move || {
             runtime.block_on(async {
-                let mut stream = eventloop.stream();
+                let mut stream = eventloop.connect().await.unwrap();
                 while let Some(_item) = stream.next().await {
                 }
             });
-
         });
 
         return MessageBus {
@@ -68,13 +55,10 @@ impl MessageBus {
         if let Some(mqtt_channel_tx) = &mut self.mqtt_channel_tx {
             let json_data = format!("{}", json!(event));
             let topic = format!("jaspy/nexus/{}", event.event_type);
-            let publish = Request::Publish(rumq_client::publish(&topic, QoS::AtLeastOnce, json_data));
+            let publish = Request::Publish(rumq_client::Publish::new(&topic, QoS::AtLeastOnce, json_data));
             task::block_on(async move {
                 let _res = mqtt_channel_tx.send(publish).await;
             });
-/*            if let Ok(_) = mqtt_client.publish(format!("jaspy/nexus/{}", event.event_type), QoS::AtLeastOnce, false, json_data) {
-                // ..
-            }*/
         }
     }
 }
