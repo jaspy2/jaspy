@@ -8,6 +8,7 @@ User=jaspy
 Group=jaspy
 Environment=JASPY_DB_URL=postgresql:///jaspy
 Environment=JASPY_MQTT_SERVER=127.0.0.1
+Environment=ROCKET_DATABASES={jaspy_db={url="postgres:///jaspy"}}
 ExecStart=/usr/lib/jaspy/jaspy-nexus
 
 [Install]

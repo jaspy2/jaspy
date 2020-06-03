@@ -9,7 +9,7 @@ use rocket::State;
 
 // TODO: GH#9 Move everything to v1 API
 #[get("/?<device_fqdn>")]
-pub fn interface_list(connection: db::Connection, device_fqdn: Option<String>) -> json::Json<Vec<models::dbo::Interface>> {
+pub fn interface_list(connection: db::JaspyDB, device_fqdn: Option<String>) -> json::Json<Vec<models::dbo::Interface>> {
     match device_fqdn {
         Some(device_fqdn) => {
             if let Some(device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
@@ -25,7 +25,7 @@ pub fn interface_list(connection: db::Connection, device_fqdn: Option<String>) -
 }
 
 #[put("/monitor", data = "<interface_monitor_report>")]
-pub fn interface_monitor_report(connection: db::Connection, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, interface_monitor_report : json::Json<models::json::InterfaceMonitorReport>) {
+pub fn interface_monitor_report(connection: db::JaspyDB, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, interface_monitor_report : json::Json<models::json::InterfaceMonitorReport>) {
     if let Ok(ref mut imds) = imds.lock() {
         imds.report_interfaces(&connection, interface_monitor_report.into_inner());
     }

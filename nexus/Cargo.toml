@@ -8,8 +8,7 @@ edition = "2018"
 [dependencies]
 config = "*"
 dotenv = "*"
-rocket = { git = "https://github.com/SergioBenitez/Rocket?rev=4e6a7ddd" }
-rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket?rev=4e6a7ddd" }
+rocket = "*"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
 diesel = { version = "*", features = ["postgres"] }
@@ -20,3 +19,8 @@ tokio = "*"
 async-std = "*"
 futures-util = "*"
 rumq-client = "0.1.0-alpha.9"
+
+[dependencies.rocket_contrib]
+version = "*"
+default-features = false
+features = ["diesel_postgres_pool", "json"]

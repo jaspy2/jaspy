@@ -20,7 +20,7 @@ struct ConnectionPairRemoteInfo {
 }
 
 impl ConnectionPair {
-    fn load_by_fqdn_ifindex(connection: &db::Connection, fqdn: &String, ifindex: &i32) -> Option<ConnectionPair> {
+    fn load_by_fqdn_ifindex(connection: &db::JaspyDB, fqdn: &String, ifindex: &i32) -> Option<ConnectionPair> {
         if let Some(local_device) = models::dbo::Device::find_by_fqdn(connection, fqdn) {
             if let Some(local_interface) = local_device.interface_by_index(connection, ifindex) {
                 let connpair : ConnectionPair;
@@ -83,7 +83,7 @@ impl IMDS {
         self.metrics_storage.devices.insert(device_fqdn.clone(), dm);
     }
 
-    pub fn report_device(self: &mut IMDS, connection: &db::Connection, dmr: models::json::DeviceMonitorReport) {
+    pub fn report_device(self: &mut IMDS, connection: &db::JaspyDB, dmr: models::json::DeviceMonitorReport) {
         let device;
         match self.metrics_storage.devices.get_mut(&dmr.fqdn) {
             Some(value) => {
@@ -159,10 +159,53 @@ impl IMDS {
             out_discards: None,
             up: None,
             speed: None,
+
+            counter_violations: 0,
         });
     }
 
-    pub fn report_interfaces(self: &mut IMDS, connection: &db::Connection, imr: models::json::InterfaceMonitorReport) {
+    fn validate_u64_forward_progress(old: &Option<u64>, new: &Option<u64>) -> bool {
+        if let Some(old) = old {
+            if let Some(new) = new {
+                if old <= new {
+                    return true;
+                }
+                // Note, the value here is just an arbitrary number
+                if (old - new) < 2147483647 {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    fn validate_counters(current_value: &mut models::metrics::InterfaceMetrics, new_value: &models::json::InterfaceMonitorInterfaceReport) -> bool {
+        if current_value.counter_violations >= 10 {
+            current_value.counter_violations = 0;
+            return true;
+        }
+        let mut success: bool = true;
+        success = success && IMDS::validate_u64_forward_progress(&current_value.in_octets, &new_value.in_octets);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.out_octets, &new_value.out_octets);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.in_unicast_packets, &new_value.in_unicast_packets);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.in_multicast_packets, &new_value.in_multicast_packets);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.in_broadcast_packets, &new_value.in_broadcast_packets);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.out_unicast_packets, &new_value.out_unicast_packets);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.out_multicast_packets, &new_value.out_multicast_packets);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.out_broadcast_packets, &new_value.out_broadcast_packets);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.in_errors, &new_value.in_errors);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.out_errors, &new_value.out_errors);
+        success = success && IMDS::validate_u64_forward_progress(&current_value.out_discards, &new_value.out_discards);
+        if !success {
+            current_value.counter_violations += 1;
+            return false;
+        } else {
+            current_value.counter_violations = 0;
+            return true;
+        }
+    }
+
+    pub fn report_interfaces(self: &mut IMDS, connection: &db::JaspyDB, imr: models::json::InterfaceMonitorReport) {
         let device;
         let last_report = utilities::tools::get_time_msecs();
         match self.metrics_storage.devices.get_mut(&imr.device_fqdn) {
@@ -184,6 +227,18 @@ impl IMDS {
                     continue;
                 }
             }
+
+            if interface.last_report >= last_report {
+                // TODO: log this case
+                continue;
+            }
+
+            if !IMDS::validate_counters(interface, &interface_report) {
+                // TODO: log this case
+                continue;
+            }
+
+
             interface.last_report = last_report;
             // TODO: statechanges should be emitted for errors?
             if interface_report.in_octets.is_some() { interface.in_octets = interface_report.in_octets; }

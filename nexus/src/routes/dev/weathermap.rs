@@ -9,7 +9,7 @@ use crate::utilities;
 use rocket::State;
 use std::ops::DerefMut;
 
-fn get_topology_data(connection: &db::Connection) -> models::json::WeathermapBase {
+fn get_topology_data(connection: &db::JaspyDB) -> models::json::WeathermapBase {
     let mut wmap: models::json::WeathermapBase = models::json::WeathermapBase {
         devices: HashMap::new(),
     };
@@ -55,7 +55,7 @@ fn get_topology_data(connection: &db::Connection) -> models::json::WeathermapBas
 
 // TODO: GH#9 Move everything to v1 API
 #[get("/")]
-pub fn full_topology_data(connection: db::Connection, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> json::Json<models::json::WeathermapBase> {
+pub fn full_topology_data(connection: db::JaspyDB, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>) -> json::Json<models::json::WeathermapBase> {
     let cached_weathermap_topology_arc: Arc<Mutex<Option<utilities::cache::CachedWeathermapTopology>>>;
     if let Ok(cache_controller) = cache_controller.inner().lock() {
         cached_weathermap_topology_arc = cache_controller.cached_weathermap_topology.clone();
@@ -175,7 +175,7 @@ pub fn state_information(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> json
 
 
 #[get("/position")]
-pub fn get_position_data(connection: db::Connection) -> json::Json<models::json::WeathermapPositionInfoBase> {
+pub fn get_position_data(connection: db::JaspyDB) -> json::Json<models::json::WeathermapPositionInfoBase> {
     let mut weathermap_position_info = models::json::WeathermapPositionInfoBase {
         devices: HashMap::new(),
     };
@@ -198,7 +198,7 @@ pub fn get_position_data(connection: db::Connection) -> json::Json<models::json:
 }
 
 #[put("/position", data = "<device_position_info>")]
-pub fn put_position_data(connection: db::Connection, device_position_info : json::Json<models::json::WeathermapPositionInfoUpdateDeviceInfo>) {
+pub fn put_position_data(connection: db::JaspyDB, device_position_info : json::Json<models::json::WeathermapPositionInfoUpdateDeviceInfo>) {
     let new_position_info = device_position_info.into_inner();
     if let Ok(_updated_item) = models::dbo::WeathermapDeviceInfo::update_by_fqdn_or_create(
         &connection,

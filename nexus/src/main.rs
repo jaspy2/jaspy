@@ -1,10 +1,11 @@
 #![feature(plugin)]
 #![feature(proc_macro_hygiene)]
+#![feature(decl_macro)]
 #[macro_use] extern crate serde;
-#[macro_use] extern crate serde_json;
+extern crate serde_json;
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate rocket;
-extern crate rocket_contrib;
+#[macro_use] extern crate rocket_contrib;
 extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate time;
@@ -91,6 +92,7 @@ fn main() {
     let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
 
     rocket::ignite()
+        .attach(db::JaspyDB::fairing())
         .mount(
             "/dev/device",
             routes![

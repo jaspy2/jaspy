@@ -53,7 +53,7 @@ impl MessageBus {
 
     pub fn event(self: &mut MessageBus, event: models::events::Event) {
         if let Some(mqtt_channel_tx) = &mut self.mqtt_channel_tx {
-            let json_data = format!("{}", json!(event));
+            let json_data = format!("{}", serde_json::json!(event));
             let topic = format!("jaspy/nexus/{}", event.event_type);
             let publish = Request::Publish(rumq_client::Publish::new(&topic, QoS::AtLeastOnce, json_data));
             task::block_on(async move {

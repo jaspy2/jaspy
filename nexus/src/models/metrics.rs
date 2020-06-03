@@ -21,6 +21,8 @@ pub struct InterfaceMetrics {
     pub out_discards: Option<u64>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
+
+    pub counter_violations: u64,
 }
 
 pub struct DeviceMetrics {

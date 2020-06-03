@@ -3,3 +3,4 @@
 Cargo.lock
 *.log
 *.stackdump
+/src/schema.rs

@@ -5,7 +5,7 @@ use rocket_contrib::json;
 
 // TODO: GH#9 Move everything to v1 API
 #[get("/?<client_address>")]
-pub fn get_clientlocation(connection: db::Connection, client_address: String) -> Option<json::Json<models::dbo::ClientLocation>> {
+pub fn get_clientlocation(connection: db::JaspyDB, client_address: String) -> Option<json::Json<models::dbo::ClientLocation>> {
     if let Some(existing_client_info) = models::dbo::ClientLocation::by_ip(&client_address, &connection) {
         return Some(json::Json(existing_client_info));
     } else {
@@ -14,7 +14,7 @@ pub fn get_clientlocation(connection: db::Connection, client_address: String) ->
 }
 
 #[put("/", data = "<client_location_info_json>")]
-pub fn put_clientlocation(connection: db::Connection, client_location_info_json: json::Json<models::json::ClientLocationInfo>) {
+pub fn put_clientlocation(connection: db::JaspyDB, client_location_info_json: json::Json<models::json::ClientLocationInfo>) {
     let client_location_info: models::json::ClientLocationInfo = client_location_info_json.into_inner();
     let option82_001: String;
     let option82_002: String;

@@ -8,7 +8,7 @@ use rocket::State;
 
 // TODO: GH#9 Move everything to v1 API
 #[put("/device", data = "<discovery_json>")]
-pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::Connection, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
+pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::JaspyDB, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
     let discovered_device : &models::json::DiscoveredDevice = &discovery_json.into_inner();
     let discovered_device_interfaces : &HashMap<String, models::json::DiscoveredInterface> = &discovered_device.interfaces;
 
@@ -124,7 +124,7 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
 }
 
 // TODO: this might be better placed in an utility module or maybe in dbo logic?
-fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connection) {
+fn clear_connection(interface: &models::dbo::Interface, connection: &db::JaspyDB) {
     if interface.connected_interface.is_none() { return; }
 
     let mut new_local_interface : models::dbo::Interface = interface.clone();
@@ -140,7 +140,7 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &db::Connect
 #[put("/links", data = "<links_json>")]
 pub fn discovery_links(
     links_json: rocket_contrib::json::Json<models::json::LinkInfo>,
-    connection: db::Connection,
+    connection: db::JaspyDB,
     cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>
 ) {
     let link_infos : &HashMap<String, Option<models::json::LinkPeerInfo>> = &links_json.interfaces;
