@@ -1,17 +1,17 @@
 # jaspy
 
-Jaspy is a set of tools to monitor a network of switches and routers with Prometheus. Spesifically it does:
+Jaspy is a set of tools to monitor a network of switches and routers with Prometheus. Spesifically it:
 
-* Discovers your network topology and stores it in a PostgreSQL database.
-* Has a very efficient SNMP poller capable of polling easily a network of several thounsands of interface ports every 10 seconds.
+* Discovers your network topology using SNMP and stores it in a PostgreSQL database.
+* Has a very efficient SNMP poller capable of polling easily a network of several thounsands of interface ports every 10 seconds with moderate CPU usage.
 * Exposes gathered metrics to Prometheus.
 * Offers a few simple command line tools to browse the database.
 * Offers a very simple browser based single screen topology viewer in a web browser using JavaScript.
 
-This allows you to:
+Jaspy allows you to:
 
 * Use Prometheus and Grafana to build dashboards of your network
-* Use Prometheus alerting pipeline to build alerts
+* Use Prometheus alerting pipeline to build alerts on errors, interface disconnects etc.
 * Answer complex metric queries using Prometheus query language.
 
 In order to use Jaspy you will need to have:
@@ -32,9 +32,6 @@ $ ls output/debian/
 jaspy_2.2.0-10-gc6fafaf_amd64.deb  snmpbot_2.2.0-10-gc6fafaf_amd64.deb
 ```
 
-And then just `dpkg -i` :)
-
-
 ## Installation
 
 These instructions assume that you are have a fresh Debian Buster (10.x) installation. Your VM should be in a network which has access to all of your network switches and it should be secured from outside access. Jaspy does not have any authentication or user management features. 
@@ -47,7 +44,7 @@ apt-get install mosquitto postgresql prometheus apache2
 
 ### Install Jaspy itself
 
-The installation script should create a `jaspy` database into Postgres if it doesn't yet exists.
+The installation script should create a `jaspy` database into Postgres if it doesn't yet exists. It should be enough to just install the packages.
 
 ```
 dpkg -i jaspy_2.2.0-56-gcf420c6_amd64.deb snmpbot_2.2.0-35-g13aada5_amd64.deb
@@ -83,12 +80,12 @@ To show all installed unit files use 'systemctl list-unit-files'.
 
 ### Discover your network topology
 
-Ensure that your switch has snmp enabled: `snmp-server community public RO`. You can test this with `snmpwalk -c public 172.16.140.200 -v 2c`
+Ensure that your switch has snmp enabled: For example in Cisco you would say `snmp-server community public RO`. You should test your snmp with `snmpwalk -c public 172.16.140.200 -v 2c`
 
 The discovery works by giving it a single root device to start from and it will iterate recursively over your network:
 
 ```
-jaspy-discover -c public -r 172.16.140.200 -d juhonkoti.net
+jaspy-discover -c public -r 172.16.140.200 -d foobar.com
 ``` 
 
 Once the discovery is completed you should be able to list your devices:
@@ -99,7 +96,7 @@ enabled  fqdn                             type                     software
 default  main-sq.foobar.com               WS-C2960XR-24PD-I
 ```
 
-You should also see Prometheus metrics in the jaspy-devicepoller. Try:
+You should now be able to see Prometheus metrics in the jaspy-devicepoller. Try:
 
 ```
 curl http://localhost:8098/metrics |grep jaspy
@@ -114,7 +111,7 @@ jaspy_stp_port_enabled{fqdn="main-sq.foobar.com",hostname="main-sq",interface_id
 
 ### Configure Prometheus
 
-Edit `/var/prometheus/prometheus.yaml` and add this snippet to the bottom so that it becomes part of the `scrape_configs:`.
+Edit `/var/prometheus/prometheus.yaml` and add this snippet to the bottom so that it becomes part of the `scrape_configs:`. This is required so that your Prometheus will poll Jaspy for network metrics. There are three sections: Fast metrics, slow metrics and sensors.
 
 ```
   # notice indentation of two spaces
@@ -138,7 +135,7 @@ Edit `/var/prometheus/prometheus.yaml` and add this snippet to the bottom so tha
 
 Run `systemctl restart prometheus` to reload changes.
 
-Open http://localhost:9090 and try these queries:
+Open Prometheus (http://localhost:9090) and try these queries:
 
 * `jaspy_device_up` Shows device status (value 1 if up, 0 if down)
 * `jaspy_interface_broadcast_packets` Shows number of broadcast packets.
@@ -178,7 +175,7 @@ In addition the `jaspy_sensors` metrics contains these labels:
 
 Weathermap is a JavaScript tool to show a graphical representation of the network topology in browser. It requires access to Prometheus and jaspy-api.
 
-### Setup
+### Setup based on Apache2
 
 Enable mod_proxy. Run:
 ```
@@ -195,7 +192,7 @@ Edit `/etc/apache2/apache2.conf` and add the following snippet:
 </Directory>
 ```
 
-Copy `/var/lib/jaspy/weathermap/js/config.dist.js` as `config.js` and replace JASPY_PROMETHEUS_URL and JASPY_NEXUS_URL with a working full urls as seen in this example:
+Copy `/var/lib/jaspy/weathermap/js/config.dist.js` as `config.js` and replace JASPY_PROMETHEUS_URL and JASPY_NEXUS_URL with a working full urls as seen in this example, which assumes that Jaspy VM has ip 172.16.143.39. You should probably use a fqdn:
 
 ```
 config = {
