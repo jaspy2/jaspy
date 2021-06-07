@@ -116,7 +116,7 @@ Edit `/var/prometheus/prometheus.yaml` and add this snippet to the bottom so tha
 ```
   # notice indentation of two spaces
   - job_name: 'jaspy-poller-fast'
-    scrape_interval: 5s
+    scrape_interval: 10s
     metrics_path: '/dev/metrics/fast'
     static_configs:
       - targets: ['127.0.0.1:8000']
