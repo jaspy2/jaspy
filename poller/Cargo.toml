@@ -4,8 +4,8 @@ version = "2.2.0"
 authors = ["Antti Tönkyrä <daedalus@pingtimeout.net>"]
 
 [dependencies]
-reqwest = { version = "*", features = ["blocking", "json"] }
+reqwest = { version = "0.11.12", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "*"
-rand = "*"
-config = "*"
+serde_json = "1.0.87"
+rand = "0.7.3"
+config = "0.10.1"
