@@ -6,21 +6,21 @@ edition = "2018"
 
 
 [dependencies]
-config = "*"
-dotenv = "*"
-rocket = "*"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "*"
-diesel = { version = "*", features = ["postgres"] }
-r2d2 = "*"
-r2d2-diesel = "*"
-time = "*"
-tokio = "*"
-async-std = "*"
-futures-util = "*"
-rumq-client = "0.1.0-alpha.9"
+config = "0.10.1"
+dotenv = "0.15.0"
+rocket = "0.4.11"
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = "1.0.87"
+diesel = { version = "1.4.8", features = ["postgres"] }
+r2d2 = "0.8.10"
+r2d2-diesel = "1.0.0"
+time = "0.2.26"
+tokio = "0.2.25"
+async-std = "1.12.0"
+futures-util = "0.3.25"
+rumq-client = "0.1.0-alpha.10"
 
 [dependencies.rocket_contrib]
-version = "*"
+version = "0.4.11"
 default-features = false
 features = ["diesel_postgres_pool", "json"]

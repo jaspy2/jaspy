@@ -1,9 +1,9 @@
 # jaspy
 
-Jaspy is a set of tools to monitor a network of switches and routers with Prometheus. Spesifically it:
+Jaspy is a set of tools to monitor a network of switches and routers with Prometheus. Specifically it:
 
 * Discovers your network topology using SNMP and stores it in a PostgreSQL database.
-* Has a very efficient SNMP poller capable of polling easily a network of several thounsands of interface ports every 10 seconds with moderate CPU usage.
+* Has a very efficient SNMP poller capable of polling easily a network of several thousands of interface ports every 10 seconds with moderate CPU usage.
 * Exposes gathered metrics to Prometheus.
 * Offers a few simple command line tools to browse the database.
 * Offers a very simple browser based single screen topology viewer in a web browser using JavaScript.

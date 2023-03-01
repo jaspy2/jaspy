@@ -1,6 +1,9 @@
-ARG DEBIAN_VERSION=buster-slim
+ARG DEBIAN_VERSION=bullseye-slim
+
 FROM debian:${DEBIAN_VERSION}
+
 WORKDIR /usr/src/jaspy/root
+
 RUN apt-get update && apt-get -y install ruby ruby-dev libffi-dev build-essential
 RUN gem install fpm
 
