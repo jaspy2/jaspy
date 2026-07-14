@@ -1,14 +1,15 @@
 jaspy-nexus 2.2.0 starting
 [db] connecting to postgresql:///jaspy (waits up to 30s before giving up)
-[discovery] no persisted config, using JASPY_DISCOVERY_* env seed
+[discovery] using persisted config from database (JASPY_DISCOVERY_* env is only the first-boot seed)
 [pinger] disabled via JASPY_ENABLE_PINGER
 [imds] refreshing device metadata from db every 10s
-[entitypoller] starting in-process collector (snmpbot=http://127.0.0.1:8286/, interval_msecs=120000, sensors=true, stp=true)
 [poller] starting in-process collector (snmpbot=http://127.0.0.1:8286/, poll_loop_msecs=10000)
+[poller] pinger is disabled; deriving device up/down from SNMP poll replies
+[db] connecting to postgresql:///jaspy (waits up to 30s before giving up)
+[db] connecting to postgresql:///jaspy (waits up to 30s before giving up)
+[entitypoller] starting in-process collector (snmpbot=http://127.0.0.1:8286/, interval_msecs=120000, sensors=true, stp=true)
 [db] connecting to postgresql:///jaspy (waits up to 30s before giving up)
 [discovery] starting in-process engine (snmpbot=http://127.0.0.1:8286/)
-[db] connecting to postgresql:///jaspy (waits up to 30s before giving up)
-[db] connecting to postgresql:///jaspy (waits up to 30s before giving up)
 [db] connecting to postgresql:///jaspy (waits up to 30s before giving up)
 Configured for debug.
    >> address: 127.0.0.1
@@ -72,96 +73,95 @@ Fairings:
    >> Shield (liftoff, response, singleton)
 Shield:
    >> Permissions-Policy: interest-cohort=()
-   >> X-Content-Type-Options: nosniff
    >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
 Rocket has launched from http://127.0.0.1:8000
-[ticket-sw2.juhonkoti.net] start polling thread, delay=1378.23ms
-GET /api/v1/discovery/status:
-   >> Matched: (discovery_status) GET /api/v1/discovery/status
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[ticket-sw2.juhonkoti.net] polling
-PUT /api/v1/discovery/config application/json:
-   >> Matched: (discovery_put_config) PUT /api/v1/discovery/config
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/discovery/status:
-   >> Matched: (discovery_status) GET /api/v1/discovery/status
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-POST /api/v1/discovery/run application/json:
-   >> Matched: (discovery_run) POST /api/v1/discovery/run
-   >> Outcome: Success(202 Accepted)
-   >> Response succeeded.
-GET /api/v1/discovery/status:
-   >> Matched: (discovery_status) GET /api/v1/discovery/status
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[discovery] starting run (root=ticket-sw2.juhonkoti.net, stable=true)
-[discovery] [ticket-sw2.juhonkoti.net] started polling device
-[discovery] [ticket-sw2.juhonkoti.net] duplicate lldp index, only first entry is used
-[discovery] [ticket-sw2.juhonkoti.net] duplicate lldp index, only first entry is used
-[discovery] [ticket-sw2.juhonkoti.net] duplicate lldp index, only first entry is used
-[discovery] [ticket-sw2.juhonkoti.net] duplicate lldp index, only first entry is used
-[discovery] [ticket-sw2.juhonkoti.net] duplicate lldp index, only first entry is used
-[discovery] failed to resolve minis1 using any search domain
-[discovery] [Dream-Machine-Pro-Max.juhonkoti.net] started polling device
-[discovery] [ticket-sw2.juhonkoti.net] finished polling device
-[discovery] [Dream-Machine-Pro-Max.juhonkoti.net] could not derive chassis id when requested!
-[discovery] [Dream-Machine-Pro-Max.juhonkoti.net] finished polling device
-[discovery] LINK ticket-sw2.juhonkoti.net:Gi0/8 -> Dream-Machine-Pro-Max.juhonkoti.net:eth0
-[discovery] failed to resolve minis1 using any search domain
-[discovery] [Dream-Machine-Pro-Max.juhonkoti.net] could not derive chassis id when requested!
-[discovery] run finished: 2 devices, 1 links
-[Dream-Machine-Pro-Max.juhonkoti.net] start polling thread, delay=8.29ms
+[Dream-Machine-Pro-Max.juhonkoti.net] start polling thread, delay=2610.36ms
+[ticket-sw2.juhonkoti.net] start polling thread, delay=3623.22ms
 [Dream-Machine-Pro-Max.juhonkoti.net] polling
 [ticket-sw2.juhonkoti.net] polling
-GET /api/v1/discovery/status:
-   >> Matched: (discovery_status) GET /api/v1/discovery/status
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
 GET /api/v1/summary:
+GET /api/v1/devices:
    >> Matched: (summary) GET /api/v1/summary
+   >> Matched: (devices) GET /api/v1/devices
    >> Outcome: Success(200 OK)
    >> Response succeeded.
-GET /api/v1/discovery/status:
-   >> Matched: (discovery_status) GET /api/v1/discovery/status
    >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /devices text/html:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /assets/index-DK1qSE37.js:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+GET /assets/index-DCw0Ua5g.css text/css:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
    >> Response succeeded.
 GET /api/v1/devices:
    >> Matched: (devices) GET /api/v1/devices
    >> Outcome: Success(200 OK)
    >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
 GET /api/v1/summary:
    >> Matched: (summary) GET /api/v1/summary
    >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /devices text/html:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /assets/index-DK1qSE37.js:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+GET /assets/index-DCw0Ua5g.css text/css:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
    >> Response succeeded.
 GET /api/v1/devices:
    >> Matched: (devices) GET /api/v1/devices
    >> Outcome: Success(200 OK)
    >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
 GET /api/v1/summary:
    >> Matched: (summary) GET /api/v1/summary
    >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /devices text/html:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /assets/index-DK1qSE37.js:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+GET /assets/index-DCw0Ua5g.css text/css:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
    >> Response succeeded.
 GET /api/v1/devices:
    >> Matched: (devices) GET /api/v1/devices
    >> Outcome: Success(200 OK)
    >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /devices text/html:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /assets/index-DK1qSE37.js:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+GET /assets/index-DCw0Ua5g.css text/css:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+   >> Response succeeded.
+GET /api/v1/devices:
+   >> Matched: (devices) GET /api/v1/devices
    >> Outcome: Success(200 OK)
    >> Response succeeded.
 GET /api/v1/summary:
@@ -169,167 +169,34 @@ GET /api/v1/summary:
    >> Outcome: Success(200 OK)
    >> Response succeeded.
 [Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
+GET /devices text/html:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /assets/index-DK1qSE37.js:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+GET /assets/index-DCw0Ua5g.css text/css:
+   >> Matched: (spa) GET /<path..> [20]
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+   >> Response succeeded.
+GET /api/v1/devices:
+   >> Matched: (devices) GET /api/v1/devices
    >> Outcome: Success(200 OK)
    >> Response succeeded.
 GET /api/v1/summary:
    >> Matched: (summary) GET /api/v1/summary
    >> Outcome: Success(200 OK)
    >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
 [ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
+[Dream-Machine-Pro-Max.juhonkoti.net] polling
+GET /api/v1/devices:
+   >> Matched: (devices) GET /api/v1/devices
    >> Outcome: Success(200 OK)
    >> Response succeeded.
 GET /api/v1/summary:
    >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-[ticket-sw2.juhonkoti.net] polling
-GET /api/v1/devices/ticket-sw2.juhonkoti.net:
-   >> Matched: (device_detail) GET /api/v1/devices/<device_fqdn>
-   >> Note: Using `String` as a parameter type is inefficient. Use `&str` instead.
-   >> `String` is used a parameter guard in src/routes/api/v1.rs:96.
    >> Outcome: Success(200 OK)
    >> Response succeeded.
 GET /api/v1/discovery/config:
@@ -340,57 +207,6 @@ GET /api/v1/discovery/status:
    >> Matched: (discovery_status) GET /api/v1/discovery/status
    >> Outcome: Success(200 OK)
    >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/devices:
-   >> Matched: (devices) GET /api/v1/devices
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
-GET /devices text/html:
-   >> Matched: (spa) GET /<path..> [20]
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /assets/index-CMC37d_s.js:
-   >> Matched: (spa) GET /<path..> [20]
-   >> Outcome: Success(200 OK)
-GET /assets/index-DCw0Ua5g.css text/css:
-   >> Matched: (spa) GET /<path..> [20]
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-   >> Response succeeded.
-GET /api/v1/devices:
-   >> Matched: (devices) GET /api/v1/devices
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /api/v1/summary:
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[ticket-sw2.juhonkoti.net] polling
-GET /devices text/html:
-   >> Matched: (spa) GET /<path..> [20]
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-GET /assets/index-CMC37d_s.js:
-   >> Matched: (spa) GET /<path..> [20]
-   >> Outcome: Success(200 OK)
-GET /assets/index-DCw0Ua5g.css text/css:
-   >> Matched: (spa) GET /<path..> [20]
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-   >> Response succeeded.
-GET /api/v1/devices:
-GET /api/v1/summary:
-   >> Matched: (devices) GET /api/v1/devices
-   >> Matched: (summary) GET /api/v1/summary
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-   >> Outcome: Success(200 OK)
-   >> Response succeeded.
-[Dream-Machine-Pro-Max.juhonkoti.net] polling
 [ticket-sw2.juhonkoti.net] polling
 GET /api/v1/devices:
    >> Matched: (devices) GET /api/v1/devices
@@ -400,8 +216,24 @@ GET /api/v1/summary:
    >> Matched: (summary) GET /api/v1/summary
    >> Outcome: Success(200 OK)
    >> Response succeeded.
+GET /api/v1/discovery/status:
+   >> Matched: (discovery_status) GET /api/v1/discovery/status
+   >> Outcome: Success(200 OK)
+GET /api/v1/discovery/config:
+   >> Matched: (discovery_get_config) GET /api/v1/discovery/config
+   >> Response succeeded.
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
 [Dream-Machine-Pro-Max.juhonkoti.net] polling
 [ticket-sw2.juhonkoti.net] polling
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/discovery/status:
+   >> Matched: (discovery_status) GET /api/v1/discovery/status
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
 GET /api/v1/devices:
    >> Matched: (devices) GET /api/v1/devices
    >> Outcome: Success(200 OK)
@@ -410,10 +242,92 @@ GET /api/v1/summary:
    >> Matched: (summary) GET /api/v1/summary
    >> Outcome: Success(200 OK)
    >> Response succeeded.
+GET /api/v1/discovery/status:
+GET /api/v1/discovery/config:
+   >> Matched: (discovery_status) GET /api/v1/discovery/status
+   >> Matched: (discovery_get_config) GET /api/v1/discovery/config
+   >> Outcome: Success(200 OK)
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+   >> Response succeeded.
 [Dream-Machine-Pro-Max.juhonkoti.net] polling
 [ticket-sw2.juhonkoti.net] polling
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/event:
+   >> Matched: (event_get) GET /api/v1/event
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+PUT /api/v1/event application/json:
+   >> Matched: (event_put) PUT /api/v1/event
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/event:
+   >> Matched: (event_get) GET /api/v1/event
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/devices:
+   >> Matched: (devices) GET /api/v1/devices
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/discovery/config:
+GET /api/v1/discovery/status:
+   >> Matched: (discovery_get_config) GET /api/v1/discovery/config
+   >> Matched: (discovery_status) GET /api/v1/discovery/status
+   >> Outcome: Success(200 OK)
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+   >> Response succeeded.
 [Dream-Machine-Pro-Max.juhonkoti.net] polling
 [ticket-sw2.juhonkoti.net] polling
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/discovery/status:
+   >> Matched: (discovery_status) GET /api/v1/discovery/status
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+[Dream-Machine-Pro-Max.juhonkoti.net] polling
+[ticket-sw2.juhonkoti.net] polling
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/discovery/status:
+   >> Matched: (discovery_status) GET /api/v1/discovery/status
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+[Dream-Machine-Pro-Max.juhonkoti.net] polling
+[ticket-sw2.juhonkoti.net] polling
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/discovery/status:
+   >> Matched: (discovery_status) GET /api/v1/discovery/status
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+[Dream-Machine-Pro-Max.juhonkoti.net] polling
+[ticket-sw2.juhonkoti.net] polling
+GET /api/v1/summary:
+   >> Matched: (summary) GET /api/v1/summary
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
+GET /api/v1/discovery/status:
+   >> Matched: (discovery_status) GET /api/v1/discovery/status
+   >> Outcome: Success(200 OK)
+   >> Response succeeded.
 [Dream-Machine-Pro-Max.juhonkoti.net] polling
 [ticket-sw2.juhonkoti.net] polling
 [Dream-Machine-Pro-Max.juhonkoti.net] polling

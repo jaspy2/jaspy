@@ -113,6 +113,19 @@ fn poller_queries_and_interface_metrics() {
         Some(0),
         "Gi0/2 is ifOperStatus=down"
     );
+
+    // (c) with the pinger disabled, successful SNMP replies mark the device up
+    assert_eq!(
+        metric_value(&fast, "jaspy_device_up", &[&format!("fqdn=\"{}\"", FQDN)]),
+        Some(1),
+        "device answering SNMP should be reported up when the pinger is off"
+    );
+
+    // (d) the devices API exposes freshness of the last poll
+    let devices_api = nexus.get_json("/api/v1/devices");
+    let seconds = &devices_api.as_array().unwrap()[0]["secondsSinceLastPoll"];
+    assert!(seconds.is_u64(), "secondsSinceLastPoll should be set after a poll: {:?}", devices_api);
+    assert!(seconds.as_u64().unwrap() < 60);
 }
 
 // ---------------------------------------------------------------------------

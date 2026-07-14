@@ -8,13 +8,23 @@ use rocket::State;
 
 const EVENT_SETTING: &str = "event";
 
-fn imds_device_up(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, fqdn: &String) -> Option<bool> {
+// Live (up, seconds since last interface poll) for a device, from IMDS.
+fn imds_device_live(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, fqdn: &str) -> (Option<bool>, Option<u64>) {
     if let Ok(ref mut imds) = imds.inner().lock() {
         if let Some(device_metric) = imds.get_device(fqdn) {
-            return device_metric.up;
+            let seconds_since_last_poll = if device_metric.last_poll > 0 {
+                Some(utilities::tools::get_time_msecs().saturating_sub(device_metric.last_poll) / 1000)
+            } else {
+                None
+            };
+            return (device_metric.up, seconds_since_last_poll);
         }
     }
-    None
+    (None, None)
+}
+
+fn imds_device_up(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, fqdn: &str) -> Option<bool> {
+    imds_device_live(imds, fqdn).0
 }
 
 fn event_name(connection: &mut diesel::PgConnection) -> Option<String> {
@@ -67,6 +77,7 @@ pub fn summary(
 
 fn api_device(connection: &mut diesel::PgConnection, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, device: &models::dbo::Device) -> models::json::ApiDevice {
     let fqdn = format!("{}.{}", device.name, device.dns_domain);
+    let (up, seconds_since_last_poll) = imds_device_live(imds, &fqdn);
     models::json::ApiDevice {
         id: device.id,
         fqdn: fqdn.clone(),
@@ -78,7 +89,8 @@ fn api_device(connection: &mut diesel::PgConnection, imds: &State<Arc<Mutex<util
         os_info: device.os_info.clone(),
         device_type: device.device_type.clone(),
         software_version: device.software_version.clone(),
-        up: imds_device_up(imds, &fqdn),
+        up: up,
+        seconds_since_last_poll: seconds_since_last_poll,
         interface_count: device.interfaces(connection).len() as u64,
     }
 }

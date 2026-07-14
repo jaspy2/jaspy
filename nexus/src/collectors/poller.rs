@@ -213,7 +213,7 @@ fn poll_device(snmpbot_url: &String, device: &PollDevice) -> Option<models::json
     return Some(report);
 }
 
-fn poll_worker(pool: db::Pool, snmpbot_url: String, device: PollDevice, poll_loop_msecs: u64, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, done: mpsc::Sender<bool>) {
+fn poll_worker(pool: db::Pool, snmpbot_url: String, device: PollDevice, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, done: mpsc::Sender<bool>) {
     let no_jitter = std::env::var("JASPY_POLLER_NO_JITTER").map(|v| v == "1" || v == "true").unwrap_or(false);
     let start_sleep = if no_jitter { 0.0 } else { thread_rng().gen_range(0.0, poll_loop_msecs as f64) };
     println!("[{}] start polling thread, delay={:.2}ms", device.fqdn, start_sleep);
@@ -223,11 +223,20 @@ fn poll_worker(pool: db::Pool, snmpbot_url: String, device: PollDevice, poll_loo
 
         println!("[{}] polling", device.fqdn);
         if let Some(poll_result) = poll_device(&snmpbot_url, &device) {
+            // With the pinger disabled, a device that answers SNMP is up and
+            // one that doesn't is down (empty result = snmpbot got no reply).
+            let snmp_ok = !poll_result.interfaces.is_empty();
             // Do the DB acquire and IMDS lock only after network I/O, and hold
             // the IMDS lock only for the report itself.
             if let Ok(mut conn) = pool.get() {
                 if let Ok(ref mut imds) = imds.lock() {
                     imds.report_interfaces(&mut *conn, poll_result);
+                    if report_device_status {
+                        imds.report_device(&mut *conn, models::json::DeviceMonitorReport {
+                            fqdn: device.fqdn.clone(),
+                            up: snmp_ok,
+                        });
+                    }
                 }
             }
         }
@@ -241,7 +250,7 @@ fn poll_worker(pool: db::Pool, snmpbot_url: String, device: PollDevice, poll_loo
     println!("[{}] stop polling", device.fqdn);
 }
 
-fn check_if_worker_needed(pool: &db::Pool, snmpbot_url: &String, poll_loop_msecs: u64, imds: &Arc<Mutex<IMDS>>, devices: &HashMap<String, PollDevice>, poll_workers: &mut HashMap<String, PollThreadInfo>) {
+fn check_if_worker_needed(pool: &db::Pool, snmpbot_url: &String, poll_loop_msecs: u64, report_device_status: bool, imds: &Arc<Mutex<IMDS>>, devices: &HashMap<String, PollDevice>, poll_workers: &mut HashMap<String, PollThreadInfo>) {
     for (fqdn, device) in devices.iter() {
         if poll_workers.contains_key(fqdn) {
             continue;
@@ -257,7 +266,7 @@ fn check_if_worker_needed(pool: &db::Pool, snmpbot_url: &String, poll_loop_msecs
             fqdn.clone(),
             PollThreadInfo {
                 thd: thread::spawn(move || {
-                    poll_worker(pool_copy, snmpbot_url_copy, device_copy, poll_loop_msecs, imds_copy, running_worker, tx);
+                    poll_worker(pool_copy, snmpbot_url_copy, device_copy, poll_loop_msecs, report_device_status, imds_copy, running_worker, tx);
                 }),
                 running: worker_running,
                 finished_signal: rx,
@@ -303,8 +312,11 @@ fn reap_finished_threads(reap_threads: &mut Vec<PollThreadInfo>) {
     }
 }
 
-pub fn run(snmpbot_url: String, poll_loop_msecs: u64, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>) {
+pub fn run(snmpbot_url: String, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>) {
     println!("[poller] starting in-process collector (snmpbot={}, poll_loop_msecs={})", snmpbot_url, poll_loop_msecs);
+    if report_device_status {
+        println!("[poller] pinger is disabled; deriving device up/down from SNMP poll replies");
+    }
     let pool = db::connect();
     let mut poll_workers: HashMap<String, PollThreadInfo> = HashMap::new();
     let mut reap_threads: Vec<PollThreadInfo> = Vec::new();
@@ -312,7 +324,7 @@ pub fn run(snmpbot_url: String, poll_loop_msecs: u64, imds: Arc<Mutex<IMDS>>, ru
     while running.load(atomic::Ordering::Relaxed) {
         let devices = load_devices(&pool);
         let mut expired_fqdns: Vec<String> = Vec::new();
-        check_if_worker_needed(&pool, &snmpbot_url, poll_loop_msecs, &imds, &devices, &mut poll_workers);
+        check_if_worker_needed(&pool, &snmpbot_url, poll_loop_msecs, report_device_status, &imds, &devices, &mut poll_workers);
         check_expired_fqdn_workers(&devices, &poll_workers, &mut expired_fqdns);
         prepare_expired_fqdns_for_reap(&mut poll_workers, &expired_fqdns, &mut reap_threads);
         reap_finished_threads(&mut reap_threads);

@@ -5,7 +5,12 @@ import { api } from '../api/client';
 import type { Device } from '../api/types';
 import { PollingBadge, UpBadge } from '../components/StatusBadge';
 
-type SortKey = 'fqdn' | 'deviceType' | 'up' | 'interfaceCount';
+type SortKey = 'fqdn' | 'deviceType' | 'up' | 'interfaceCount' | 'lastPoll';
+
+function lastPollText(secs: number | null): string {
+  if (secs === null) return '—';
+  return `${secs}s ago`;
+}
 
 export default function Devices() {
   const navigate = useNavigate();
@@ -34,6 +39,10 @@ export default function Devices() {
         case 'up': {
           const rank = (u: boolean | null) => (u === false ? 0 : u === null ? 1 : 2);
           return rank(a.up) - rank(b.up);
+        }
+        case 'lastPoll': {
+          const val = (s: number | null) => (s === null ? Number.MAX_SAFE_INTEGER : s);
+          return val(a.secondsSinceLastPoll) - val(b.secondsSinceLastPoll);
         }
       }
     };
@@ -72,6 +81,7 @@ export default function Devices() {
               <th className="sortable" onClick={() => onSort('deviceType')}>Type{arrow('deviceType')}</th>
               <th>Software</th>
               <th>Polling</th>
+              <th className="sortable" onClick={() => onSort('lastPoll')}>Last poll{arrow('lastPoll')}</th>
               <th className="sortable" onClick={() => onSort('interfaceCount')}>Interfaces{arrow('interfaceCount')}</th>
             </tr>
           </thead>
@@ -83,12 +93,13 @@ export default function Devices() {
                 <td>{d.deviceType ?? '—'}</td>
                 <td>{d.softwareVersion ?? '—'}</td>
                 <td><PollingBadge enabled={d.pollingEnabled} /></td>
+                <td>{lastPollText(d.secondsSinceLastPoll)}</td>
                 <td>{d.interfaceCount}</td>
               </tr>
             ))}
             {rows.length === 0 && !devices.isLoading && (
               <tr>
-                <td colSpan={6} className="muted">
+                <td colSpan={7} className="muted">
                   No devices. Run discovery to populate the inventory.
                 </td>
               </tr>

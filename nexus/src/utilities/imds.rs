@@ -81,6 +81,7 @@ impl IMDS {
         let hostname = fqdn_splitted[0];
         let dm = models::metrics::DeviceMetrics {
             last_report: 0,
+            last_poll: 0,
             fqdn: device_fqdn.clone(),
             hostname: hostname.to_string(),
             up: None,
@@ -217,6 +218,7 @@ impl IMDS {
         match self.metrics_storage.devices.get_mut(&imr.device_fqdn) {
             Some(value) => {
                 device = value;
+                device.last_poll = last_report;
             },
             None => {
                 // TODO: log? this means we got a report from a host that is not being monitored, it is possible this is normal on device removal

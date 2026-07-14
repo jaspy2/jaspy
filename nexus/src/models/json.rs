@@ -125,6 +125,7 @@ pub struct ApiDevice {
     pub device_type: Option<String>,
     pub software_version: Option<String>,
     pub up: Option<bool>,
+    pub seconds_since_last_poll: Option<u64>,
     pub interface_count: u64,
 }
 

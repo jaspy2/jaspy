@@ -44,6 +44,7 @@ export interface Device {
   deviceType: string | null;
   softwareVersion: string | null;
   up: boolean | null;
+  secondsSinceLastPoll: number | null;
   interfaceCount: number;
 }
 

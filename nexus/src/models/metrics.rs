@@ -34,6 +34,10 @@ pub struct DeviceMetrics {
 
     pub last_report: u64,
 
+    // Timestamp (msecs) of the last interface report received for this device
+    // (SNMP poll or trap); 0 = never. Surfaced as secondsSinceLastPoll in the UI.
+    pub last_poll: u64,
+
     pub interfaces: HashMap<i32, InterfaceMetrics>,
 }
 

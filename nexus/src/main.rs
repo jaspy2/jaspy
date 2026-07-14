@@ -174,8 +174,11 @@ async fn server_main() {
         let imds_collector = imds.clone();
         let running_collector = running.clone();
         let snmpbot_url_collector = snmpbot_url.clone();
+        // Without the pinger, the poller doubles as the device up/down source
+        // (a device answering SNMP is up).
+        let report_device_status = !enable_pinger;
         Some(std::thread::spawn(move || {
-            collectors::poller::run(snmpbot_url_collector, poll_loop_msecs, imds_collector, running_collector);
+            collectors::poller::run(snmpbot_url_collector, poll_loop_msecs, report_device_status, imds_collector, running_collector);
         }))
     } else {
         println!("[poller] disabled via JASPY_ENABLE_POLLER");
