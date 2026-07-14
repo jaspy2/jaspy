@@ -1,3 +1,65 @@
 #!/bin/sh
-cd /usr/lib/jaspy/discover
-python3 /usr/lib/jaspy/discover/discover.py $*
+# Trigger a topology discovery run in jaspy-nexus and wait for it to finish.
+# The discovery engine (formerly a standalone Python crawler) runs inside
+# nexus; this script drives it via POST /dev/discovery/run.
+
+API_URL="${JASPY_URL:-http://127.0.0.1:8000}"
+ROOT_DEVICE=""
+COMMUNITY=""
+DOMAINS_JSON=""
+STABLE=""
+WAIT=1
+
+usage() {
+    echo "usage: $(basename "$0") [-A api-url] [-r root-device] [-c community] [-d dns-domain]... [-S] [-n]" >&2
+    echo "  -A  jaspy API url (default \$JASPY_URL or http://127.0.0.1:8000)" >&2
+    echo "  -r  root device to start discovery from" >&2
+    echo "  -c  snmp community" >&2
+    echo "  -d  dns search domain (repeatable)" >&2
+    echo "  -S  mark topology stable (existing links are never torn down)" >&2
+    echo "  -n  do not wait for the run to finish" >&2
+    echo "unset options fall back to the nexus discovery config (JASPY_DISCOVERY_*)" >&2
+    exit 1
+}
+
+while getopts "A:r:c:d:Snh" opt; do
+    case "$opt" in
+        A) API_URL="$OPTARG" ;;
+        r) ROOT_DEVICE="$OPTARG" ;;
+        c) COMMUNITY="$OPTARG" ;;
+        d) [ -n "$DOMAINS_JSON" ] && DOMAINS_JSON="$DOMAINS_JSON,"
+           DOMAINS_JSON="$DOMAINS_JSON\"$OPTARG\"" ;;
+        S) STABLE="true" ;;
+        n) WAIT=0 ;;
+        h|*) usage ;;
+    esac
+done
+
+body="{"
+sep=""
+[ -n "$ROOT_DEVICE" ] && { body="$body$sep\"rootDevice\":\"$ROOT_DEVICE\""; sep=","; }
+[ -n "$COMMUNITY" ] && { body="$body$sep\"community\":\"$COMMUNITY\""; sep=","; }
+[ -n "$DOMAINS_JSON" ] && { body="$body$sep\"dnsDomains\":[$DOMAINS_JSON]"; sep=","; }
+[ -n "$STABLE" ] && { body="$body$sep\"topologyStable\":$STABLE"; sep=","; }
+body="$body}"
+
+http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST -H 'content-type: application/json' -d "$body" \
+    "$API_URL/dev/discovery/run")
+
+case "$http_code" in
+    202) echo "discovery run started" ;;
+    409) echo "a discovery run is already in progress" >&2; exit 1 ;;
+    400) echo "discovery is not configured: pass -r/-c or set JASPY_DISCOVERY_* on nexus" >&2; exit 1 ;;
+    *)   echo "unexpected response from nexus: $http_code" >&2; exit 1 ;;
+esac
+
+[ "$WAIT" = "0" ] && exit 0
+
+while :; do
+    sleep 2
+    status=$(curl -s "$API_URL/dev/discovery/status")
+    case "$status" in
+        *'"running":false'*) echo "$status"; break ;;
+    esac
+done

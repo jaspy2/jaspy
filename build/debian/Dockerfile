@@ -10,7 +10,6 @@ RUN gem install fpm
 ARG version=unknown
 ENV VERSION=$version
 
-COPY output/discover/discover ./usr/lib/jaspy/discover
 COPY output/cli ./usr/local/bin
 COPY output/weathermap ./var/lib/jaspy/weathermap
 

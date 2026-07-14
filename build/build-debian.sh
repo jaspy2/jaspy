@@ -6,7 +6,7 @@ version="$(git describe --tags | grep -oE '[0-9].+')"
 built_components=""
 
 # buildable components
-buildable_components="nexus snmptrapd-reader discover snmpbot switchmaster"
+buildable_components="nexus snmptrapd-reader snmpbot switchmaster"
 for build_component in ${buildable_components}; do
     echo "==="
     echo "=== building ${build_component}"

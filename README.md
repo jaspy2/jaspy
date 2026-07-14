@@ -81,11 +81,29 @@ To show all installed unit files use 'systemctl list-unit-files'.
 
 Ensure that your switch has snmp enabled: For example in Cisco you would say `snmp-server community public RO`. You should test your snmp with `snmpwalk -c public 172.16.140.200 -v 2c`
 
-The discovery works by giving it a single root device to start from and it will iterate recursively over your network:
+The discovery engine runs inside `jaspy-nexus` (it used to be a separate Python
+tool). It works by giving it a single root device to start from and it will
+iterate recursively over your network:
 
 ```
 jaspy-discover -c public -r 172.16.140.200 -d foobar.com
-``` 
+```
+
+`jaspy-discover` triggers a run over the nexus HTTP API (`POST
+/dev/discovery/run`) and waits for it to finish; progress can be watched at
+`GET /dev/discovery/status`. To run discovery periodically without the CLI,
+configure defaults on the nexus service and set an interval, e.g. in
+`jaspy-nexus.service`:
+
+```
+Environment=JASPY_DISCOVERY_ROOT_DEVICE=172.16.140.200
+Environment=JASPY_DISCOVERY_COMMUNITY=public
+Environment=JASPY_DISCOVERY_DNS_DOMAINS=foobar.com
+Environment=JASPY_DISCOVERY_INTERVAL_SECS=3600
+```
+
+The same settings can be viewed and changed at runtime via `GET`/`PUT
+/dev/discovery/config` (changes reset to the environment values on restart).
 
 Once the discovery is completed you should be able to list your devices:
 

@@ -57,6 +57,44 @@ pub struct LinkInfo {
     pub topology_stable : bool,
 }
 
+// --- in-process discovery engine control DTOs ---
+
+// In-memory engine configuration; seeded from JASPY_DISCOVERY_* env vars at
+// startup, mutable via PUT /dev/discovery/config (resets to env on restart).
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveryConfig {
+    pub root_device: Option<String>,
+    pub community: Option<String>,
+    pub dns_domains: Vec<String>,
+    pub ignore: Vec<String>,
+    pub remap: HashMap<String, String>,
+    pub topology_stable: bool,
+    pub periodic_enabled: bool,
+    pub interval_secs: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveryStatus {
+    pub running: bool,
+    pub last_started: Option<f64>,
+    pub last_finished: Option<f64>,
+    pub devices_found: Option<u64>,
+    pub links_found: Option<u64>,
+    pub last_error: Option<String>,
+}
+
+// Optional per-run overrides for POST /dev/discovery/run.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveryRunRequest {
+    pub root_device: Option<String>,
+    pub community: Option<String>,
+    pub dns_domains: Option<Vec<String>>,
+    pub topology_stable: Option<bool>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceMonitorInfo {

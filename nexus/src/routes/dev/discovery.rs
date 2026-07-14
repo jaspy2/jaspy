@@ -1,273 +1,88 @@
+// Discovery HTTP surface. The ingest endpoints (PUT /device, PUT /links) are
+// thin wrappers over utilities::discovery, which the in-process discovery
+// engine (collectors/discovery.rs) also calls directly. The run/status/config
+// endpoints control that engine; they are the hook points for the future web
+// admin interface.
 use crate::models;
 use crate::db;
 use crate::utilities;
-use rocket::{put};
+use crate::collectors::discovery::DiscoveryControl;
+use rocket::{get, put, post};
+use rocket::http::Status;
 use rocket::serde::json::Json;
 use rocket::State;
-use std::sync::{Arc,Mutex};
-use std::collections::{HashSet,HashMap};
-use diesel::pg::PgConnection;
+use std::sync::{Arc, Mutex};
 
 // TODO: GH#9 Move everything to v1 API
 #[put("/device", data = "<discovery_json>")]
-pub fn discovery_device(discovery_json: Json<models::json::DiscoveredDevice>, mut connection: db::JaspyDB, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
-    let discovered_device : &models::json::DiscoveredDevice = &discovery_json.into_inner();
-    let discovered_device_interfaces : &HashMap<String, models::json::DiscoveredInterface> = &discovered_device.interfaces;
-
-    let device : models::dbo::Device;
-    let existing_device = models::dbo::Device::find_by_hostname_and_domain_name(&mut connection, &discovered_device.name, &discovered_device.dns_domain);
-    match existing_device {
-        Some(mut existing_device) => {
-            // TODO: attr compare, event if change except for snmp com
-            existing_device.base_mac = discovered_device.base_mac.clone();
-            existing_device.os_info = discovered_device.os_info.clone();
-            existing_device.snmp_community = discovered_device.snmp_community.clone();
-            existing_device.software_version = discovered_device.software_version.clone();
-            existing_device.device_type = discovered_device.device_type.clone();
-
-            match existing_device.update(&mut connection) {
-                Ok(_) => {
-                    // TODO: Log update?
-                    device = existing_device;
-                },
-                Err(_) => {
-                    // TODO: sane logging / return
-                    return;
-                }
-            }
-        },
-        None => {
-            let new_device = models::dbo::NewDevice {
-                name: discovered_device.name.clone(),
-                dns_domain: discovered_device.dns_domain.clone(),
-                snmp_community: discovered_device.snmp_community.clone(),
-                base_mac: discovered_device.base_mac.clone(),
-                os_info: discovered_device.os_info.clone(),
-                polling_enabled: None,
-                software_version: discovered_device.software_version.clone(),
-                device_type: discovered_device.device_type.clone(),
-            };
-
-            let device_fqdn = format!("{}.{}", new_device.name, new_device.dns_domain);
-            let event = models::events::Event::device_created_event(&device_fqdn);
-            if let Ok(ref mut msgbus) = msgbus.lock() {
-                msgbus.event(event);
-            }
-
-            match models::dbo::Device::create(&new_device, &mut connection) {
-                Ok(created_device) => {
-                    device = created_device;
-                },
-                Err(_) => {
-                    // TODO: sane logging / return
-                    return;
-                }
-            }
-        }
-    }
-
-    let current_interfaces : Vec<models::dbo::Interface> = device.interfaces(&mut connection);
-    let mut found_interface_names : HashSet<String> = HashSet::new();
-    for (_key, interface) in discovered_device_interfaces.iter() {
-        found_interface_names.insert(interface.name.clone());
-        let mut selected_interface : Option<&models::dbo::Interface> = None;
-        for current_interface in current_interfaces.iter() {
-            if interface.name == current_interface.name {
-                selected_interface = Some(current_interface);
-                break;
-            }
-        }
-        match selected_interface {
-            Some(selected_interface) => {
-                let mut updated_interface : models::dbo::Interface = (*selected_interface).clone();
-                updated_interface.index = interface.index;
-                updated_interface.interface_type = interface.interface_type.clone();
-                updated_interface.name = interface.name.clone();
-                updated_interface.alias = interface.alias.clone();
-                updated_interface.description = interface.description.clone();
-                match updated_interface.update(&mut connection) {
-                    Ok(_) => {},
-                    Err(_) => {
-                        // TODO: logging, nonfatal
-                    }
-                }
-            },
-            None => {
-                let new_interface = models::dbo::NewInterface {
-                    alias: interface.alias.clone(),
-                    name: interface.name.clone(),
-                    description: interface.description.clone(),
-                    device_id: device.id,
-                    index: interface.index,
-                    interface_type: interface.interface_type.clone(),
-                };
-
-                match models::dbo::Interface::create(&new_interface, &mut connection) {
-                    Ok(_) => {
-                    },
-                    Err(_) => {
-                        // Todo, logging? :) this is nonfatal
-                    }
-                }
-            }
-        }
-    }
-
-    for current_interface in current_interfaces.iter() {
-        if !found_interface_names.contains(&current_interface.name) {
-            match current_interface.delete(&mut connection) {
-                Ok(_) => {},
-                Err(_) => {
-                    // Todo, logging? nonfatal
-                }
-            }
-        }
-    }
-}
-
-// TODO: this might be better placed in an utility module or maybe in dbo logic?
-fn clear_connection(interface: &models::dbo::Interface, connection: &mut PgConnection) {
-    if interface.connected_interface.is_none() { return; }
-
-    let mut new_local_interface : models::dbo::Interface = interface.clone();
-    new_local_interface.connected_interface = None;
-    match new_local_interface.update(connection) {
-        Ok(_) => {},
-        Err(_) => {
-            // TODO: log?
-        }
-    }
+pub fn discovery_device(
+    discovery_json: Json<models::json::DiscoveredDevice>,
+    mut connection: db::JaspyDB,
+    msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+) {
+    utilities::discovery::ingest_device(&mut connection, msgbus.inner(), cache_controller.inner(), &discovery_json.into_inner());
 }
 
 #[put("/links", data = "<links_json>")]
 pub fn discovery_links(
     links_json: Json<models::json::LinkInfo>,
     mut connection: db::JaspyDB,
-    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
 ) {
-    let link_infos : &HashMap<String, Option<models::json::LinkPeerInfo>> = &links_json.interfaces;
-    let fqdn_splitted : Vec<&str> = links_json.device_fqdn.splitn(2, ".").collect();
-    if fqdn_splitted.len() != 2 {
-        // TODO: log?
-        return;
+    utilities::discovery::ingest_links(&mut connection, cache_controller.inner(), &links_json.into_inner());
+}
+
+// --- in-process discovery engine control ---
+
+#[post("/run", data = "<run_json>")]
+pub fn discovery_run(
+    run_json: Option<Json<models::json::DiscoveryRunRequest>>,
+    control: &State<Arc<Mutex<DiscoveryControl>>>,
+) -> (Status, Json<models::json::DiscoveryStatus>) {
+    let overrides = run_json.map(|j| j.into_inner());
+    if let Ok(mut control) = control.inner().lock() {
+        if control.status.running || control.trigger_requested {
+            return (Status::Conflict, Json(control.status_dto()));
+        }
+        // Validate that a run is actually possible with config + overrides.
+        let root_ok = overrides.as_ref().and_then(|o| o.root_device.clone()).or_else(|| control.config.root_device.clone()).is_some();
+        let community_ok = overrides.as_ref().and_then(|o| o.community.clone()).or_else(|| control.config.community.clone()).is_some();
+        if !root_ok || !community_ok {
+            return (Status::BadRequest, Json(control.status_dto()));
+        }
+        control.trigger_requested = true;
+        control.trigger_overrides = overrides;
+        return (Status::Accepted, Json(control.status_dto()));
     }
+    (Status::InternalServerError, Json(models::json::DiscoveryStatus::default()))
+}
 
-    let local_device : models::dbo::Device;
-    let local_device_result = models::dbo::Device::find_by_hostname_and_domain_name(&mut connection, &fqdn_splitted[0].to_string(), &fqdn_splitted[1].to_string());
-    match local_device_result {
-        Some(local_device_result) => {
-            local_device = local_device_result;
-        },
-        None => {
-            // TODO: log?
-            return;
-        }
+#[get("/status")]
+pub fn discovery_status(control: &State<Arc<Mutex<DiscoveryControl>>>) -> Json<models::json::DiscoveryStatus> {
+    if let Ok(control) = control.inner().lock() {
+        return Json(control.status_dto());
     }
+    Json(models::json::DiscoveryStatus::default())
+}
 
-    for local_interface in local_device.interfaces(&mut connection).iter() {
-        let peer_interface_info : &models::json::LinkPeerInfo;
-        match link_infos.get(&local_interface.name) {
-            Some(peer_interface_info_opt) => {
-                match peer_interface_info_opt {
-                    Some(some_peer_interface_info) => {
-                        peer_interface_info = some_peer_interface_info;
-                    },
-                    None => {
-                        // TBD, should we clear peer connection? This must respect stability.
-                        if !links_json.topology_stable { clear_connection(local_interface, &mut connection); }
-                        continue;
-                    }
-                }
-            },
-            None => {
-                // TBD, should we clear peer connection? This must respect stability.
-                if !links_json.topology_stable { clear_connection(local_interface, &mut connection); }
-                continue;
-            }
-        }
-
-        let peer_device : models::dbo::Device;
-        match models::dbo::Device::find_by_hostname_and_domain_name(&mut connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
-            Some(some_peer_device) => {
-                peer_device = some_peer_device;
-            },
-            None => {
-                match local_interface.connected_interface {
-                    Some(_) => {
-                        if !links_json.topology_stable { clear_connection(local_interface, &mut connection); }
-                        continue;
-                    },
-                    None => {
-                        continue;
-                    }
-                }
-            }
-        }
-
-        // todo if peer interface is same noop, if different then change, if no peer interface then change
-        match local_interface.peer_interface(&mut connection) {
-            Some(peer_interface) => {
-                let mut create_link = false;
-                let mut clear_other = false;
-                if peer_interface.device_id != peer_device.id {
-                    // Device changed
-                    create_link = true;
-                    clear_other = true;
-                } else if peer_interface_info.interface != peer_interface.name {
-                    // Interface in device changed
-                    create_link = true;
-                    clear_other = true;
-                }
-                if create_link {
-                    match peer_device.interface_by_name(&mut connection, &peer_interface_info.interface) {
-                        Some(new_peer_interface) => {
-                            // TBD: create link other way too? maybe not?
-                            let mut new_local_interface : models::dbo::Interface = local_interface.clone();
-                            new_local_interface.connected_interface = Some(new_peer_interface.id);
-                            match new_local_interface.update(&mut connection) {
-                                Ok(_) => {},
-                                Err(_) => {
-                                    // TODO: log?
-                                }
-                            }
-                        },
-                        None => {
-                            // other side interface not found, do some guesswork and/or clear any possible link?
-                        }
-                    }
-                }
-                if clear_other && !links_json.topology_stable {
-                    let mut new_peer_interface : models::dbo::Interface = peer_interface.clone();
-                    new_peer_interface.connected_interface = None;
-                    match new_peer_interface.update(&mut connection) {
-                        Ok(_) => {},
-                        Err(_) => {
-                            // TODO: log?
-                        }
-                    }
-                }
-            },
-            None => {
-                match peer_device.interface_by_name(&mut connection, &peer_interface_info.interface) {
-                    Some(new_peer_interface) => {
-                        // TBD: create link other way too? maybe not?
-                        let mut new_local_interface : models::dbo::Interface = local_interface.clone();
-                        new_local_interface.connected_interface = Some(new_peer_interface.id);
-                        match new_local_interface.update(&mut connection) {
-                            Ok(_) => {},
-                            Err(_) => {
-                                // TODO: log?
-                            }
-                        }
-                    },
-                    None => {
-                        // other side interface not found, do some guesswork and/or clear any possible link?
-                    }
-                }
-            }
-        }
+#[get("/config")]
+pub fn discovery_get_config(control: &State<Arc<Mutex<DiscoveryControl>>>) -> Json<models::json::DiscoveryConfig> {
+    if let Ok(control) = control.inner().lock() {
+        return Json(control.config.clone());
     }
+    Json(models::json::DiscoveryConfig::default())
+}
 
-    // Invalidate weathermap topology cache
-    if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
+#[put("/config", data = "<config_json>")]
+pub fn discovery_put_config(
+    config_json: Json<models::json::DiscoveryConfig>,
+    control: &State<Arc<Mutex<DiscoveryControl>>>,
+) -> Json<models::json::DiscoveryConfig> {
+    let new_config = config_json.into_inner();
+    if let Ok(mut control) = control.inner().lock() {
+        control.config = new_config;
+        return Json(control.config.clone());
+    }
+    Json(models::json::DiscoveryConfig::default())
 }

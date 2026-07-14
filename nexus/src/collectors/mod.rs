@@ -8,3 +8,6 @@ pub mod pinger;
 // entitypoller is a stateless Prometheus exporter (entity sensors + STP) whose
 // samples surface through the shared /dev/metrics endpoint rather than IMDS.
 pub mod entitypoller;
+// discovery is the topology crawler (formerly the Python `discover` tool); it
+// runs on manual trigger (POST /dev/discovery/run) or a periodic interval.
+pub mod discovery;

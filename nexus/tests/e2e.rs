@@ -181,6 +181,217 @@ fn entitypoller_sensor_and_stp_metrics() {
 }
 
 // ---------------------------------------------------------------------------
+// 1c. In-process discovery engine: crawl, device metadata, links, periodic
+// ---------------------------------------------------------------------------
+
+fn snmp_table_body(id: &str, entries: Vec<serde_json::Value>) -> String {
+    json!({"ID": id, "IndexKeys": [], "ObjectKeys": [], "Entries": entries}).to_string()
+}
+
+/// Stub every snmpbot table/object the discovery engine reads for one device
+/// with two ports (Gi0/1 uplink to `peer`, Gi0/2 unconnected).
+fn stub_discovery_device<'a>(
+    mock: &'a SnmpbotMock,
+    fqdn: &str,
+    mac_octet: &str,
+    peer_bare_name: Option<&str>,
+    cdp_peer_fqdn: Option<&str>,
+) -> httpmock::Mock<'a> {
+    let mac_colon = format!("aa:bb:cc:dd:ee:{}", mac_octet);
+    let mac_space = format!("aa bb cc dd ee {}", mac_octet);
+
+    mock.stub_object(fqdn, COMMUNITY, "SNMPv2-MIB::sysDescr", "Cisco IOS test software");
+    mock.stub_object(fqdn, COMMUNITY, "BRIDGE-MIB::dot1dBaseBridgeAddress", &mac_space);
+    mock.stub_object(fqdn, COMMUNITY, "LLDP-MIB::lldpLocChassisId", &mac_space);
+
+    let ifxtable = mock.stub_table(fqdn, COMMUNITY, "IF-MIB::ifXTable", &snmp_table_body("IF-MIB::ifXTable", vec![
+        json!({"HostID": fqdn, "Index": {"IF-MIB::ifIndex": 10101},
+               "Objects": {"IF-MIB::ifName": "GigabitEthernet0/1", "IF-MIB::ifAlias": "uplink"}}),
+        json!({"HostID": fqdn, "Index": {"IF-MIB::ifIndex": 10102},
+               "Objects": {"IF-MIB::ifName": "GigabitEthernet0/2", "IF-MIB::ifAlias": ""}}),
+    ]));
+    mock.stub_table(fqdn, COMMUNITY, "IF-MIB::ifTable", &snmp_table_body("IF-MIB::ifTable", vec![
+        json!({"HostID": fqdn, "Index": {"IF-MIB::ifIndex": 10101},
+               "Objects": {"IF-MIB::ifDescr": "GigabitEthernet0/1", "IF-MIB::ifType": "ethernetCsmacd", "IF-MIB::ifPhysAddress": format!("aa:bb:cc:dd:01:{}", mac_octet)}}),
+        json!({"HostID": fqdn, "Index": {"IF-MIB::ifIndex": 10102},
+               "Objects": {"IF-MIB::ifDescr": "GigabitEthernet0/2", "IF-MIB::ifType": "ethernetCsmacd", "IF-MIB::ifPhysAddress": format!("aa:bb:cc:dd:02:{}", mac_octet)}}),
+    ]));
+    mock.stub_table(fqdn, COMMUNITY, "LLDP-MIB::lldpLocPortTable", &snmp_table_body("LLDP-MIB::lldpLocPortTable", vec![
+        json!({"HostID": fqdn, "Index": {"LLDP-MIB::lldpLocPortNum": 1},
+               "Objects": {"LLDP-MIB::lldpLocPortIdSubtype": "interfaceName", "LLDP-MIB::lldpLocPortId": "GigabitEthernet0/1", "LLDP-MIB::lldpLocPortDesc": "GigabitEthernet0/1"}}),
+    ]));
+    let rem_entries = match peer_bare_name {
+        Some(peer) => vec![
+            json!({"HostID": fqdn, "Index": {"LLDP-MIB::lldpRemLocalPortNum": 1},
+                   "Objects": {"LLDP-MIB::lldpRemSysName": peer, "LLDP-MIB::lldpRemChassisId": "ff ff ff ff ff ff",
+                               "LLDP-MIB::lldpRemPortId": "GigabitEthernet0/1", "LLDP-MIB::lldpRemPortIdSubtype": "interfaceName"}}),
+        ],
+        None => vec![],
+    };
+    mock.stub_table(fqdn, COMMUNITY, "LLDP-MIB::lldpRemTable", &snmp_table_body("LLDP-MIB::lldpRemTable", rem_entries));
+    let cdp_entries = match cdp_peer_fqdn {
+        Some(peer) => vec![
+            json!({"HostID": fqdn, "Index": {"CISCO-CDP-MIB::cdpCacheIfIndex": 10101, "CISCO-CDP-MIB::cdpCacheDeviceIndex": 1},
+                   "Objects": {"CISCO-CDP-MIB::cdpCacheDeviceId": peer, "CISCO-CDP-MIB::cdpCacheDevicePort": "GigabitEthernet0/1"}}),
+        ],
+        None => vec![],
+    };
+    mock.stub_table(fqdn, COMMUNITY, "CISCO-CDP-MIB::cdpCacheTable", &snmp_table_body("CISCO-CDP-MIB::cdpCacheTable", cdp_entries));
+    mock.stub_table(fqdn, COMMUNITY, "ENTITY-MIB::entPhysicalTable", &snmp_table_body("ENTITY-MIB::entPhysicalTable", vec![
+        json!({"HostID": fqdn, "Index": {"ENTITY-MIB::entPhysicalIndex": 1},
+               "Objects": {"ENTITY-MIB::entPhysicalClass": "chassis", "ENTITY-MIB::entPhysicalDescr": "test chassis",
+                           "ENTITY-MIB::entPhysicalModelName": "WS-C2960X-24", "ENTITY-MIB::entPhysicalSoftwareRev": "15.2(2)E"}}),
+    ]));
+    let _ = mac_colon;
+    ifxtable
+}
+
+#[derive(QueryableByName)]
+struct DiscDeviceRow {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    name: String,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    base_mac: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    os_info: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    device_type: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    software_version: Option<String>,
+}
+
+#[derive(QueryableByName)]
+struct PeerRow {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    peer_device: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    peer_interface: String,
+}
+
+fn link_peer(conn: &mut diesel::pg::PgConnection, device: &str, interface: &str) -> Option<(String, String)> {
+    let rows: Vec<PeerRow> = query_rows(conn, &format!(
+        "select d2.name as peer_device, i2.name as peer_interface \
+         from interfaces i \
+         join devices d on d.id = i.device_id \
+         join interfaces i2 on i2.id = i.connected_interface \
+         join devices d2 on d2.id = i2.device_id \
+         where d.name = '{}' and i.name = '{}'", device, interface));
+    rows.into_iter().next().map(|r| (r.peer_device, r.peer_interface))
+}
+
+#[test]
+fn discovery_engine_crawls_and_links() {
+    let pg = PgHarness::start();
+    let mock = SnmpbotMock::start();
+    let broker = MqttBroker::start();
+
+    // sw1 <-Gi0/1-> sw2 via LLDP (bare rem-sysnames, resolved through the
+    // configured search domain); sw1 additionally announces sw2 via CDP.
+    stub_discovery_device(&mock, "sw1.test.example", "01", Some("sw2"), Some("sw2.test.example"));
+    stub_discovery_device(&mock, "sw2.test.example", "02", Some("sw1"), None);
+
+    let nexus = Nexus::builder(&pg.db_url)
+        .snmpbot(&mock.url())
+        .mqtt(&broker.server())
+        .start();
+
+    let resp = nexus.post_json("/dev/discovery/run", &json!({
+        "rootDevice": "sw1.test.example",
+        "community": COMMUNITY,
+        "dnsDomains": ["test.example"]
+    }));
+    assert_eq!(resp.status().as_u16(), 202, "trigger should be accepted");
+
+    assert!(
+        wait_until(Duration::from_secs(20), || {
+            let status = nexus.get_json("/dev/discovery/status");
+            status["running"] == json!(false) && !status["lastFinished"].is_null()
+        }),
+        "discovery run should finish; status: {:?}\nlog: {}",
+        nexus.get_json("/dev/discovery/status"), nexus.log()
+    );
+
+    // Status DTO reflects the run.
+    let status = nexus.get_json("/dev/discovery/status");
+    assert_eq!(status["devicesFound"], json!(2), "status: {:?}", status);
+    assert_eq!(status["linksFound"], json!(2), "status: {:?}", status);
+    assert!(status["lastError"].is_null(), "status: {:?}", status);
+
+    // Devices + metadata landed in Postgres.
+    let mut conn = pg.conn();
+    let devices: Vec<DiscDeviceRow> = query_rows(
+        &mut conn,
+        "select name, base_mac, os_info, device_type, software_version from devices order by name",
+    );
+    assert_eq!(devices.len(), 2);
+    assert_eq!(devices[0].name, "sw1");
+    assert_eq!(devices[0].base_mac.as_deref(), Some("aa:bb:cc:dd:ee:01"));
+    assert_eq!(devices[0].os_info.as_deref(), Some("Cisco IOS test software"));
+    assert_eq!(devices[0].device_type.as_deref(), Some("WS-C2960X-24"));
+    assert_eq!(devices[0].software_version.as_deref(), Some("15.2(2)E"));
+    assert_eq!(devices[1].name, "sw2");
+    assert_eq!(devices[1].base_mac.as_deref(), Some("aa:bb:cc:dd:ee:02"));
+
+    // Both local sides of the link recorded.
+    assert_eq!(
+        link_peer(&mut conn, "sw1", "GigabitEthernet0/1"),
+        Some(("sw2".to_string(), "GigabitEthernet0/1".to_string()))
+    );
+    assert_eq!(
+        link_peer(&mut conn, "sw2", "GigabitEthernet0/1"),
+        Some(("sw1".to_string(), "GigabitEthernet0/1".to_string()))
+    );
+
+    // Weathermap reflects the topology.
+    let wmap = nexus.get_json("/dev/weathermap/");
+    let connected = &wmap["devices"]["sw1.test.example"]["interfaces"]["GigabitEthernet0/1"]["connectedTo"];
+    assert_eq!(connected["fqdn"], "sw2.test.example");
+
+    // deviceCreated MQTT events for both crawled devices.
+    for fqdn in ["sw1.test.example", "sw2.test.example"] {
+        let created = broker.wait_for_event(Duration::from_secs(5), |t, p| t == "jaspy/nexus/deviceCreated" && p.contains(fqdn));
+        assert!(created.is_some(), "expected deviceCreated for {}; got {:?}", fqdn, broker.events());
+    }
+}
+
+#[test]
+fn discovery_periodic_runs_and_config_disable() {
+    let pg = PgHarness::start();
+    let mock = SnmpbotMock::start();
+
+    // Single device with no neighbors; periodic every second.
+    let ifxtable = stub_discovery_device(&mock, "sw1.test.example", "01", None, None);
+
+    let nexus = Nexus::builder(&pg.db_url)
+        .snmpbot(&mock.url())
+        .env("JASPY_DISCOVERY_ROOT_DEVICE", "sw1.test.example")
+        .env("JASPY_DISCOVERY_COMMUNITY", COMMUNITY)
+        .env("JASPY_DISCOVERY_DNS_DOMAINS", "test.example")
+        .env("JASPY_DISCOVERY_INTERVAL_SECS", "1")
+        .start();
+
+    // Periodic mode: at least two full runs happen without any manual trigger.
+    assert!(
+        wait_until(Duration::from_secs(20), || ifxtable.hits() >= 2),
+        "expected >= 2 periodic discovery runs; hits={} log: {}", ifxtable.hits(), nexus.log()
+    );
+
+    // Config is env-seeded and periodic can be disabled at runtime.
+    let mut config = nexus.get_json("/dev/discovery/config");
+    assert_eq!(config["rootDevice"], "sw1.test.example");
+    assert_eq!(config["periodicEnabled"], json!(true));
+    config["periodicEnabled"] = json!(false);
+    let resp = nexus.put_json("/dev/discovery/config", &config);
+    assert!(resp.status().is_success());
+
+    // Let any in-flight run drain, then confirm no further runs start.
+    std::thread::sleep(Duration::from_millis(1500));
+    let settled_hits = ifxtable.hits();
+    std::thread::sleep(Duration::from_millis(3000));
+    assert_eq!(ifxtable.hits(), settled_hits, "periodic runs should stop after disabling via PUT /dev/discovery/config");
+}
+
+// ---------------------------------------------------------------------------
 // 2. Discovery writes devices + interfaces to Postgres
 // ---------------------------------------------------------------------------
 #[derive(QueryableByName)]

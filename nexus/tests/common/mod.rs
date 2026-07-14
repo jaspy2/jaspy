@@ -160,6 +160,33 @@ impl SnmpbotMock {
         })
     }
 
+    /// Stub one snmpbot single-object query
+    /// (`/api/hosts/{fqdn}/objects/{id}?snmp=community@fqdn`), as issued by
+    /// the discovery engine. `value` is inserted as the single instance value.
+    pub fn stub_object<'a>(
+        &'a self,
+        fqdn: &str,
+        community: &str,
+        object_id: &str,
+        value: &str,
+    ) -> httpmock::Mock<'a> {
+        let path = format!("/api/hosts/{}/objects/{}", fqdn, object_id);
+        let snmp = format!("{}@{}", community, fqdn);
+        let body = serde_json::json!({
+            "ID": object_id,
+            "Instances": [{"HostID": fqdn, "Value": value}]
+        })
+        .to_string();
+        self.server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path(path)
+                .query_param("snmp", snmp);
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(body);
+        })
+    }
+
     /// Stub one snmpbot table addressed by the inline host form
     /// `/api/hosts/{host}/tables/{table}` (no `snmp` query param), where `host`
     /// is `community@fqdn` or `community@vlan@fqdn`. This is the addressing the
@@ -205,6 +232,7 @@ pub struct NexusBuilder {
     enable_entitypoller: bool,
     poll_loop_msecs: u64,
     entitypoller_interval_msecs: u64,
+    extra_env: Vec<(String, String)>,
 }
 
 pub struct Nexus {
@@ -239,6 +267,11 @@ impl NexusBuilder {
         self.entitypoller_interval_msecs = ms;
         self
     }
+    /// Pass an arbitrary env var to the nexus process (e.g. JASPY_DISCOVERY_*).
+    pub fn env(mut self, key: &str, value: &str) -> Self {
+        self.extra_env.push((key.to_string(), value.to_string()));
+        self
+    }
 
     pub fn start(self) -> Nexus {
         let port = free_port();
@@ -259,8 +292,13 @@ impl NexusBuilder {
             .env("JASPY_ENTITYPOLLER_INTERVAL_MSECS", self.entitypoller_interval_msecs.to_string())
             .env("JASPY_IMDS_REFRESH_SECS", "1")
             .env("JASPY_POLLER_NO_JITTER", "1")
+            // Discovery fixtures use non-resolvable FQDNs.
+            .env("JASPY_DISCOVERY_SKIP_DNS", "1")
             .stdout(Stdio::from(log))
             .stderr(Stdio::from(log_err));
+        for (key, value) in &self.extra_env {
+            cmd.env(key, value);
+        }
         if let Some(u) = &self.snmpbot_url {
             cmd.env("JASPY_SNMPBOT_URL", u);
         }
@@ -296,6 +334,7 @@ impl Nexus {
             enable_entitypoller: false,
             poll_loop_msecs: 300,
             entitypoller_interval_msecs: 300,
+            extra_env: Vec::new(),
         }
     }
 
