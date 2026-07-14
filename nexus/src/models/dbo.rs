@@ -446,6 +446,19 @@ impl Interface {
         return diesel::delete(interfaces::table.find(self.id)).execute(connection);
     }
 
+    // Interfaces on other devices whose connected_interface/virtual_connection
+    // points at one of `ids`. Links are stored one-directionally, so showing a
+    // device's links needs the reverse direction too.
+    pub fn pointing_at(connection: &mut PgConnection, ids: &Vec<i32>) -> Vec<Interface> {
+        interfaces::table
+            .filter(
+                interfaces::connected_interface.eq_any(ids.iter().map(|id| Some(*id)).collect::<Vec<Option<i32>>>())
+                .or(interfaces::virtual_connection.eq_any(ids.iter().map(|id| Some(*id)).collect::<Vec<Option<i32>>>()))
+            )
+            .load::<Interface>(connection)
+            .unwrap_or_default()
+    }
+
     pub fn peer_interface(self: &Interface, connection: &mut PgConnection) -> Option<Interface> {
         if let Some(connected_interface_id) = self.virtual_connection {
             match Interface::by_id(connected_interface_id, connection) {

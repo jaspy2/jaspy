@@ -107,6 +107,20 @@ pub struct Event {
 }
 
 impl Event {
+    // The device this event concerns; every payload variant carries an fqdn.
+    // Used to route events onto per-device live-update topics (livelog).
+    pub fn fqdn(&self) -> Option<&str> {
+        if let Some(ref e) = self.ping_change { return Some(&e.fqdn); }
+        if let Some(ref e) = self.interface_up_down { return Some(&e.fqdn); }
+        if let Some(ref e) = self.interface_speed { return Some(&e.fqdn); }
+        if let Some(ref e) = self.device_polling_changed { return Some(&e.fqdn); }
+        if let Some(ref e) = self.device_os_info_changed { return Some(&e.fqdn); }
+        if let Some(ref e) = self.device_base_mac_changed { return Some(&e.fqdn); }
+        if let Some(ref e) = self.device_created { return Some(&e.fqdn); }
+        if let Some(ref e) = self.device_deleted { return Some(&e.fqdn); }
+        None
+    }
+
     pub fn new_empty(event_type: &str) -> Event {
         let event = Event {
             event_type: event_type.to_string(),

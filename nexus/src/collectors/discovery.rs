@@ -209,7 +209,10 @@ struct DiscoveredIface {
     descr: Option<String>,        // IF-MIB::ifDescr (ifTable)
     iftype: Option<String>,       // IF-MIB::ifType (ifTable)
     phys_address: Option<String>, // IF-MIB::ifPhysAddress (ifTable)
-    lldp: Option<LldpNeighbor>,
+    // A port can see several LLDP neighbors (e.g. a downstream switch that
+    // floods LLDP from its own clients); keep them all and let link
+    // resolution pick the one that maps to a discovered device.
+    lldp: Vec<LldpNeighbor>,
     cdp: Option<CdpNeighbor>,
 }
 
@@ -526,12 +529,7 @@ impl DetectedDevice {
                 rem_port_id_subtype: obj_str(&entry.objects, "LLDP-MIB::lldpRemPortIdSubtype").unwrap_or_default(),
             };
             if let Some(iface) = self.interfaces.get_mut(&target_ifindex) {
-                if iface.lldp.is_some() {
-                    dlog!("[discovery] [{}] duplicate lldp index, only first entry is used", self.fqdn);
-                }
-                // NB: matches the Python behavior, which (despite its warning
-                // message) lets the last entry win.
-                iface.lldp = Some(neighbor);
+                iface.lldp.push(neighbor);
             }
         }
     }
@@ -803,7 +801,7 @@ fn discover_device(shared: Arc<CrawlShared>, device_fqdn: String) {
     // Gather resolvable, non-ignored neighbor fqdns before handing sds over.
     let mut tmp_discovered_neighbors: Vec<String> = Vec::new();
     for iface in sds.interfaces.values() {
-        if let Some(ref lldp) = iface.lldp {
+        for lldp in iface.lldp.iter() {
             if let Some(fqdn) = try_resolve(lldp.rem_sys_name.trim(), &shared.params) {
                 if !tmp_discovered_neighbors.contains(&fqdn) && !shared.params.ignore.contains(&fqdn) {
                     tmp_discovered_neighbors.push(fqdn);
@@ -877,12 +875,12 @@ fn lookup_lldp_neighbor_port(
         let mut num_refs = 0;
         let mut last_checked_interface: Option<i64> = None;
         for rev_interface in lldp_neighbor.interfaces.values() {
-            if let Some(ref rev_descriptor) = rev_interface.lldp {
+            let mut refs_local_device = false;
+            for rev_descriptor in rev_interface.lldp.iter() {
                 let rev_lldp_neighbor = lookup_lldp_neighbor(detected, rev_descriptor, params);
                 if let Some(rev_lldp_neighbor) = rev_lldp_neighbor {
                     if rev_lldp_neighbor.fqdn == local_device_fqdn {
-                        num_refs += 1;
-                        last_checked_interface = Some(rev_interface.ifindex);
+                        refs_local_device = true;
                         let rev_lldp_neighbor_port = lookup_lldp_neighbor_port(
                             detected, &lldp_neighbor.fqdn, rev_interface.ifindex,
                             rev_descriptor, rev_lldp_neighbor, params, true,
@@ -892,6 +890,13 @@ fn lookup_lldp_neighbor_port(
                         }
                     }
                 }
+            }
+            if refs_local_device {
+                // Count referencing interfaces, not descriptors, so a port
+                // with several neighbor entries doesn't defeat the
+                // single-reference fallback below.
+                num_refs += 1;
+                last_checked_interface = Some(rev_interface.ifindex);
             }
         }
         if num_refs == 1 {
@@ -920,7 +925,7 @@ fn build_connections(detected: &HashMap<String, DetectedDevice>, params: &RunPar
     let mut links: LinkMap = HashMap::new();
     for (fqdn, device) in detected.iter() {
         for (ifindex, interface) in device.interfaces.iter() {
-            if interface.lldp.is_none() && interface.cdp.is_none() {
+            if interface.lldp.is_empty() && interface.cdp.is_none() {
                 continue;
             }
             let mut cdp_link_candidate: Option<(String, i64)> = None;
@@ -936,13 +941,18 @@ fn build_connections(detected: &HashMap<String, DetectedDevice>, params: &RunPar
                     }
                 }
             }
+            // First neighbor entry that maps to a discovered device and port
+            // wins; entries for devices we never crawled (e.g. LLDP flooded
+            // through a downstream switch) are skipped instead of shadowing
+            // the real peer.
             let mut lldp_link_candidate: Option<(String, i64)> = None;
-            if let Some(ref lldp_neighbor_descriptor) = interface.lldp {
+            for lldp_neighbor_descriptor in interface.lldp.iter() {
                 if let Some(lldp_neighbor) = lookup_lldp_neighbor(detected, lldp_neighbor_descriptor, params) {
                     if let Some(lldp_neighbor_port) = lookup_lldp_neighbor_port(
                         detected, fqdn, *ifindex, lldp_neighbor_descriptor, lldp_neighbor, params, false,
                     ) {
                         lldp_link_candidate = Some((lldp_neighbor.fqdn.clone(), lldp_neighbor_port));
+                        break;
                     }
                 }
             }

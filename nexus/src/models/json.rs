@@ -142,9 +142,17 @@ pub struct ApiInterface {
     pub interface_type: String,
     pub polling_enabled: Option<bool>,
     pub speed_override: Option<i32>,
-    pub connected_to: Option<String>,
+    pub connected_to: Option<ApiInterfaceConnection>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
+}
+
+// Link peer of an interface; structured so the UI can link to the device.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInterfaceConnection {
+    pub fqdn: String,
+    pub interface: String,
 }
 
 #[derive(Serialize, Deserialize)]

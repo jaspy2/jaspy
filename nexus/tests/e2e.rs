@@ -246,6 +246,12 @@ fn stub_discovery_device<'a>(
             json!({"HostID": fqdn, "Index": {"LLDP-MIB::lldpRemLocalPortNum": 1},
                    "Objects": {"LLDP-MIB::lldpRemSysName": peer, "LLDP-MIB::lldpRemChassisId": "ff ff ff ff ff ff",
                                "LLDP-MIB::lldpRemPortId": "GigabitEthernet0/1", "LLDP-MIB::lldpRemPortIdSubtype": "interfaceName"}}),
+            // A second, bogus neighbor on the same port (LLDP flooded through
+            // by a downstream device announcing a non-hostname sysname). It
+            // must not shadow the real peer above during link resolution.
+            json!({"HostID": fqdn, "Index": {"LLDP-MIB::lldpRemLocalPortNum": 1},
+                   "Objects": {"LLDP-MIB::lldpRemSysName": "flooded junk", "LLDP-MIB::lldpRemChassisId": "de ad be ef 00 01",
+                               "LLDP-MIB::lldpRemPortId": "eth9", "LLDP-MIB::lldpRemPortIdSubtype": "interfaceName"}}),
         ],
         None => vec![],
     };
@@ -697,6 +703,16 @@ fn trap_handler_reports_link_state() {
         nexus.metrics_fast()
     );
 
+    // Subscribe to the per-device live event topic BEFORE flipping the state:
+    // device topics are live-only (no backlog replay). Brief pause so the
+    // server-side subscription is registered after the handshake.
+    let ws_url = format!("{}/api/v1/ws/logs/device:{}", nexus.base_url.replace("http://", "ws://"), FQDN);
+    let (mut socket, _) = tungstenite::connect(&ws_url).expect("websocket connect");
+    if let tungstenite::stream::MaybeTlsStream::Plain(stream) = socket.get_mut() {
+        stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    }
+    std::thread::sleep(Duration::from_millis(250));
+
     // Second report flips the state and must emit an interfaceUpDown event.
     run_trap_handler(&nexus.base_url, "trap_linkup.txt");
     assert!(
@@ -709,6 +725,23 @@ fn trap_handler_reports_link_state() {
         t == "jaspy/nexus/interfaceUpDown" && p.contains("GigabitEthernet0/1") && p.contains(FQDN)
     });
     assert!(event.is_some(), "expected interfaceUpDown MQTT event; got {:?}", broker.events());
+
+    // The same event must arrive on the per-device websocket topic (trap ->
+    // IMDS -> msgbus -> livelog -> websocket).
+    let mut ws_event: Option<serde_json::Value> = None;
+    while let Ok(msg) = socket.read() {
+        if let tungstenite::Message::Text(text) = msg {
+            let parsed: serde_json::Value = serde_json::from_str(&text).expect("event frame should be json");
+            if parsed["eventType"] == json!("interfaceUpDown") {
+                ws_event = Some(parsed);
+                break;
+            }
+        }
+    }
+    let ws_event = ws_event.expect("expected an interfaceUpDown frame on the device websocket topic");
+    assert_eq!(ws_event["interfaceUpDown"]["fqdn"], json!(FQDN), "event: {:?}", ws_event);
+    assert_eq!(ws_event["interfaceUpDown"]["name"], json!("GigabitEthernet0/1"), "event: {:?}", ws_event);
+    assert_eq!(ws_event["interfaceUpDown"]["newState"], json!(true), "event: {:?}", ws_event);
 
     // Unknown-host trap: fire-and-forget, must exit 0 and change nothing.
     run_trap_handler(&nexus.base_url, "trap_unknown_host.txt");
@@ -805,6 +838,20 @@ fn links_and_weathermap() {
     let connected = &wmap["devices"]["sw1.test.example"]["interfaces"]["GigabitEthernet0/1"]["connectedTo"];
     assert_eq!(connected["fqdn"], "sw2.test.example");
     assert_eq!(connected["interface"], "GigabitEthernet0/1");
+
+    // Device detail API: structured peer on the side that stores the FK...
+    let detail = nexus.get_json("/api/v1/devices/sw1.test.example");
+    let iface = detail["interfaces"].as_array().unwrap().iter()
+        .find(|i| i["name"] == "GigabitEthernet0/1").unwrap().clone();
+    assert_eq!(iface["connectedTo"]["fqdn"], "sw2.test.example", "iface: {:?}", iface);
+    assert_eq!(iface["connectedTo"]["interface"], "GigabitEthernet0/1");
+    // ...and derived from the reverse direction on the side that does not
+    // (links are stored one-directionally).
+    let detail = nexus.get_json("/api/v1/devices/sw2.test.example");
+    let iface = detail["interfaces"].as_array().unwrap().iter()
+        .find(|i| i["name"] == "GigabitEthernet0/1").unwrap().clone();
+    assert_eq!(iface["connectedTo"]["fqdn"], "sw1.test.example", "reverse link missing; iface: {:?}", iface);
+    assert_eq!(iface["connectedTo"]["interface"], "GigabitEthernet0/1");
 }
 
 // ---------------------------------------------------------------------------

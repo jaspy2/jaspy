@@ -6,6 +6,16 @@ export interface LiveLogLine {
   line: string;
 }
 
+// Msgbus event pushed on the "device:<fqdn>" WebSocket topic (models/events.rs).
+// Only the payload matching eventType is present.
+export interface LiveEvent {
+  eventType: string;
+  createTime: number;
+  pingChange?: { fqdn: string; neighbors: string[]; oldState: boolean; newState: boolean };
+  interfaceUpDown?: { fqdn: string; name: string; oldState: boolean; newState: boolean };
+  interfaceSpeed?: { fqdn: string; name: string; oldState: number; newState: number };
+}
+
 export interface DiscoveryStatus {
   running: boolean;
   lastStarted: number | null;
@@ -55,6 +65,11 @@ export interface Device {
   interfaceCount: number;
 }
 
+export interface InterfaceConnection {
+  fqdn: string;
+  interface: string;
+}
+
 export interface Interface {
   id: number;
   index: number;
@@ -65,7 +80,7 @@ export interface Interface {
   interfaceType: string;
   pollingEnabled: boolean | null;
   speedOverride: number | null;
-  connectedTo: string | null;
+  connectedTo: InterfaceConnection | null;
   up: boolean | null;
   speed: number | null;
 }

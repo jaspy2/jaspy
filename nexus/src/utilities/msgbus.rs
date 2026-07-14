@@ -49,6 +49,9 @@ impl MessageBus {
     }
 
     pub fn event(self: &mut MessageBus, event: models::events::Event) {
+        // Every event also goes to the per-device live-update topic for the
+        // web UI, independent of whether MQTT is configured.
+        crate::utilities::livelog::publish_event(&event);
         if let Some(client) = &mut self.client {
             let json_data = format!("{}", serde_json::json!(event));
             let topic = format!("jaspy/nexus/{}", event.event_type);

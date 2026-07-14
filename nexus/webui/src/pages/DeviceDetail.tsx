@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Device, DeviceUpdate } from '../api/types';
+import type { Device, DeviceUpdate, LiveEvent } from '../api/types';
 import { PollingBadge, UpBadge } from '../components/StatusBadge';
+import useLiveSocket from '../hooks/useLiveSocket';
 
 function updateBody(device: Device, overrides: Partial<DeviceUpdate>): DeviceUpdate {
   return {
@@ -28,7 +29,25 @@ export default function DeviceDetail() {
   const detail = useQuery({
     queryKey: ['device', fqdn],
     queryFn: () => api.device(fqdn),
+    // Fallback poll; live changes arrive over the device event socket below.
     refetchInterval: 10000,
+  });
+
+  // The backend pushes this device's msgbus events (interface up/down/speed,
+  // ping change, config changes) on a per-device topic; any of them means the
+  // detail view is stale, so refetch immediately instead of waiting out the
+  // poll interval.
+  useLiveSocket(`device:${fqdn}`, {
+    onMessage: (data) => {
+      const event = data as LiveEvent;
+      if (!event?.eventType) return;
+      queryClient.invalidateQueries({ queryKey: ['device', fqdn] });
+      if (event.eventType === 'pingChange') {
+        // Device up/down also shows on the list and dashboard.
+        queryClient.invalidateQueries({ queryKey: ['devices'] });
+        queryClient.invalidateQueries({ queryKey: ['summary'] });
+      }
+    },
   });
 
   const invalidate = () => {
@@ -113,7 +132,18 @@ export default function DeviceDetail() {
                 <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
                 <td>{iface.alias ?? '—'}</td>
                 <td>{iface.interfaceType}</td>
-                <td>{iface.connectedTo ?? '—'}</td>
+                <td>
+                  {iface.connectedTo ? (
+                    <>
+                      <Link to={`/devices/${encodeURIComponent(iface.connectedTo.fqdn)}`}>
+                        {iface.connectedTo.fqdn}
+                      </Link>
+                      :{iface.connectedTo.interface}
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

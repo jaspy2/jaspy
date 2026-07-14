@@ -122,12 +122,37 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         }
     }
 
+    // Links are stored one-directionally (interfaces.connected_interface), and
+    // discovery does not always resolve both ends. Union the reverse direction
+    // — interfaces elsewhere pointing at this device — so the detail view
+    // shows the link no matter which side discovery stored it on.
+    let device_interfaces = device.interfaces(&mut connection);
+    let interface_ids: Vec<i32> = device_interfaces.iter().map(|i| i.id).collect();
+    let mut reverse_links: std::collections::HashMap<i32, models::json::ApiInterfaceConnection> = std::collections::HashMap::new();
+    for remote in models::dbo::Interface::pointing_at(&mut connection, &interface_ids).iter() {
+        let remote_device = remote.device(&mut connection);
+        let connection_info = models::json::ApiInterfaceConnection {
+            fqdn: format!("{}.{}", remote_device.name, remote_device.dns_domain),
+            interface: remote.name(),
+        };
+        for target in [remote.connected_interface, remote.virtual_connection] {
+            if let Some(target) = target {
+                if interface_ids.contains(&target) {
+                    reverse_links.entry(target).or_insert_with(|| connection_info.clone());
+                }
+            }
+        }
+    }
+
     let mut interfaces = Vec::new();
-    for interface in device.interfaces(&mut connection).iter() {
+    for interface in device_interfaces.iter() {
         let connected_to = interface.peer_interface(&mut connection).map(|peer| {
             let peer_device = peer.device(&mut connection);
-            format!("{}.{}:{}", peer_device.name, peer_device.dns_domain, peer.name())
-        });
+            models::json::ApiInterfaceConnection {
+                fqdn: format!("{}.{}", peer_device.name, peer_device.dns_domain),
+                interface: peer.name(),
+            }
+        }).or_else(|| reverse_links.get(&interface.id).cloned());
         let (up, speed) = live.get(&interface.index).cloned().unwrap_or((None, None));
         interfaces.push(models::json::ApiInterface {
             id: interface.id,
@@ -278,11 +303,12 @@ pub fn reset(mut connection: db::JaspyDB, cache_controller: &State<Arc<Mutex<uti
     Json(models::json::ApiResetResult { devices_deleted: devices_deleted })
 }
 
-// Live log tail over WebSocket. The generic transport for pushing updates from
-// the backend to the client: the server replays the topic's backlog on connect,
-// then streams new lines as JSON ({"ts": <epoch secs>, "line": "..."}) as they
-// are published to utilities::livelog. First (and so far only) topic:
-// "discovery", the discovery engine's run log.
+// Live update stream over WebSocket. The generic transport for pushing updates
+// from the backend to the client: the server replays the topic's backlog on
+// connect, then streams frames as they are published to utilities::livelog.
+// Topics: "discovery" (run log lines, {"ts":..,"line":".."}) and
+// "device:<fqdn>" (msgbus events for that device, models/events.rs JSON,
+// live-only — no backlog).
 #[get("/ws/logs/<topic>")]
 pub fn ws_logs(ws: rocket_ws::WebSocket, topic: &str) -> rocket_ws::Channel<'static> {
     let topic = topic.to_string();
@@ -291,12 +317,8 @@ pub fn ws_logs(ws: rocket_ws::WebSocket, topic: &str) -> rocket_ws::Channel<'sta
         use rocket::tokio::sync::broadcast::error::RecvError;
 
         let (backlog, mut receiver) = utilities::livelog::subscribe(&topic);
-        for entry in backlog.iter() {
-            let text = match serde_json::to_string(entry) {
-                Ok(text) => text,
-                Err(_) => continue,
-            };
-            if stream.send(rocket_ws::Message::Text(text)).await.is_err() {
+        for frame in backlog.into_iter() {
+            if stream.send(rocket_ws::Message::Text(frame)).await.is_err() {
                 return Ok(());
             }
         }
@@ -311,14 +333,10 @@ pub fn ws_logs(ws: rocket_ws::WebSocket, topic: &str) -> rocket_ws::Channel<'sta
                         break;
                     }
                 },
-                entry = receiver.recv() => {
-                    match entry {
-                        Ok(entry) => {
-                            let text = match serde_json::to_string(&entry) {
-                                Ok(text) => text,
-                                Err(_) => continue,
-                            };
-                            if stream.send(rocket_ws::Message::Text(text)).await.is_err() {
+                frame = receiver.recv() => {
+                    match frame {
+                        Ok(frame) => {
+                            if stream.send(rocket_ws::Message::Text(frame)).await.is_err() {
                                 break;
                             }
                         },
