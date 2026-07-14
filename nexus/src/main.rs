@@ -9,6 +9,7 @@ mod db;
 mod schema;
 mod utilities;
 mod collectors;
+mod traphandler;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
 use std::collections::HashMap;
@@ -71,8 +72,18 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
     }
 }
 
-#[rocket::main]
-async fn main() {
+fn main() {
+    // `jaspy-nexus trap-handler` (snmptrapd traphandle, formerly the
+    // standalone jaspy-snmptrapd-reader binary) must run outside the tokio
+    // runtime: it uses reqwest::blocking and fork().
+    if std::env::args().nth(1).as_deref() == Some("trap-handler") {
+        traphandler::run();
+        return;
+    }
+    rocket::execute(server_main());
+}
+
+async fn server_main() {
     let mut c = Config::new();
 
     c.merge(File::with_name("/etc/jaspy/poller.yml").required(false)).unwrap()

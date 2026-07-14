@@ -1687,6 +1687,7 @@ dependencies = [
  "diesel",
  "diesel_migrations",
  "httpmock",
+ "libc",
  "oping",
  "rand 0.7.3",
  "regex",

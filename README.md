@@ -206,6 +206,26 @@ In addition the `jaspy_sensors` metrics contains these labels:
 * `sensor_name`
 * `value_type` (eg. "amperes", "celcius", "dBm"...)
 
+## SNMP trap integration (instant link up/down)
+
+The SNMP poller samples interfaces every ~10 seconds; for instant link state
+changes, configure your switches to send linkUp/linkDown traps to the jaspy
+VM and let snmptrapd hand them to nexus. The trap handler is a subcommand of
+the `jaspy-nexus` binary (formerly the separate `jaspy-snmptrapd-reader`).
+
+Install snmptrapd (`apt-get install snmptrapd`) with IF-MIB available, and
+use a minimal `/etc/snmp/snmptrapd.conf`:
+
+```
+authCommunity log,execute,net somecommunityhere
+traphandle IF-MIB::linkUp JASPY_URL=http://127.0.0.1:8000 /usr/lib/jaspy/jaspy-nexus trap-handler
+traphandle IF-MIB::linkDown JASPY_URL=http://127.0.0.1:8000 /usr/lib/jaspy/jaspy-nexus trap-handler
+```
+
+The handler reports over the local nexus API (`PUT /dev/interface/monitor`),
+which updates the live interface state immediately and publishes an
+`interfaceUpDown` MQTT event on state changes.
+
 ## Weathermap
 
 Weathermap is a JavaScript tool to show a graphical representation of the network topology in browser. It requires access to Prometheus and jaspy-api.

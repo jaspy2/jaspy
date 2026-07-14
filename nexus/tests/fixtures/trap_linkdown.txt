@@ -1,0 +1,6 @@
+sw1.test.example
+UDP: [127.0.0.1]:55240->[127.0.0.1]:162
+DISMAN-EVENT-MIB::sysUpTimeInstance 2:15:01:07.80
+SNMPv2-MIB::snmpTrapOID.0 IF-MIB::linkDown.0
+IF-MIB::ifIndex.0 10101
+SNMPv2-SMI::zeroDotZero "This is a test linkDown trap"

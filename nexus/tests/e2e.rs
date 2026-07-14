@@ -553,6 +553,70 @@ fn spa_and_fallback() {
 }
 
 // ---------------------------------------------------------------------------
+// 1e. `jaspy-nexus trap-handler` subcommand (snmptrapd traphandle)
+// ---------------------------------------------------------------------------
+
+/// Run the trap-handler subcommand with the given stdin fixture, as snmptrapd
+/// would. Stdout/stderr are nulled: the handler forks and the child would
+/// otherwise hold the pipes open.
+fn run_trap_handler(jaspy_url: &str, fixture: &str) {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let mut child = Command::new(env!("CARGO_BIN_EXE_jaspy-nexus"))
+        .arg("trap-handler")
+        .env("JASPY_URL", jaspy_url)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("spawn trap-handler");
+    child.stdin.as_mut().unwrap().write_all(read_fixture(fixture).as_bytes()).unwrap();
+    let status = child.wait().expect("wait trap-handler");
+    assert!(status.success(), "trap-handler should exit 0");
+}
+
+#[test]
+fn trap_handler_reports_link_state() {
+    let pg = PgHarness::start();
+    let broker = MqttBroker::start();
+    let nexus = Nexus::builder(&pg.db_url).mqtt(&broker.server()).start();
+
+    nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
+    // IMDS must know the device+interfaces before reports are accepted.
+    nexus.wait_ok(&format!("/dev/device/{}/status", FQDN), Duration::from_secs(10));
+
+    // First report seeds the state (silently, by design): link down.
+    run_trap_handler(&nexus.base_url, "trap_linkdown.txt");
+    assert!(
+        wait_until(Duration::from_secs(10), || {
+            metric_value(&nexus.metrics_fast(), "jaspy_interface_up", &["name=\"GigabitEthernet0/1\""]) == Some(0)
+        }),
+        "linkDown trap should set the interface down; metrics:\n{}",
+        nexus.metrics_fast()
+    );
+
+    // Second report flips the state and must emit an interfaceUpDown event.
+    run_trap_handler(&nexus.base_url, "trap_linkup.txt");
+    assert!(
+        wait_until(Duration::from_secs(10), || {
+            metric_value(&nexus.metrics_fast(), "jaspy_interface_up", &["name=\"GigabitEthernet0/1\""]) == Some(1)
+        }),
+        "linkUp trap should set the interface up"
+    );
+    let event = broker.wait_for_event(Duration::from_secs(10), |t, p| {
+        t == "jaspy/nexus/interfaceUpDown" && p.contains("GigabitEthernet0/1") && p.contains(FQDN)
+    });
+    assert!(event.is_some(), "expected interfaceUpDown MQTT event; got {:?}", broker.events());
+
+    // Unknown-host trap: fire-and-forget, must exit 0 and change nothing.
+    run_trap_handler(&nexus.base_url, "trap_unknown_host.txt");
+    assert_eq!(
+        metric_value(&nexus.metrics_fast(), "jaspy_interface_up", &["name=\"GigabitEthernet0/1\""]),
+        Some(1)
+    );
+}
+
+// ---------------------------------------------------------------------------
 // 2. Discovery writes devices + interfaces to Postgres
 // ---------------------------------------------------------------------------
 #[derive(QueryableByName)]

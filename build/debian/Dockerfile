@@ -17,8 +17,6 @@ COPY output/nexus/migrations ./var/lib/jaspy/nexus/migrations
 COPY output/nexus/jaspy-nexus ./usr/lib/jaspy/jaspy-nexus
 COPY output/nexus/diesel ./usr/lib/jaspy/diesel
 
-COPY output/snmptrapd-reader/jaspy-snmptrapd-reader ./usr/lib/jaspy/jaspy-snmptrapd-reader
-
 RUN mkdir ./usr/lib/jaspy/switchmaster
 COPY output/switchmaster/* ./usr/lib/jaspy/switchmaster/
 

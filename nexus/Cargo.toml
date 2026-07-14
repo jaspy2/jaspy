@@ -22,6 +22,9 @@ oping = "0.4.0"
 # Embeds the built React admin UI (webui/dist) into the binary; in debug
 # builds it reads from disk so frontend iteration needs no Rust rebuild.
 rust-embed = "8"
+# fork() for the trap-handler subcommand (parent returns to snmptrapd
+# immediately while the child reports over HTTP).
+libc = "0.2"
 
 [dev-dependencies]
 # End-to-end test suite (tests/e2e.rs): mock snmpbot, ephemeral postgres,
