@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatTimestamp, formatUptime } from '../api/client';
 
@@ -9,6 +10,8 @@ export default function Dashboard() {
     queryFn: api.discoveryStatus,
     refetchInterval: (query) => (query.state.data?.running ? 2000 : 10000),
   });
+  const config = useQuery({ queryKey: ['discovery-config'], queryFn: api.discoveryConfig });
+  const configReady = Boolean(config.data?.rootDevice && config.data?.community);
   const runDiscovery = useMutation({
     mutationFn: api.runDiscovery,
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['discovery-status'] }),
@@ -73,9 +76,18 @@ export default function Dashboard() {
               )}
             </div>
             <div className="actions">
-              <button onClick={() => runDiscovery.mutate()} disabled={d.running || runDiscovery.isPending}>
+              <button
+                onClick={() => runDiscovery.mutate()}
+                disabled={d.running || runDiscovery.isPending || !configReady}
+                title={configReady ? undefined : 'Discovery is not configured yet'}
+              >
                 {d.running ? 'Discovery running…' : 'Run discovery now'}
               </button>
+              {!configReady && (
+                <span className="muted">
+                  Discovery needs a root device and SNMP community — <Link to="/discovery">configure it here</Link>.
+                </span>
+              )}
               {runDiscovery.isError && <span className="error">{String(runDiscovery.error)}</span>}
             </div>
           </>

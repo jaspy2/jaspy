@@ -424,6 +424,16 @@ fn api_v1_summary_and_devices() {
     assert_eq!(list[0]["interfaceCount"], json!(2));
     assert!(list[0].get("up").is_some());
 
+    // Unconfigured discovery run is rejected with a human-readable reason
+    // (the web UI surfaces the `error` field verbatim).
+    let resp = nexus.post_json("/api/v1/discovery/run", &json!({}));
+    assert_eq!(resp.status().as_u16(), 400);
+    let body: serde_json::Value = resp.json().unwrap();
+    assert!(
+        body["error"].as_str().unwrap_or("").contains("not configured"),
+        "400 body should explain the problem: {:?}", body
+    );
+
     let detail = nexus.get_json(&format!("/api/v1/devices/{}", FQDN));
     assert_eq!(detail["device"]["fqdn"], json!(FQDN));
     let interfaces = detail["interfaces"].as_array().unwrap();

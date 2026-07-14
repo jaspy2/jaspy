@@ -164,6 +164,13 @@ pub struct ApiResetResult {
     pub devices_deleted: u64,
 }
 
+// Error body for non-2xx API responses; the web UI surfaces `error` verbatim.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiError {
+    pub error: String,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceMonitorInfo {

@@ -225,12 +225,16 @@ pub fn event_get(mut connection: db::JaspyDB) -> Json<models::json::ApiEvent> {
 }
 
 #[put("/event", data = "<event_json>")]
-pub fn event_put(event_json: Json<models::json::ApiEvent>, mut connection: db::JaspyDB) -> Result<Json<models::json::ApiEvent>, rocket::http::Status> {
+pub fn event_put(event_json: Json<models::json::ApiEvent>, mut connection: db::JaspyDB) -> Result<Json<models::json::ApiEvent>, (rocket::http::Status, Json<models::json::ApiError>)> {
     let event = event_json.into_inner();
-    let json = serde_json::to_string(&event).map_err(|_| rocket::http::Status::InternalServerError)?;
+    let json = serde_json::to_string(&event).map_err(|e| (rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+        error: format!("failed to serialize event: {}", e),
+    })))?;
     if let Err(e) = models::dbo::Setting::set(&mut connection, EVENT_SETTING, &json) {
         println!("[api] failed to persist event: {}", e);
-        return Err(rocket::http::Status::InternalServerError);
+        return Err((rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+            error: format!("failed to persist event to database: {} (are the migrations up to date?)", e),
+        })));
     }
     Ok(Json(event))
 }

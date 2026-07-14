@@ -16,7 +16,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!response.ok) {
-    throw new Error(`${init?.method ?? 'GET'} ${path}: ${response.status} ${response.statusText}`);
+    // API errors carry a human-readable reason as {"error": "..."} — show it.
+    let detail = '';
+    try {
+      const body = await response.json();
+      if (body && typeof body.error === 'string') detail = ` — ${body.error}`;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(`${init?.method ?? 'GET'} ${path}: ${response.status} ${response.statusText}${detail}`);
   }
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;

@@ -80,6 +80,7 @@ export default function Discovery() {
     setForm((f) => (f ? { ...f, [key]: value } : f));
 
   const s = status.data;
+  const configReady = Boolean(config.data?.rootDevice && config.data?.community);
 
   return (
     <>
@@ -103,9 +104,16 @@ export default function Discovery() {
               )}
             </div>
             <div className="actions">
-              <button onClick={() => runDiscovery.mutate()} disabled={s.running || runDiscovery.isPending}>
+              <button
+                onClick={() => runDiscovery.mutate()}
+                disabled={s.running || runDiscovery.isPending || !configReady}
+                title={configReady ? undefined : 'Set a root device and SNMP community in the configuration below first'}
+              >
                 {s.running ? 'Discovery running…' : 'Run discovery now'}
               </button>
+              {!configReady && (
+                <span className="muted">Set a root device and SNMP community in the configuration below to enable runs.</span>
+              )}
               {runDiscovery.isError && <span className="error">{String(runDiscovery.error)}</span>}
             </div>
           </>
