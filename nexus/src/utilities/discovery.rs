@@ -8,6 +8,13 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use diesel::pg::PgConnection;
 
+// Ingest problems go to stdout AND the "discovery" live-log topic, like the
+// engine's own dlog! lines, so the web UI log shows why data went missing.
+fn dlog(line: String) {
+    println!("{}", line);
+    utilities::livelog::publish("discovery", &line);
+}
+
 pub fn ingest_device(
     connection: &mut PgConnection,
     msgbus: &Arc<Mutex<utilities::msgbus::MessageBus>>,
@@ -46,8 +53,8 @@ pub fn ingest_device(
                 Ok(_) => {
                     device = existing_device;
                 },
-                Err(_) => {
-                    // TODO: sane logging / return
+                Err(e) => {
+                    dlog(format!("[discovery] [{}] failed to update device in db: {}", device_fqdn, e));
                     return;
                 }
             }
@@ -73,8 +80,8 @@ pub fn ingest_device(
                 Ok(created_device) => {
                     device = created_device;
                 },
-                Err(_) => {
-                    // TODO: sane logging / return
+                Err(e) => {
+                    dlog(format!("[discovery] [{}] failed to create device in db: {}", device_fqdn, e));
                     return;
                 }
             }
@@ -102,8 +109,9 @@ pub fn ingest_device(
                 updated_interface.description = interface.description.clone();
                 match updated_interface.update(connection) {
                     Ok(_) => {},
-                    Err(_) => {
-                        // TODO: logging, nonfatal
+                    Err(e) => {
+                        // Nonfatal: the rest of the interfaces still ingest.
+                        dlog(format!("[discovery] [{}] failed to update interface {} in db: {}", device_fqdn, interface.name, e));
                     }
                 }
             },
@@ -119,8 +127,9 @@ pub fn ingest_device(
 
                 match models::dbo::Interface::create(&new_interface, connection) {
                     Ok(_) => {},
-                    Err(_) => {
-                        // Todo, logging? :) this is nonfatal
+                    Err(e) => {
+                        // Nonfatal: the rest of the interfaces still ingest.
+                        dlog(format!("[discovery] [{}] failed to create interface {} in db: {}", device_fqdn, interface.name, e));
                     }
                 }
             }
@@ -131,8 +140,9 @@ pub fn ingest_device(
         if !found_interface_names.contains(&current_interface.name) {
             match current_interface.delete(connection) {
                 Ok(_) => {},
-                Err(_) => {
-                    // Todo, logging? nonfatal
+                Err(e) => {
+                    // Nonfatal: a stale interface row lingers until next run.
+                    dlog(format!("[discovery] [{}] failed to delete stale interface {} from db: {}", device_fqdn, current_interface.name, e));
                 }
             }
         }
@@ -152,8 +162,8 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &mut PgConne
     new_local_interface.connected_interface = None;
     match new_local_interface.update(connection) {
         Ok(_) => {},
-        Err(_) => {
-            // TODO: log?
+        Err(e) => {
+            dlog(format!("[discovery] failed to clear link from interface {} in db: {}", interface.name, e));
         }
     }
 }
@@ -166,7 +176,7 @@ pub fn ingest_links(
     let link_infos: &HashMap<String, Option<models::json::LinkPeerInfo>> = &links.interfaces;
     let fqdn_splitted: Vec<&str> = links.device_fqdn.splitn(2, ".").collect();
     if fqdn_splitted.len() != 2 {
-        // TODO: log?
+        dlog(format!("[discovery] ignoring links for {}: fqdn has no domain part", links.device_fqdn));
         return;
     }
 
@@ -177,7 +187,7 @@ pub fn ingest_links(
             local_device = local_device_result;
         },
         None => {
-            // TODO: log?
+            dlog(format!("[discovery] ignoring links for {}: device not found in db", links.device_fqdn));
             return;
         }
     }
@@ -244,8 +254,8 @@ pub fn ingest_links(
                             new_local_interface.connected_interface = Some(new_peer_interface.id);
                             match new_local_interface.update(connection) {
                                 Ok(_) => {},
-                                Err(_) => {
-                                    // TODO: log?
+                                Err(e) => {
+                                    dlog(format!("[discovery] [{}] failed to store link for interface {} in db: {}", links.device_fqdn, local_interface.name, e));
                                 }
                             }
                         },
@@ -259,8 +269,8 @@ pub fn ingest_links(
                     new_peer_interface.connected_interface = None;
                     match new_peer_interface.update(connection) {
                         Ok(_) => {},
-                        Err(_) => {
-                            // TODO: log?
+                        Err(e) => {
+                            dlog(format!("[discovery] [{}] failed to clear stale peer link from interface {} in db: {}", links.device_fqdn, peer_interface.name, e));
                         }
                     }
                 }

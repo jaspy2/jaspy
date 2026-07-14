@@ -1,10 +1,17 @@
 // DTOs mirroring the nexus /api/v1 JSON shapes (camelCase serde).
 
+// One line from a /api/v1/ws/logs/<topic> WebSocket (utilities/livelog.rs).
+export interface LiveLogLine {
+  ts: number;
+  line: string;
+}
+
 export interface DiscoveryStatus {
   running: boolean;
   lastStarted: number | null;
   lastFinished: number | null;
   devicesFound: number | null;
+  devicesFailed: number | null;
   linksFound: number | null;
   lastError: string | null;
 }

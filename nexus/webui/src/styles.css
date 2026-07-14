@@ -194,6 +194,21 @@ tr.clickable:hover td { background: var(--muted-bg); }
 .badge-warn { background: var(--warn-bg); color: var(--warn); }
 .badge-muted { background: var(--muted-bg); color: var(--muted); }
 
+/* Live log tail (WebSocket) */
+.livelog-lines {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  height: 320px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.livelog-line { line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.livelog-ts { color: var(--muted); }
+.livelog-status { margin-top: 6px; font-size: 12px; }
+
 .muted { color: var(--muted); }
 .error { color: var(--bad); }
 .ok { color: var(--ok); }

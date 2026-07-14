@@ -81,6 +81,7 @@ pub struct DiscoveryStatus {
     pub last_started: Option<f64>,
     pub last_finished: Option<f64>,
     pub devices_found: Option<u64>,
+    pub devices_failed: Option<u64>,
     pub links_found: Option<u64>,
     pub last_error: Option<String>,
 }

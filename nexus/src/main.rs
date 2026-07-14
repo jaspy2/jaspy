@@ -295,6 +295,7 @@ async fn server_main() {
                 routes::api::v1::event_get,
                 routes::api::v1::event_put,
                 routes::api::v1::reset,
+                routes::api::v1::ws_logs,
             ]
         )
         // Discovery control re-mounted for the UI: same handlers as /dev/discovery.

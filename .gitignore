@@ -4,3 +4,4 @@ jaspy.env
 .idea/
 vendor/
 /build/output/*
+jaspy.log

@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      // WebSocket upgrade needs its own entry; must come before the plain
+      // '/api' prefix rule.
+      '/api/v1/ws': { target: 'ws://127.0.0.1:8000', ws: true },
       '/api': 'http://127.0.0.1:8000',
       '/dev': 'http://127.0.0.1:8000',
     },

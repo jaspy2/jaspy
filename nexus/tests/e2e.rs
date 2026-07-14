@@ -335,8 +335,39 @@ fn discovery_engine_crawls_and_links() {
     // Status DTO reflects the run.
     let status = nexus.get_json("/dev/discovery/status");
     assert_eq!(status["devicesFound"], json!(2), "status: {:?}", status);
+    assert_eq!(status["devicesFailed"], json!(0), "status: {:?}", status);
     assert_eq!(status["linksFound"], json!(2), "status: {:?}", status);
     assert!(status["lastError"].is_null(), "status: {:?}", status);
+
+    // Live run log over WebSocket: the backlog is replayed on connect, so a
+    // client connecting after the run still sees its full history.
+    let ws_url = format!("{}/api/v1/ws/logs/discovery", nexus.base_url.replace("http://", "ws://"));
+    let (mut socket, _) = tungstenite::connect(&ws_url).expect("websocket connect");
+    if let tungstenite::stream::MaybeTlsStream::Plain(stream) = socket.get_mut() {
+        stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    }
+    let mut log_lines: Vec<String> = Vec::new();
+    while let Ok(msg) = socket.read() {
+        if let tungstenite::Message::Text(text) = msg {
+            let entry: serde_json::Value = serde_json::from_str(&text).expect("log line should be json");
+            assert!(entry["ts"].as_f64().is_some(), "log line without ts: {}", text);
+            log_lines.push(entry["line"].as_str().unwrap_or_default().to_string());
+        }
+        if log_lines.iter().any(|l| l.contains("run finished")) {
+            break;
+        }
+    }
+    for expected in [
+        "starting manual run (root=sw1.test.example",
+        "[sw1.test.example] discovered: type WS-C2960X-24 (sw 15.2(2)E), 2 interfaces",
+        "[sw2.test.example] discovered:",
+        "2 devices discovered, 0 failed, 2 links",
+    ] {
+        assert!(
+            log_lines.iter().any(|l| l.contains(expected)),
+            "expected a log line containing {:?}; got: {:#?}", expected, log_lines
+        );
+    }
 
     // Devices + metadata landed in Postgres.
     let mut conn = pg.conn();
@@ -373,6 +404,46 @@ fn discovery_engine_crawls_and_links() {
         let created = broker.wait_for_event(Duration::from_secs(5), |t, p| t == "jaspy/nexus/deviceCreated" && p.contains(fqdn));
         assert!(created.is_some(), "expected deviceCreated for {}; got {:?}", fqdn, broker.events());
     }
+}
+
+#[test]
+fn discovery_root_failure_sets_last_error() {
+    let pg = PgHarness::start();
+    let mock = SnmpbotMock::start();
+    let broker = MqttBroker::start();
+
+    // No snmpbot stubs at all: every table fetch fails, so the root device
+    // fails discovery and the run must surface that in lastError instead of
+    // reporting a silent "finished, 0 devices".
+    let nexus = Nexus::builder(&pg.db_url)
+        .snmpbot(&mock.url())
+        .mqtt(&broker.server())
+        .start();
+
+    let resp = nexus.post_json("/dev/discovery/run", &json!({
+        "rootDevice": "sw1.test.example",
+        "community": COMMUNITY,
+        "dnsDomains": ["test.example"]
+    }));
+    assert_eq!(resp.status().as_u16(), 202, "trigger should be accepted");
+
+    assert!(
+        wait_until(Duration::from_secs(20), || {
+            let status = nexus.get_json("/dev/discovery/status");
+            status["running"] == json!(false) && !status["lastFinished"].is_null()
+        }),
+        "discovery run should finish; status: {:?}\nlog: {}",
+        nexus.get_json("/dev/discovery/status"), nexus.log()
+    );
+
+    let status = nexus.get_json("/dev/discovery/status");
+    assert_eq!(status["devicesFound"], json!(0), "status: {:?}", status);
+    assert_eq!(status["devicesFailed"], json!(1), "status: {:?}", status);
+    let err = status["lastError"].as_str().unwrap_or_default();
+    assert!(
+        err.contains("root device sw1.test.example") && err.contains("IF-MIB::ifXTable"),
+        "lastError should name the root device and the failed table; status: {:?}", status
+    );
 }
 
 #[test]

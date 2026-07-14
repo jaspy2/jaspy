@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatTimestamp } from '../api/client';
 import type { DiscoveryConfig } from '../api/types';
+import LiveLog from '../components/LiveLog';
 
 interface FormState {
   rootDevice: string;
@@ -71,8 +72,12 @@ export default function Discovery() {
     },
   });
 
+  // Bumped when a run is triggered so the log panel retries a dropped
+  // websocket immediately instead of waiting out its reconnect backoff.
+  const [logNudge, setLogNudge] = useState(0);
   const runDiscovery = useMutation({
     mutationFn: api.runDiscovery,
+    onMutate: () => setLogNudge((n) => n + 1),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['discovery-status'] }),
   });
 
@@ -96,6 +101,8 @@ export default function Discovery() {
               <span>Last started</span><span>{formatTimestamp(s.lastStarted)}</span>
               <span>Last finished</span><span>{formatTimestamp(s.lastFinished)}</span>
               <span>Devices found</span><span>{s.devicesFound ?? '—'}</span>
+              <span>Devices failed</span>
+              <span>{s.devicesFailed ? <span className="error">{s.devicesFailed}</span> : s.devicesFailed ?? '—'}</span>
               <span>Links found</span><span>{s.linksFound ?? '—'}</span>
               {s.lastError && (
                 <>
@@ -120,6 +127,11 @@ export default function Discovery() {
         ) : (
           <p>Loading…</p>
         )}
+      </div>
+
+      <h2>Log</h2>
+      <div className="panel">
+        <LiveLog topic="discovery" reconnectSignal={logNudge} />
       </div>
 
       <h2>Configuration</h2>

@@ -277,3 +277,67 @@ pub fn reset(mut connection: db::JaspyDB, cache_controller: &State<Arc<Mutex<uti
     if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
     Json(models::json::ApiResetResult { devices_deleted: devices_deleted })
 }
+
+// Live log tail over WebSocket. The generic transport for pushing updates from
+// the backend to the client: the server replays the topic's backlog on connect,
+// then streams new lines as JSON ({"ts": <epoch secs>, "line": "..."}) as they
+// are published to utilities::livelog. First (and so far only) topic:
+// "discovery", the discovery engine's run log.
+#[get("/ws/logs/<topic>")]
+pub fn ws_logs(ws: rocket_ws::WebSocket, topic: &str) -> rocket_ws::Channel<'static> {
+    let topic = topic.to_string();
+    ws.channel(move |mut stream| Box::pin(async move {
+        use rocket::futures::{SinkExt, StreamExt};
+        use rocket::tokio::sync::broadcast::error::RecvError;
+
+        let (backlog, mut receiver) = utilities::livelog::subscribe(&topic);
+        for entry in backlog.iter() {
+            let text = match serde_json::to_string(entry) {
+                Ok(text) => text,
+                Err(_) => continue,
+            };
+            if stream.send(rocket_ws::Message::Text(text)).await.is_err() {
+                return Ok(());
+            }
+        }
+        // Keepalive pings: intermediaries drop idle websockets, and a peer
+        // that vanished without a FIN is only noticed by writing to it.
+        let mut keepalive = rocket::tokio::time::interval(std::time::Duration::from_secs(30));
+        keepalive.tick().await; // first tick is immediate; skip it
+        loop {
+            rocket::tokio::select! {
+                _ = keepalive.tick() => {
+                    if stream.send(rocket_ws::Message::Ping(Vec::new())).await.is_err() {
+                        break;
+                    }
+                },
+                entry = receiver.recv() => {
+                    match entry {
+                        Ok(entry) => {
+                            let text = match serde_json::to_string(&entry) {
+                                Ok(text) => text,
+                                Err(_) => continue,
+                            };
+                            if stream.send(rocket_ws::Message::Text(text)).await.is_err() {
+                                break;
+                            }
+                        },
+                        // Consumer fell behind the broadcast buffer: skip the
+                        // dropped lines and keep tailing.
+                        Err(RecvError::Lagged(_)) => continue,
+                        Err(RecvError::Closed) => break,
+                    }
+                },
+                // We never act on client messages; polling the read side is
+                // how we notice the peer went away (None/Err = closed).
+                incoming = stream.next() => {
+                    match incoming {
+                        Some(Ok(_)) => {},
+                        _ => break,
+                    }
+                }
+            }
+        }
+        Ok(())
+    }))
+}

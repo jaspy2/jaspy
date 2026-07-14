@@ -57,6 +57,13 @@ export const api = {
     request<DiscoveryStatus>('/api/v1/discovery/run', { method: 'POST', body: '{}' }),
 };
 
+// WebSocket endpoint for live log tailing (backlog replay + push). Relative to
+// the current origin so it works via the vite dev proxy and in production.
+export function liveLogSocketUrl(topic: string): string {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/api/v1/ws/logs/${encodeURIComponent(topic)}`;
+}
+
 export function formatTimestamp(secs: number | null): string {
   if (secs === null) return '—';
   return new Date(secs * 1000).toLocaleString();

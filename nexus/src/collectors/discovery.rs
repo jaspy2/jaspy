@@ -21,6 +21,16 @@ use std::sync::{atomic, Arc, Mutex};
 use std::thread;
 use std::time;
 
+// Discovery log lines go to stdout AND the "discovery" live-log topic so the
+// web UI can tail a run over the /api/v1/ws/logs/discovery WebSocket.
+macro_rules! dlog {
+    ($($arg:tt)*) => {{
+        let line = format!($($arg)*);
+        println!("{}", line);
+        crate::utilities::livelog::publish("discovery", &line);
+    }};
+}
+
 // ---------------------------------------------------------------------------
 // Control state shared with the HTTP routes (POST /run, GET /status, config)
 // ---------------------------------------------------------------------------
@@ -57,6 +67,7 @@ struct RunParams {
     remap: HashMap<String, String>,
     topology_stable: bool,
     skip_dns: bool,
+    trigger: &'static str, // "manual" | "periodic", for log lines only
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +104,16 @@ fn fetch_table(client: &reqwest::blocking::Client, snmpbot_url: &str, fqdn: &str
     let url = snmpbot_url_for(snmpbot_url, fqdn, community, "tables", table).ok_or("bad url")?;
     let response = client.get(url).send().map_err(|e| format!("{}", e))?;
     if !response.status().is_success() {
-        return Err(format!("status={}", response.status()));
+        // Include the response body: snmpbot puts the actual reason there
+        // (e.g. "SNMP timeout for GetNextRequest<...>"), and a bare
+        // "status=500" hides it.
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+        let body = body.trim();
+        if body.is_empty() {
+            return Err(format!("status={}", status));
+        }
+        return Err(format!("status={}: {:.200}", status, body));
     }
     let body = response.text().map_err(|e| format!("read: {}", e))?;
     serde_json::from_str(&body).map_err(|e| format!("json: {} (body: {:.200})", e, body))
@@ -108,12 +128,12 @@ fn fetch_object(client: &reqwest::blocking::Client, snmpbot_url: &str, fqdn: &st
     let parsed: SNMPBotObjectResponse = match response.json() {
         Ok(p) => p,
         Err(e) => {
-            println!("[discovery] [{}] error decoding object {}: {}", fqdn, object, e);
+            dlog!("[discovery] [{}] error decoding object {}: {}", fqdn, object, e);
             return None;
         }
     };
     if parsed.instances.len() > 1 {
-        println!("[discovery] [{}] expected <= 1 results for {}, got {}", fqdn, object, parsed.instances.len());
+        dlog!("[discovery] [{}] expected <= 1 results for {}, got {}", fqdn, object, parsed.instances.len());
         return None;
     }
     match parsed.instances.into_iter().next()?.value? {
@@ -252,7 +272,7 @@ impl DetectedDevice {
         if let Some(ref chassis_id) = self.lldp_loc_chassis_id {
             return Some(chassis_id.clone());
         }
-        println!("[discovery] [{}] could not derive chassis id when requested!", self.fqdn);
+        dlog!("[discovery] [{}] could not derive chassis id when requested!", self.fqdn);
         None
     }
 
@@ -293,7 +313,7 @@ impl DetectedDevice {
                     }
                 },
                 Err(e) => {
-                    println!("[discovery] [{}] critical table {} failed: {}", self.fqdn, table, e);
+                    dlog!("[discovery] [{}] critical table {} failed: {}", self.fqdn, table, e);
                     self.polling_valid = false;
                     return Err(format!("critical table {} failed: {}", table, e));
                 }
@@ -371,11 +391,11 @@ impl DetectedDevice {
             .map(|v| v.replace(" ", ":"));
         match fetch_table(client, snmpbot_url, &self.fqdn, &self.community, "LLDP-MIB::lldpLocPortTable") {
             Ok(response) => self.handle_lldp_loc_port_table(&response.entries),
-            Err(e) => println!("[discovery] [{}] table LLDP-MIB::lldpLocPortTable failed: {}", self.fqdn, e),
+            Err(e) => dlog!("[discovery] [{}] table LLDP-MIB::lldpLocPortTable failed: {}", self.fqdn, e),
         }
         match fetch_table(client, snmpbot_url, &self.fqdn, &self.community, "LLDP-MIB::lldpRemTable") {
             Ok(response) => self.handle_lldp_rem_table(&response.entries),
-            Err(e) => println!("[discovery] [{}] table LLDP-MIB::lldpRemTable failed: {}", self.fqdn, e),
+            Err(e) => dlog!("[discovery] [{}] table LLDP-MIB::lldpRemTable failed: {}", self.fqdn, e),
         }
     }
 
@@ -390,7 +410,7 @@ impl DetectedDevice {
                     continue;
                 }
                 if mac_uniqueness_test.contains(&portid) {
-                    println!("[discovery] [{}] VENDOR-BUG: LLDP macAddress as lldpLocPortId is non-unique!", self.fqdn);
+                    dlog!("[discovery] [{}] VENDOR-BUG: LLDP macAddress as lldpLocPortId is non-unique!", self.fqdn);
                     self.device_bugs.push(DeviceBug::LldpMacaddressDuplicate);
                 } else {
                     mac_uniqueness_test.insert(portid);
@@ -437,7 +457,7 @@ impl DetectedDevice {
         } else {
             if !self.has_bug(DeviceBug::LldpMacaddressCannotAssociate) {
                 self.add_bug(DeviceBug::LldpMacaddressCannotAssociate);
-                println!("[discovery] [{}] VENDOR-BUG: cannot associate LLDP ID (MAC) to interface MAC!", self.fqdn);
+                dlog!("[discovery] [{}] VENDOR-BUG: cannot associate LLDP ID (MAC) to interface MAC!", self.fqdn);
             }
             // perhaps lldp-id = ifindex then lol
             if self.interfaces.contains_key(&lldp_index) {
@@ -467,7 +487,7 @@ impl DetectedDevice {
             if let Some(ifindex) = self.anything_to_interface.get(&test_cisco_nexus_quirk).cloned() {
                 if !self.has_bug(DeviceBug::LldpNoAssociationToInterface) {
                     self.add_bug(DeviceBug::LldpNoAssociationToInterface);
-                    println!("[discovery] [{}] VENDOR-BUG: LLDP interface cannot be associated to real interface without guesswork!", self.fqdn);
+                    dlog!("[discovery] [{}] VENDOR-BUG: LLDP interface cannot be associated to real interface without guesswork!", self.fqdn);
                 }
                 self.lldp_index_to_interface.insert(lldp_index, ifindex);
             }
@@ -507,7 +527,7 @@ impl DetectedDevice {
             };
             if let Some(iface) = self.interfaces.get_mut(&target_ifindex) {
                 if iface.lldp.is_some() {
-                    println!("[discovery] [{}] duplicate lldp index, only first entry is used", self.fqdn);
+                    dlog!("[discovery] [{}] duplicate lldp index, only first entry is used", self.fqdn);
                 }
                 // NB: matches the Python behavior, which (despite its warning
                 // message) lets the last entry win.
@@ -533,7 +553,7 @@ impl DetectedDevice {
                     }
                 }
             },
-            Err(e) => println!("[discovery] [{}] table CISCO-CDP-MIB::cdpCacheTable failed: {}", self.fqdn, e),
+            Err(e) => dlog!("[discovery] [{}] table CISCO-CDP-MIB::cdpCacheTable failed: {}", self.fqdn, e),
         }
     }
 
@@ -541,7 +561,7 @@ impl DetectedDevice {
         let response = match fetch_table(client, snmpbot_url, &self.fqdn, &self.community, "ENTITY-MIB::entPhysicalTable") {
             Ok(r) => r,
             Err(e) => {
-                println!("[discovery] [{}] table ENTITY-MIB::entPhysicalTable failed: {}", self.fqdn, e);
+                dlog!("[discovery] [{}] table ENTITY-MIB::entPhysicalTable failed: {}", self.fqdn, e);
                 return;
             }
         };
@@ -607,7 +627,7 @@ impl DetectedDevice {
 
     fn lookup_port_by_lldp_remote_info(&self, lldp_remote_port_id: &str, lldp_remote_port_id_subtype: &str) -> Option<i64> {
         if lldp_remote_port_id_subtype == "macAddress" && self.has_bug(DeviceBug::LldpMacaddressDuplicate) {
-            println!("[discovery] [{}] suffering from LLDP-MACADDRESS-DUPLICATE bug, returning None for lookup by macaddr", self.fqdn);
+            dlog!("[discovery] [{}] suffering from LLDP-MACADDRESS-DUPLICATE bug, returning None for lookup by macaddr", self.fqdn);
             return None;
         }
         if lldp_remote_port_id_subtype == "local" {
@@ -656,7 +676,7 @@ fn try_resolve(device_name: &str, params: &RunParams) -> Option<String> {
             if params.skip_dns || resolves(&format!("{}.", fqdn)) {
                 Some(fqdn)
             } else {
-                println!("[discovery] failed to resolve fqdn {}", device_name);
+                dlog!("[discovery] failed to resolve fqdn {}", device_name);
                 None
             }
         },
@@ -670,7 +690,7 @@ fn try_resolve(device_name: &str, params: &RunParams) -> Option<String> {
                     return Some(fqdn);
                 }
             }
-            println!("[discovery] failed to resolve {} using any search domain", device_name);
+            dlog!("[discovery] failed to resolve {} using any search domain", device_name);
             None
         }
     }
@@ -683,6 +703,8 @@ fn try_resolve(device_name: &str, params: &RunParams) -> Option<String> {
 struct CrawlState {
     detected: HashMap<String, DetectedDevice>,
     in_flight: HashSet<String>,
+    // fqdn -> reason, for the run summary and (for the root device) lastError.
+    failures: HashMap<String, String>,
 }
 
 struct CrawlShared {
@@ -740,22 +762,33 @@ fn discovered_device_payload(sds: &DetectedDevice) -> Option<models::json::Disco
     })
 }
 
+fn record_failure(shared: &Arc<CrawlShared>, device_fqdn: &str, reason: String) {
+    if let Ok(mut state) = shared.state.lock() {
+        state.failures.insert(device_fqdn.to_string(), reason);
+    }
+}
+
 fn discover_device(shared: Arc<CrawlShared>, device_fqdn: String) {
-    println!("[discovery] [{}] started polling device", device_fqdn);
+    dlog!("[discovery] [{}] started polling device", device_fqdn);
     let client = match reqwest::blocking::Client::builder().timeout(time::Duration::from_secs(60)).build() {
         Ok(c) => c,
-        Err(_) => return,
+        Err(e) => {
+            record_failure(&shared, &device_fqdn, format!("failed to build http client: {}", e));
+            return;
+        }
     };
     let mut sds = DetectedDevice::new(&device_fqdn, &shared.params.community);
     match sds.collect(&client, &shared.params.snmpbot_url) {
         Ok(_) => {},
         Err(e) => {
-            println!("[discovery] [{}] failed to discover: {}", device_fqdn, e);
+            dlog!("[discovery] [{}] failed to discover: {}", device_fqdn, e);
+            record_failure(&shared, &device_fqdn, e);
             return;
         }
     }
     if !sds.polling_valid {
-        println!("[discovery] [{}] discarding invalid discovery result", device_fqdn);
+        dlog!("[discovery] [{}] discarding invalid discovery result", device_fqdn);
+        record_failure(&shared, &device_fqdn, "invalid discovery result (critical table failed)".to_string());
         return;
     }
 
@@ -779,6 +812,12 @@ fn discover_device(shared: Arc<CrawlShared>, device_fqdn: String) {
     }
 
     let payload = discovered_device_payload(&sds);
+    // One descriptive line per discovered device; grab the summary before sds
+    // is handed over to the shared crawl state.
+    let device_summary = format!(
+        "type {} (sw {}), {} interfaces, {} new neighbor candidate(s)",
+        sds.device_type(), sds.software_version(), sds.interfaces.len(), tmp_discovered_neighbors.len(),
+    );
     if let Ok(mut state) = shared.state.lock() {
         state.detected.insert(device_fqdn.clone(), sds);
     }
@@ -790,7 +829,7 @@ fn discover_device(shared: Arc<CrawlShared>, device_fqdn: String) {
             utilities::discovery::ingest_device(&mut *conn, &shared.msgbus, &shared.cache_controller, &payload);
         }
     }
-    println!("[discovery] [{}] finished polling device", device_fqdn);
+    dlog!("[discovery] [{}] discovered: {}", device_fqdn, device_summary);
 }
 
 // ---------------------------------------------------------------------------
@@ -857,7 +896,7 @@ fn lookup_lldp_neighbor_port(
         .and_then(|d| d.interfaces.get(&local_port_ifindex))
         .map(|i| i.if_name())
         .unwrap_or_default();
-    println!("[discovery] [LLDP] giving up on {}:{} ({})", local_device_fqdn, local_port_name, lldp_neighbor.fqdn);
+    dlog!("[discovery] [LLDP] giving up on {}:{} ({})", local_device_fqdn, local_port_name, lldp_neighbor.fqdn);
     None
 }
 
@@ -884,7 +923,7 @@ fn build_connections(detected: &HashMap<String, DetectedDevice>, params: &RunPar
                             cdp_link_candidate = Some((cdp_neighbor.fqdn.clone(), cdp_neighbor_port));
                         },
                         None => {
-                            println!("[discovery] [CDP] giving up on {}:{} ({})", fqdn, interface.if_name(), cdp_neighbor.fqdn);
+                            dlog!("[discovery] [CDP] giving up on {}:{} ({})", fqdn, interface.if_name(), cdp_neighbor.fqdn);
                         }
                     }
                 }
@@ -905,7 +944,7 @@ fn build_connections(detected: &HashMap<String, DetectedDevice>, params: &RunPar
                     .and_then(|d| d.interfaces.get(&link.1))
                     .map(|i| i.if_name())
                     .unwrap_or_default();
-                println!("[discovery] LINK {}:{} -> {}:{}", fqdn, interface.if_name(), link.0, peer_name);
+                dlog!("[discovery] LINK {}:{} -> {}:{}", fqdn, interface.if_name(), link.0, peer_name);
                 links.entry(fqdn.clone()).or_insert_with(HashMap::new).insert(*ifindex, link);
             }
         }
@@ -950,7 +989,9 @@ fn link_info_payload(device: &DetectedDevice, links: &LinkMap, detected: &HashMa
 
 struct RunResult {
     devices_found: u64,
+    devices_failed: u64,
     links_found: u64,
+    duration_secs: f64,
     error: Option<String>,
 }
 
@@ -960,27 +1001,32 @@ fn perform_discovery_run(
     msgbus: &Arc<Mutex<MessageBus>>,
     cache_controller: &Arc<Mutex<CacheController>>,
 ) -> RunResult {
+    let run_started = utilities::tools::get_time();
+    let failed_run = |error: String| RunResult {
+        devices_found: 0,
+        devices_failed: 0,
+        links_found: 0,
+        duration_secs: utilities::tools::get_time() - run_started,
+        error: Some(error),
+    };
+
     let root_device = match try_resolve(&params.root_device, &params) {
         Some(root_device) => root_device,
         None => {
-            return RunResult {
-                devices_found: 0,
-                links_found: 0,
-                error: Some(format!("failed to resolve root device {}", params.root_device)),
-            };
+            return failed_run(format!("failed to resolve root device {}", params.root_device));
         }
     };
 
     let shared = Arc::new(CrawlShared {
         params: params.clone(),
-        state: Mutex::new(CrawlState { detected: HashMap::new(), in_flight: HashSet::new() }),
+        state: Mutex::new(CrawlState { detected: HashMap::new(), in_flight: HashSet::new(), failures: HashMap::new() }),
         handles: Mutex::new(Vec::new()),
         pool: pool.clone(),
         msgbus: msgbus.clone(),
         cache_controller: cache_controller.clone(),
     });
 
-    start_device_discovery(&shared, root_device);
+    start_device_discovery(&shared, root_device.clone());
     // Join until quiescent; finished workers may have spawned new ones.
     loop {
         let handles: Vec<thread::JoinHandle<()>> = match shared.handles.lock() {
@@ -998,7 +1044,7 @@ fn perform_discovery_run(
     let state = match shared.state.lock() {
         Ok(s) => s,
         Err(_) => {
-            return RunResult { devices_found: 0, links_found: 0, error: Some("crawl state poisoned".to_string()) };
+            return failed_run("crawl state poisoned".to_string());
         }
     };
     let detected = &state.detected;
@@ -1012,10 +1058,21 @@ fn perform_discovery_run(
         }
     }
 
+    // A failed root means the crawl never got anywhere — surface that as the
+    // run's error instead of a silent "finished, 0 devices".
+    let error = if detected.contains_key(&root_device) {
+        None
+    } else {
+        let reason = state.failures.get(&root_device).cloned().unwrap_or_else(|| "unknown error".to_string());
+        Some(format!("root device {}: {}", root_device, reason))
+    };
+
     RunResult {
         devices_found: detected.len() as u64,
+        devices_failed: state.failures.len() as u64,
         links_found: links_found,
-        error: None,
+        duration_secs: utilities::tools::get_time() - run_started,
+        error: error,
     }
 }
 
@@ -1032,11 +1089,13 @@ fn next_run_params(snmpbot_url: &str, skip_dns: bool, control: &Arc<Mutex<Discov
 
     let mut overrides: Option<models::json::DiscoveryRunRequest> = None;
     let mut start = false;
+    let mut trigger = "manual";
     if control.trigger_requested {
         overrides = control.trigger_overrides.take();
         control.trigger_requested = false;
         start = true;
     } else if control.config.periodic_enabled {
+        trigger = "periodic";
         // Floor the interval so a bad config (0) cannot turn periodic
         // discovery into a busy loop against snmpbot and the network.
         let interval_secs = std::cmp::max(control.config.interval_secs, 10);
@@ -1075,6 +1134,7 @@ fn next_run_params(snmpbot_url: &str, skip_dns: bool, control: &Arc<Mutex<Discov
         remap: control.config.remap.clone(),
         topology_stable: overrides.as_ref().and_then(|o| o.topology_stable).unwrap_or(control.config.topology_stable),
         skip_dns: skip_dns,
+        trigger: trigger,
     })
 }
 
@@ -1085,27 +1145,31 @@ pub fn run(
     cache_controller: Arc<Mutex<CacheController>>,
     running: Arc<atomic::AtomicBool>,
 ) {
-    println!("[discovery] starting in-process engine (snmpbot={})", snmpbot_url);
+    dlog!("[discovery] starting in-process engine (snmpbot={})", snmpbot_url);
     let pool = db::connect();
     let skip_dns = std::env::var("JASPY_DISCOVERY_SKIP_DNS").map(|v| v == "1" || v == "true").unwrap_or(false);
 
     while running.load(atomic::Ordering::Relaxed) {
         if let Some(params) = next_run_params(&snmpbot_url, skip_dns, &control) {
-            println!("[discovery] starting run (root={}, stable={})", params.root_device, params.topology_stable);
+            dlog!("[discovery] starting {} run (root={}, stable={})", params.trigger, params.root_device, params.topology_stable);
             let result = perform_discovery_run(params, &pool, &msgbus, &cache_controller);
             if let Ok(mut control) = control.lock() {
                 control.status.running = false;
                 control.status.last_finished = Some(utilities::tools::get_time());
                 control.status.devices_found = Some(result.devices_found);
+                control.status.devices_failed = Some(result.devices_failed);
                 control.status.links_found = Some(result.links_found);
                 control.status.last_error = result.error.clone();
             }
             match result.error {
-                Some(error) => println!("[discovery] run failed: {}", error),
-                None => println!("[discovery] run finished: {} devices, {} links", result.devices_found, result.links_found),
+                Some(error) => dlog!("[discovery] run failed after {:.1}s: {}", result.duration_secs, error),
+                None => dlog!(
+                    "[discovery] run finished in {:.1}s: {} devices discovered, {} failed, {} links",
+                    result.duration_secs, result.devices_found, result.devices_failed, result.links_found,
+                ),
             }
         }
         thread::sleep(time::Duration::from_millis(1000));
     }
-    println!("[discovery] engine stopped");
+    dlog!("[discovery] engine stopped");
 }

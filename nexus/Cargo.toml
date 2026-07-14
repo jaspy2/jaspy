@@ -9,6 +9,8 @@ edition = "2018"
 # yaml only: the merged config files are /etc/jaspy/poller.yml etc.
 config = { version = "0.15", default-features = false, features = ["yaml"] }
 rocket = { version = "0.5.1", features = ["json"] }
+# WebSocket support for Rocket (live log streaming to the web UI).
+rocket_ws = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 diesel = { version = "2.2", features = ["postgres", "r2d2"] }
@@ -35,3 +37,5 @@ rumqttd = "0.19"
 diesel_migrations = "2.2"
 tempfile = "3"
 regex = "1"
+# WebSocket client for asserting the live-log stream end to end.
+tungstenite = "0.21"
