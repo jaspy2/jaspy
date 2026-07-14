@@ -171,6 +171,14 @@ fn entitypoller_sensor_and_stp_metrics() {
         "interface_id=\"10101\"",
         "interface_name=\"GigabitEthernet0/1\"",
     ];
+    // The cisco sensor fixture uses snmpbot's real empty-table shape
+    // ("Entries": null, Go nil slice) — it must parse cleanly, not error.
+    assert!(
+        !nexus.log().contains("error parsing json"),
+        "snmpbot null-Entries responses must decode; log:\n{}",
+        nexus.log()
+    );
+
     assert_eq!(metric_value(&body, "jaspy_stp_port_state", &stp_labels), Some(5), "forwarding");
     assert_eq!(metric_value(&body, "jaspy_stp_port_role", &stp_labels), Some(3), "designated");
     assert_eq!(metric_value(&body, "jaspy_stp_port_enabled", &stp_labels), Some(1), "enabled");

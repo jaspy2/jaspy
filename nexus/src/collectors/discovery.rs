@@ -75,7 +75,7 @@ struct SNMPBotObjectInstance {
 struct SNMPBotObjectResponse {
     #[allow(dead_code)]
     i_d: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "crate::collectors::poller::null_to_default")]
     instances: Vec<SNMPBotObjectInstance>,
 }
 
@@ -95,7 +95,8 @@ fn fetch_table(client: &reqwest::blocking::Client, snmpbot_url: &str, fqdn: &str
     if !response.status().is_success() {
         return Err(format!("status={}", response.status()));
     }
-    response.json().map_err(|e| format!("json: {}", e))
+    let body = response.text().map_err(|e| format!("read: {}", e))?;
+    serde_json::from_str(&body).map_err(|e| format!("json: {} (body: {:.200})", e, body))
 }
 
 fn fetch_object(client: &reqwest::blocking::Client, snmpbot_url: &str, fqdn: &str, community: &str, object: &str) -> Option<String> {
@@ -119,7 +120,9 @@ fn fetch_object(client: &reqwest::blocking::Client, snmpbot_url: &str, fqdn: &st
         SNMPBotResultEntryObjectValue::Str(s) => Some(s),
         SNMPBotResultEntryObjectValue::Uint64(v) => Some(format!("{}", v)),
         SNMPBotResultEntryObjectValue::Float64(v) => Some(format!("{}", v)),
+        SNMPBotResultEntryObjectValue::Bool(_) => None,
         SNMPBotResultEntryObjectValue::Empty => None,
+        SNMPBotResultEntryObjectValue::Other(_) => None,
     }
 }
 

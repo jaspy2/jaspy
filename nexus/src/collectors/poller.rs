@@ -17,20 +17,40 @@ use std::time;
 
 // --- SNMPBot response models (ported from the standalone poller crate) ---
 
+// snmpbot is Go and marshals nil slices/maps as JSON null (e.g.
+// "Entries": null when a table walk returns no rows — normal for a switch
+// without the MIB in question). Treat null as empty instead of failing the
+// whole decode.
+pub fn null_to_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + serde::Deserialize<'de>,
+{
+    use serde::Deserialize;
+    let opt = Option::<T>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum SNMPBotResultEntryObjectValue {
     Uint64(u64),
     Float64(f64),
     Str(String),
+    Bool(bool),
     Empty,
+    // Anything else snmpbot may emit (e.g. per-object error structs); callers
+    // treat it as an absent value rather than failing the whole table.
+    Other(serde_json::Value),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct SNMPBotResultEntry {
     pub host_i_d: String,
+    #[serde(default, deserialize_with = "null_to_default")]
     pub index: HashMap<String, i64>,
+    #[serde(default, deserialize_with = "null_to_default")]
     pub objects: HashMap<String, SNMPBotResultEntryObjectValue>,
 }
 
@@ -38,8 +58,11 @@ pub struct SNMPBotResultEntry {
 #[serde(rename_all = "PascalCase")]
 pub struct SNMPBotResponse {
     pub i_d: String,
+    #[serde(default, deserialize_with = "null_to_default")]
     pub index_keys: Vec<String>,
+    #[serde(default, deserialize_with = "null_to_default")]
     pub object_keys: Vec<String>,
+    #[serde(default, deserialize_with = "null_to_default")]
     pub entries: Vec<SNMPBotResultEntry>,
 }
 

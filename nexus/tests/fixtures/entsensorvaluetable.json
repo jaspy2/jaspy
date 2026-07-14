@@ -1,6 +1,6 @@
 {
   "ID": "CISCO-ENTITY-SENSOR-MIB::entSensorValueTable",
-  "IndexKeys": ["ENTITY-MIB::entPhysicalIndex"],
-  "ObjectKeys": ["CISCO-ENTITY-SENSOR-MIB::entSensorValue", "CISCO-ENTITY-SENSOR-MIB::entSensorScale", "CISCO-ENTITY-SENSOR-MIB::entSensorPrecision", "CISCO-ENTITY-SENSOR-MIB::entSensorType"],
-  "Entries": []
+  "IndexKeys": null,
+  "ObjectKeys": null,
+  "Entries": null
 }

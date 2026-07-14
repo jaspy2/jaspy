@@ -117,10 +117,17 @@ fn fetch_table(snmpbot_url: &String, host: &String, table: &str) -> Option<SNMPB
         println!("[{}] snmpbot returned ({}) for {}, skipping", host, response.status(), table);
         return None;
     }
-    match response.json() {
+    let body = match response.text() {
+        Ok(body) => body,
+        Err(what) => {
+            println!("[{}] error reading response for {}: {}", host, table, what);
+            return None;
+        }
+    };
+    match serde_json::from_str(&body) {
         Ok(parsed) => Some(parsed),
         Err(what) => {
-            println!("[{}] error parsing json for {}: {}", host, table, what);
+            println!("[{}] error parsing json for {}: {} (body: {:.200})", host, table, what, body);
             None
         }
     }
