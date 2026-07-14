@@ -1,0 +1,17 @@
+{
+  "ID": "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable",
+  "IndexKeys": ["CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleInstanceIndex", "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRolePortIndex"],
+  "ObjectKeys": ["CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleValue"],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleInstanceIndex": 100,
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRolePortIndex": 5
+      },
+      "Objects": {
+        "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleValue": "designated"
+      }
+    }
+  ]
+}

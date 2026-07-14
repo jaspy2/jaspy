@@ -1,0 +1,19 @@
+{
+  "ID": "BRIDGE-MIB::dot1dStpPortTable",
+  "IndexKeys": ["BRIDGE-MIB::dot1dStpPort"],
+  "ObjectKeys": ["BRIDGE-MIB::dot1dStpPortDesignatedCost", "BRIDGE-MIB::dot1dStpPortPathCost", "BRIDGE-MIB::dot1dStpPortPriority", "BRIDGE-MIB::dot1dStpPortForwardTransitions", "BRIDGE-MIB::dot1dStpPortEnable", "BRIDGE-MIB::dot1dStpPortState"],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {"BRIDGE-MIB::dot1dStpPort": 5},
+      "Objects": {
+        "BRIDGE-MIB::dot1dStpPortDesignatedCost": 4,
+        "BRIDGE-MIB::dot1dStpPortPathCost": 19,
+        "BRIDGE-MIB::dot1dStpPortPriority": 128,
+        "BRIDGE-MIB::dot1dStpPortForwardTransitions": 2,
+        "BRIDGE-MIB::dot1dStpPortEnable": "enabled",
+        "BRIDGE-MIB::dot1dStpPortState": "forwarding"
+      }
+    }
+  ]
+}

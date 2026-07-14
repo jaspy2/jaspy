@@ -52,13 +52,13 @@ dpkg -i jaspy_2.2.0-56-gcf420c6_amd64.deb snmpbot_2.2.0-35-g13aada5_amd64.deb
 
 ### Start jaspy services for the first time
 
-The SNMP interface poller and the ICMP pinger now run inside `jaspy-nexus`
-itself (they used to be the separate `jaspy-poller` and `jaspy-pinger`
-services), so there are fewer units to start:
+The SNMP interface poller, the ICMP pinger and the entity/STP sensor poller now
+run inside `jaspy-nexus` itself (they used to be the separate `jaspy-poller`,
+`jaspy-pinger` and `jaspy-entitypoller` services), so there are fewer units to
+start:
 
 ```
 systemctl start jaspy-nexus
-systemctl start jaspy-entitypoller
 systemctl start snmpbot
 ```
 ### Check that everything is working
@@ -66,15 +66,14 @@ systemctl start snmpbot
 ```
 $ systemctl --all list-units 'jaspy*'
 
-UNIT                       LOAD   ACTIVE SUB     DESCRIPTION
-jaspy-entitypoller.service loaded active running jaspy-nexus
-jaspy-nexus.service        loaded active running jaspy-nexus
+UNIT                LOAD   ACTIVE SUB     DESCRIPTION
+jaspy-nexus.service loaded active running jaspy-nexus
 
 LOAD   = Reflects whether the unit definition was properly loaded.
 ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
 SUB    = The low-level unit activation state, values depend on unit type.
 
-2 loaded units listed.
+1 loaded units listed.
 To show all installed unit files use 'systemctl list-unit-files'.
 ```
 
@@ -96,13 +95,14 @@ enabled  fqdn                             type                     software
 default  main-sq.foobar.com               WS-C2960XR-24PD-I
 ```
 
-You should now be able to see Prometheus metrics in the jaspy-devicepoller. Try:
+You should now be able to see Prometheus metrics. The entity sensor and STP
+metrics that used to have their own `jaspy-entitypoller` exporter on port 8098
+are now served by `jaspy-nexus` itself on the same `/dev/metrics` endpoint as
+the interface counters. Try:
 
 ```
-curl http://localhost:8098/metrics |grep jaspy
+curl http://localhost:8000/dev/metrics |grep jaspy
 
-# HELP jaspy_stp_port_enabled Enumeration (1-enabled, 2-disabled)
-# TYPE jaspy_stp_port_enabled gauge
 jaspy_stp_port_enabled{fqdn="main-sq.foobar.com",hostname="main-sq",interface_id="10105",interface_name="GigabitEthernet1/0/5",stp_port_id="5",vlan="1"} 1
 jaspy_stp_port_enabled{fqdn="main-sq.foobar.com",hostname="main-sq",interface_id="10105",interface_name="GigabitEthernet1/0/5",stp_port_id="5",vlan="192"} 1
 jaspy_stp_port_enabled{fqdn="main-sq.foobar.com",hostname="main-sq",interface_id="10105",interface_name="GigabitEthernet1/0/5",stp_port_id="5",vlan="2"} 1
@@ -111,7 +111,7 @@ jaspy_stp_port_enabled{fqdn="main-sq.foobar.com",hostname="main-sq",interface_id
 
 ### Configure Prometheus
 
-Edit `/var/prometheus/prometheus.yaml` and add this snippet to the bottom so that it becomes part of the `scrape_configs:`. This is required so that your Prometheus will poll Jaspy for network metrics. There are three sections: Fast metrics, slow metrics and sensors.
+Edit `/var/prometheus/prometheus.yaml` and add this snippet to the bottom so that it becomes part of the `scrape_configs:`. This is required so that your Prometheus will poll Jaspy for network metrics. There are two sections: fast metrics and slow metrics (the slow endpoint now also carries the entity sensor and STP metrics that the standalone `jaspy-entitypoller` used to expose on port 8098).
 
 ```
   # notice indentation of two spaces
@@ -126,11 +126,6 @@ Edit `/var/prometheus/prometheus.yaml` and add this snippet to the bottom so tha
     metrics_path: '/dev/metrics'
     static_configs:
       - targets: ['127.0.0.1:8000']
-
-  - job_name: 'jaspy-sensors'
-    scrape_interval: 120s
-    static_configs:
-      - targets: ['127.0.0.1:8098']
 ```
 
 Run `systemctl restart prometheus` to reload changes.

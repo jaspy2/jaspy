@@ -1,0 +1,14 @@
+{
+  "ID": "BRIDGE-MIB::dot1dBasePortTable",
+  "IndexKeys": ["BRIDGE-MIB::dot1dBasePort"],
+  "ObjectKeys": ["BRIDGE-MIB::dot1dBasePortIfIndex"],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {"BRIDGE-MIB::dot1dBasePort": 5},
+      "Objects": {
+        "BRIDGE-MIB::dot1dBasePortIfIndex": 10101
+      }
+    }
+  ]
+}

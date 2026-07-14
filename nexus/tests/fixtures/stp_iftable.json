@@ -1,0 +1,15 @@
+{
+  "ID": "IF-MIB::ifTable",
+  "IndexKeys": ["IF-MIB::ifIndex"],
+  "ObjectKeys": ["IF-MIB::ifIndex", "IF-MIB::ifDescr"],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {"IF-MIB::ifIndex": 10101},
+      "Objects": {
+        "IF-MIB::ifIndex": 10101,
+        "IF-MIB::ifDescr": "GigabitEthernet0/1"
+      }
+    }
+  ]
+}

@@ -83,9 +83,18 @@ async fn main() {
     let enable_poller = c.get_bool("enable_poller").unwrap_or(true);
     let enable_pinger = c.get_bool("enable_pinger").unwrap_or(true);
 
+    // entitypoller collector (formerly the standalone jaspy-entitypoller binary):
+    // entity sensors + per-VLAN STP, default poll interval 120s (matches the Go
+    // -poll-interval default).
+    let enable_entitypoller = c.get_bool("enable_entitypoller").unwrap_or(true);
+    let entitypoller_interval_msecs = c.get_int("entitypoller_interval_msecs").unwrap_or(120000) as u64;
+    let entitypoller_disable_sensors = c.get_bool("entitypoller_disable_sensors").unwrap_or(false);
+    let entitypoller_disable_stp = c.get_bool("entitypoller_disable_stp").unwrap_or(false);
+
     let running = Arc::new(AtomicBool::new(true));
     let msgbus : Arc<Mutex<utilities::msgbus::MessageBus>> = Arc::new(Mutex::new(utilities::msgbus::MessageBus::new()));
     let imds : Arc<Mutex<utilities::imds::IMDS>> = Arc::new(Mutex::new(utilities::imds::IMDS::new(msgbus.clone())));
+    let entity_metrics : Arc<Mutex<collectors::entitypoller::EntityMetricsStore>> = Arc::new(Mutex::new(collectors::entitypoller::EntityMetricsStore::new()));
 
     let imds_worker_imds = imds.clone();
     let imds_worker_running = running.clone();
@@ -115,6 +124,18 @@ async fn main() {
         }))
     } else {
         println!("[pinger] disabled via JASPY_ENABLE_PINGER");
+        None
+    };
+
+    let entitypoller_thread = if enable_entitypoller {
+        let store_collector = entity_metrics.clone();
+        let running_collector = running.clone();
+        let snmpbot_url_collector = snmpbot_url.clone();
+        Some(std::thread::spawn(move || {
+            collectors::entitypoller::run(snmpbot_url_collector, entitypoller_interval_msecs, entitypoller_disable_sensors, entitypoller_disable_stp, store_collector, running_collector);
+        }))
+    } else {
+        println!("[entitypoller] disabled via JASPY_ENABLE_ENTITYPOLLER");
         None
     };
 
@@ -178,6 +199,7 @@ async fn main() {
         )
         .manage(db::connect())
         .manage(imds.clone())
+        .manage(entity_metrics.clone())
         .manage(cache_controller.clone())
         .manage(runtime_info.clone())
         .manage(msgbus.clone())
@@ -188,4 +210,5 @@ async fn main() {
     imds_worker_thread.join().unwrap();
     if let Some(poller_thread) = poller_thread { let _ = poller_thread.join(); }
     if let Some(pinger_thread) = pinger_thread { let _ = pinger_thread.join(); }
+    if let Some(entitypoller_thread) = entitypoller_thread { let _ = entitypoller_thread.join(); }
 }

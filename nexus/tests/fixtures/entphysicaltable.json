@@ -1,0 +1,15 @@
+{
+  "ID": "ENTITY-MIB::entPhysicalTable",
+  "IndexKeys": ["ENTITY-MIB::entPhysicalIndex"],
+  "ObjectKeys": ["ENTITY-MIB::entPhysicalName", "ENTITY-MIB::entPhysicalDescr"],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {"ENTITY-MIB::entPhysicalIndex": 1001},
+      "Objects": {
+        "ENTITY-MIB::entPhysicalName": "GigabitEthernet0/1 Module Temperature Sensor",
+        "ENTITY-MIB::entPhysicalDescr": "Transceiver temperature sensor"
+      }
+    }
+  ]
+}

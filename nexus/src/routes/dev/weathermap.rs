@@ -132,6 +132,13 @@ pub fn state_information(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Jso
                                 } else {
                                     device.state = false;
                                 }
+                            },
+                            models::metrics::MetricValue::Float64(v) => {
+                                if v == 1.0 {
+                                    device.state = true;
+                                } else {
+                                    device.state = false;
+                                }
                             }
                         }
                     } else if metric.name == "jaspy_interface_up" {
@@ -154,6 +161,13 @@ pub fn state_information(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Jso
                                 },
                                 models::metrics::MetricValue::Uint64(v) => {
                                     if v == 1 {
+                                        state = true;
+                                    } else {
+                                        state = false;
+                                    }
+                                },
+                                models::metrics::MetricValue::Float64(v) => {
+                                    if v == 1.0 {
                                         state = true;
                                     } else {
                                         state = false;

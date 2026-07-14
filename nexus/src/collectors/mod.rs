@@ -5,3 +5,6 @@
 // PUTing over localhost HTTP.
 pub mod poller;
 pub mod pinger;
+// entitypoller is a stateless Prometheus exporter (entity sensors + STP) whose
+// samples surface through the shared /dev/metrics endpoint rather than IMDS.
+pub mod entitypoller;

@@ -116,6 +116,71 @@ fn poller_queries_and_interface_metrics() {
 }
 
 // ---------------------------------------------------------------------------
+// 1b. Entitypoller renders entity sensor + per-VLAN STP metrics
+// ---------------------------------------------------------------------------
+#[test]
+fn entitypoller_sensor_and_stp_metrics() {
+    let pg = PgHarness::start();
+    let mock = SnmpbotMock::start();
+
+    // entitypoller addresses snmpbot hosts inline as community@fqdn, and
+    // per-VLAN queries as community@vlan@fqdn.
+    let host = format!("{}@{}", COMMUNITY, FQDN);
+    let vlan_host = format!("{}@100@{}", COMMUNITY, FQDN);
+
+    let phys = mock.stub_host_table(&host, "ENTITY-MIB::entPhysicalTable", &read_fixture("entphysicaltable.json"));
+    mock.stub_host_table(&host, "ENTITY-SENSOR-MIB::entPhySensorTable", &read_fixture("entphysensortable.json"));
+    mock.stub_host_table(&host, "CISCO-ENTITY-SENSOR-MIB::entSensorValueTable", &read_fixture("entsensorvaluetable.json"));
+    let role = mock.stub_host_table(&host, "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable", &read_fixture("stpxrstpportroletable.json"));
+    mock.stub_host_table(&host, "IF-MIB::ifTable", &read_fixture("stp_iftable.json"));
+    mock.stub_host_table(&vlan_host, "BRIDGE-MIB::dot1dBasePortTable", &read_fixture("dot1dbaseporttable.json"));
+    let stp = mock.stub_host_table(&vlan_host, "BRIDGE-MIB::dot1dStpPortTable", &read_fixture("dot1dstpporttable.json"));
+
+    let nexus = Nexus::builder(&pg.db_url)
+        .snmpbot(&mock.url())
+        .entitypoller(true)
+        .entitypoller_interval_msecs(300)
+        .start();
+
+    nexus.post_json("/dev/device", &device_body(true));
+    nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
+
+    let body = nexus.wait_for_metric("jaspy_stp_port_state", Duration::from_secs(20));
+
+    assert!(phys.hits() >= 1, "entPhysicalTable should have been queried");
+    assert!(role.hits() >= 1, "stpxRSTPPortRoleTable should have been queried");
+    assert!(stp.hits() >= 1, "dot1dStpPortTable should have been queried");
+
+    // (a) entity sensor: 45000 milli-celsius -> 45, associated with Gi0/1 via
+    //     the sensor name's leading token.
+    assert_eq!(
+        metric_value(&body, "jaspy_sensors", &[
+            "sensor_name=\"GigabitEthernet0/1 Module Temperature Sensor\"",
+            "value_type=\"celsius\"",
+            "interface_name=\"GigabitEthernet0/1\"",
+        ]),
+        Some(45)
+    );
+
+    // (b) STP per-VLAN port metrics: vlan 100, bridge port 5, resolved to real
+    //     ifIndex 10101 / GigabitEthernet0/1 via dot1dBasePort + ifTable.
+    let stp_labels = [
+        "fqdn=\"sw1.test.example\"",
+        "vlan=\"100\"",
+        "stp_port_id=\"5\"",
+        "interface_id=\"10101\"",
+        "interface_name=\"GigabitEthernet0/1\"",
+    ];
+    assert_eq!(metric_value(&body, "jaspy_stp_port_state", &stp_labels), Some(5), "forwarding");
+    assert_eq!(metric_value(&body, "jaspy_stp_port_role", &stp_labels), Some(3), "designated");
+    assert_eq!(metric_value(&body, "jaspy_stp_port_enabled", &stp_labels), Some(1), "enabled");
+    assert_eq!(metric_value(&body, "jaspy_stp_port_designated_cost", &stp_labels), Some(4));
+    assert_eq!(metric_value(&body, "jaspy_stp_port_path_cost", &stp_labels), Some(19));
+    assert_eq!(metric_value(&body, "jaspy_stp_port_priority", &stp_labels), Some(128));
+    assert_eq!(metric_value(&body, "jaspy_stp_port_forward_transitions", &stp_labels), Some(2));
+}
+
+// ---------------------------------------------------------------------------
 // 2. Discovery writes devices + interfaces to Postgres
 // ---------------------------------------------------------------------------
 #[derive(QueryableByName)]

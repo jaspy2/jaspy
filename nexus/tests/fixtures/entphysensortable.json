@@ -1,0 +1,17 @@
+{
+  "ID": "ENTITY-SENSOR-MIB::entPhySensorTable",
+  "IndexKeys": ["ENTITY-MIB::entPhysicalIndex"],
+  "ObjectKeys": ["ENTITY-SENSOR-MIB::entPhySensorValue", "ENTITY-SENSOR-MIB::entPhySensorScale", "ENTITY-SENSOR-MIB::entPhySensorPrecision", "ENTITY-SENSOR-MIB::entPhySensorType"],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {"ENTITY-MIB::entPhysicalIndex": 1001},
+      "Objects": {
+        "ENTITY-SENSOR-MIB::entPhySensorValue": 45000,
+        "ENTITY-SENSOR-MIB::entPhySensorScale": "milli",
+        "ENTITY-SENSOR-MIB::entPhySensorPrecision": 0,
+        "ENTITY-SENSOR-MIB::entPhySensorType": "celsius"
+      }
+    }
+  ]
+}

@@ -7,7 +7,9 @@ observable contracts:
 
 1. nexus issues the correct SNMP queries to snmpbot (right tables + `community@fqdn`, nothing extra);
 2. the ingest endpoints write the correct rows to Postgres;
-3. the correct Prometheus metrics are exposed at `/dev/metrics` and `/dev/metrics/fast`;
+3. the correct Prometheus metrics are exposed at `/dev/metrics` and `/dev/metrics/fast`
+   (including the entity sensor and per-VLAN STP metrics from the in-process
+   entitypoller collector);
 4. MQTT events are published on device changes.
 
 ## Prerequisites on the test host

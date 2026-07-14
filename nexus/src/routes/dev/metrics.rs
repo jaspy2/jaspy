@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 use crate::utilities;
+use crate::collectors::entitypoller::EntityMetricsStore;
 use rocket::State;
 use crate::models;
 use rocket::get;
@@ -28,7 +29,7 @@ pub fn metrics_fast(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<S
 }
 
 #[get("/")]
-pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
+pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, entity_metrics: &State<Arc<Mutex<EntityMetricsStore>>>) -> Option<String> {
     let mut ret : String = String::new();
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 
@@ -42,6 +43,11 @@ pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String
         for metric in metrics.iter() {
             ret.push_str(&format!("{}\n", metric.as_text()))
         }
+    }
+
+    // Entity sensor + STP metrics from the in-process entitypoller collector.
+    if let Ok(ref store) = entity_metrics.inner().lock() {
+        ret.push_str(&store.render());
     }
 
     ret.push_str("\n");

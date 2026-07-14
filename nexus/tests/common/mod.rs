@@ -160,6 +160,26 @@ impl SnmpbotMock {
         })
     }
 
+    /// Stub one snmpbot table addressed by the inline host form
+    /// `/api/hosts/{host}/tables/{table}` (no `snmp` query param), where `host`
+    /// is `community@fqdn` or `community@vlan@fqdn`. This is the addressing the
+    /// entitypoller collector uses (vs the poller's `?snmp=` query form).
+    pub fn stub_host_table<'a>(
+        &'a self,
+        host: &str,
+        table_id: &str,
+        body: &str,
+    ) -> httpmock::Mock<'a> {
+        let path = format!("/api/hosts/{}/tables/{}", host, table_id);
+        let body = body.to_string();
+        self.server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path(path);
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(body);
+        })
+    }
+
     /// Catch-all for any other snmpbot table query (returns 404). Assert its
     /// hit count is 0 to prove nexus queried only the expected tables.
     pub fn stub_other_tables<'a>(&'a self) -> httpmock::Mock<'a> {
@@ -182,7 +202,9 @@ pub struct NexusBuilder {
     mqtt_server: Option<String>,
     enable_poller: bool,
     enable_pinger: bool,
+    enable_entitypoller: bool,
     poll_loop_msecs: u64,
+    entitypoller_interval_msecs: u64,
 }
 
 pub struct Nexus {
@@ -209,6 +231,14 @@ impl NexusBuilder {
         self.poll_loop_msecs = ms;
         self
     }
+    pub fn entitypoller(mut self, on: bool) -> Self {
+        self.enable_entitypoller = on;
+        self
+    }
+    pub fn entitypoller_interval_msecs(mut self, ms: u64) -> Self {
+        self.entitypoller_interval_msecs = ms;
+        self
+    }
 
     pub fn start(self) -> Nexus {
         let port = free_port();
@@ -224,7 +254,9 @@ impl NexusBuilder {
             .env("ROCKET_PORT", port.to_string())
             .env("JASPY_ENABLE_POLLER", self.enable_poller.to_string())
             .env("JASPY_ENABLE_PINGER", self.enable_pinger.to_string())
+            .env("JASPY_ENABLE_ENTITYPOLLER", self.enable_entitypoller.to_string())
             .env("POLL_LOOP_MSECS", self.poll_loop_msecs.to_string())
+            .env("JASPY_ENTITYPOLLER_INTERVAL_MSECS", self.entitypoller_interval_msecs.to_string())
             .env("JASPY_IMDS_REFRESH_SECS", "1")
             .env("JASPY_POLLER_NO_JITTER", "1")
             .stdout(Stdio::from(log))
@@ -261,7 +293,9 @@ impl Nexus {
             mqtt_server: None,
             enable_poller: false,
             enable_pinger: false,
+            enable_entitypoller: false,
             poll_loop_msecs: 300,
+            entitypoller_interval_msecs: 300,
         }
     }
 

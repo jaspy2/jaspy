@@ -44,6 +44,7 @@ pub struct Metrics {
 pub enum MetricValue {
     Int64(i64),
     Uint64(u64),
+    Float64(f64),
 }
 
 pub struct LabeledMetric {
@@ -75,6 +76,9 @@ impl LabeledMetric {
                 body = format!("{}{{{}}} {} {}", self.name, labeltext, value, self.timestamp);
             },
             MetricValue::Uint64(value) => {
+                body = format!("{}{{{}}} {} {}", self.name, labeltext, value, self.timestamp);
+            },
+            MetricValue::Float64(value) => {
                 body = format!("{}{{{}}} {} {}", self.name, labeltext, value, self.timestamp);
             }
         }
