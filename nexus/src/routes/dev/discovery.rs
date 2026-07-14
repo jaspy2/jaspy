@@ -1,19 +1,21 @@
-extern crate rocket_contrib;
 use crate::models;
 use crate::db;
 use crate::utilities;
+use rocket::{put};
+use rocket::serde::json::Json;
+use rocket::State;
 use std::sync::{Arc,Mutex};
 use std::collections::{HashSet,HashMap};
-use rocket::State;
+use diesel::pg::PgConnection;
 
 // TODO: GH#9 Move everything to v1 API
 #[put("/device", data = "<discovery_json>")]
-pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json::DiscoveredDevice>, connection: db::JaspyDB, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
+pub fn discovery_device(discovery_json: Json<models::json::DiscoveredDevice>, mut connection: db::JaspyDB, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) {
     let discovered_device : &models::json::DiscoveredDevice = &discovery_json.into_inner();
     let discovered_device_interfaces : &HashMap<String, models::json::DiscoveredInterface> = &discovered_device.interfaces;
 
     let device : models::dbo::Device;
-    let existing_device = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &discovered_device.name, &discovered_device.dns_domain);
+    let existing_device = models::dbo::Device::find_by_hostname_and_domain_name(&mut connection, &discovered_device.name, &discovered_device.dns_domain);
     match existing_device {
         Some(mut existing_device) => {
             // TODO: attr compare, event if change except for snmp com
@@ -23,7 +25,7 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
             existing_device.software_version = discovered_device.software_version.clone();
             existing_device.device_type = discovered_device.device_type.clone();
 
-            match existing_device.update(&connection) {
+            match existing_device.update(&mut connection) {
                 Ok(_) => {
                     // TODO: Log update?
                     device = existing_device;
@@ -52,7 +54,7 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
                 msgbus.event(event);
             }
 
-            match models::dbo::Device::create(&new_device, &connection) {
+            match models::dbo::Device::create(&new_device, &mut connection) {
                 Ok(created_device) => {
                     device = created_device;
                 },
@@ -63,8 +65,8 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
             }
         }
     }
-    
-    let current_interfaces : Vec<models::dbo::Interface> = device.interfaces(&connection);
+
+    let current_interfaces : Vec<models::dbo::Interface> = device.interfaces(&mut connection);
     let mut found_interface_names : HashSet<String> = HashSet::new();
     for (_key, interface) in discovered_device_interfaces.iter() {
         found_interface_names.insert(interface.name.clone());
@@ -83,7 +85,7 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
                 updated_interface.name = interface.name.clone();
                 updated_interface.alias = interface.alias.clone();
                 updated_interface.description = interface.description.clone();
-                match updated_interface.update(&connection) {
+                match updated_interface.update(&mut connection) {
                     Ok(_) => {},
                     Err(_) => {
                         // TODO: logging, nonfatal
@@ -99,8 +101,8 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
                     index: interface.index,
                     interface_type: interface.interface_type.clone(),
                 };
-                
-                match models::dbo::Interface::create(&new_interface, &connection) {
+
+                match models::dbo::Interface::create(&new_interface, &mut connection) {
                     Ok(_) => {
                     },
                     Err(_) => {
@@ -113,7 +115,7 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
 
     for current_interface in current_interfaces.iter() {
         if !found_interface_names.contains(&current_interface.name) {
-            match current_interface.delete(&connection) {
+            match current_interface.delete(&mut connection) {
                 Ok(_) => {},
                 Err(_) => {
                     // Todo, logging? nonfatal
@@ -124,12 +126,12 @@ pub fn discovery_device(discovery_json: rocket_contrib::json::Json<models::json:
 }
 
 // TODO: this might be better placed in an utility module or maybe in dbo logic?
-fn clear_connection(interface: &models::dbo::Interface, connection: &db::JaspyDB) {
+fn clear_connection(interface: &models::dbo::Interface, connection: &mut PgConnection) {
     if interface.connected_interface.is_none() { return; }
 
     let mut new_local_interface : models::dbo::Interface = interface.clone();
     new_local_interface.connected_interface = None;
-    match new_local_interface.update(&connection) {
+    match new_local_interface.update(connection) {
         Ok(_) => {},
         Err(_) => {
             // TODO: log?
@@ -139,9 +141,9 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &db::JaspyDB
 
 #[put("/links", data = "<links_json>")]
 pub fn discovery_links(
-    links_json: rocket_contrib::json::Json<models::json::LinkInfo>,
-    connection: db::JaspyDB,
-    cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>
+    links_json: Json<models::json::LinkInfo>,
+    mut connection: db::JaspyDB,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>
 ) {
     let link_infos : &HashMap<String, Option<models::json::LinkPeerInfo>> = &links_json.interfaces;
     let fqdn_splitted : Vec<&str> = links_json.device_fqdn.splitn(2, ".").collect();
@@ -151,7 +153,7 @@ pub fn discovery_links(
     }
 
     let local_device : models::dbo::Device;
-    let local_device_result = models::dbo::Device::find_by_hostname_and_domain_name(&connection, &fqdn_splitted[0].to_string(), &fqdn_splitted[1].to_string());
+    let local_device_result = models::dbo::Device::find_by_hostname_and_domain_name(&mut connection, &fqdn_splitted[0].to_string(), &fqdn_splitted[1].to_string());
     match local_device_result {
         Some(local_device_result) => {
             local_device = local_device_result;
@@ -162,7 +164,7 @@ pub fn discovery_links(
         }
     }
 
-    for local_interface in local_device.interfaces(&connection).iter() {
+    for local_interface in local_device.interfaces(&mut connection).iter() {
         let peer_interface_info : &models::json::LinkPeerInfo;
         match link_infos.get(&local_interface.name) {
             Some(peer_interface_info_opt) => {
@@ -172,27 +174,27 @@ pub fn discovery_links(
                     },
                     None => {
                         // TBD, should we clear peer connection? This must respect stability.
-                        if !links_json.topology_stable { clear_connection(local_interface, &connection); }
+                        if !links_json.topology_stable { clear_connection(local_interface, &mut connection); }
                         continue;
                     }
                 }
             },
             None => {
                 // TBD, should we clear peer connection? This must respect stability.
-                if !links_json.topology_stable { clear_connection(local_interface, &connection); }
+                if !links_json.topology_stable { clear_connection(local_interface, &mut connection); }
                 continue;
             }
         }
 
         let peer_device : models::dbo::Device;
-        match models::dbo::Device::find_by_hostname_and_domain_name(&connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
+        match models::dbo::Device::find_by_hostname_and_domain_name(&mut connection, &peer_interface_info.name, &peer_interface_info.dns_domain) {
             Some(some_peer_device) => {
                 peer_device = some_peer_device;
             },
             None => {
                 match local_interface.connected_interface {
                     Some(_) => {
-                        if !links_json.topology_stable { clear_connection(local_interface, &connection); }
+                        if !links_json.topology_stable { clear_connection(local_interface, &mut connection); }
                         continue;
                     },
                     None => {
@@ -203,7 +205,7 @@ pub fn discovery_links(
         }
 
         // todo if peer interface is same noop, if different then change, if no peer interface then change
-        match local_interface.peer_interface(&connection) {
+        match local_interface.peer_interface(&mut connection) {
             Some(peer_interface) => {
                 let mut create_link = false;
                 let mut clear_other = false;
@@ -217,12 +219,12 @@ pub fn discovery_links(
                     clear_other = true;
                 }
                 if create_link {
-                    match peer_device.interface_by_name(&connection, &peer_interface_info.interface) {
+                    match peer_device.interface_by_name(&mut connection, &peer_interface_info.interface) {
                         Some(new_peer_interface) => {
                             // TBD: create link other way too? maybe not?
                             let mut new_local_interface : models::dbo::Interface = local_interface.clone();
                             new_local_interface.connected_interface = Some(new_peer_interface.id);
-                            match new_local_interface.update(&connection) {
+                            match new_local_interface.update(&mut connection) {
                                 Ok(_) => {},
                                 Err(_) => {
                                     // TODO: log?
@@ -237,7 +239,7 @@ pub fn discovery_links(
                 if clear_other && !links_json.topology_stable {
                     let mut new_peer_interface : models::dbo::Interface = peer_interface.clone();
                     new_peer_interface.connected_interface = None;
-                    match new_peer_interface.update(&connection) {
+                    match new_peer_interface.update(&mut connection) {
                         Ok(_) => {},
                         Err(_) => {
                             // TODO: log?
@@ -246,12 +248,12 @@ pub fn discovery_links(
                 }
             },
             None => {
-                match peer_device.interface_by_name(&connection, &peer_interface_info.interface) {
+                match peer_device.interface_by_name(&mut connection, &peer_interface_info.interface) {
                     Some(new_peer_interface) => {
                         // TBD: create link other way too? maybe not?
                         let mut new_local_interface : models::dbo::Interface = local_interface.clone();
                         new_local_interface.connected_interface = Some(new_peer_interface.id);
-                        match new_local_interface.update(&connection) {
+                        match new_local_interface.update(&mut connection) {
                             Ok(_) => {},
                             Err(_) => {
                                 // TODO: log?

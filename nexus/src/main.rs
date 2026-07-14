@@ -1,22 +1,14 @@
-#![feature(plugin)]
-#![feature(proc_macro_hygiene)]
-#![feature(decl_macro)]
 #[macro_use] extern crate serde;
 extern crate serde_json;
-#[macro_use] extern crate diesel;
+extern crate diesel;
 #[macro_use] extern crate rocket;
-#[macro_use] extern crate rocket_contrib;
-extern crate r2d2;
-extern crate r2d2_diesel;
-extern crate time;
 extern crate config;
-extern crate rumq_client;
-extern crate tokio;
 mod routes;
 mod models;
 mod db;
 mod schema;
 mod utilities;
+mod collectors;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
 use std::collections::HashMap;
@@ -26,13 +18,13 @@ fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
     return running.load(std::sync::atomic::Ordering::Relaxed);
 }
 
-fn refresh_imds_items(conn: &diesel::PgConnection, imds: &Arc<Mutex<utilities::imds::IMDS>>) {
+fn refresh_imds_items(conn: &mut diesel::PgConnection, imds: &Arc<Mutex<utilities::imds::IMDS>>) {
     let mut refresh_devices : Vec<models::dbo::Device> = Vec::new();
     let mut refresh_interfaces : HashMap<String, Vec<models::dbo::Interface>> = HashMap::new();
-    for device in models::dbo::Device::monitored(&conn).iter() {
+    for device in models::dbo::Device::monitored(conn).iter() {
         let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
         refresh_devices.push(device.clone());
-        refresh_interfaces.insert(device_fqdn, device.interfaces(&conn));
+        refresh_interfaces.insert(device_fqdn, device.interfaces(conn));
     }
     {
         if let Ok(ref mut imds) = imds.lock() {
@@ -50,6 +42,11 @@ fn refresh_imds_items(conn: &diesel::PgConnection, imds: &Arc<Mutex<utilities::i
 }
 
 fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS>>) {
+    // Refresh the IMDS device/interface metadata from the DB every N seconds
+    // (default 10). Configurable so tests can converge quickly.
+    let refresh_secs: u64 = std::env::var("JASPY_IMDS_REFRESH_SECS").ok()
+        .and_then(|v| v.parse().ok()).unwrap_or(10);
+    let refresh_threshold = refresh_secs.saturating_sub(1);
     let mut refresh_run_counter = 0;
     let pool = db::connect();
     loop {
@@ -59,23 +56,32 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
             refresh = true;
         }
         if refresh {
-            if let Ok(conn) = pool.get() {
-                refresh_imds_items(&conn, &imds);
+            if let Ok(mut conn) = pool.get() {
+                refresh_imds_items(&mut *conn, &imds);
             } else {
                 // TODO: log
             }
         }
-        if refresh_run_counter >= 9 { refresh_run_counter = 0; } else { refresh_run_counter += 1; }
+        if refresh_run_counter >= refresh_threshold { refresh_run_counter = 0; } else { refresh_run_counter += 1; }
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }
 
-fn main() {
+#[rocket::main]
+async fn main() {
     let mut c = Config::new();
 
     c.merge(File::with_name("/etc/jaspy/poller.yml").required(false)).unwrap()
         .merge(File::with_name("~/.config/jaspy/poller.yml").required(false)).unwrap()
         .merge(Environment::with_prefix("JASPY")).unwrap();
+
+    // Configuration for the in-process poller/pinger collectors. Defaults match
+    // the old standalone jaspy-poller/jaspy-pinger systemd units so a missing
+    // value never panics (the standalone poller panicked on missing POLL_LOOP_MSECS).
+    let snmpbot_url = c.get_str("snmpbot_url").unwrap_or_else(|_| "http://127.0.0.1:8286/".to_string());
+    let poll_loop_msecs = c.get_int("poll_loop_msecs").unwrap_or(10000) as u64;
+    let enable_poller = c.get_bool("enable_poller").unwrap_or(true);
+    let enable_pinger = c.get_bool("enable_pinger").unwrap_or(true);
 
     let running = Arc::new(AtomicBool::new(true));
     let msgbus : Arc<Mutex<utilities::msgbus::MessageBus>> = Arc::new(Mutex::new(utilities::msgbus::MessageBus::new()));
@@ -87,12 +93,36 @@ fn main() {
         imds_worker(imds_worker_running, imds_worker_imds);
     });
 
+    // In-process collectors (formerly the jaspy-poller and jaspy-pinger
+    // binaries). They report directly into IMDS rather than PUTing over HTTP.
+    let poller_thread = if enable_poller {
+        let imds_collector = imds.clone();
+        let running_collector = running.clone();
+        let snmpbot_url_collector = snmpbot_url.clone();
+        Some(std::thread::spawn(move || {
+            collectors::poller::run(snmpbot_url_collector, poll_loop_msecs, imds_collector, running_collector);
+        }))
+    } else {
+        println!("[poller] disabled via JASPY_ENABLE_POLLER");
+        None
+    };
+
+    let pinger_thread = if enable_pinger {
+        let imds_collector = imds.clone();
+        let running_collector = running.clone();
+        Some(std::thread::spawn(move || {
+            collectors::pinger::run(imds_collector, running_collector);
+        }))
+    } else {
+        println!("[pinger] disabled via JASPY_ENABLE_PINGER");
+        None
+    };
+
     let cache_controller : Arc<Mutex<utilities::cache::CacheController>> = Arc::new(Mutex::new(utilities::cache::CacheController::new()));
 
     let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
 
-    rocket::ignite()
-        .attach(db::JaspyDB::fairing())
+    let _ = rocket::build()
         .mount(
             "/dev/device",
             routes![
@@ -151,8 +181,11 @@ fn main() {
         .manage(cache_controller.clone())
         .manage(runtime_info.clone())
         .manage(msgbus.clone())
-        .launch();
+        .launch()
+        .await;
 
     (*running).store(false, std::sync::atomic::Ordering::Relaxed);
     imds_worker_thread.join().unwrap();
+    if let Some(poller_thread) = poller_thread { let _ = poller_thread.join(); }
+    if let Some(pinger_thread) = pinger_thread { let _ = pinger_thread.join(); }
 }

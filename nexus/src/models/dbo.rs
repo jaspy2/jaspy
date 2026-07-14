@@ -1,14 +1,10 @@
 use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations};
 use diesel;
 use diesel::pg::PgConnection;
-use diesel::BelongingToDsl;
-use diesel::RunQueryDsl;
-use diesel::QueryDsl;
-use diesel::ExpressionMethods;
-use diesel::BoolExpressionMethods;
+use diesel::prelude::*;
 
-#[table_name = "devices"]
 #[derive(Insertable, Serialize, Deserialize)]
+#[diesel(table_name = devices)]
 #[serde(rename_all = "camelCase")]
 pub struct NewDevice {
     pub name: String,
@@ -21,8 +17,8 @@ pub struct NewDevice {
     pub software_version: Option<String>,
 }
 
-#[table_name = "interfaces"]
 #[derive(Insertable)]
+#[diesel(table_name = interfaces)]
 pub struct NewInterface {
     pub index: i32,
     pub interface_type: String,
@@ -32,10 +28,9 @@ pub struct NewInterface {
     pub description: Option<String>,
 }
 
-#[table_name = "devices"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Clone)]
+#[diesel(table_name = devices, treat_none_as_null = true)]
 #[serde(rename_all = "camelCase")]
-#[changeset_options(treat_none_as_null = "true")]
 pub struct Device {
     pub id: i32,
     pub name: String,
@@ -55,8 +50,8 @@ pub struct UpdatedWeathermapDeviceInfo {
     pub expanded_by_default: bool,
 }
 
-#[table_name = "weathermap_device_infos"]
 #[derive(Insertable)]
+#[diesel(table_name = weathermap_device_infos)]
 pub struct NewWeathermapDeviceInfo {
     pub x: f64,
     pub y: f64,
@@ -65,8 +60,8 @@ pub struct NewWeathermapDeviceInfo {
     pub device_id: i32,
 }
 
-#[table_name = "client_locations"]
 #[derive(Insertable)]
+#[diesel(table_name = client_locations)]
 pub struct NewClientLocation {
     pub device_id: i32,
     pub ip_address: String,
@@ -74,9 +69,8 @@ pub struct NewClientLocation {
     pub hw_address: String,
 }
 
-#[belongs_to(Device)]
-#[table_name = "client_locations"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Associations, Clone)]
+#[diesel(table_name = client_locations, belongs_to(Device))]
 #[serde(rename_all = "camelCase")]
 pub struct ClientLocation {
     pub id: i32,
@@ -86,9 +80,8 @@ pub struct ClientLocation {
     pub hw_address: String,
 }
 
-#[belongs_to(Device)]
-#[table_name = "weathermap_device_infos"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Associations, Clone)]
+#[diesel(table_name = weathermap_device_infos, belongs_to(Device))]
 #[serde(rename_all = "camelCase")]
 pub struct WeathermapDeviceInfo {
     pub id: i32,
@@ -99,11 +92,9 @@ pub struct WeathermapDeviceInfo {
     pub device_id: i32,
 }
 
-#[belongs_to(Device)]
-#[table_name = "interfaces"]
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Associations, Clone)]
+#[diesel(table_name = interfaces, belongs_to(Device), treat_none_as_null = true)]
 #[serde(rename_all = "camelCase")]
-#[changeset_options(treat_none_as_null = "true")]
 pub struct Interface {
     pub id: i32,
     pub index: i32,
@@ -120,25 +111,25 @@ pub struct Interface {
 }
 
 impl ClientLocation {
-    pub fn create(new_client_location: &NewClientLocation, connection: &PgConnection) -> Result<ClientLocation, diesel::result::Error> {
+    pub fn create(new_client_location: &NewClientLocation, connection: &mut PgConnection) -> Result<ClientLocation, diesel::result::Error> {
         let result = diesel::insert_into(client_locations::table)
             .values(new_client_location)
             .get_result(connection);
         return result;
     }
 
-    pub fn update(self: &ClientLocation, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+    pub fn update(self: &ClientLocation, connection: &mut PgConnection) -> Result<usize, diesel::result::Error> {
         return diesel::update(client_locations::table.find(self.id)).set(self).execute(connection);
     }
 
-    pub fn delete(self: &ClientLocation, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+    pub fn delete(self: &ClientLocation, connection: &mut PgConnection) -> Result<usize, diesel::result::Error> {
         return diesel::delete(client_locations::table.find(self.id)).execute(connection);
     }
 
-    pub fn by_ip(ip_address: &String, connection: &PgConnection) -> Option<ClientLocation> {
+    pub fn by_ip(ip_address: &String, connection: &mut PgConnection) -> Option<ClientLocation> {
         match client_locations::table
             .filter(client_locations::ip_address.eq(ip_address))
-            .first::<ClientLocation>(connection)    
+            .first::<ClientLocation>(connection)
         {
             Ok(client_location) => {
                 return Some(client_location);
@@ -151,10 +142,10 @@ impl ClientLocation {
 }
 
 impl Device {
-    pub fn by_id(id: i32, connection: &PgConnection) -> Option<Device> {
+    pub fn by_id(id: i32, connection: &mut PgConnection) -> Option<Device> {
         match devices::table
             .filter(devices::id.eq(id))
-            .first::<Device>(connection)    
+            .first::<Device>(connection)
         {
             Ok(device) => {
                 return Some(device);
@@ -165,10 +156,10 @@ impl Device {
         }
     }
 
-    pub fn by_base_mac(base_mac: &String, connection: &PgConnection) -> Option<Device> {
+    pub fn by_base_mac(base_mac: &String, connection: &mut PgConnection) -> Option<Device> {
         match devices::table
             .filter(devices::base_mac.eq(base_mac))
-            .first::<Device>(connection)    
+            .first::<Device>(connection)
         {
             Ok(device) => {
                 return Some(device);
@@ -179,7 +170,7 @@ impl Device {
         }
     }
 
-    pub fn all(connection: &PgConnection) -> Vec<Device> {
+    pub fn all(connection: &mut PgConnection) -> Vec<Device> {
         match devices::table.load(connection) {
             Ok(result) => {
                 return result;
@@ -190,7 +181,7 @@ impl Device {
         }
     }
 
-    pub fn monitored(connection: &PgConnection) -> Vec<Device> {
+    pub fn monitored(connection: &mut PgConnection) -> Vec<Device> {
         // TODO: default setting for polling enabled? NULL might mean false in that case..
         match devices::table
             .filter(
@@ -208,7 +199,7 @@ impl Device {
         }
     }
 
-    pub fn interface_by_name(self: &Device, connection: &PgConnection, name: &String) -> Option<Interface> {
+    pub fn interface_by_name(self: &Device, connection: &mut PgConnection, name: &String) -> Option<Interface> {
         match interfaces::table
             .filter(interfaces::device_id.eq(self.id))
             .filter(interfaces::name.eq(name))
@@ -223,7 +214,7 @@ impl Device {
         }
     }
 
-    pub fn interface_by_index(self: &Device, connection: &PgConnection, index: &i32) -> Option<Interface> {
+    pub fn interface_by_index(self: &Device, connection: &mut PgConnection, index: &i32) -> Option<Interface> {
         match interfaces::table
             .filter(interfaces::device_id.eq(self.id))
             .filter(interfaces::index.eq(index))
@@ -238,14 +229,14 @@ impl Device {
         }
     }
 
-    pub fn create(new_device: &NewDevice, connection: &PgConnection) -> Result<Device, diesel::result::Error> {
+    pub fn create(new_device: &NewDevice, connection: &mut PgConnection) -> Result<Device, diesel::result::Error> {
         let result = diesel::insert_into(devices::table)
             .values(new_device)
             .get_result(connection);
         return result;
     }
 
-    pub fn find_by_hostname_and_domain_name(connection: &PgConnection, hostname: &String, domain_name: &String) -> Option<Device> {
+    pub fn find_by_hostname_and_domain_name(connection: &mut PgConnection, hostname: &String, domain_name: &String) -> Option<Device> {
         match devices::table
             .filter(devices::name.eq(hostname))
             .filter(devices::dns_domain.eq(domain_name))
@@ -260,7 +251,7 @@ impl Device {
         }
     }
 
-    pub fn find_by_fqdn(connection: &PgConnection, fqdn: &String) -> Option<Device> {
+    pub fn find_by_fqdn(connection: &mut PgConnection, fqdn: &String) -> Option<Device> {
         let fqdn_splitted : Vec<&str> = fqdn.splitn(2, ".").collect();
         if fqdn_splitted.len() != 2 {
             return None;
@@ -279,11 +270,11 @@ impl Device {
         }
     }
 
-    pub fn update(self: &Device, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+    pub fn update(self: &Device, connection: &mut PgConnection) -> Result<usize, diesel::result::Error> {
         return diesel::update(devices::table.find(self.id)).set(self).execute(connection);
     }
 
-    pub fn delete(self: &Device, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+    pub fn delete(self: &Device, connection: &mut PgConnection) -> Result<usize, diesel::result::Error> {
         if let Ok(weathermap_device_info) = WeathermapDeviceInfo::belonging_to(self).load(connection) {
             let wmdis : Vec<WeathermapDeviceInfo> = weathermap_device_info;
             for wmdi in wmdis.iter() {
@@ -312,7 +303,7 @@ impl Device {
         return diesel::delete(devices::table.find(self.id)).execute(connection);
     }
 
-    pub fn interfaces(self: &Device, connection: &PgConnection) -> Vec<Interface> {
+    pub fn interfaces(self: &Device, connection: &mut PgConnection) -> Vec<Interface> {
         match Interface::belonging_to(self).load(connection) {
             Ok(result) => {
                 return result;
@@ -323,7 +314,7 @@ impl Device {
         }
     }
 
-    pub fn weathermap_info(self: &Device, connection: &PgConnection) -> Option<WeathermapDeviceInfo> {
+    pub fn weathermap_info(self: &Device, connection: &mut PgConnection) -> Option<WeathermapDeviceInfo> {
         match weathermap_device_infos::table
             .filter(weathermap_device_infos::device_id.eq(self.id))
             .first::<WeathermapDeviceInfo>(connection)
@@ -339,10 +330,10 @@ impl Device {
 }
 
 impl Interface {
-    pub fn by_id(id: i32, connection: &PgConnection) -> Option<Interface> {
+    pub fn by_id(id: i32, connection: &mut PgConnection) -> Option<Interface> {
         match interfaces::table
             .filter(interfaces::id.eq(id))
-            .first::<Interface>(connection)    
+            .first::<Interface>(connection)
         {
             Ok(interface) => {
                 return Some(interface);
@@ -353,7 +344,7 @@ impl Interface {
         }
     }
 
-    pub fn all(connection: &PgConnection) -> Vec<Interface> {
+    pub fn all(connection: &mut PgConnection) -> Vec<Interface> {
         match interfaces::table.load(connection) {
             Ok(result) => {
                 return result;
@@ -364,7 +355,7 @@ impl Interface {
         }
     }
 
-    pub fn create(new_interface: &NewInterface, connection: &PgConnection) -> Result<Interface, diesel::result::Error> {
+    pub fn create(new_interface: &NewInterface, connection: &mut PgConnection) -> Result<Interface, diesel::result::Error> {
         let result = diesel::insert_into(interfaces::table)
             .values(new_interface)
             .get_result(connection);
@@ -379,11 +370,11 @@ impl Interface {
         }
     }
 
-    pub fn update(self: &Interface, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+    pub fn update(self: &Interface, connection: &mut PgConnection) -> Result<usize, diesel::result::Error> {
         return diesel::update(interfaces::table.find(self.id)).set(self).execute(connection);
     }
 
-    pub fn delete(self: &Interface, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+    pub fn delete(self: &Interface, connection: &mut PgConnection) -> Result<usize, diesel::result::Error> {
         match interfaces::table
             .filter(
                 interfaces::connected_interface.eq(self.id)
@@ -404,7 +395,7 @@ impl Interface {
         return diesel::delete(interfaces::table.find(self.id)).execute(connection);
     }
 
-    pub fn peer_interface(self: &Interface, connection: &PgConnection) -> Option<Interface> {
+    pub fn peer_interface(self: &Interface, connection: &mut PgConnection) -> Option<Interface> {
         if let Some(connected_interface_id) = self.virtual_connection {
             match Interface::by_id(connected_interface_id, connection) {
                 Some(peer_interface) => {
@@ -430,24 +421,24 @@ impl Interface {
         }
     }
 
-    pub fn device(self: &Interface, connection: &PgConnection) -> Device {
+    pub fn device(self: &Interface, connection: &mut PgConnection) -> Device {
         return Device::by_id(self.device_id, connection).unwrap();
     }
 }
 
 impl WeathermapDeviceInfo {
-    pub fn create(new_weathermap_device_info: &NewWeathermapDeviceInfo, connection: &PgConnection) -> Result<WeathermapDeviceInfo, diesel::result::Error> {
+    pub fn create(new_weathermap_device_info: &NewWeathermapDeviceInfo, connection: &mut PgConnection) -> Result<WeathermapDeviceInfo, diesel::result::Error> {
         let result = diesel::insert_into(weathermap_device_infos::table)
             .values(new_weathermap_device_info)
             .get_result(connection);
         return result;
     }
 
-    pub fn update(self: &WeathermapDeviceInfo, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+    pub fn update(self: &WeathermapDeviceInfo, connection: &mut PgConnection) -> Result<usize, diesel::result::Error> {
         return diesel::update(weathermap_device_infos::table.find(self.id)).set(self).execute(connection);
     }
 
-    pub fn lookup_by_device(connection: &PgConnection, device: &Device) -> Option<WeathermapDeviceInfo> {
+    pub fn lookup_by_device(connection: &mut PgConnection, device: &Device) -> Option<WeathermapDeviceInfo> {
         match weathermap_device_infos::table
             .filter(weathermap_device_infos::device_id.eq(device.id))
             .first::<WeathermapDeviceInfo>(connection)
@@ -461,11 +452,11 @@ impl WeathermapDeviceInfo {
         }
     }
 
-    pub fn delete(self: &WeathermapDeviceInfo, connection: &PgConnection) -> Result<usize, diesel::result::Error> {
+    pub fn delete(self: &WeathermapDeviceInfo, connection: &mut PgConnection) -> Result<usize, diesel::result::Error> {
         return diesel::delete(weathermap_device_infos::table.find(self.id)).execute(connection);
     }
 
-    pub fn update_by_fqdn_or_create(connection: &PgConnection, fqdn: &String, updated_info: UpdatedWeathermapDeviceInfo) -> Result<WeathermapDeviceInfo, String> {
+    pub fn update_by_fqdn_or_create(connection: &mut PgConnection, fqdn: &String, updated_info: UpdatedWeathermapDeviceInfo) -> Result<WeathermapDeviceInfo, String> {
         if let Some(device) = Device::find_by_fqdn(connection, fqdn) {
             let mut wmap_info;
             if let Some(weathermap_info) = WeathermapDeviceInfo::lookup_by_device(connection, &device) {
@@ -499,7 +490,7 @@ impl WeathermapDeviceInfo {
         }
     }
 
-    pub fn device(self: &WeathermapDeviceInfo, connection: &PgConnection) -> Device {
+    pub fn device(self: &WeathermapDeviceInfo, connection: &mut PgConnection) -> Device {
         return Device::by_id(self.device_id, connection).unwrap();
     }
 }

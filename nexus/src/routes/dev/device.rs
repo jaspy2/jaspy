@@ -1,49 +1,48 @@
-extern crate rocket_contrib;
 use crate::models;
 use crate::db;
 use crate::utilities;
-use rocket::{get, put};
-use rocket_contrib::json;
+use rocket::{get, post, put, delete};
+use rocket::serde::json::Json;
 use std::sync::{Arc,Mutex};
 use rocket::State;
 
 #[get("/")]
-pub fn list(connection: db::JaspyDB) -> json::Json<Vec<models::dbo::Device>> {
-    return json::Json(models::dbo::Device::all(&connection));
+pub fn list(mut connection: db::JaspyDB) -> Json<Vec<models::dbo::Device>> {
+    return Json(models::dbo::Device::all(&mut connection));
 }
 
 #[get("/<device_fqdn>")]
-pub fn get_device(connection: db::JaspyDB, device_fqdn: String) -> Option<json::Json<models::dbo::Device>> {
-    if let Some(device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
-        return Some(json::Json(device));
+pub fn get_device(mut connection: db::JaspyDB, device_fqdn: String) -> Option<Json<models::dbo::Device>> {
+    if let Some(device) = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn) {
+        return Some(Json(device));
     } else {
         return None;
     }
 }
 
 #[post("/", data = "<device_json>")]
-pub fn create(device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, connection: db::JaspyDB, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
-    if let Ok(created_device) = models::dbo::Device::create(&device_json, &connection) {
+pub fn create(device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
+    if let Ok(created_device) = models::dbo::Device::create(&device_json, &mut connection) {
         let device_fqdn = format!("{}.{}", created_device.name, created_device.dns_domain);
         if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
         let event = models::events::Event::device_created_event(&device_fqdn);
         if let Ok(ref mut msgbus) = msgbus.lock() {
             msgbus.event(event);
         }
-        return Some(json::Json(created_device));
+        return Some(Json(created_device));
     }
     // TODO: Return 400 or 500, need details from creation failure
     return None;
 }
 
 #[put("/<device_fqdn>", data = "<device_json>")]
-pub fn update(device_fqdn: String, device_json: rocket_contrib::json::Json<models::dbo::NewDevice>, connection: db::JaspyDB, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
-    if let Some(mut device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
+pub fn update(device_fqdn: String, device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
+    if let Some(mut device) = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn) {
         if format!("{}.{}", device.name, device.dns_domain) != device_fqdn {
             // TODO: return 400
             return None;
         }
-        
+
         let mut changed = false;
         if device.polling_enabled != device_json.polling_enabled {
             let event = models::events::Event::device_polling_changed_event(
@@ -78,21 +77,21 @@ pub fn update(device_fqdn: String, device_json: rocket_contrib::json::Json<model
             device.snmp_community = device_json.snmp_community.clone();
         }
         if changed {
-            if let Err(_) = device.update(&connection) {
+            if let Err(_) = device.update(&mut connection) {
                 // TODO: return 500 or 400
                 return None;
             }
         }
-        return Some(json::Json(device));
+        return Some(Json(device));
     }
     // TODO: Return 404
     return None;
 }
 
 #[delete("/<device_fqdn>")]
-pub fn delete(connection: db::JaspyDB, device_fqdn: String, cache_controller: State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<json::Json<models::dbo::Device>> {
-    if let Some(old_device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
-        if let Err(d) = old_device.delete(&connection) {
+pub fn delete(mut connection: db::JaspyDB, device_fqdn: String, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
+    if let Some(old_device) = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn) {
+        if let Err(d) = old_device.delete(&mut connection) {
             println!("{}", d);
             // TODO: return 500
             return None;
@@ -102,7 +101,7 @@ pub fn delete(connection: db::JaspyDB, device_fqdn: String, cache_controller: St
             if let Ok(ref mut msgbus) = msgbus.lock() {
                 msgbus.event(event);
             }
-            return Some(json::Json(old_device));
+            return Some(Json(old_device));
         }
     } else {
         return None;
@@ -110,25 +109,25 @@ pub fn delete(connection: db::JaspyDB, device_fqdn: String, cache_controller: St
 }
 
 #[get("/<device_fqdn>/interfaces")]
-pub fn interfaces(connection: db::JaspyDB, device_fqdn: Option<String>) -> json::Json<Vec<models::dbo::Interface>> {
+pub fn interfaces(mut connection: db::JaspyDB, device_fqdn: Option<String>) -> Json<Vec<models::dbo::Interface>> {
     match device_fqdn {
         Some(device_fqdn) => {
-            if let Some(device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
-                let interfaces = device.interfaces(&connection);
-                return json::Json(interfaces);
+            if let Some(device) = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn) {
+                let interfaces = device.interfaces(&mut connection);
+                return Json(interfaces);
             };
-            return json::Json(Vec::new());
+            return Json(Vec::new());
         },
         None => {
-            return json::Json(models::dbo::Interface::all(&connection));
+            return Json(models::dbo::Interface::all(&mut connection));
         }
     };
 }
 
 #[get("/monitor")]
-pub fn monitored_device_list(connection: db::JaspyDB, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, runtime_info: State<Arc<Mutex<models::internal::RuntimeInfo>>>) -> json::Json<models::json::DeviceMonitorResponse> {
+pub fn monitored_device_list(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, runtime_info: &State<Arc<Mutex<models::internal::RuntimeInfo>>>) -> Json<models::json::DeviceMonitorResponse> {
     let mut dmi : Vec<models::json::DeviceMonitorInfo> = Vec::new();
-    for monitored in models::dbo::Device::monitored(&connection).iter() {
+    for monitored in models::dbo::Device::monitored(&mut connection).iter() {
         if let Ok(ref mut imds) = imds.lock() {
             let device_fqdn = format!("{}.{}", monitored.name, monitored.dns_domain);
             if let Some(imds_device) = imds.get_device(&device_fqdn) {
@@ -142,32 +141,32 @@ pub fn monitored_device_list(connection: db::JaspyDB, imds: State<Arc<Mutex<util
     } else {
         state_id = 0;
     }
-    return json::Json(models::json::DeviceMonitorResponse { state_id: state_id, devices: dmi });
+    return Json(models::json::DeviceMonitorResponse { state_id: state_id, devices: dmi });
 }
 
 #[put("/monitor", data = "<device_monitor_report>")]
-pub fn monitored_device_report(connection: db::JaspyDB, imds: State<Arc<Mutex<utilities::imds::IMDS>>>, device_monitor_report : json::Json<models::json::DeviceMonitorReport>) {
+pub fn monitored_device_report(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, device_monitor_report : Json<models::json::DeviceMonitorReport>) {
     if let Ok(ref mut imds) = imds.lock() {
-        imds.report_device(&connection, device_monitor_report.into_inner());
+        imds.report_device(&mut connection, device_monitor_report.into_inner());
     }
 }
 
 #[get("/<device_fqdn>/status")]
-pub fn device_status(device_fqdn: String, imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<json::Json<models::json::DeviceStatus>> {
+pub fn device_status(device_fqdn: String, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<Json<models::json::DeviceStatus>> {
     if let Ok(ref mut imds) = imds.inner().lock() {
         if let Some(device_metric) = imds.get_device(&device_fqdn) {
             let ret = models::json::DeviceStatus {
                 fqdn: device_metric.fqdn.clone(),
                 up: device_metric.up,
             };
-            return Some(json::Json(ret));
+            return Some(Json(ret));
         }
     }
     return None;
 }
 
 #[get("/<device_fqdn>/status/interfaces")]
-pub fn device_interface_status(device_fqdn: String, imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<json::Json<Vec<models::json::DeviceInterfaceStatus>>> {
+pub fn device_interface_status(device_fqdn: String, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<Json<Vec<models::json::DeviceInterfaceStatus>>> {
     if let Ok(ref mut imds) = imds.inner().lock() {
         if let Some(device_metric) = imds.get_device(&device_fqdn) {
             let mut ret_ifaces: Vec<models::json::DeviceInterfaceStatus> = Vec::new();
@@ -184,28 +183,27 @@ pub fn device_interface_status(device_fqdn: String, imds: State<Arc<Mutex<utilit
                     interface_type: interface_metric.interface_type.clone(),
                 });
             }
-            return Some(json::Json(ret_ifaces));
+            return Some(Json(ret_ifaces));
         }
     }
     return None;
 }
 
 #[delete("/connections?<device_fqdn>")]
-pub fn clear_device_connection(connection: db::JaspyDB, device_fqdn: String) {
-    if let Some(device) = models::dbo::Device::find_by_fqdn(&connection, &device_fqdn) {
-        let interfaces = device.interfaces(&connection);
+pub fn clear_device_connection(mut connection: db::JaspyDB, device_fqdn: String) {
+    if let Some(device) = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn) {
+        let interfaces = device.interfaces(&mut connection);
         for mut interface in interfaces {
-            if let Some(mut peer_interface) = interface.peer_interface(&connection) {
+            if let Some(mut peer_interface) = interface.peer_interface(&mut connection) {
                 peer_interface.connected_interface = None;
-                if let Err(_) = peer_interface.update(&connection) {
+                if let Err(_) = peer_interface.update(&mut connection) {
                     // TODO: log
                 }
                 interface.connected_interface = None;
-                if let Err(_) = interface.update(&connection) {
+                if let Err(_) = interface.update(&mut connection) {
                     // TODO: log
                 }
             }
         }
     };
 }
-

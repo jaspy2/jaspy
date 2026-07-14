@@ -6,9 +6,18 @@ After=network.target postgresql.service
 Type=simple
 User=jaspy
 Group=jaspy
+# CAP_NET_RAW is required by the in-process pinger collector (raw ICMP sockets),
+# which was formerly the standalone jaspy-pinger service.
+AmbientCapabilities=CAP_NET_RAW
 Environment=JASPY_DB_URL=postgresql:///jaspy
 Environment=JASPY_MQTT_SERVER=127.0.0.1
-Environment=ROCKET_DATABASES={jaspy_db={url="postgres:///jaspy"}}
+# Rocket 0.5's release profile defaults to binding 0.0.0.0; pin to localhost to
+# match the previous bind and keep the unauthenticated API off the network.
+Environment=ROCKET_ADDRESS=127.0.0.1
+Environment=ROCKET_PORT=8000
+# In-process poller collector (formerly the standalone jaspy-poller service).
+Environment=JASPY_SNMPBOT_URL=http://127.0.0.1:8286/
+Environment=JASPY_POLL_LOOP_MSECS=10000
 ExecStart=/usr/lib/jaspy/jaspy-nexus
 
 [Install]

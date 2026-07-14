@@ -19,8 +19,6 @@ COPY output/nexus/migrations ./var/lib/jaspy/nexus/migrations
 COPY output/nexus/jaspy-nexus ./usr/lib/jaspy/jaspy-nexus
 COPY output/nexus/diesel ./usr/lib/jaspy/diesel
 
-COPY output/poller/jaspy-poller ./usr/lib/jaspy/jaspy-poller
-COPY output/pinger/jaspy-pinger ./usr/lib/jaspy/jaspy-pinger
 COPY output/snmptrapd-reader/jaspy-snmptrapd-reader ./usr/lib/jaspy/jaspy-snmptrapd-reader
 
 RUN mkdir ./usr/lib/jaspy/switchmaster
@@ -30,7 +28,7 @@ COPY debian/systemd.jaspy/*.service ./etc/systemd/system/
 
 WORKDIR /usr/src/jaspy
 COPY debian/jaspy.*.sh ./
-RUN fpm -t deb -s dir -n "jaspy" -v "${version}" -m "Antti Tönkyrä <daedalus@pingtimeout.net>" --after-remove ./jaspy.postremove.sh --after-install ./jaspy.postinst.sh --after-upgrade ./jaspy.postupgrade.sh /usr/src/jaspy/root/=/
+RUN fpm -t deb -s dir -n "jaspy" -v "${version}" -m "Antti Tönkyrä <daedalus@pingtimeout.net>" -d liboping0 -d libpq5 --after-remove ./jaspy.postremove.sh --after-install ./jaspy.postinst.sh --after-upgrade ./jaspy.postupgrade.sh /usr/src/jaspy/root/=/
 
 WORKDIR /usr/src/snmpbot/root
 COPY output/snmpbot/snmpbot ./usr/bin/snmpbot

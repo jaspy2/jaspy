@@ -1,4 +1,3 @@
-extern crate rocket_contrib;
 use std::sync::{Arc, Mutex};
 use crate::utilities;
 use rocket::State;
@@ -7,7 +6,7 @@ use rocket::get;
 
 // TODO: GH#9 Move everything to v1 API
 #[get("/fast")]
-pub fn metrics_fast(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
+pub fn metrics_fast(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
     let mut ret : String = String::new();
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 
@@ -29,7 +28,7 @@ pub fn metrics_fast(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<St
 }
 
 #[get("/")]
-pub fn metrics(imds: State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
+pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
     let mut ret : String = String::new();
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 

@@ -1,0 +1,33 @@
+{
+  "ID": "IF-MIB::ifTable",
+  "IndexKeys": ["IF-MIB::ifIndex"],
+  "ObjectKeys": ["IF-MIB::ifIndex", "IF-MIB::ifDescr", "IF-MIB::ifType", "IF-MIB::ifOperStatus", "IF-MIB::ifInErrors", "IF-MIB::ifOutErrors", "IF-MIB::ifOutDiscards"],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {"IF-MIB::ifIndex": 10101},
+      "Objects": {
+        "IF-MIB::ifIndex": 10101,
+        "IF-MIB::ifDescr": "GigabitEthernet0/1",
+        "IF-MIB::ifType": "ethernetCsmacd",
+        "IF-MIB::ifOperStatus": "up",
+        "IF-MIB::ifInErrors": 0,
+        "IF-MIB::ifOutErrors": 0,
+        "IF-MIB::ifOutDiscards": 0
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {"IF-MIB::ifIndex": 10102},
+      "Objects": {
+        "IF-MIB::ifIndex": 10102,
+        "IF-MIB::ifDescr": "GigabitEthernet0/2",
+        "IF-MIB::ifType": "ethernetCsmacd",
+        "IF-MIB::ifOperStatus": "down",
+        "IF-MIB::ifInErrors": 2,
+        "IF-MIB::ifOutErrors": 1,
+        "IF-MIB::ifOutDiscards": 3
+      }
+    }
+  ]
+}

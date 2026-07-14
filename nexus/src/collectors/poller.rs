@@ -1,0 +1,310 @@
+// In-process SNMP interface-counter collector (formerly the `jaspy-poller`
+// binary). Ported near-verbatim from poller/src/{poller,main,models/json}.rs;
+// the only behavioral change is that per-device reports are written directly
+// into IMDS (`report_interfaces`) rather than PUT to /dev/interface/monitor.
+extern crate reqwest;
+extern crate serde_json;
+
+use crate::models;
+use crate::db;
+use crate::utilities::imds::IMDS;
+use crate::utilities::tools;
+use rand::prelude::*;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, atomic, mpsc};
+use std::thread;
+use std::time;
+
+// --- SNMPBot response models (ported from the standalone poller crate) ---
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum SNMPBotResultEntryObjectValue {
+    Uint64(u64),
+    Float64(f64),
+    Str(String),
+    Empty,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct SNMPBotResultEntry {
+    pub host_i_d: String,
+    pub index: HashMap<String, i64>,
+    pub objects: HashMap<String, SNMPBotResultEntryObjectValue>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct SNMPBotResponse {
+    pub i_d: String,
+    pub index_keys: Vec<String>,
+    pub object_keys: Vec<String>,
+    pub entries: Vec<SNMPBotResultEntry>,
+}
+
+fn try_get_u64(val: Option<&SNMPBotResultEntryObjectValue>) -> Option<u64> {
+    if let Some(SNMPBotResultEntryObjectValue::Uint64(val)) = val {
+        return Some(*val);
+    }
+    return None;
+}
+
+fn try_get_i32(val: Option<&SNMPBotResultEntryObjectValue>) -> Option<i32> {
+    if let Some(SNMPBotResultEntryObjectValue::Uint64(val)) = val {
+        if *val > std::i32::MAX as u64 {
+            // TODO: log? bad overflow :C
+            return None;
+        }
+        return Some(*val as i32);
+    }
+    return None;
+}
+
+fn try_get_updown_as_bool(val: Option<&SNMPBotResultEntryObjectValue>) -> Option<bool> {
+    if let Some(SNMPBotResultEntryObjectValue::Str(val)) = val {
+        return Some(val.to_lowercase() == "up");
+    }
+    return None;
+}
+
+fn interface_report_from_entry(if_index: &i32, objects: &HashMap<String, SNMPBotResultEntryObjectValue>) -> models::json::InterfaceMonitorInterfaceReport {
+    models::json::InterfaceMonitorInterfaceReport {
+        if_index: *if_index,
+        in_octets: try_get_u64(objects.get("IF-MIB::ifHCInOctets")),
+        out_octets: try_get_u64(objects.get("IF-MIB::ifHCOutOctets")),
+        in_unicast_packets: try_get_u64(objects.get("IF-MIB::ifHCInUcastPkts")),
+        in_multicast_packets: try_get_u64(objects.get("IF-MIB::ifHCInMulticastPkts")),
+        in_broadcast_packets: try_get_u64(objects.get("IF-MIB::ifHCInBroadcastPkts")),
+        out_unicast_packets: try_get_u64(objects.get("IF-MIB::ifHCOutUcastPkts")),
+        out_multicast_packets: try_get_u64(objects.get("IF-MIB::ifHCOutMulticastPkts")),
+        out_broadcast_packets: try_get_u64(objects.get("IF-MIB::ifHCOutBroadcastPkts")),
+        in_errors: try_get_u64(objects.get("IF-MIB::ifInErrors")),
+        out_errors: try_get_u64(objects.get("IF-MIB::ifOutErrors")),
+        out_discards: try_get_u64(objects.get("IF-MIB::ifOutDiscards")),
+        up: try_get_updown_as_bool(objects.get("IF-MIB::ifOperStatus")),
+        speed: try_get_i32(objects.get("IF-MIB::ifHighSpeed")),
+    }
+}
+
+// --- collector internals ---
+
+#[derive(Clone)]
+struct PollDevice {
+    fqdn: String,
+    snmp_community: Option<String>,
+}
+
+struct PollThreadInfo {
+    thd: thread::JoinHandle<()>,
+    running: Arc<atomic::AtomicBool>,
+    finished_signal: mpsc::Receiver<bool>,
+}
+
+fn load_devices(pool: &db::Pool) -> HashMap<String, PollDevice> {
+    let mut devices: HashMap<String, PollDevice> = HashMap::new();
+    if let Ok(mut conn) = pool.get() {
+        for device in models::dbo::Device::monitored(&mut *conn).iter() {
+            let fqdn = format!("{}.{}", device.name, device.dns_domain);
+            devices.insert(fqdn.clone(), PollDevice { fqdn: fqdn, snmp_community: device.snmp_community.clone() });
+        }
+    } else {
+        println!("[poller] failed to acquire db connection for device listing");
+    }
+    return devices;
+}
+
+fn snmpbot_query(device_fqdn: &String, statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, url: &reqwest::Url) {
+    let response;
+    if let Ok(response_parsed) = reqwest::blocking::get(url.as_str()) {
+        response = response_parsed;
+    } else {
+        // TODO: log?
+        return;
+    }
+    if !response.status().is_success() {
+        println!("[{}] snmpbot returned ({}), skipping this poll", device_fqdn, response.status());
+        return;
+    }
+    let query_result: SNMPBotResponse;
+    match response.json() {
+        Ok(resp_json_result) => { query_result = resp_json_result; },
+        Err(what) => {
+            println!("[{}] error parsing json: {}", device_fqdn, what);
+            return;
+        }
+    }
+
+    for query_result_entry in query_result.entries.iter() {
+        let ifindex: i32;
+        if let Some(ifindex_result) = query_result_entry.index.get("IF-MIB::ifIndex") {
+            ifindex = *ifindex_result as i32;
+        } else {
+            continue;
+        }
+
+        let ifindex_stats = statistics.entry(ifindex).or_insert_with(HashMap::new);
+        for (object_key, object_value) in query_result_entry.objects.iter() {
+            // ifTable is queried before ifXTable; first writer wins on collision.
+            if !ifindex_stats.contains_key(object_key) {
+                ifindex_stats.insert(object_key.clone(), object_value.clone());
+            }
+        }
+    }
+}
+
+fn poll_device(snmpbot_url: &String, device: &PollDevice) -> Option<models::json::InterfaceMonitorReport> {
+    let source_url_iftable = format!("{}/api/hosts/{}/tables/{}", snmpbot_url, device.fqdn, "IF-MIB::ifTable");
+    let source_url_ifxtable = format!("{}/api/hosts/{}/tables/{}", snmpbot_url, device.fqdn, "IF-MIB::ifXTable");
+    let snmp_community;
+    if let Some(ref parsed_snmp_community) = device.snmp_community {
+        snmp_community = parsed_snmp_community;
+    } else {
+        // TODO: log?
+        return None;
+    }
+
+    let iftable_url;
+    let ifxtable_url;
+    if let Ok(mut parsed_url) = reqwest::Url::parse(&source_url_iftable) {
+        parsed_url.query_pairs_mut().append_pair("snmp", &format!("{}@{}", snmp_community, device.fqdn));
+        iftable_url = parsed_url;
+    } else {
+        return None;
+    }
+    if let Ok(mut parsed_url) = reqwest::Url::parse(&source_url_ifxtable) {
+        parsed_url.query_pairs_mut().append_pair("snmp", &format!("{}@{}", snmp_community, device.fqdn));
+        ifxtable_url = parsed_url;
+    } else {
+        return None;
+    }
+
+    let mut stats: HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>> = HashMap::new();
+    snmpbot_query(&device.fqdn, &mut stats, &iftable_url);
+    snmpbot_query(&device.fqdn, &mut stats, &ifxtable_url);
+
+    let mut report = models::json::InterfaceMonitorReport { device_fqdn: device.fqdn.clone(), interfaces: Vec::new() };
+    for (ifindex, object_values) in stats.iter() {
+        report.interfaces.push(interface_report_from_entry(ifindex, object_values));
+    }
+    return Some(report);
+}
+
+fn poll_worker(pool: db::Pool, snmpbot_url: String, device: PollDevice, poll_loop_msecs: u64, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, done: mpsc::Sender<bool>) {
+    let no_jitter = std::env::var("JASPY_POLLER_NO_JITTER").map(|v| v == "1" || v == "true").unwrap_or(false);
+    let start_sleep = if no_jitter { 0.0 } else { thread_rng().gen_range(0.0, poll_loop_msecs as f64) };
+    println!("[{}] start polling thread, delay={:.2}ms", device.fqdn, start_sleep);
+    thread::sleep(time::Duration::from_millis(start_sleep as u64));
+    while running.load(atomic::Ordering::Relaxed) {
+        let start = tools::get_time_msecs();
+
+        println!("[{}] polling", device.fqdn);
+        if let Some(poll_result) = poll_device(&snmpbot_url, &device) {
+            // Do the DB acquire and IMDS lock only after network I/O, and hold
+            // the IMDS lock only for the report itself.
+            if let Ok(mut conn) = pool.get() {
+                if let Ok(ref mut imds) = imds.lock() {
+                    imds.report_interfaces(&mut *conn, poll_result);
+                }
+            }
+        }
+
+        let diff = tools::get_time_msecs() - start;
+        if diff <= poll_loop_msecs {
+            thread::sleep(time::Duration::from_millis(poll_loop_msecs - diff));
+        }
+    }
+    let _ = done.send(true);
+    println!("[{}] stop polling", device.fqdn);
+}
+
+fn check_if_worker_needed(pool: &db::Pool, snmpbot_url: &String, poll_loop_msecs: u64, imds: &Arc<Mutex<IMDS>>, devices: &HashMap<String, PollDevice>, poll_workers: &mut HashMap<String, PollThreadInfo>) {
+    for (fqdn, device) in devices.iter() {
+        if poll_workers.contains_key(fqdn) {
+            continue;
+        }
+        let worker_running = Arc::new(atomic::AtomicBool::new(true));
+        let running_worker = worker_running.clone();
+        let (tx, rx) = mpsc::channel();
+        let pool_copy = pool.clone();
+        let snmpbot_url_copy = snmpbot_url.clone();
+        let device_copy = device.clone();
+        let imds_copy = imds.clone();
+        poll_workers.insert(
+            fqdn.clone(),
+            PollThreadInfo {
+                thd: thread::spawn(move || {
+                    poll_worker(pool_copy, snmpbot_url_copy, device_copy, poll_loop_msecs, imds_copy, running_worker, tx);
+                }),
+                running: worker_running,
+                finished_signal: rx,
+            },
+        );
+    }
+}
+
+fn check_expired_fqdn_workers(devices: &HashMap<String, PollDevice>, poll_workers: &HashMap<String, PollThreadInfo>, expired_fqdns: &mut Vec<String>) {
+    for (fqdn, poll_worker) in poll_workers.iter() {
+        if devices.get(fqdn).is_none() {
+            poll_worker.running.store(false, atomic::Ordering::Relaxed);
+            expired_fqdns.push(fqdn.clone());
+        }
+    }
+}
+
+fn prepare_expired_fqdns_for_reap(poll_workers: &mut HashMap<String, PollThreadInfo>, expired_fqdns: &Vec<String>, reap_threads: &mut Vec<PollThreadInfo>) {
+    for expired_fqdn in expired_fqdns.iter() {
+        if let Some(poll_worker) = poll_workers.remove(expired_fqdn) {
+            reap_threads.push(poll_worker);
+        }
+    }
+}
+
+fn reap_finished_threads(reap_threads: &mut Vec<PollThreadInfo>) {
+    loop {
+        let mut reap = false;
+        let mut idx = 0;
+        for reap_thread in reap_threads.iter() {
+            match reap_thread.finished_signal.try_recv() {
+                Ok(_) => { reap = true; break; },
+                Err(mpsc::TryRecvError::Empty) => { idx += 1; },
+                Err(mpsc::TryRecvError::Disconnected) => { reap = true; break; },
+            }
+        }
+        if reap {
+            let reaped = reap_threads.swap_remove(idx);
+            let _ = reaped.thd.join();
+        } else {
+            break;
+        }
+    }
+}
+
+pub fn run(snmpbot_url: String, poll_loop_msecs: u64, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>) {
+    println!("[poller] starting in-process collector (snmpbot={}, poll_loop_msecs={})", snmpbot_url, poll_loop_msecs);
+    let pool = db::connect();
+    let mut poll_workers: HashMap<String, PollThreadInfo> = HashMap::new();
+    let mut reap_threads: Vec<PollThreadInfo> = Vec::new();
+
+    while running.load(atomic::Ordering::Relaxed) {
+        let devices = load_devices(&pool);
+        let mut expired_fqdns: Vec<String> = Vec::new();
+        check_if_worker_needed(&pool, &snmpbot_url, poll_loop_msecs, &imds, &devices, &mut poll_workers);
+        check_expired_fqdn_workers(&devices, &poll_workers, &mut expired_fqdns);
+        prepare_expired_fqdns_for_reap(&mut poll_workers, &expired_fqdns, &mut reap_threads);
+        reap_finished_threads(&mut reap_threads);
+        thread::sleep(time::Duration::from_millis(1000));
+    }
+
+    // Graceful shutdown: signal and join every worker.
+    for (_fqdn, worker) in poll_workers.iter() {
+        worker.running.store(false, atomic::Ordering::Relaxed);
+    }
+    for (_fqdn, worker) in poll_workers.drain() {
+        let _ = worker.thd.join();
+    }
+    for worker in reap_threads.drain(..) {
+        let _ = worker.thd.join();
+    }
+    println!("[poller] collector stopped");
+}

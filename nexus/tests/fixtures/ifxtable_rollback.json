@@ -1,0 +1,23 @@
+{
+  "ID": "IF-MIB::ifXTable",
+  "IndexKeys": ["IF-MIB::ifIndex"],
+  "ObjectKeys": ["IF-MIB::ifIndex", "IF-MIB::ifHCInOctets", "IF-MIB::ifHCOutOctets", "IF-MIB::ifHCInUcastPkts", "IF-MIB::ifHCInMulticastPkts", "IF-MIB::ifHCInBroadcastPkts", "IF-MIB::ifHCOutUcastPkts", "IF-MIB::ifHCOutMulticastPkts", "IF-MIB::ifHCOutBroadcastPkts", "IF-MIB::ifHighSpeed"],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {"IF-MIB::ifIndex": 10101},
+      "Objects": {
+        "IF-MIB::ifIndex": 10101,
+        "IF-MIB::ifHCInOctets": 10,
+        "IF-MIB::ifHCOutOctets": 20,
+        "IF-MIB::ifHCInUcastPkts": 1,
+        "IF-MIB::ifHCInMulticastPkts": 0,
+        "IF-MIB::ifHCInBroadcastPkts": 0,
+        "IF-MIB::ifHCOutUcastPkts": 1,
+        "IF-MIB::ifHCOutMulticastPkts": 0,
+        "IF-MIB::ifHCOutBroadcastPkts": 0,
+        "IF-MIB::ifHighSpeed": 1000
+      }
+    }
+  ]
+}

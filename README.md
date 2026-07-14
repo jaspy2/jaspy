@@ -52,10 +52,12 @@ dpkg -i jaspy_2.2.0-56-gcf420c6_amd64.deb snmpbot_2.2.0-35-g13aada5_amd64.deb
 
 ### Start jaspy services for the first time
 
+The SNMP interface poller and the ICMP pinger now run inside `jaspy-nexus`
+itself (they used to be the separate `jaspy-poller` and `jaspy-pinger`
+services), so there are fewer units to start:
+
 ```
 systemctl start jaspy-nexus
-systemctl start jaspy-pinger
-systemctl start jaspy-poller
 systemctl start jaspy-entitypoller
 systemctl start snmpbot
 ```
@@ -67,14 +69,12 @@ $ systemctl --all list-units 'jaspy*'
 UNIT                       LOAD   ACTIVE SUB     DESCRIPTION
 jaspy-entitypoller.service loaded active running jaspy-nexus
 jaspy-nexus.service        loaded active running jaspy-nexus
-jaspy-pinger.service       loaded active running jaspy-pinger
-jaspy-poller.service       loaded active running jaspy-poller
 
 LOAD   = Reflects whether the unit definition was properly loaded.
 ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
 SUB    = The low-level unit activation state, values depend on unit type.
 
-4 loaded units listed.
+2 loaded units listed.
 To show all installed unit files use 'systemctl list-unit-files'.
 ```
 

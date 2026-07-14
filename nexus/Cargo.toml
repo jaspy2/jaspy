@@ -7,20 +7,24 @@ edition = "2018"
 
 [dependencies]
 config = "0.10.1"
-dotenv = "0.15.0"
-rocket = "0.4.11"
-serde = { version = "1.0.147", features = ["derive"] }
-serde_json = "1.0.87"
-diesel = { version = "1.4.8", features = ["postgres"] }
-r2d2 = "0.8.10"
-r2d2-diesel = "1.0.0"
-time = "0.2.26"
-tokio = "0.2.25"
-async-std = "1.12.0"
-futures-util = "0.3.25"
-rumq-client = "0.1.0-alpha.10"
+rocket = { version = "0.5.1", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+diesel = { version = "2.2", features = ["postgres", "r2d2"] }
+# MQTT: rumqttc (tokio 1.x) replaces the abandoned rumq-client alpha.
+# default-features off: we connect plaintext on 1883, so no TLS backend is needed.
+rumqttc = { version = "0.24", default-features = false }
+# In-process poller/pinger collectors (formerly standalone binaries).
+# reqwest without default TLS: all snmpbot/jaspy traffic is plaintext http.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json"] }
+rand = "0.7.3"
+oping = "0.4.0"
 
-[dependencies.rocket_contrib]
-version = "0.4.11"
-default-features = false
-features = ["diesel_postgres_pool", "json"]
+[dev-dependencies]
+# End-to-end test suite (tests/e2e.rs): mock snmpbot, ephemeral postgres,
+# embedded MQTT broker.
+httpmock = "0.7"
+rumqttd = "0.19"
+diesel_migrations = "2.2"
+tempfile = "3"
+regex = "1"
