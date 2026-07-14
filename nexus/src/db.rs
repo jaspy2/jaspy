@@ -9,15 +9,39 @@ use rocket::Request;
 pub type Pool = diesel::r2d2::Pool<ConnectionManager<PgConnection>>;
 pub type PooledConn = PooledConnection<ConnectionManager<PgConnection>>;
 
-pub fn connect() -> Pool {
-    let env_opt = env::var("JASPY_DB_URL");
-    match env_opt {
-        Ok(env_opt) => {
-            let manager = ConnectionManager::<PgConnection>::new(env_opt);
-            diesel::r2d2::Pool::builder().build(manager).expect("Failed to create pool")
+// JASPY_DB_URL with any password replaced, safe for logs.
+fn redacted_db_url(db_url: &str) -> String {
+    match reqwest::Url::parse(db_url) {
+        Ok(mut url) => {
+            if url.password().is_some() {
+                let _ = url.set_password(Some("***"));
+            }
+            url.to_string()
         },
+        Err(_) => "<unparseable JASPY_DB_URL>".to_string(),
+    }
+}
+
+pub fn connect() -> Pool {
+    let db_url = match env::var("JASPY_DB_URL") {
+        Ok(db_url) => db_url,
         Err(_) => {
             panic!("JASPY_DB_URL env var not set!");
+        }
+    };
+    // The pool builder blocks retrying the first connection for up to 30s
+    // before giving up, which looks like a silent hang — announce it first.
+    println!("[db] connecting to {} (waits up to 30s before giving up)", redacted_db_url(&db_url));
+    let manager = ConnectionManager::<PgConnection>::new(db_url.clone());
+    match diesel::r2d2::Pool::builder().build(manager) {
+        Ok(pool) => pool,
+        Err(e) => {
+            panic!(
+                "failed to connect to {}: {} — check that postgres is running, \
+                 the role in the URL exists, and JASPY_DB_URL survives sudo/systemd \
+                 (running as a different user changes unix-socket authentication)",
+                redacted_db_url(&db_url), e
+            );
         }
     }
 }

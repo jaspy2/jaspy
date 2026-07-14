@@ -51,6 +51,7 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
     // (default 10). Configurable so tests can converge quickly.
     let refresh_secs: u64 = std::env::var("JASPY_IMDS_REFRESH_SECS").ok()
         .and_then(|v| v.parse().ok()).unwrap_or(10);
+    println!("[imds] refreshing device metadata from db every {}s", refresh_secs);
     let refresh_threshold = refresh_secs.saturating_sub(1);
     let mut refresh_run_counter = 0;
     let pool = db::connect();
@@ -61,10 +62,9 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
             refresh = true;
         }
         if refresh {
-            if let Ok(mut conn) = pool.get() {
-                refresh_imds_items(&mut *conn, &imds);
-            } else {
-                // TODO: log
+            match pool.get() {
+                Ok(mut conn) => refresh_imds_items(&mut *conn, &imds),
+                Err(e) => println!("[imds] failed to acquire db connection for refresh: {}", e),
             }
         }
         if refresh_run_counter >= refresh_threshold { refresh_run_counter = 0; } else { refresh_run_counter += 1; }
@@ -84,6 +84,7 @@ fn main() {
 }
 
 async fn server_main() {
+    println!("jaspy-nexus {} starting", env!("CARGO_PKG_VERSION"));
     let c = Config::builder()
         .add_source(File::with_name("/etc/jaspy/poller.yml").required(false))
         .add_source(File::with_name("~/.config/jaspy/poller.yml").required(false))
@@ -320,7 +321,11 @@ async fn server_main() {
         rocket_app = rocket_app.mount("/weathermap", rocket::fs::FileServer::from(weathermap_dir));
     }
 
-    let _ = rocket_app.launch().await;
+    // A failed launch (e.g. port already in use by another nexus instance)
+    // must be loud, not silently fall through to shutdown.
+    if let Err(e) = rocket_app.launch().await {
+        println!("[nexus] failed to launch http server: {}", e);
+    }
 
     (*running).store(false, std::sync::atomic::Ordering::Relaxed);
     imds_worker_thread.join().unwrap();
