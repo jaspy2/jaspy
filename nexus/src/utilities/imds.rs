@@ -59,7 +59,7 @@ impl IMDS {
         return imds;
     }
 
-    pub fn get_device(self: &IMDS, device_fqdn: &String) -> Option<&models::metrics::DeviceMetrics> {
+    pub fn get_device(self: &IMDS, device_fqdn: &str) -> Option<&models::metrics::DeviceMetrics> {
         return self.metrics_storage.devices.get(device_fqdn);
     }
 

@@ -302,7 +302,7 @@ impl Device {
         }
     }
 
-    pub fn find_by_fqdn(connection: &mut PgConnection, fqdn: &String) -> Option<Device> {
+    pub fn find_by_fqdn(connection: &mut PgConnection, fqdn: &str) -> Option<Device> {
         let fqdn_splitted : Vec<&str> = fqdn.splitn(2, ".").collect();
         if fqdn_splitted.len() != 2 {
             return None;

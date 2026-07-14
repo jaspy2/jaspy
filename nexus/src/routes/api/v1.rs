@@ -93,7 +93,7 @@ pub fn devices(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::im
 }
 
 #[get("/devices/<device_fqdn>")]
-pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: String, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
+pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
     let device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
     // Live interface state (up/speed) from IMDS, keyed by ifIndex.
@@ -155,7 +155,7 @@ pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: 
 }
 
 #[put("/devices/<device_fqdn>", data = "<device_json>")]
-pub fn device_update(device_fqdn: String, device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::json::ApiDevice>> {
+pub fn device_update(device_fqdn: &str, device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::json::ApiDevice>> {
     let mut device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
     let mut changed = false;
@@ -200,7 +200,7 @@ pub fn device_update(device_fqdn: String, device_json: Json<models::dbo::NewDevi
 }
 
 #[delete("/devices/<device_fqdn>")]
-pub fn device_delete(mut connection: db::JaspyDB, device_fqdn: String, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
+pub fn device_delete(mut connection: db::JaspyDB, device_fqdn: &str, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::dbo::Device>> {
     let old_device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
     if let Err(e) = old_device.delete(&mut connection) {
         println!("[api] failed to delete {}: {}", device_fqdn, e);

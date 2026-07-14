@@ -124,46 +124,46 @@ impl Event {
         return event;
     }
 
-    pub fn device_created_event(fqdn: &String) -> Event {
+    pub fn device_created_event(fqdn: &str) -> Event {
         let mut event = Event::new_empty("deviceCreated");
         event.device_created = Some(DeviceCreatedEvent {
-            fqdn: fqdn.clone(),
+            fqdn: fqdn.to_string(),
         });
         return event;
     }
 
-    pub fn device_deleted_event(fqdn: &String) -> Event {
+    pub fn device_deleted_event(fqdn: &str) -> Event {
         let mut event = Event::new_empty("deviceDeleted");
         event.device_deleted = Some(DeviceDeletedEvent {
-            fqdn: fqdn.clone(),
+            fqdn: fqdn.to_string(),
         });
         return event;
     }
 
-    pub fn device_polling_changed_event(fqdn: &String, old_state: Option<bool>, new_state: Option<bool>) -> Event {
+    pub fn device_polling_changed_event(fqdn: &str, old_state: Option<bool>, new_state: Option<bool>) -> Event {
         let mut event = Event::new_empty("devicePollingChanged");
         event.device_polling_changed = Some(DevicePollingChangedEvent {
-            fqdn: fqdn.clone(),
+            fqdn: fqdn.to_string(),
             old_state: old_state,
             new_state: new_state,
         });
         return event;
     }
 
-    pub fn device_os_info_changed_event(fqdn: &String, old_state: &Option<String>, new_state: &Option<String>) -> Event {
+    pub fn device_os_info_changed_event(fqdn: &str, old_state: &Option<String>, new_state: &Option<String>) -> Event {
         let mut event = Event::new_empty("deviceOsInfoChanged");
         event.device_os_info_changed = Some(DeviceOSInfoChangedEvent {
-            fqdn: fqdn.clone(),
+            fqdn: fqdn.to_string(),
             old_state: old_state.clone(),
             new_state: new_state.clone(),
         });
         return event;
     }
 
-    pub fn device_base_mac_changed_event(fqdn: &String, old_state: &Option<String>, new_state: &Option<String>) -> Event {
+    pub fn device_base_mac_changed_event(fqdn: &str, old_state: &Option<String>, new_state: &Option<String>) -> Event {
         let mut event = Event::new_empty("deviceBaseMacChanged");
         event.device_base_mac_changed = Some(DeviceBaseMACChangedEvent {
-            fqdn: fqdn.clone(),
+            fqdn: fqdn.to_string(),
             old_state: old_state.clone(),
             new_state: new_state.clone(),
         });
@@ -174,7 +174,7 @@ impl Event {
         let mut event = Event::new_empty("pingChange");
 
         let mut pce = PingChangeEvent {
-            fqdn: fqdn.clone(),
+            fqdn: fqdn.to_string(),
             neighbors: Vec::new(),
             old_state: old_state,
             new_state: new_state,
@@ -195,7 +195,7 @@ impl Event {
         let mut event = Event::new_empty("interfaceUpDown");
 
         let ifude = InterfaceUpDownEvent {
-            fqdn: fqdn.clone(),
+            fqdn: fqdn.to_string(),
             name: name.clone(),
             neighbor: neighbor,
             neighbor_name: neighbor_name,
@@ -213,7 +213,7 @@ impl Event {
         let mut event = Event::new_empty("interfaceSpeed");
 
         let ifse = InterfaceSpeedEvent {
-            fqdn: fqdn.clone(),
+            fqdn: fqdn.to_string(),
             name: name.clone(),
             neighbor: neighbor,
             neighbor_name: neighbor_name,
