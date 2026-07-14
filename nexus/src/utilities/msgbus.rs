@@ -14,6 +14,7 @@ impl MessageBus {
             Ok(env_opt) => env_opt,
             Err(_) => {
                 // MQTT is optional: without JASPY_MQTT_SERVER we publish nothing.
+                println!("[mqtt] disabled (JASPY_MQTT_SERVER not set); events are not published to MQTT");
                 return MessageBus { client: None };
             }
         };
@@ -27,21 +28,42 @@ impl MessageBus {
             None => (event_publish.clone(), 1883),
         };
 
+        let broker_addr = format!("{}:{}", mqtt_host, mqtt_port);
         let mut mqtt_options = MqttOptions::new("jaspy-nexus", mqtt_host, mqtt_port);
         mqtt_options
             .set_keep_alive(Duration::from_secs(10))
             .set_clean_session(false)
             .set_pending_throttle(Duration::from_secs(1));
 
+        println!("[mqtt] enabled, publishing events to {}", broker_addr);
         let (client, mut connection) = Client::new(mqtt_options, 10);
 
         // Drive the connection event loop in a background thread. We do not
         // consume incoming publishes (nexus only produces events); iterating is
         // what keeps the client connected and transparently reconnecting.
+        // Connection state is logged on transitions only — the blocking
+        // Connection retries in a tight loop, so logging every failed attempt
+        // would flood stdout with identical lines.
         std::thread::spawn(move || {
-            for _notification in connection.iter() {
-                // Ignore both notifications and connection errors; the blocking
-                // Connection retries automatically as long as we keep iterating.
+            let mut last_connected: Option<bool> = None;
+            for notification in connection.iter() {
+                match &notification {
+                    Ok(rumqttc::Event::Incoming(rumqttc::Packet::ConnAck(_))) => {
+                        if last_connected != Some(true) {
+                            println!("[mqtt] connected to {}", broker_addr);
+                            last_connected = Some(true);
+                        }
+                    },
+                    Ok(_) => {},
+                    Err(e) => {
+                        // First failure only; the retry loop alternates error
+                        // causes, so keep quiet until a reconnect succeeds.
+                        if last_connected != Some(false) {
+                            println!("[mqtt] connection to {} failed: {} (retrying)", broker_addr, e);
+                            last_connected = Some(false);
+                        }
+                    },
+                }
             }
         });
 

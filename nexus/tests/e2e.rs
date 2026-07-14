@@ -500,6 +500,9 @@ fn api_v1_summary_and_devices() {
 
     nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
 
+    // No JASPY_MQTT_SERVER in this harness config: startup must say so.
+    assert!(nexus.log().contains("[mqtt] disabled (JASPY_MQTT_SERVER not set)"), "log:\n{}", nexus.log());
+
     let summary = nexus.get_json("/api/v1/summary");
     assert_eq!(summary["deviceCount"], json!(1), "summary: {:?}", summary);
     assert_eq!(summary["version"], json!("2.2.0"));
@@ -952,6 +955,11 @@ fn mqtt_events_published() {
     nexus.put_json(&format!("/dev/device/{}", FQDN), &device_body(false));
     let changed = broker.wait_for_event(Duration::from_secs(10), |t, _| t == "jaspy/nexus/devicePollingChanged");
     assert!(changed.is_some(), "expected devicePollingChanged event; collected: {:?}", broker.events());
+
+    // MQTT connection state is reported on stdout.
+    let log = nexus.log();
+    assert!(log.contains("[mqtt] enabled, publishing events to"), "log:\n{}", log);
+    assert!(log.contains("[mqtt] connected to"), "log:\n{}", log);
 }
 
 // ---------------------------------------------------------------------------
