@@ -1,0 +1,4 @@
+CREATE TABLE settings (
+    name VARCHAR PRIMARY KEY NOT NULL,
+    value VARCHAR NOT NULL
+);

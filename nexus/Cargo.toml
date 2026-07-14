@@ -19,6 +19,9 @@ rumqttc = { version = "0.24", default-features = false }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json"] }
 rand = "0.7.3"
 oping = "0.4.0"
+# Embeds the built React admin UI (webui/dist) into the binary; in debug
+# builds it reads from disk so frontend iteration needs no Rust rebuild.
+rust-embed = "8"
 
 [dev-dependencies]
 # End-to-end test suite (tests/e2e.rs): mock snmpbot, ephemeral postgres,

@@ -1,4 +1,4 @@
-use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations};
+use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations,settings};
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -110,7 +110,58 @@ pub struct Interface {
     pub virtual_connection: Option<i32>,
 }
 
+// Simple key/value store for runtime-mutable state that must survive restarts
+// (e.g. the discovery engine config and the current event name).
+#[derive(Serialize, Deserialize, Queryable, Insertable, Identifiable, AsChangeset, Clone)]
+#[diesel(table_name = settings, primary_key(name))]
+#[serde(rename_all = "camelCase")]
+pub struct Setting {
+    pub name: String,
+    pub value: String,
+}
+
+impl Setting {
+    pub fn get(connection: &mut PgConnection, name: &str) -> Option<String> {
+        match settings::table
+            .filter(settings::name.eq(name))
+            .first::<Setting>(connection)
+        {
+            Ok(setting) => {
+                return Some(setting.value);
+            },
+            Err(_) => {
+                return None;
+            }
+        }
+    }
+
+    pub fn set(connection: &mut PgConnection, name: &str, value: &str) -> Result<usize, diesel::result::Error> {
+        let setting = Setting { name: name.to_string(), value: value.to_string() };
+        return diesel::insert_into(settings::table)
+            .values(&setting)
+            .on_conflict(settings::name)
+            .do_update()
+            .set(settings::value.eq(value))
+            .execute(connection);
+    }
+
+    pub fn delete(connection: &mut PgConnection, name: &str) -> Result<usize, diesel::result::Error> {
+        return diesel::delete(settings::table.filter(settings::name.eq(name))).execute(connection);
+    }
+}
+
 impl ClientLocation {
+    pub fn all(connection: &mut PgConnection) -> Vec<ClientLocation> {
+        match client_locations::table.load(connection) {
+            Ok(result) => {
+                return result;
+            },
+            Err(_) => {
+                return Vec::new();
+            }
+        }
+    }
+
     pub fn create(new_client_location: &NewClientLocation, connection: &mut PgConnection) -> Result<ClientLocation, diesel::result::Error> {
         let result = diesel::insert_into(client_locations::table)
             .values(new_client_location)

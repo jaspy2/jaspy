@@ -77,12 +77,21 @@ pub fn discovery_get_config(control: &State<Arc<Mutex<DiscoveryControl>>>) -> Js
 #[put("/config", data = "<config_json>")]
 pub fn discovery_put_config(
     config_json: Json<models::json::DiscoveryConfig>,
+    mut connection: db::JaspyDB,
     control: &State<Arc<Mutex<DiscoveryControl>>>,
-) -> Json<models::json::DiscoveryConfig> {
+) -> Result<Json<models::json::DiscoveryConfig>, Status> {
     let new_config = config_json.into_inner();
+    // Persist so the config survives restarts (wins over the env seed). A
+    // failed write must surface: silently reverting to the env seed on the
+    // next restart would be worse than an error now.
+    let json = serde_json::to_string(&new_config).map_err(|_| Status::InternalServerError)?;
+    if let Err(e) = models::dbo::Setting::set(&mut connection, "discovery_config", &json) {
+        println!("[discovery] failed to persist config: {}", e);
+        return Err(Status::InternalServerError);
+    }
     if let Ok(mut control) = control.inner().lock() {
         control.config = new_config;
-        return Json(control.config.clone());
+        return Ok(Json(control.config.clone()));
     }
-    Json(models::json::DiscoveryConfig::default())
+    Err(Status::InternalServerError)
 }

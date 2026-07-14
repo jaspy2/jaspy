@@ -63,6 +63,12 @@ impl IMDS {
         return self.metrics_storage.devices.get(device_fqdn);
     }
 
+    // Drop devices that no longer exist in the database (deleted via the API
+    // or a state reset); without this their metrics would be exported forever.
+    pub fn retain_devices(self: &mut IMDS, monitored_fqdns: &HashSet<String>) {
+        self.metrics_storage.devices.retain(|fqdn, _| monitored_fqdns.contains(fqdn));
+    }
+
     pub fn refresh_device(self: &mut IMDS, device_fqdn: &String) {
         match self.metrics_storage.devices.get_mut(device_fqdn) {
             Some(device) => {

@@ -95,6 +95,75 @@ pub struct DiscoveryRunRequest {
     pub topology_stable: Option<bool>,
 }
 
+// --- /api/v1 DTOs (web admin UI) ---
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiSummary {
+    pub version: String,
+    pub state_id: i64,
+    pub startup_time: f64,
+    pub event_name: Option<String>,
+    pub device_count: u64,
+    pub devices_up: u64,
+    pub devices_down: u64,
+    pub devices_unknown: u64,
+    pub discovery: DiscoveryStatus,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiDevice {
+    pub id: i32,
+    pub fqdn: String,
+    pub name: String,
+    pub dns_domain: String,
+    pub snmp_community: Option<String>,
+    pub base_mac: Option<String>,
+    pub polling_enabled: Option<bool>,
+    pub os_info: Option<String>,
+    pub device_type: Option<String>,
+    pub software_version: Option<String>,
+    pub up: Option<bool>,
+    pub interface_count: u64,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInterface {
+    pub id: i32,
+    pub index: i32,
+    pub name: String,
+    pub display_name: Option<String>,
+    pub alias: Option<String>,
+    pub description: Option<String>,
+    pub interface_type: String,
+    pub polling_enabled: Option<bool>,
+    pub speed_override: Option<i32>,
+    pub connected_to: Option<String>,
+    pub up: Option<bool>,
+    pub speed: Option<i32>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiDeviceDetail {
+    pub device: ApiDevice,
+    pub interfaces: Vec<ApiInterface>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiEvent {
+    pub name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiResetResult {
+    pub devices_deleted: u64,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceMonitorInfo {

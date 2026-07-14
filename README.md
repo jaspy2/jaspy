@@ -39,8 +39,11 @@ These instructions assume that you are have a fresh Debian Buster (10.x) install
 ### Install dependencies:
 
 ```
-apt-get install mosquitto postgresql prometheus apache2
+apt-get install mosquitto postgresql prometheus
 ```
+
+(apache2 is no longer needed: `jaspy-nexus` serves the web admin UI, the API
+and the weathermap itself on port 8000.)
 
 ### Install Jaspy itself
 
@@ -61,6 +64,21 @@ start:
 systemctl start jaspy-nexus
 systemctl start snmpbot
 ```
+
+### Web admin UI
+
+`jaspy-nexus` serves a web admin interface at `http://<jaspy-vm>:8000/`. From
+there you can see the device inventory and live status, configure and trigger
+topology discovery, browse client locations, set the current event name, and
+reset the jaspy state between events (Maintenance page). The UI talks to the
+`/api/v1/*` endpoints; the `/dev/*` API remains for machine-to-machine
+integrations (cli tools, prometheus, snmptrapd, switchmaster).
+
+Note: the UI and API are currently unauthenticated — keep the VM reachable
+only from trusted networks. Authentication is planned; until then you can set
+`ROCKET_ADDRESS=127.0.0.1` in `jaspy-nexus.service` and front nexus with your
+own authenticating reverse proxy if needed.
+
 ### Check that everything is working
 
 ```
@@ -102,8 +120,12 @@ Environment=JASPY_DISCOVERY_DNS_DOMAINS=foobar.com
 Environment=JASPY_DISCOVERY_INTERVAL_SECS=3600
 ```
 
-The same settings can be viewed and changed at runtime via `GET`/`PUT
-/dev/discovery/config` (changes reset to the environment values on restart).
+The same settings can be viewed and changed at runtime from the web UI
+(Discovery page) or via `GET`/`PUT /dev/discovery/config`. Saved changes are
+persisted in the database and survive restarts — once a config has been saved
+this way, it takes precedence over the `JASPY_DISCOVERY_*` environment values
+(which act only as the first-boot seed; nexus logs which source it used at
+startup).
 
 Once the discovery is completed you should be able to list your devices:
 
@@ -188,29 +210,16 @@ In addition the `jaspy_sensors` metrics contains these labels:
 
 Weathermap is a JavaScript tool to show a graphical representation of the network topology in browser. It requires access to Prometheus and jaspy-api.
 
-### Setup based on Apache2
-
-Enable mod_proxy. Run:
-```
-a2enmod proxy_http
-```
-
-Edit `/etc/apache2/apache2.conf` and add the following snippet:
-
-```
-<Directory /var/www/>
-        Options Indexes FollowSymLinks
-        AllowOverride None
-        Require all granted
-</Directory>
-```
-
-Copy `/var/lib/jaspy/weathermap/js/config.dist.js` as `config.js` and replace JASPY_PROMETHEUS_URL and JASPY_NEXUS_URL with a working full urls as seen in this example, which assumes that Jaspy VM has ip 172.16.143.39. You should probably use a fqdn:
+`jaspy-nexus` serves it directly at `http://<jaspy-vm>:8000/weathermap/` from
+`/var/lib/jaspy/weathermap` (no apache needed). To configure it, copy
+`/var/lib/jaspy/weathermap/js/config.dist.js` as `config.js` and replace
+JASPY_PROMETHEUS_URL and JASPY_NEXUS_URL. Because nexus serves both the files
+and the API, the nexus URL can be relative:
 
 ```
 config = {
-    "prometheusQueryURL": "https://172.16.143.39/prometheus/api/v1/query?query=",
-    "jaspyNexusURL": "http://172.16.143.39/jaspy-api/dev/weathermap",
+    "prometheusQueryURL": "http://172.16.143.39:9090/api/v1/query?query=",
+    "jaspyNexusURL": "/dev/weathermap",
     "deviceIconSize": 20,
     "arrowWidth": 8.0,
     "arrowLength": 16.0,
@@ -220,20 +229,6 @@ config = {
 };
 ```
 
-Replace `/etc/apache2/sites-enabled/000-default.conf` with this snippet:
-
-```
-<VirtualHost *:80>
-        ServerAdmin webmaster@localhost
-        DocumentRoot /var/lib/jaspy/weathermap
-
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
-
-        ProxyPass "/jaspy-api" "http://127.0.0.1:8000/"
-        ProxyPassReverse "/jaspy-api" "http://127.0.0.1:8000/"
-</VirtualHost>
-```
-
-Restart apache: `systemctl restart apache2` and try the weathermap with your browser.
+(The prometheus URL must still point at your Prometheus instance; expose it to
+the browsers you use the weathermap from.)
 

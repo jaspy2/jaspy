@@ -392,6 +392,167 @@ fn discovery_periodic_runs_and_config_disable() {
 }
 
 // ---------------------------------------------------------------------------
+// 1d. Web admin UI API (/api/v1) and embedded SPA serving
+// ---------------------------------------------------------------------------
+
+#[test]
+fn api_v1_summary_and_devices() {
+    let pg = PgHarness::start();
+    let nexus = Nexus::builder(&pg.db_url).start();
+
+    nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
+
+    let summary = nexus.get_json("/api/v1/summary");
+    assert_eq!(summary["deviceCount"], json!(1), "summary: {:?}", summary);
+    assert_eq!(summary["version"], json!("2.2.0"));
+    assert!(summary["eventName"].is_null());
+    assert!(summary["stateId"].as_i64().unwrap() > 0);
+    assert!(summary["discovery"]["running"] == json!(false));
+
+    let devices = nexus.get_json("/api/v1/devices");
+    let list = devices.as_array().unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0]["fqdn"], json!(FQDN));
+    assert_eq!(list[0]["interfaceCount"], json!(2));
+    assert!(list[0].get("up").is_some());
+
+    let detail = nexus.get_json(&format!("/api/v1/devices/{}", FQDN));
+    assert_eq!(detail["device"]["fqdn"], json!(FQDN));
+    let interfaces = detail["interfaces"].as_array().unwrap();
+    assert_eq!(interfaces.len(), 2);
+    assert_eq!(interfaces[0]["name"], json!("GigabitEthernet0/1"));
+
+    // Polling toggle via PUT mirrors /dev/device semantics.
+    let mut update = json!({
+        "name": "sw1", "dnsDomain": "test.example", "snmpCommunity": COMMUNITY,
+        "baseMac": null, "pollingEnabled": false, "osInfo": null,
+        "deviceType": null, "softwareVersion": null
+    });
+    let resp = nexus.put_json(&format!("/api/v1/devices/{}", FQDN), &update);
+    assert!(resp.status().is_success());
+    let devices = nexus.get_json("/api/v1/devices");
+    assert_eq!(devices.as_array().unwrap()[0]["pollingEnabled"], json!(false));
+    update["pollingEnabled"] = json!(null);
+    nexus.put_json(&format!("/api/v1/devices/{}", FQDN), &update);
+}
+
+#[test]
+fn api_v1_event_and_reset() {
+    let pg = PgHarness::start();
+    let nexus = Nexus::builder(&pg.db_url).start();
+
+    // Event name round-trips and shows up in the summary.
+    let resp = nexus.put_json("/api/v1/event", &json!({"name": "Test LAN 2026"}));
+    assert!(resp.status().is_success());
+    assert_eq!(nexus.get_json("/api/v1/event")["name"], json!("Test LAN 2026"));
+    assert_eq!(nexus.get_json("/api/v1/summary")["eventName"], json!("Test LAN 2026"));
+
+    // Persist a discovery config so we can assert reset keeps it.
+    let mut config = nexus.get_json("/api/v1/discovery/config");
+    config["rootDevice"] = json!("root.test.example");
+    nexus.put_json("/api/v1/discovery/config", &config);
+
+    // Seed topology + a client location.
+    nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
+    nexus.put_json("/dev/discovery/device", &discovery_body("sw2", "test.example"));
+    nexus.post_json(
+        "/dev/device",
+        &json!({"name":"sw3","dnsDomain":"test.example","snmpCommunity":COMMUNITY,"baseMac":"aa:bb:cc:dd:ee:ff","pollingEnabled":true}),
+    );
+    nexus.put_json("/dev/clientlocation/", &json!({
+        "yiaddr": "10.1.2.3", "chaddr": "11:22:33:44:55:66",
+        "option82": {"001": "00:00:00:00:0a:05", "002": "00:00:aa:bb:cc:dd:ee:ff"}
+    }));
+
+    let locations = nexus.get_json("/api/v1/clientlocations");
+    assert_eq!(locations.as_array().unwrap().len(), 1);
+
+    // Reset wipes all four domain tables and the event name.
+    let resp = nexus.post_json("/api/v1/reset", &json!({}));
+    assert!(resp.status().is_success());
+    let result: serde_json::Value = resp.json().unwrap();
+    assert_eq!(result["devicesDeleted"], json!(3));
+
+    let mut conn = pg.conn();
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        n: i64,
+    }
+    for table in ["devices", "interfaces", "client_locations", "weathermap_device_infos"] {
+        let rows: Vec<CountRow> = query_rows(&mut conn, &format!("select count(*) as n from {}", table));
+        assert_eq!(rows[0].n, 0, "table {} should be empty after reset", table);
+    }
+    assert!(nexus.get_json("/api/v1/event")["name"].is_null(), "event name should be cleared");
+    assert_eq!(
+        nexus.get_json("/api/v1/discovery/config")["rootDevice"],
+        json!("root.test.example"),
+        "discovery config must survive a reset"
+    );
+
+    // IMDS must purge the deleted devices (JASPY_IMDS_REFRESH_SECS=1 in the
+    // harness) so metrics stop being exported for the wiped fleet.
+    assert!(
+        wait_until(Duration::from_secs(10), || !nexus.metrics_fast().contains("fqdn=\"sw1.test.example\"")),
+        "IMDS should drop deleted devices from metrics after reset; metrics:\n{}",
+        nexus.metrics_fast()
+    );
+}
+
+#[test]
+fn discovery_config_persists_across_restart() {
+    let pg = PgHarness::start();
+
+    {
+        let nexus = Nexus::builder(&pg.db_url)
+            .env("JASPY_DISCOVERY_ROOT_DEVICE", "from-env.test.example")
+            .start();
+        let mut config = nexus.get_json("/api/v1/discovery/config");
+        assert_eq!(config["rootDevice"], json!("from-env.test.example"));
+        config["rootDevice"] = json!("from-ui.test.example");
+        config["community"] = json!("uicomm");
+        let resp = nexus.put_json("/api/v1/discovery/config", &config);
+        assert!(resp.status().is_success());
+    } // nexus dropped (killed)
+
+    // Same DB, same env seed: the persisted config must win over env.
+    let nexus = Nexus::builder(&pg.db_url)
+        .env("JASPY_DISCOVERY_ROOT_DEVICE", "from-env.test.example")
+        .start();
+    let config = nexus.get_json("/api/v1/discovery/config");
+    assert_eq!(config["rootDevice"], json!("from-ui.test.example"));
+    assert_eq!(config["community"], json!("uicomm"));
+}
+
+#[test]
+fn spa_and_fallback() {
+    let pg = PgHarness::start();
+    let nexus = Nexus::builder(&pg.db_url).start();
+
+    // Root serves the SPA shell (placeholder from build.rs is enough).
+    let root = nexus.client.get(format!("{}/", nexus.base_url)).send().unwrap();
+    assert_eq!(root.status().as_u16(), 200);
+    let content_type = root.headers().get("content-type").unwrap().to_str().unwrap().to_string();
+    assert!(content_type.contains("text/html"), "content-type: {}", content_type);
+    let body = root.text().unwrap();
+    assert!(body.contains("<html"), "root should serve the SPA shell");
+
+    // Unknown client-side route falls back to the same shell.
+    let fallback = nexus.client.get(format!("{}/devices/sw1.test.example", nexus.base_url)).send().unwrap();
+    assert_eq!(fallback.status().as_u16(), 200);
+    assert_eq!(fallback.text().unwrap(), body, "SPA fallback should serve index.html");
+
+    // API namespaces must NOT fall back to HTML.
+    assert_eq!(nexus.get_status("/api/v1/nonexistent"), 404);
+    assert_eq!(nexus.get_status("/dev/nonexistent"), 404);
+
+    // Missing files (extension in last segment) are real 404s, not the shell;
+    // same for the weathermap prefix (FileServer misses must not become HTML).
+    assert_eq!(nexus.get_status("/assets/no-such-file.js"), 404);
+    assert_eq!(nexus.get_status("/weathermap/js/config.js"), 404);
+}
+
+// ---------------------------------------------------------------------------
 // 2. Discovery writes devices + interfaces to Postgres
 // ---------------------------------------------------------------------------
 #[derive(QueryableByName)]

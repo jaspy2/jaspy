@@ -11,9 +11,10 @@ Group=jaspy
 AmbientCapabilities=CAP_NET_RAW
 Environment=JASPY_DB_URL=postgresql:///jaspy
 Environment=JASPY_MQTT_SERVER=127.0.0.1
-# Rocket 0.5's release profile defaults to binding 0.0.0.0; pin to localhost to
-# match the previous bind and keep the unauthenticated API off the network.
-Environment=ROCKET_ADDRESS=127.0.0.1
+# nexus serves the web admin UI and API on this one port (no reverse proxy
+# needed). NOTE: the UI/API is unauthenticated until the auth phase lands;
+# restrict to localhost again by setting 127.0.0.1 if that is a concern.
+Environment=ROCKET_ADDRESS=0.0.0.0
 Environment=ROCKET_PORT=8000
 # In-process poller collector (formerly the standalone jaspy-poller service).
 Environment=JASPY_SNMPBOT_URL=http://127.0.0.1:8286/

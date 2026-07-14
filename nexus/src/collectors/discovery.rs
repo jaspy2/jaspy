@@ -1034,8 +1034,11 @@ fn next_run_params(snmpbot_url: &str, skip_dns: bool, control: &Arc<Mutex<Discov
         control.trigger_requested = false;
         start = true;
     } else if control.config.periodic_enabled {
+        // Floor the interval so a bad config (0) cannot turn periodic
+        // discovery into a busy loop against snmpbot and the network.
+        let interval_secs = std::cmp::max(control.config.interval_secs, 10);
         let due = match control.status.last_finished {
-            Some(last_finished) => now - last_finished >= control.config.interval_secs as f64,
+            Some(last_finished) => now - last_finished >= interval_secs as f64,
             None => true,
         };
         if due {

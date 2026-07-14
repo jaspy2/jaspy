@@ -28,6 +28,10 @@ fn refresh_imds_items(conn: &mut diesel::PgConnection, imds: &Arc<Mutex<utilitie
     }
     {
         if let Ok(ref mut imds) = imds.lock() {
+            // Purge devices deleted from the DB (API delete or state reset) so
+            // their metrics stop being exported.
+            let monitored_fqdns: std::collections::HashSet<String> = refresh_interfaces.keys().cloned().collect();
+            imds.retain_devices(&monitored_fqdns);
             for device in refresh_devices.iter() {
                 let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
                 imds.refresh_device(&device_fqdn);
@@ -98,7 +102,7 @@ async fn main() {
     let split_csv = |v: Result<String, config::ConfigError>| -> Vec<String> {
         v.map(|s| s.split(',').map(|p| p.trim().to_string()).filter(|p| !p.is_empty()).collect()).unwrap_or_default()
     };
-    let discovery_config = models::json::DiscoveryConfig {
+    let discovery_config_env_seed = models::json::DiscoveryConfig {
         root_device: c.get_str("discovery_root_device").ok(),
         community: c.get_str("discovery_community").ok(),
         dns_domains: split_csv(c.get_str("discovery_dns_domains")),
@@ -109,6 +113,34 @@ async fn main() {
         topology_stable: c.get_bool("discovery_stable").unwrap_or(true),
         periodic_enabled: discovery_interval_secs.is_some(),
         interval_secs: discovery_interval_secs.unwrap_or(3600),
+    };
+
+    // A config persisted via PUT /dev/discovery/config (settings table) wins
+    // over the env seed; env is only the first-boot default. Log which source
+    // is used so an ignored env edit or an unreadable persisted config is
+    // visible instead of silent.
+    let pool = db::connect();
+    let discovery_config = match pool.get() {
+        Ok(mut conn) => match models::dbo::Setting::get(&mut *conn, "discovery_config") {
+            Some(json) => match serde_json::from_str::<models::json::DiscoveryConfig>(&json) {
+                Ok(config) => {
+                    println!("[discovery] using persisted config from database (JASPY_DISCOVERY_* env is only the first-boot seed)");
+                    config
+                },
+                Err(e) => {
+                    println!("[discovery] failed to parse persisted config ({}), falling back to env seed", e);
+                    discovery_config_env_seed
+                }
+            },
+            None => {
+                println!("[discovery] no persisted config, using JASPY_DISCOVERY_* env seed");
+                discovery_config_env_seed
+            }
+        },
+        Err(e) => {
+            println!("[discovery] could not load persisted config (db unavailable: {}), using env seed", e);
+            discovery_config_env_seed
+        }
     };
 
     let running = Arc::new(AtomicBool::new(true));
@@ -175,7 +207,7 @@ async fn main() {
 
     let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
 
-    let _ = rocket::build()
+    let mut rocket_app = rocket::build()
         .mount(
             "/dev/device",
             routes![
@@ -233,15 +265,50 @@ async fn main() {
                 routes::dev::weathermap::put_position_data,
             ]
         )
-        .manage(db::connect())
+        // UI-facing API: the single prefix that will go behind auth later.
+        .mount(
+            "/api/v1",
+            routes![
+                routes::api::v1::summary,
+                routes::api::v1::devices,
+                routes::api::v1::device_detail,
+                routes::api::v1::device_create,
+                routes::api::v1::device_update,
+                routes::api::v1::device_delete,
+                routes::api::v1::clientlocations,
+                routes::api::v1::event_get,
+                routes::api::v1::event_put,
+                routes::api::v1::reset,
+            ]
+        )
+        // Discovery control re-mounted for the UI: same handlers as /dev/discovery.
+        .mount(
+            "/api/v1/discovery",
+            routes![
+                routes::dev::discovery::discovery_run,
+                routes::dev::discovery::discovery_status,
+                routes::dev::discovery::discovery_get_config,
+                routes::dev::discovery::discovery_put_config,
+            ]
+        )
+        // Embedded React admin UI with SPA fallback (lowest rank catch-all).
+        .mount("/", routes![routes::webui::spa])
+        .manage(pool.clone())
         .manage(imds.clone())
         .manage(entity_metrics.clone())
         .manage(discovery_control.clone())
         .manage(cache_controller.clone())
         .manage(runtime_info.clone())
-        .manage(msgbus.clone())
-        .launch()
-        .await;
+        .manage(msgbus.clone());
+
+    // Serve the existing PIXI weathermap statics when present (replaces the
+    // apache2 DocumentRoot; config.js can now use relative /dev/weathermap).
+    let weathermap_dir = std::env::var("JASPY_WEATHERMAP_DIR").unwrap_or_else(|_| "/var/lib/jaspy/weathermap".to_string());
+    if std::path::Path::new(&weathermap_dir).is_dir() {
+        rocket_app = rocket_app.mount("/weathermap", rocket::fs::FileServer::from(weathermap_dir));
+    }
+
+    let _ = rocket_app.launch().await;
 
     (*running).store(false, std::sync::atomic::Ordering::Relaxed);
     imds_worker_thread.join().unwrap();
