@@ -303,6 +303,49 @@ pub fn reset(mut connection: db::JaspyDB, cache_controller: &State<Arc<Mutex<uti
     Json(models::json::ApiResetResult { devices_deleted: devices_deleted })
 }
 
+// Effective feature configuration + live connection state, for the
+// Maintenance page's system status panel.
+#[get("/system")]
+pub fn system_status(
+    system: &State<models::internal::SystemInfo>,
+    runtime_info: &State<Arc<Mutex<models::internal::RuntimeInfo>>>,
+    msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>,
+    discovery_control: &State<Arc<Mutex<crate::collectors::discovery::DiscoveryControl>>>,
+) -> Json<models::json::ApiSystemStatus> {
+    let startup_time = runtime_info.inner().lock().map(|r| r.startup_time).unwrap_or(0.0);
+    let (mqtt_broker, mqtt_connected) = match msgbus.inner().lock() {
+        Ok(msgbus) => (msgbus.broker(), msgbus.connection_status()),
+        Err(_) => (None, None),
+    };
+    // Discovery scheduling is runtime-mutable (PUT /discovery/config), so read
+    // the live control state rather than the startup config.
+    let (discovery_periodic_enabled, discovery_interval_secs) = match discovery_control.inner().lock() {
+        Ok(control) => (control.config.periodic_enabled, control.config.interval_secs),
+        Err(_) => (false, 0),
+    };
+    let system = system.inner();
+    Json(models::json::ApiSystemStatus {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        startup_time: startup_time,
+        snmpbot_url: system.snmpbot_url.clone(),
+        db_url: system.db_url.clone(),
+        poller_enabled: system.poller_enabled,
+        poll_loop_msecs: system.poll_loop_msecs,
+        pinger_enabled: system.pinger_enabled,
+        device_status_source: if system.pinger_enabled { "pinger".to_string() } else { "poller".to_string() },
+        entitypoller_enabled: system.entitypoller_enabled,
+        entitypoller_interval_msecs: system.entitypoller_interval_msecs,
+        entitypoller_sensors_enabled: system.entitypoller_sensors_enabled,
+        entitypoller_stp_enabled: system.entitypoller_stp_enabled,
+        mqtt_enabled: mqtt_broker.is_some(),
+        mqtt_broker: mqtt_broker,
+        mqtt_connected: mqtt_connected,
+        discovery_periodic_enabled: discovery_periodic_enabled,
+        discovery_interval_secs: discovery_interval_secs,
+        weathermap_dir: system.weathermap_dir.clone(),
+    })
+}
+
 // Live update stream over WebSocket. The generic transport for pushing updates
 // from the backend to the client: the server replays the topic's backlog on
 // connect, then streams frames as they are published to utilities::livelog.

@@ -503,6 +503,18 @@ fn api_v1_summary_and_devices() {
     // No JASPY_MQTT_SERVER in this harness config: startup must say so.
     assert!(nexus.log().contains("[mqtt] disabled (JASPY_MQTT_SERVER not set)"), "log:\n{}", nexus.log());
 
+    // System status reflects the harness configuration (poller/pinger/mqtt off).
+    let system = nexus.get_json("/api/v1/system");
+    assert_eq!(system["pollerEnabled"], json!(false), "system: {:?}", system);
+    assert_eq!(system["pingerEnabled"], json!(false), "system: {:?}", system);
+    assert_eq!(system["deviceStatusSource"], json!("poller"), "system: {:?}", system);
+    assert_eq!(system["mqttEnabled"], json!(false), "system: {:?}", system);
+    assert_eq!(system["mqttBroker"], json!(null), "system: {:?}", system);
+    assert!(
+        system["dbUrl"].as_str().unwrap_or_default().starts_with("postgres"),
+        "dbUrl should be present (redacted); system: {:?}", system
+    );
+
     let summary = nexus.get_json("/api/v1/summary");
     assert_eq!(summary["deviceCount"], json!(1), "summary: {:?}", summary);
     assert_eq!(summary["version"], json!("2.2.0"));
@@ -960,6 +972,20 @@ fn mqtt_events_published() {
     let log = nexus.log();
     assert!(log.contains("[mqtt] enabled, publishing events to"), "log:\n{}", log);
     assert!(log.contains("[mqtt] connected to"), "log:\n{}", log);
+
+    // ...and on the system status endpoint.
+    let system = nexus.get_json("/api/v1/system");
+    assert_eq!(system["mqttEnabled"], json!(true), "system: {:?}", system);
+    assert!(
+        system["mqttBroker"].as_str().unwrap_or_default().contains("127.0.0.1"),
+        "system: {:?}", system
+    );
+    assert!(
+        wait_until(Duration::from_secs(10), || {
+            nexus.get_json("/api/v1/system")["mqttConnected"] == json!(true)
+        }),
+        "mqttConnected should become true; system: {:?}", nexus.get_json("/api/v1/system")
+    );
 }
 
 // ---------------------------------------------------------------------------

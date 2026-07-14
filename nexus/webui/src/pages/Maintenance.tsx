@@ -2,9 +2,16 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatTimestamp, formatUptime } from '../api/client';
 
+function EnabledBadge({ enabled }: { enabled: boolean }) {
+  return enabled
+    ? <span className="badge badge-ok">enabled</span>
+    : <span className="badge badge-muted">disabled</span>;
+}
+
 export default function Maintenance() {
   const queryClient = useQueryClient();
   const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary, refetchInterval: 10000 });
+  const system = useQuery({ queryKey: ['system'], queryFn: api.system, refetchInterval: 10000 });
   const event = useQuery({ queryKey: ['event'], queryFn: api.event });
 
   const [eventName, setEventName] = useState<string | null>(null);
@@ -32,10 +39,61 @@ export default function Maintenance() {
   });
 
   const s = summary.data;
+  const sys = system.data;
 
   return (
     <>
       <h1>Maintenance</h1>
+
+      <h2>System status</h2>
+      <div className="panel">
+        {sys ? (
+          <div className="kv">
+            <span>SNMP poller</span>
+            <span>
+              <EnabledBadge enabled={sys.pollerEnabled} />
+              {sys.pollerEnabled && ` polling every ${sys.pollLoopMsecs / 1000}s`}
+            </span>
+            <span>Pinger</span>
+            <span>
+              <EnabledBadge enabled={sys.pingerEnabled} />
+              {' '}— device up/down from {sys.deviceStatusSource === 'pinger' ? 'ICMP ping' : 'SNMP poll responses'}
+            </span>
+            <span>Entity poller</span>
+            <span>
+              <EnabledBadge enabled={sys.entitypollerEnabled} />
+              {sys.entitypollerEnabled &&
+                ` every ${sys.entitypollerIntervalMsecs / 1000}s (sensors ${sys.entitypollerSensorsEnabled ? 'on' : 'off'}, STP ${sys.entitypollerStpEnabled ? 'on' : 'off'})`}
+            </span>
+            <span>Periodic discovery</span>
+            <span>
+              <EnabledBadge enabled={sys.discoveryPeriodicEnabled} />
+              {sys.discoveryPeriodicEnabled ? ` every ${sys.discoveryIntervalSecs}s` : ' — manual runs only'}
+            </span>
+            <span>MQTT events</span>
+            <span>
+              {sys.mqttEnabled ? (
+                <>
+                  {sys.mqttConnected === true && <span className="badge badge-ok">connected</span>}
+                  {sys.mqttConnected === false && <span className="badge badge-bad">disconnected</span>}
+                  {sys.mqttConnected === null && <span className="badge badge-warn">connecting…</span>}
+                  {' '}{sys.mqttBroker}
+                </>
+              ) : (
+                <span className="badge badge-muted">disabled</span>
+              )}
+            </span>
+            <span>snmpbot</span><span className="wrap">{sys.snmpbotUrl}</span>
+            <span>Database</span><span className="wrap">{sys.dbUrl}</span>
+            <span>Weathermap statics</span>
+            <span className="wrap">
+              {sys.weathermapDir ?? <span className="muted">directory not found — not served</span>}
+            </span>
+          </div>
+        ) : (
+          <p>Loading…</p>
+        )}
+      </div>
 
       <h2>Event</h2>
       <div className="panel">

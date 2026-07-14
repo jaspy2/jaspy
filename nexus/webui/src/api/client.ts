@@ -8,6 +8,7 @@ import type {
   EventInfo,
   ResetResult,
   Summary,
+  SystemStatus,
 } from './types';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -32,6 +33,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   summary: () => request<Summary>('/api/v1/summary'),
+  system: () => request<SystemStatus>('/api/v1/system'),
   devices: () => request<Device[]>('/api/v1/devices'),
   device: (fqdn: string) => request<DeviceDetail>(`/api/v1/devices/${encodeURIComponent(fqdn)}`),
   updateDevice: (fqdn: string, body: DeviceUpdate) =>

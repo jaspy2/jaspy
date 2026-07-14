@@ -98,6 +98,32 @@ pub struct DiscoveryRunRequest {
 
 // --- /api/v1 DTOs (web admin UI) ---
 
+// GET /api/v1/system: which features are enabled and how the process is
+// wired, so an admin can see how the system is operating from the UI.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiSystemStatus {
+    pub version: String,
+    pub startup_time: f64,
+    pub snmpbot_url: String,
+    pub db_url: String,
+    pub poller_enabled: bool,
+    pub poll_loop_msecs: u64,
+    pub pinger_enabled: bool,
+    // "pinger" or "poller": where device up/down comes from.
+    pub device_status_source: String,
+    pub entitypoller_enabled: bool,
+    pub entitypoller_interval_msecs: u64,
+    pub entitypoller_sensors_enabled: bool,
+    pub entitypoller_stp_enabled: bool,
+    pub mqtt_enabled: bool,
+    pub mqtt_broker: Option<String>,
+    pub mqtt_connected: Option<bool>,
+    pub discovery_periodic_enabled: bool,
+    pub discovery_interval_secs: u64,
+    pub weathermap_dir: Option<String>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiSummary {

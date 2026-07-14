@@ -223,6 +223,25 @@ async fn server_main() {
 
     let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
 
+    // Weathermap statics dir (mounted below when present); resolved here so
+    // the system status endpoint can report it either way.
+    let weathermap_dir = std::env::var("JASPY_WEATHERMAP_DIR").unwrap_or_else(|_| "/var/lib/jaspy/weathermap".to_string());
+    let weathermap_dir_present = std::path::Path::new(&weathermap_dir).is_dir();
+
+    // Effective feature configuration for GET /api/v1/system.
+    let system_info = models::internal::SystemInfo {
+        snmpbot_url: snmpbot_url.clone(),
+        poller_enabled: enable_poller,
+        poll_loop_msecs: poll_loop_msecs,
+        pinger_enabled: enable_pinger,
+        entitypoller_enabled: enable_entitypoller,
+        entitypoller_interval_msecs: entitypoller_interval_msecs,
+        entitypoller_sensors_enabled: !entitypoller_disable_sensors,
+        entitypoller_stp_enabled: !entitypoller_disable_stp,
+        weathermap_dir: if weathermap_dir_present { Some(weathermap_dir.clone()) } else { None },
+        db_url: db::redacted_db_url(&std::env::var("JASPY_DB_URL").unwrap_or_default()),
+    };
+
     let mut rocket_app = rocket::build()
         .mount(
             "/dev/device",
@@ -295,6 +314,7 @@ async fn server_main() {
                 routes::api::v1::event_get,
                 routes::api::v1::event_put,
                 routes::api::v1::reset,
+                routes::api::v1::system_status,
                 routes::api::v1::ws_logs,
             ]
         )
@@ -316,12 +336,12 @@ async fn server_main() {
         .manage(discovery_control.clone())
         .manage(cache_controller.clone())
         .manage(runtime_info.clone())
+        .manage(system_info)
         .manage(msgbus.clone());
 
     // Serve the existing PIXI weathermap statics when present (replaces the
     // apache2 DocumentRoot; config.js can now use relative /dev/weathermap).
-    let weathermap_dir = std::env::var("JASPY_WEATHERMAP_DIR").unwrap_or_else(|_| "/var/lib/jaspy/weathermap".to_string());
-    if std::path::Path::new(&weathermap_dir).is_dir() {
+    if weathermap_dir_present {
         rocket_app = rocket_app.mount("/weathermap", rocket::fs::FileServer::from(weathermap_dir));
     }
 

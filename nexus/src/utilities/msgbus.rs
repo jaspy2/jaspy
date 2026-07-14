@@ -1,11 +1,15 @@
 use crate::models;
 use std::env;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use rumqttc::{Client, MqttOptions, QoS};
 extern crate serde_json;
 
 pub struct MessageBus {
     client: Option<Client>,
+    broker_addr: Option<String>,
+    // None = no connection attempt concluded yet; updated by the event loop.
+    connected: Arc<Mutex<Option<bool>>>,
 }
 
 impl MessageBus {
@@ -15,7 +19,7 @@ impl MessageBus {
             Err(_) => {
                 // MQTT is optional: without JASPY_MQTT_SERVER we publish nothing.
                 println!("[mqtt] disabled (JASPY_MQTT_SERVER not set); events are not published to MQTT");
-                return MessageBus { client: None };
+                return MessageBus { client: None, broker_addr: None, connected: Arc::new(Mutex::new(None)) };
             }
         };
 
@@ -44,14 +48,18 @@ impl MessageBus {
         // Connection state is logged on transitions only — the blocking
         // Connection retries in a tight loop, so logging every failed attempt
         // would flood stdout with identical lines.
+        let connected: Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
+        let connected_writer = connected.clone();
+        let thread_broker_addr = broker_addr.clone();
         std::thread::spawn(move || {
             let mut last_connected: Option<bool> = None;
             for notification in connection.iter() {
                 match &notification {
                     Ok(rumqttc::Event::Incoming(rumqttc::Packet::ConnAck(_))) => {
                         if last_connected != Some(true) {
-                            println!("[mqtt] connected to {}", broker_addr);
+                            println!("[mqtt] connected to {}", thread_broker_addr);
                             last_connected = Some(true);
+                            if let Ok(mut connected) = connected_writer.lock() { *connected = Some(true); }
                         }
                     },
                     Ok(_) => {},
@@ -59,15 +67,27 @@ impl MessageBus {
                         // First failure only; the retry loop alternates error
                         // causes, so keep quiet until a reconnect succeeds.
                         if last_connected != Some(false) {
-                            println!("[mqtt] connection to {} failed: {} (retrying)", broker_addr, e);
+                            println!("[mqtt] connection to {} failed: {} (retrying)", thread_broker_addr, e);
                             last_connected = Some(false);
+                            if let Ok(mut connected) = connected_writer.lock() { *connected = Some(false); }
                         }
                     },
                 }
             }
         });
 
-        return MessageBus { client: Some(client) };
+        return MessageBus { client: Some(client), broker_addr: Some(broker_addr), connected: connected };
+    }
+
+    // Broker address when MQTT is configured; None = disabled.
+    pub fn broker(&self) -> Option<String> {
+        self.broker_addr.clone()
+    }
+
+    // Some(true/false) after the first (dis)connect; None before any attempt
+    // concluded or when MQTT is disabled.
+    pub fn connection_status(&self) -> Option<bool> {
+        self.connected.lock().ok().and_then(|c| *c)
     }
 
     pub fn event(self: &mut MessageBus, event: models::events::Event) {

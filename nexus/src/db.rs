@@ -10,7 +10,7 @@ pub type Pool = diesel::r2d2::Pool<ConnectionManager<PgConnection>>;
 pub type PooledConn = PooledConnection<ConnectionManager<PgConnection>>;
 
 // JASPY_DB_URL with any password replaced, safe for logs.
-fn redacted_db_url(db_url: &str) -> String {
+pub fn redacted_db_url(db_url: &str) -> String {
     match reqwest::Url::parse(db_url) {
         Ok(mut url) => {
             if url.password().is_some() {

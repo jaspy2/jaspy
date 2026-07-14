@@ -37,6 +37,28 @@ export interface DiscoveryConfig {
   intervalSecs: number;
 }
 
+// GET /api/v1/system — effective feature configuration + connection state.
+export interface SystemStatus {
+  version: string;
+  startupTime: number;
+  snmpbotUrl: string;
+  dbUrl: string;
+  pollerEnabled: boolean;
+  pollLoopMsecs: number;
+  pingerEnabled: boolean;
+  deviceStatusSource: 'pinger' | 'poller';
+  entitypollerEnabled: boolean;
+  entitypollerIntervalMsecs: number;
+  entitypollerSensorsEnabled: boolean;
+  entitypollerStpEnabled: boolean;
+  mqttEnabled: boolean;
+  mqttBroker: string | null;
+  mqttConnected: boolean | null;
+  discoveryPeriodicEnabled: boolean;
+  discoveryIntervalSecs: number;
+  weathermapDir: string | null;
+}
+
 export interface Summary {
   version: string;
   stateId: number;
