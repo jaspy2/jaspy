@@ -670,6 +670,14 @@ fn try_resolve(device_name: &str, params: &RunParams) -> Option<String> {
     if device_name.trim().is_empty() {
         return None;
     }
+    // Neighbor ids are untrusted bytes: HP CDP-compat tables report raw MAC
+    // addresses as cdpCacheDeviceId, which arrive here as lossy-UTF8 mojibake.
+    // Don't attempt DNS on anything that can't be a hostname, and keep the
+    // log line readable ({:?} escapes the garbage).
+    if !device_name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.' || c == '_') {
+        dlog!("[discovery] ignoring non-hostname neighbor id {:?}", device_name);
+        return None;
+    }
     match device_name.split_once('.') {
         Some((hn, dn)) => {
             let fqdn = format!("{}.{}", hn, dn);
