@@ -6,7 +6,8 @@ edition = "2018"
 
 
 [dependencies]
-config = "0.10.1"
+# yaml only: the merged config files are /etc/jaspy/poller.yml etc.
+config = { version = "0.15", default-features = false, features = ["yaml"] }
 rocket = { version = "0.5.1", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

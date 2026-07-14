@@ -84,16 +84,17 @@ fn main() {
 }
 
 async fn server_main() {
-    let mut c = Config::new();
-
-    c.merge(File::with_name("/etc/jaspy/poller.yml").required(false)).unwrap()
-        .merge(File::with_name("~/.config/jaspy/poller.yml").required(false)).unwrap()
-        .merge(Environment::with_prefix("JASPY")).unwrap();
+    let c = Config::builder()
+        .add_source(File::with_name("/etc/jaspy/poller.yml").required(false))
+        .add_source(File::with_name("~/.config/jaspy/poller.yml").required(false))
+        .add_source(Environment::with_prefix("JASPY"))
+        .build()
+        .unwrap();
 
     // Configuration for the in-process poller/pinger collectors. Defaults match
     // the old standalone jaspy-poller/jaspy-pinger systemd units so a missing
     // value never panics (the standalone poller panicked on missing POLL_LOOP_MSECS).
-    let snmpbot_url = c.get_str("snmpbot_url").unwrap_or_else(|_| "http://127.0.0.1:8286/".to_string());
+    let snmpbot_url = c.get_string("snmpbot_url").unwrap_or_else(|_| "http://127.0.0.1:8286/".to_string());
     let poll_loop_msecs = c.get_int("poll_loop_msecs").unwrap_or(10000) as u64;
     let enable_poller = c.get_bool("enable_poller").unwrap_or(true);
     let enable_pinger = c.get_bool("enable_pinger").unwrap_or(true);
@@ -114,11 +115,11 @@ async fn server_main() {
         v.map(|s| s.split(',').map(|p| p.trim().to_string()).filter(|p| !p.is_empty()).collect()).unwrap_or_default()
     };
     let discovery_config_env_seed = models::json::DiscoveryConfig {
-        root_device: c.get_str("discovery_root_device").ok(),
-        community: c.get_str("discovery_community").ok(),
-        dns_domains: split_csv(c.get_str("discovery_dns_domains")),
-        ignore: split_csv(c.get_str("discovery_ignore")),
-        remap: split_csv(c.get_str("discovery_remap")).iter()
+        root_device: c.get_string("discovery_root_device").ok(),
+        community: c.get_string("discovery_community").ok(),
+        dns_domains: split_csv(c.get_string("discovery_dns_domains")),
+        ignore: split_csv(c.get_string("discovery_ignore")),
+        remap: split_csv(c.get_string("discovery_remap")).iter()
             .filter_map(|entry| entry.split_once(':').map(|(s, d)| (s.to_string(), d.to_string())))
             .collect(),
         topology_stable: c.get_bool("discovery_stable").unwrap_or(true),

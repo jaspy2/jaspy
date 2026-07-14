@@ -108,12 +108,14 @@ fn handle_trap(jaspy_url: &str, trap: String, unix_time: f64) {
 }
 
 pub fn run() {
-    let mut c = Config::new();
-    c.merge(File::with_name("/etc/jaspy/poller.yml").required(false)).unwrap()
-        .merge(File::with_name("~/.config/jaspy/poller.yml").required(false)).unwrap()
-        .merge(Environment::with_prefix("JASPY")).unwrap();
+    let c = Config::builder()
+        .add_source(File::with_name("/etc/jaspy/poller.yml").required(false))
+        .add_source(File::with_name("~/.config/jaspy/poller.yml").required(false))
+        .add_source(Environment::with_prefix("JASPY"))
+        .build()
+        .unwrap();
 
-    let jaspy_url = match c.get_str("url") {
+    let jaspy_url = match c.get_string("url") {
         Ok(url) => url,
         Err(_) => {
             // args: [binary, "trap-handler", <url?>]
