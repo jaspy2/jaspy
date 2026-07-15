@@ -188,6 +188,48 @@ pub struct ApiDeviceDetail {
     pub interfaces: Vec<ApiInterface>,
 }
 
+// GET /api/v1/devices/<fqdn>/entity: latest entitypoller results for one
+// device, converted from the in-memory EntityMetricsStore. Empty vectors mean
+// "no data (yet)" — the store only fills after the first poll cycle.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiDeviceEntity {
+    pub sensors: Vec<ApiEntitySensor>,
+    pub stp: Vec<ApiStpPort>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiEntitySensor {
+    pub sensor_id: i64,
+    pub name: String,
+    pub description: String,
+    pub value: f64,
+    // Raw ENTITY-SENSOR-MIB type ("celsius", "voltsDC", ...); unit rendering
+    // is a UI concern.
+    pub value_type: String,
+    pub interface_name: Option<String>,
+    pub interface_id: Option<i64>,
+    pub timestamp: u64, // msecs
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpPort {
+    pub vlan: i64,
+    pub stp_port_id: i64,
+    pub interface_name: Option<String>,
+    pub interface_id: Option<i64>,
+    pub role: String,   // "designated", ..., "unknown"
+    pub state: String,  // "forwarding", ..., "unknown"
+    pub enabled: Option<bool>,
+    pub designated_cost: i64,
+    pub path_cost: i64,
+    pub priority: i64,
+    pub forward_transitions: i64,
+    pub timestamp: u64, // msecs
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiEvent {

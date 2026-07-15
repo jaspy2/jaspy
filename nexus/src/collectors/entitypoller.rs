@@ -54,6 +54,90 @@ impl EntityMetricsStore {
         }
         return ret;
     }
+
+    // Latest results for one device as structured JSON DTOs for /api/v1.
+    // Unknown fqdn and not-yet-polled both yield empty vectors.
+    pub fn device_entity(&self, fqdn: &str) -> crate::models::json::ApiDeviceEntity {
+        use crate::models::json::{ApiDeviceEntity, ApiEntitySensor, ApiStpPort};
+
+        let label = |metric: &LabeledMetric, key: &str| -> String {
+            metric.labels.get(key).cloned().unwrap_or_default()
+        };
+        // "" (sensors) / "UNKNOWN" (STP) mean the poller could not associate
+        // the row with an interface; "0" likewise for interface ids.
+        let opt_name = |name: String| -> Option<String> {
+            if name.is_empty() || name == "UNKNOWN" { None } else { Some(name) }
+        };
+        let opt_id = |id: &str| -> Option<i64> {
+            match id.parse::<i64>() {
+                Ok(0) | Err(_) => None,
+                Ok(v) => Some(v),
+            }
+        };
+
+        let mut sensors: Vec<ApiEntitySensor> = Vec::new();
+        let mut stp: std::collections::BTreeMap<(i64, i64), ApiStpPort> = std::collections::BTreeMap::new();
+
+        for metric in self.devices.get(fqdn).map(|m| m.iter()).into_iter().flatten() {
+            if metric.name == "jaspy_sensors" {
+                sensors.push(ApiEntitySensor {
+                    sensor_id: label(metric, "sensor_id").parse().unwrap_or(0),
+                    name: label(metric, "sensor_name"),
+                    description: label(metric, "sensor_description"),
+                    value: metric.value.as_f64(),
+                    value_type: label(metric, "value_type"),
+                    interface_name: opt_name(label(metric, "interface_name")),
+                    interface_id: opt_id(&label(metric, "interface_id")),
+                    timestamp: metric.timestamp,
+                });
+            } else if let Some(key) = metric.name.strip_prefix("jaspy_stp_") {
+                let vlan: i64 = match label(metric, "vlan").parse() {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+                let stp_port_id: i64 = match label(metric, "stp_port_id").parse() {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+                let port = stp.entry((vlan, stp_port_id)).or_insert_with(|| ApiStpPort {
+                    vlan: vlan,
+                    stp_port_id: stp_port_id,
+                    interface_name: opt_name(label(metric, "interface_name")),
+                    interface_id: opt_id(&label(metric, "interface_id")),
+                    role: "unknown".to_string(),
+                    state: "unknown".to_string(),
+                    enabled: None,
+                    designated_cost: 0,
+                    path_cost: 0,
+                    priority: 0,
+                    forward_transitions: 0,
+                    timestamp: 0,
+                });
+                let value = metric.value.as_i64();
+                match key {
+                    "port_role" => port.role = rstp_port_role_text(value).to_string(),
+                    "port_state" => port.state = stp_port_state_text(value).to_string(),
+                    "port_enabled" => port.enabled = stp_port_enable_bool(value),
+                    "port_designated_cost" => port.designated_cost = value,
+                    "port_path_cost" => port.path_cost = value,
+                    "port_priority" => port.priority = value,
+                    "port_forward_transitions" => port.forward_transitions = value,
+                    _ => {}
+                }
+                port.timestamp = std::cmp::max(port.timestamp, metric.timestamp);
+            }
+        }
+
+        sensors.sort_by(|a, b| a.name.cmp(&b.name).then(a.sensor_id.cmp(&b.sensor_id)));
+        let mut stp: Vec<ApiStpPort> = stp.into_values().collect();
+        stp.sort_by(|a, b| {
+            a.vlan.cmp(&b.vlan)
+                .then_with(|| a.interface_name.cmp(&b.interface_name))
+                .then_with(|| a.stp_port_id.cmp(&b.stp_port_id))
+        });
+
+        ApiDeviceEntity { sensors: sensors, stp: stp }
+    }
 }
 
 #[cfg(test)]
@@ -149,6 +233,176 @@ mod tests {
     #[test]
     fn render_empty_store_is_empty() {
         assert_eq!(EntityMetricsStore::new().render(), "");
+    }
+
+    // --- inverse enum maps stay in sync with the encoders ---
+
+    #[test]
+    fn rstp_role_text_roundtrip() {
+        for role in ["disabled", "root", "designated", "alternate", "backUp", "boundary", "master"] {
+            assert_eq!(rstp_port_role_text(rstp_port_role_numeric(role)), role);
+        }
+        assert_eq!(rstp_port_role_text(0), "unknown");
+        assert_eq!(rstp_port_role_text(99), "unknown");
+    }
+
+    #[test]
+    fn stp_state_text_roundtrip() {
+        for state in ["disabled", "blocking", "listening", "learning", "forwarding", "broken"] {
+            assert_eq!(stp_port_state_text(stp_port_state_numeric(state)), state);
+        }
+        assert_eq!(stp_port_state_text(0), "unknown");
+    }
+
+    #[test]
+    fn stp_enable_bool_all_variants() {
+        assert_eq!(stp_port_enable_bool(1), Some(true));
+        assert_eq!(stp_port_enable_bool(2), Some(false));
+        assert_eq!(stp_port_enable_bool(0), None);
+    }
+
+    // --- device_entity: store -> API DTO conversion ---
+
+    const DEV: &str = "sw1.example.com";
+
+    fn sensor_metric(name: &str, value: f64, iface: &str, iface_id: &str, ts: u64) -> LabeledMetric {
+        LabeledMetric::from_parts("jaspy_sensors", MetricValue::Float64(value), &[
+            ("hostname", "sw1"), ("fqdn", DEV),
+            ("sensor_id", "1006"), ("sensor_name", name), ("sensor_description", "Temperature Sensor"),
+            ("value_type", "celsius"), ("interface_name", iface), ("interface_id", iface_id),
+        ], ts)
+    }
+
+    fn stp_metrics(vlan: &str, port: &str, values: &[(&str, i64)], ts: u64) -> Vec<LabeledMetric> {
+        values.iter().map(|(key, value)| {
+            LabeledMetric::from_parts(&format!("jaspy_stp_{}", key), MetricValue::Int64(*value), &[
+                ("hostname", "sw1"), ("fqdn", DEV), ("vlan", vlan), ("stp_port_id", port),
+                ("interface_name", "GigabitEthernet0/1"), ("interface_id", "10101"),
+            ], ts)
+        }).collect()
+    }
+
+    // Mirrors the e2e fixture: forwarding/designated/enabled, costs 4/19,
+    // priority 128, 2 transitions.
+    fn full_stp_port(vlan: &str, port: &str, ts: u64) -> Vec<LabeledMetric> {
+        stp_metrics(vlan, port, &[
+            ("port_role", 3), ("port_state", 5), ("port_enabled", 1),
+            ("port_designated_cost", 4), ("port_path_cost", 19),
+            ("port_priority", 128), ("port_forward_transitions", 2),
+        ], ts)
+    }
+
+    #[test]
+    fn device_entity_unknown_fqdn_is_empty() {
+        let entity = EntityMetricsStore::new().device_entity("ghost.example.com");
+        assert!(entity.sensors.is_empty());
+        assert!(entity.stp.is_empty());
+    }
+
+    #[test]
+    fn device_entity_sensor_row() {
+        let mut store = EntityMetricsStore::new();
+        store.replace_device(DEV.to_string(), vec![
+            sensor_metric("GigabitEthernet0/1 Module Temperature Sensor", 45.0, "GigabitEthernet0/1", "10101", 1234),
+        ]);
+        let entity = store.device_entity(DEV);
+        assert_eq!(entity.sensors.len(), 1);
+        let sensor = &entity.sensors[0];
+        assert_eq!(sensor.sensor_id, 1006);
+        assert_eq!(sensor.name, "GigabitEthernet0/1 Module Temperature Sensor");
+        assert_eq!(sensor.description, "Temperature Sensor");
+        assert_eq!(sensor.value, 45.0);
+        assert_eq!(sensor.value_type, "celsius");
+        assert_eq!(sensor.interface_name.as_deref(), Some("GigabitEthernet0/1"));
+        assert_eq!(sensor.interface_id, Some(10101));
+        assert_eq!(sensor.timestamp, 1234);
+        assert!(entity.stp.is_empty());
+    }
+
+    #[test]
+    fn device_entity_sensor_without_interface_association() {
+        let mut store = EntityMetricsStore::new();
+        store.replace_device(DEV.to_string(), vec![sensor_metric("PSU 1", 12.1, "", "0", 1)]);
+        let sensor = &store.device_entity(DEV).sensors[0];
+        assert_eq!(sensor.interface_name, None);
+        assert_eq!(sensor.interface_id, None);
+    }
+
+    #[test]
+    fn device_entity_stp_grouping_merges_metrics_per_vlan_port() {
+        let mut store = EntityMetricsStore::new();
+        let mut metrics = full_stp_port("100", "5", 1000);
+        metrics.extend(full_stp_port("200", "5", 2000));
+        store.replace_device(DEV.to_string(), metrics);
+
+        let entity = store.device_entity(DEV);
+        assert!(entity.sensors.is_empty());
+        assert_eq!(entity.stp.len(), 2);
+        let port = &entity.stp[0];
+        assert_eq!((port.vlan, port.stp_port_id), (100, 5));
+        assert_eq!(port.role, "designated");
+        assert_eq!(port.state, "forwarding");
+        assert_eq!(port.enabled, Some(true));
+        assert_eq!(port.designated_cost, 4);
+        assert_eq!(port.path_cost, 19);
+        assert_eq!(port.priority, 128);
+        assert_eq!(port.forward_transitions, 2);
+        assert_eq!(port.interface_name.as_deref(), Some("GigabitEthernet0/1"));
+        assert_eq!(port.interface_id, Some(10101));
+        assert_eq!(port.timestamp, 1000);
+        assert_eq!(entity.stp[1].vlan, 200);
+    }
+
+    #[test]
+    fn device_entity_decodes_unknown_numerics_and_keeps_defaults() {
+        let mut store = EntityMetricsStore::new();
+        // Partial row: only role/state/enabled, all with the "unknown" encoding;
+        // "UNKNOWN"/"0" interface labels mean no association.
+        let metrics = stp_metrics("100", "5", &[("port_role", 0), ("port_state", 0), ("port_enabled", 0)], 1)
+            .into_iter()
+            .map(|mut m| {
+                m.labels.insert("interface_name".to_string(), "UNKNOWN".to_string());
+                m.labels.insert("interface_id".to_string(), "0".to_string());
+                m
+            })
+            .collect();
+        store.replace_device(DEV.to_string(), metrics);
+
+        let port = &store.device_entity(DEV).stp[0];
+        assert_eq!(port.role, "unknown");
+        assert_eq!(port.state, "unknown");
+        assert_eq!(port.enabled, None);
+        assert_eq!(port.interface_name, None);
+        assert_eq!(port.interface_id, None);
+        // Missing metrics keep zero defaults (partial-cycle degradation).
+        assert_eq!(port.designated_cost, 0);
+        assert_eq!(port.path_cost, 0);
+    }
+
+    #[test]
+    fn device_entity_sort_orders() {
+        let mut store = EntityMetricsStore::new();
+        let mut metrics = vec![
+            sensor_metric("Zeta Sensor", 1.0, "", "0", 1),
+            sensor_metric("Alpha Sensor", 2.0, "", "0", 1),
+        ];
+        metrics.extend(full_stp_port("200", "1", 1));
+        metrics.extend(full_stp_port("100", "2", 1));
+        metrics.extend(full_stp_port("100", "1", 1));
+        store.replace_device(DEV.to_string(), metrics);
+
+        let entity = store.device_entity(DEV);
+        let sensor_names: Vec<&str> = entity.sensors.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(sensor_names, vec!["Alpha Sensor", "Zeta Sensor"]);
+        let stp_keys: Vec<(i64, i64)> = entity.stp.iter().map(|p| (p.vlan, p.stp_port_id)).collect();
+        assert_eq!(stp_keys, vec![(100, 1), (100, 2), (200, 1)]);
+    }
+
+    #[test]
+    fn device_entity_ignores_other_devices() {
+        let mut store = EntityMetricsStore::new();
+        store.replace_device("other.example.com".to_string(), vec![sensor_metric("S", 1.0, "", "0", 1)]);
+        assert!(store.device_entity(DEV).sensors.is_empty());
     }
 }
 
@@ -284,6 +538,42 @@ fn stp_port_enable_numeric(enable: &str) -> i64 {
         "enabled" => 1,
         "disabled" => 2,
         _ => 0,
+    }
+}
+
+// Inverse mappings, used when serving the stored (numeric) metrics back as
+// structured JSON for the web UI. Keep in sync with the encoders above.
+
+fn rstp_port_role_text(role: i64) -> &'static str {
+    match role {
+        1 => "disabled",
+        2 => "root",
+        3 => "designated",
+        4 => "alternate",
+        5 => "backUp",
+        6 => "boundary",
+        7 => "master",
+        _ => "unknown",
+    }
+}
+
+fn stp_port_state_text(state: i64) -> &'static str {
+    match state {
+        1 => "disabled",
+        2 => "blocking",
+        3 => "listening",
+        4 => "learning",
+        5 => "forwarding",
+        6 => "broken",
+        _ => "unknown",
+    }
+}
+
+fn stp_port_enable_bool(enable: i64) -> Option<bool> {
+    match enable {
+        1 => Some(true),
+        2 => Some(false),
+        _ => None,
     }
 }
 

@@ -199,6 +199,27 @@ fn entitypoller_sensor_and_stp_metrics() {
     assert_eq!(metric_value(&body, "jaspy_stp_port_path_cost", &stp_labels), Some(19));
     assert_eq!(metric_value(&body, "jaspy_stp_port_priority", &stp_labels), Some(128));
     assert_eq!(metric_value(&body, "jaspy_stp_port_forward_transitions", &stp_labels), Some(2));
+
+    // (c) the same store is served as structured JSON for the device detail
+    //     page: camelCase contract + numeric role/state decoded to text.
+    let entity = nexus.get_json(&format!("/api/v1/devices/{}/entity", FQDN));
+    assert_eq!(entity["sensors"][0]["valueType"], "celsius");
+    assert_eq!(entity["sensors"][0]["value"], 45.0);
+    assert_eq!(entity["sensors"][0]["interfaceName"], "GigabitEthernet0/1");
+    let port = &entity["stp"][0];
+    assert_eq!(port["vlan"], 100);
+    assert_eq!(port["stpPortId"], 5);
+    assert_eq!(port["state"], "forwarding");
+    assert_eq!(port["role"], "designated");
+    assert_eq!(port["enabled"], true);
+    assert_eq!(port["pathCost"], 19);
+    assert_eq!(port["designatedCost"], 4);
+    assert_eq!(port["priority"], 128);
+
+    // Unknown device: 200 with empty arrays, same as "no data yet".
+    let empty = nexus.get_json("/api/v1/devices/ghost.test.example/entity");
+    assert_eq!(empty["sensors"].as_array().unwrap().len(), 0);
+    assert_eq!(empty["stp"].as_array().unwrap().len(), 0);
 }
 
 // ---------------------------------------------------------------------------

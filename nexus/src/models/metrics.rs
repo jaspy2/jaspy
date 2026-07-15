@@ -51,6 +51,24 @@ pub enum MetricValue {
     Float64(f64),
 }
 
+impl MetricValue {
+    pub fn as_f64(&self) -> f64 {
+        match self {
+            MetricValue::Int64(v) => *v as f64,
+            MetricValue::Uint64(v) => *v as f64,
+            MetricValue::Float64(v) => *v,
+        }
+    }
+
+    pub fn as_i64(&self) -> i64 {
+        match self {
+            MetricValue::Int64(v) => *v,
+            MetricValue::Uint64(v) => *v as i64,
+            MetricValue::Float64(v) => *v as i64,
+        }
+    }
+}
+
 pub struct LabeledMetric {
     pub name: String,
     pub labels: HashMap<String, String>,
@@ -124,6 +142,16 @@ mod tests {
     fn as_text_no_labels() {
         let m = LabeledMetric::from_parts("jaspy_thing", MetricValue::Uint64(1), &[], 1);
         assert_eq!(m.as_text(), "jaspy_thing{} 1 1");
+    }
+
+    #[test]
+    fn value_accessors_cast_all_variants() {
+        assert_eq!(MetricValue::Int64(-3).as_f64(), -3.0);
+        assert_eq!(MetricValue::Uint64(7).as_f64(), 7.0);
+        assert_eq!(MetricValue::Float64(4.5).as_f64(), 4.5);
+        assert_eq!(MetricValue::Int64(-3).as_i64(), -3);
+        assert_eq!(MetricValue::Uint64(7).as_i64(), 7);
+        assert_eq!(MetricValue::Float64(4.9).as_i64(), 4);
     }
 
     #[test]

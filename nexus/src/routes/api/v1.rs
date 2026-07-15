@@ -175,6 +175,18 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
     Some(Json(models::json::ApiDeviceDetail { device: device, interfaces: interfaces }))
 }
 
+// Latest entitypoller results (entity sensors + per-VLAN STP) for one device,
+// straight from the in-memory store — no DB. Unknown fqdn and not-yet-polled
+// devices both answer 200 with empty arrays; the UI treats them the same.
+#[get("/devices/<device_fqdn>/entity")]
+pub fn device_entity(device_fqdn: &str, entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>) -> Json<models::json::ApiDeviceEntity> {
+    let entity = match entity_metrics.inner().lock() {
+        Ok(store) => store.device_entity(device_fqdn),
+        Err(_) => models::json::ApiDeviceEntity { sensors: Vec::new(), stp: Vec::new() },
+    };
+    Json(entity)
+}
+
 // Create/update/delete mirror the /dev/device handlers (device.rs) including
 // their event semantics, so the UI API is self-contained for later auth.
 #[post("/devices", data = "<device_json>")]

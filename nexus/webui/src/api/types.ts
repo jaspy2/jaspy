@@ -112,6 +112,40 @@ export interface DeviceDetail {
   interfaces: Interface[];
 }
 
+// GET /api/v1/devices/<fqdn>/entity — latest entitypoller results. Empty
+// arrays mean no data (yet): device without sensors/STP, poller disabled, or
+// first poll cycle not finished.
+export interface EntitySensor {
+  sensorId: number;
+  name: string;
+  description: string;
+  value: number;
+  valueType: string; // raw ENTITY-SENSOR-MIB type, e.g. "celsius"
+  interfaceName: string | null;
+  interfaceId: number | null;
+  timestamp: number; // msecs
+}
+
+export interface StpPort {
+  vlan: number;
+  stpPortId: number;
+  interfaceName: string | null;
+  interfaceId: number | null;
+  role: string; // "designated", ..., "unknown"
+  state: string; // "forwarding", ..., "unknown"
+  enabled: boolean | null;
+  designatedCost: number;
+  pathCost: number;
+  priority: number;
+  forwardTransitions: number;
+  timestamp: number; // msecs
+}
+
+export interface DeviceEntity {
+  sensors: EntitySensor[];
+  stp: StpPort[];
+}
+
 // PUT/POST body for device create/update (nexus NewDevice).
 export interface DeviceUpdate {
   name: string;

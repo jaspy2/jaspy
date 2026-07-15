@@ -2,6 +2,7 @@ import type {
   ClientLocation,
   Device,
   DeviceDetail,
+  DeviceEntity,
   DeviceUpdate,
   DiscoveryConfig,
   DiscoveryStatus,
@@ -36,6 +37,8 @@ export const api = {
   system: () => request<SystemStatus>('/api/v1/system'),
   devices: () => request<Device[]>('/api/v1/devices'),
   device: (fqdn: string) => request<DeviceDetail>(`/api/v1/devices/${encodeURIComponent(fqdn)}`),
+  deviceEntity: (fqdn: string) =>
+    request<DeviceEntity>(`/api/v1/devices/${encodeURIComponent(fqdn)}/entity`),
   updateDevice: (fqdn: string, body: DeviceUpdate) =>
     request<Device>(`/api/v1/devices/${encodeURIComponent(fqdn)}`, {
       method: 'PUT',

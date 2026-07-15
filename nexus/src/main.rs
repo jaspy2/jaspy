@@ -307,6 +307,7 @@ async fn server_main() {
                 routes::api::v1::summary,
                 routes::api::v1::devices,
                 routes::api::v1::device_detail,
+                routes::api::v1::device_entity,
                 routes::api::v1::device_create,
                 routes::api::v1::device_update,
                 routes::api::v1::device_delete,

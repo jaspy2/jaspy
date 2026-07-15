@@ -3,8 +3,37 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { Device, DeviceUpdate, LiveEvent } from '../api/types';
-import { PollingBadge, UpBadge } from '../components/StatusBadge';
+import { PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import useLiveSocket from '../hooks/useLiveSocket';
+
+// ENTITY-SENSOR-MIB value types -> display units. Unknown types fall back to
+// appending the raw type string so nothing is silently unitless.
+const SENSOR_UNITS: Record<string, string> = {
+  celsius: '°C',
+  voltsDC: 'V DC',
+  voltsAC: 'V AC',
+  amperes: 'A',
+  watts: 'W',
+  hertz: 'Hz',
+  percentRH: '%RH',
+  rpm: 'RPM',
+  dBm: 'dBm',
+  truthvalue: '',
+};
+
+function formatSensorValue(value: number, valueType: string): string {
+  const rounded = Math.round(value * 10) / 10;
+  const unit = SENSOR_UNITS[valueType];
+  if (unit === undefined) return `${rounded} ${valueType}`;
+  return unit ? `${rounded} ${unit}` : `${rounded}`;
+}
+
+// "· updated Ns ago" heading suffix from the newest row timestamp (msecs).
+function UpdatedAgo({ timestamps }: { timestamps: number[] }) {
+  if (timestamps.length === 0) return null;
+  const secs = Math.max(0, Math.round((Date.now() - Math.max(...timestamps)) / 1000));
+  return <span className="muted"> · updated {secs}s ago</span>;
+}
 
 function updateBody(device: Device, overrides: Partial<DeviceUpdate>): DeviceUpdate {
   return {
@@ -31,6 +60,22 @@ export default function DeviceDetail() {
     queryFn: () => api.device(fqdn),
     // Fallback poll; live changes arrive over the device event socket below.
     refetchInterval: 10000,
+  });
+
+  // Entitypoller results (sensors + STP). Poll only — the entitypoller cycle
+  // is slow (default 120s) and emits no msgbus events.
+  const entity = useQuery({
+    queryKey: ['device-entity', fqdn],
+    queryFn: () => api.deviceEntity(fqdn),
+    refetchInterval: 30000,
+  });
+
+  // Static feature config, to tell "entitypoller disabled" apart from "no
+  // data for this device (yet)".
+  const system = useQuery({
+    queryKey: ['system'],
+    queryFn: api.system,
+    staleTime: 60000,
   });
 
   // The backend pushes this device's msgbus events (interface up/down/speed,
@@ -74,6 +119,9 @@ export default function DeviceDetail() {
   if (detail.isError || !detail.data) return <p className="error">Failed to load {fqdn}: {String(detail.error)}</p>;
 
   const { device, interfaces } = detail.data;
+  const sensors = entity.data?.sensors ?? [];
+  const stp = entity.data?.stp ?? [];
+  const entitypollerEnabled = system.data?.entitypollerEnabled === true;
 
   return (
     <>
@@ -149,6 +197,82 @@ export default function DeviceDetail() {
           </tbody>
         </table>
       </div>
+
+      {sensors.length > 0 && (
+        <>
+          <h2>
+            Sensors ({sensors.length})
+            <UpdatedAgo timestamps={sensors.map((s) => s.timestamp)} />
+          </h2>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Sensor</th>
+                  <th>Value</th>
+                  <th>Interface</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sensors.map((sensor) => (
+                  <tr key={`${sensor.sensorId}-${sensor.name}-${sensor.valueType}`}>
+                    <td>{sensor.name || `sensor ${sensor.sensorId}`}</td>
+                    <td>{formatSensorValue(sensor.value, sensor.valueType)}</td>
+                    <td>{sensor.interfaceName ?? '—'}</td>
+                    <td className="muted">{sensor.description || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {stp.length > 0 && (
+        <>
+          <h2>
+            STP ({stp.length})
+            <UpdatedAgo timestamps={stp.map((p) => p.timestamp)} />
+          </h2>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>VLAN</th>
+                  <th>Interface</th>
+                  <th>Role</th>
+                  <th>State</th>
+                  <th>Enabled</th>
+                  <th>Path cost</th>
+                  <th>Designated cost</th>
+                  <th>Priority</th>
+                  <th>Fwd transitions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stp.map((port) => (
+                  <tr key={`${port.vlan}-${port.stpPortId}`}>
+                    <td>{port.vlan}</td>
+                    <td>{port.interfaceName ?? `port ${port.stpPortId}`}</td>
+                    <td>{port.role}</td>
+                    <td><StpStateBadge state={port.state} /></td>
+                    <td>{port.enabled === null ? '—' : port.enabled ? 'yes' : <span className="badge badge-warn">no</span>}</td>
+                    <td>{port.pathCost}</td>
+                    <td>{port.designatedCost}</td>
+                    <td>{port.priority}</td>
+                    <td>{port.forwardTransitions}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {sensors.length === 0 && stp.length === 0 && entitypollerEnabled && (
+        <p className="muted">No sensor/STP data for this device (yet).</p>
+      )}
     </>
   );
 }
