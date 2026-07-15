@@ -17,6 +17,18 @@ On macOS (Homebrew), export the native-lib env first — see the "Running"
 section of `tests/README.md` for the exact `PKG_CONFIG_PATH` /
 `JASPY_TEST_PG_BINDIR` block.
 
+## Mock mode
+
+`cargo run -- mock` starts the app against a built-in fake network (see
+"Mock mode" in README.md). `src/mock/` is only active via that subcommand:
+`topology.rs` (fake network, pure time-derived values), `snmpbot.rs`
+(snmpbot-compatible TcpListener server), `pg.rs` (ephemeral postgres),
+`seed.rs` (client locations + event name). The table generators must mirror
+the snmpbot shapes in `tests/fixtures/` — they serialize through the same
+`SNMPBotResponse` structs the collectors deserialize. Unit-first testing
+applies to all of it; `mock_mode_serves_network` in tests/e2e.rs covers the
+end-to-end crawl.
+
 ## Testing policy (unit-first)
 
 Every feature or fix that adds/changes logic must come with unit tests.

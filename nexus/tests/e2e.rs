@@ -1047,3 +1047,88 @@ fn counter_rollback_is_rejected() {
         Some(1_000_000)
     );
 }
+
+// ---------------------------------------------------------------------------
+// 6. Mock mode: `jaspy-nexus mock` serves a full fake network end to end
+// ---------------------------------------------------------------------------
+#[test]
+fn mock_mode_serves_network() {
+    let pg = PgHarness::start();
+
+    // External-DB path (no nested ephemeral postgres): the builder provides
+    // JASPY_DB_URL, so mock mode migrates and uses it. Real collectors on,
+    // fast intervals; the fake snmpbot binds a per-test free port.
+    let nexus = Nexus::builder(&pg.db_url)
+        .arg("mock")
+        .poller(true)
+        .poll_loop_msecs(300)
+        .entitypoller(true)
+        .entitypoller_interval_msecs(500)
+        .env("JASPY_MOCK_SNMPBOT_PORT", &free_port().to_string())
+        .env("JASPY_DISCOVERY_INTERVAL_SECS", "5")
+        .start();
+
+    let expected_fqdns = [
+        "core1.mock.jaspy",
+        "dist1.mock.jaspy",
+        "dist2.mock.jaspy",
+        "access-hall-a-01.mock.jaspy",
+        "access-hall-a-02.mock.jaspy",
+        "access-hall-b-01.mock.jaspy",
+        "wlc1.mock.jaspy",
+        "fw1.mock.jaspy",
+    ];
+
+    // The first periodic discovery run crawls the fake snmpbot and ingests
+    // the whole topology.
+    assert!(
+        wait_until(Duration::from_secs(30), || {
+            let devices = nexus.get_json("/api/v1/devices");
+            let listed: Vec<String> = devices
+                .as_array()
+                .map(|list| list.iter().filter_map(|d| d["fqdn"].as_str().map(String::from)).collect())
+                .unwrap_or_default();
+            expected_fqdns.iter().all(|fqdn| listed.iter().any(|l| l == fqdn))
+        }),
+        "all mock devices should appear via /api/v1/devices; log:\n{}",
+        nexus.log()
+    );
+
+    let status = nexus.get_json("/dev/discovery/status");
+    assert_eq!(status["devicesFound"], 8, "status: {}", status);
+    assert!(status["linksFound"].as_u64().unwrap_or(0) >= 6, "status: {}", status);
+
+    // Poller flows counters from the fake snmpbot into /dev/metrics.
+    nexus.wait_for_metric("jaspy_interface_octets", Duration::from_secs(20));
+    let body = nexus.metrics();
+    assert!(
+        metric_value(&body, "jaspy_interface_octets", &["fqdn=\"core1.mock.jaspy\"", "name=\"Te1/0/1\"", "direction=\"rx\""]).is_some(),
+        "core1 uplink octets missing:\n{}",
+        body
+    );
+
+    // Entitypoller sensors from the fake snmpbot (both MIB styles feed the
+    // same metric) and the structured per-device API.
+    nexus.wait_for_metric("jaspy_sensors", Duration::from_secs(20));
+    assert!(
+        wait_until(Duration::from_secs(10), || {
+            let entity = nexus.get_json("/api/v1/devices/dist2.mock.jaspy/entity");
+            entity["sensors"].as_array().map(|s| !s.is_empty()).unwrap_or(false)
+        }),
+        "dist2 sensors should appear in the entity API"
+    );
+
+    // Seeder: client locations attached to the access switches + event name.
+    assert!(
+        wait_until(Duration::from_secs(20), || {
+            nexus.get_json("/api/v1/clientlocations").as_array().map(|c| c.len() >= 10).unwrap_or(false)
+        }),
+        "client locations should be seeded; log:\n{}",
+        nexus.log()
+    );
+    assert_eq!(nexus.get_json("/api/v1/event")["name"], "Mock Event");
+
+    // Devices report up (poller answered by the fake snmpbot).
+    let summary = nexus.get_json("/api/v1/summary");
+    assert!(summary["devicesUp"].as_u64().unwrap_or(0) >= 7, "summary: {}", summary);
+}

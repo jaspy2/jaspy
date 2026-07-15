@@ -9,6 +9,7 @@ mod db;
 mod schema;
 mod utilities;
 mod collectors;
+mod mock;
 mod traphandler;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
@@ -78,6 +79,15 @@ fn main() {
     // runtime: it uses reqwest::blocking and fork().
     if std::env::args().nth(1).as_deref() == Some("trap-handler") {
         traphandler::run();
+        return;
+    }
+    // `jaspy-nexus mock`: fake network + real collectors for local API/UI
+    // development. prepare() must run before server_main reads env/spawns
+    // threads; the guard's Drop stops the ephemeral postgres after rocket's
+    // graceful ctrl-c shutdown returns from server_main.
+    if std::env::args().nth(1).as_deref() == Some("mock") {
+        let _guard = mock::prepare();
+        rocket::execute(server_main());
         return;
     }
     rocket::execute(server_main());

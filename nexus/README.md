@@ -10,6 +10,54 @@ Implementation of Jaspy2 API and related components
     - Gentoo: `emerge -av dev-libs/libpqxx`
     - Fedora: `dnf install libpq-devel`
 
+## Mock mode — local development against a fake network
+
+`jaspy-nexus mock` starts the full application (HTTP API, web UI, Prometheus
+metrics, WebSocket event streams) against a small built-in fake network, so
+you can develop apps that use the jaspy API without snmpbot, real devices, or
+any configuration:
+
+```sh
+# build the web UI once (optional but recommended; see webui/)
+(cd webui && npm ci && npm run build)
+
+cargo run -- mock
+```
+
+Prerequisites: PostgreSQL **binaries** (`initdb`/`pg_ctl`/`createdb`) on PATH —
+mock mode spawns a throwaway database in a temp dir and removes it on Ctrl-C.
+If they live elsewhere, set `JASPY_PG_BINDIR` (e.g. Homebrew:
+`/opt/homebrew/opt/postgresql@17/bin`). Alternatively point `JASPY_DB_URL` at
+any existing database; migrations run automatically.
+
+What you get: an in-process snmpbot-compatible server with 8 fake devices
+(core, 2 distribution, 3 access switches, a WLC and a firewall) crawled by the
+**real** discovery engine and polled by the **real** collectors — so the data
+took the same code paths it takes in production. The network is alive:
+counters grow, sensor temperatures drift, and the `access-hall-a-02` uplink
+flaps every 60 s, producing live interface up/down events.
+
+| What | Where |
+|---|---|
+| Web UI | http://127.0.0.1:8000/ |
+| Devices API | http://127.0.0.1:8000/api/v1/devices |
+| Summary | http://127.0.0.1:8000/api/v1/summary |
+| Per-device sensors/STP | http://127.0.0.1:8000/api/v1/devices/core1.mock.jaspy/entity |
+| Prometheus metrics | http://127.0.0.1:8000/dev/metrics |
+| Live discovery log (WS) | ws://127.0.0.1:8000/api/v1/ws/logs/discovery |
+| Live device events (WS) | ws://127.0.0.1:8000/api/v1/ws/logs/device:access-hall-a-02.mock.jaspy |
+| Fake snmpbot | http://127.0.0.1:18286/api/hosts/core1.mock.jaspy/tables/IF-MIB::ifTable |
+
+All 8 devices appear within ~15 s (first discovery crawl); client locations
+and the event name are seeded shortly after. Frontend development: run
+`npm run dev` in `webui/` — the Vite proxy targets port 8000, which is exactly
+where mock mode listens.
+
+Every setting is overridable: mock mode only fills in env vars you have not
+set (`JASPY_POLL_LOOP_MSECS`, `JASPY_MOCK_SNMPBOT_PORT`, `ROCKET_PORT`, ...).
+Caveat for the `JASPY_DB_URL` path: a previously persisted discovery
+configuration in the `settings` table overrides the mock defaults.
+
 ## Missing features
 
  - Logging

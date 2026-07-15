@@ -233,6 +233,7 @@ pub struct NexusBuilder {
     poll_loop_msecs: u64,
     entitypoller_interval_msecs: u64,
     extra_env: Vec<(String, String)>,
+    args: Vec<String>,
 }
 
 pub struct Nexus {
@@ -272,6 +273,11 @@ impl NexusBuilder {
         self.extra_env.push((key.to_string(), value.to_string()));
         self
     }
+    /// Pass a subcommand argument (e.g. "mock").
+    pub fn arg(mut self, arg: &str) -> Self {
+        self.args.push(arg.to_string());
+        self
+    }
 
     pub fn start(self) -> Nexus {
         let port = free_port();
@@ -288,7 +294,7 @@ impl NexusBuilder {
             .env("JASPY_ENABLE_POLLER", self.enable_poller.to_string())
             .env("JASPY_ENABLE_PINGER", self.enable_pinger.to_string())
             .env("JASPY_ENABLE_ENTITYPOLLER", self.enable_entitypoller.to_string())
-            .env("POLL_LOOP_MSECS", self.poll_loop_msecs.to_string())
+            .env("JASPY_POLL_LOOP_MSECS", self.poll_loop_msecs.to_string())
             .env("JASPY_ENTITYPOLLER_INTERVAL_MSECS", self.entitypoller_interval_msecs.to_string())
             .env("JASPY_IMDS_REFRESH_SECS", "1")
             .env("JASPY_POLLER_NO_JITTER", "1")
@@ -311,6 +317,9 @@ impl NexusBuilder {
             }
         }
 
+        for arg in &self.args {
+            cmd.arg(arg);
+        }
         let child = cmd.spawn().expect("spawn jaspy-nexus");
         let client = reqwest::blocking::Client::builder()
             .timeout(Duration::from_secs(10))
@@ -335,6 +344,7 @@ impl Nexus {
             poll_loop_msecs: 300,
             entitypoller_interval_msecs: 300,
             extra_env: Vec::new(),
+            args: Vec::new(),
         }
     }
 
