@@ -27,6 +27,78 @@ fn imds_device_up(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, fqdn: &str) -
     imds_device_live(imds, fqdn).0
 }
 
+// The addresses a device fqdn resolves to — nothing in the DB stores IPs;
+// every collector (snmpbot, pinger) dials by name, so resolution IS the
+// address jaspy talks to. Empty when the name does not resolve.
+//
+// Cached for a short TTL: the device page refetches every 10s, and blocking
+// getaddrinfo can stall for the full resolver timeout on unresolvable names
+// — so negative results are deliberately cached too.
+const IP_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(60);
+
+struct IpCache {
+    entries: Mutex<std::collections::HashMap<String, (std::time::Instant, Vec<String>)>>,
+}
+
+impl IpCache {
+    fn new() -> IpCache {
+        IpCache { entries: Mutex::new(std::collections::HashMap::new()) }
+    }
+
+    fn get(&self, fqdn: &str, now: std::time::Instant) -> Option<Vec<String>> {
+        match self.entries.lock() {
+            Ok(entries) => entries
+                .get(fqdn)
+                .filter(|(resolved, _)| now.duration_since(*resolved) < IP_CACHE_TTL)
+                .map(|(_, ips)| ips.clone()),
+            Err(_) => None,
+        }
+    }
+
+    fn put(&self, fqdn: &str, ips: Vec<String>, now: std::time::Instant) {
+        if let Ok(mut entries) = self.entries.lock() {
+            // Deleted devices' entries age out instead of accumulating.
+            entries.retain(|_, (resolved, _)| now.duration_since(*resolved) < IP_CACHE_TTL);
+            entries.insert(fqdn.to_string(), (now, ips));
+        }
+    }
+}
+
+fn resolve_device_ips(fqdn: &str) -> Vec<String> {
+    static CACHE: std::sync::OnceLock<IpCache> = std::sync::OnceLock::new();
+    let cache = CACHE.get_or_init(IpCache::new);
+    let now = std::time::Instant::now();
+    if let Some(ips) = cache.get(fqdn, now) {
+        return ips;
+    }
+    let ips = resolve_ips_uncached(fqdn);
+    cache.put(fqdn, ips.clone(), now);
+    ips
+}
+
+fn resolve_ips_uncached(fqdn: &str) -> Vec<String> {
+    use std::net::ToSocketAddrs;
+    match (fqdn, 0u16).to_socket_addrs() {
+        Ok(addrs) => order_device_ips(addrs.map(|a| a.ip())),
+        Err(_) => Vec::new(),
+    }
+}
+
+// v4 before v6, deduplicated, resolver order otherwise preserved.
+fn order_device_ips(addrs: impl Iterator<Item = std::net::IpAddr>) -> Vec<String> {
+    let mut v4: Vec<String> = Vec::new();
+    let mut v6: Vec<String> = Vec::new();
+    for ip in addrs {
+        let rendered = ip.to_string();
+        let bucket = if ip.is_ipv4() { &mut v4 } else { &mut v6 };
+        if !bucket.contains(&rendered) {
+            bucket.push(rendered);
+        }
+    }
+    v4.extend(v6);
+    v4
+}
+
 fn event_name(connection: &mut db::AnyConnection) -> Option<String> {
     models::dbo::Setting::get(connection, EVENT_SETTING)
         .and_then(|json| serde_json::from_str::<models::json::ApiEvent>(&json).ok())
@@ -263,7 +335,13 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
     }).collect();
 
     let device = api_device(&mut connection, imds, &device);
-    Some(Json(models::json::ApiDeviceDetail { device: device, interfaces: interfaces, vlans: vlans, port_channels: port_channels }))
+    Some(Json(models::json::ApiDeviceDetail {
+        device: device,
+        interfaces: interfaces,
+        vlans: vlans,
+        port_channels: port_channels,
+        ip_addresses: resolve_device_ips(&device_fqdn),
+    }))
 }
 
 // Latest entitypoller results (entity sensors + per-VLAN STP) for one device,
@@ -664,4 +742,56 @@ pub fn ws_logs(ws: rocket_ws::WebSocket, topic: &str) -> rocket_ws::Channel<'sta
         }
         Ok(())
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::IpAddr;
+
+    #[test]
+    fn device_ips_dedupe_and_order_v4_first() {
+        let addrs: Vec<IpAddr> = vec![
+            "::1".parse().unwrap(),
+            "10.0.0.1".parse().unwrap(),
+            "10.0.0.1".parse().unwrap(),
+            "fe80::1".parse().unwrap(),
+            "10.0.0.2".parse().unwrap(),
+        ];
+        assert_eq!(order_device_ips(addrs.into_iter()), vec!["10.0.0.1", "10.0.0.2", "::1", "fe80::1"]);
+        assert!(order_device_ips(std::iter::empty()).is_empty());
+    }
+
+    #[test]
+    fn resolve_localhost_and_unresolvable() {
+        // The uncached path: unit tests must not touch the process-global cache.
+        let ips = resolve_ips_uncached("localhost");
+        assert!(ips.iter().any(|ip| ip == "127.0.0.1"), "localhost should resolve v4: {:?}", ips);
+        // RFC 6761 reserves .invalid: guaranteed NXDOMAIN.
+        assert!(resolve_ips_uncached("no-such-device.invalid").is_empty());
+    }
+
+    #[test]
+    fn ip_cache_serves_within_ttl_and_expires_after() {
+        let cache = IpCache::new();
+        let t0 = std::time::Instant::now();
+        cache.put("sw1.x", vec!["10.0.0.1".to_string()], t0);
+        assert_eq!(cache.get("sw1.x", t0).as_deref(), Some(&["10.0.0.1".to_string()][..]));
+        assert_eq!(cache.get("sw1.x", t0 + IP_CACHE_TTL / 2).as_deref(), Some(&["10.0.0.1".to_string()][..]));
+        assert_eq!(cache.get("sw1.x", t0 + IP_CACHE_TTL), None, "expired at TTL");
+        assert_eq!(cache.get("other.x", t0), None);
+    }
+
+    #[test]
+    fn ip_cache_caches_negative_results_and_prunes_on_put() {
+        let cache = IpCache::new();
+        let t0 = std::time::Instant::now();
+        // A failed resolution (empty vec) is a cached answer, not a miss.
+        cache.put("ghost.x", Vec::new(), t0);
+        assert_eq!(cache.get("ghost.x", t0), Some(Vec::new()));
+
+        // Inserting after the TTL prunes the stale entry.
+        cache.put("sw1.x", vec!["10.0.0.1".to_string()], t0 + IP_CACHE_TTL * 2);
+        assert!(cache.entries.lock().unwrap().get("ghost.x").is_none(), "stale entries pruned");
+    }
 }

@@ -323,6 +323,10 @@ pub struct ApiDeviceDetail {
     // successful LAG poll. Additive: default-deserialized for older payloads.
     #[serde(default)]
     pub port_channels: Vec<ApiPortChannel>,
+    // What the device fqdn resolves to at request time (v4 first); empty when
+    // resolution fails. Additive: default-deserialized for older payloads.
+    #[serde(default)]
+    pub ip_addresses: Vec<String>,
 }
 
 // One link aggregate (Cisco port-channel / HP trk) with its member ports and

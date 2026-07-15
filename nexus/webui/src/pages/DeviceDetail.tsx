@@ -219,6 +219,7 @@ export default function DeviceDetail() {
       <div className="panel">
         <div className="kv">
           <span>Type</span><span>{device.deviceType ?? '—'}</span>
+          <span>IP address</span><span>{(detail.data.ipAddresses ?? []).join(', ') || '—'}</span>
           <span>Software</span><span>{device.softwareVersion ?? '—'}</span>
           <span>OS info</span><span className="wrap">{device.osInfo ?? '—'}</span>
           <span>Base MAC</span><span>{device.baseMac ?? '—'}</span>

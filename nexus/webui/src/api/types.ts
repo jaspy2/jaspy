@@ -169,6 +169,9 @@ export interface DeviceDetail {
   interfaces: Interface[];
   vlans: Vlan[];
   portChannels: PortChannel[];
+  // What the fqdn resolves to at request time (v4 first); empty when
+  // resolution fails.
+  ipAddresses: string[];
 }
 
 // GET /api/v1/devices/<fqdn>/entity — latest entitypoller results. Empty
