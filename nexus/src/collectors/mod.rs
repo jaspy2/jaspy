@@ -14,3 +14,6 @@ pub mod discovery;
 // vlanpoller collects per-interface VLAN membership (native + tagged) into an
 // in-memory store served by /api/v1 only — no DB, no Prometheus.
 pub mod vlanpoller;
+// vendor holds the shared vendor-source selection (hint from discovery data,
+// per-device winner cache) used by entitypoller and vlanpoller.
+pub mod vendor;

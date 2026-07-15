@@ -1,14 +1,17 @@
 // In-process per-interface VLAN membership collector: native (untagged) VLAN
 // and tagged VLAN list per port.
 //
-// Sources, in order of preference:
-//   1. Cisco: CISCO-VTP-MIB::vlanTrunkPortTable (trunk native + allowed-VLAN
-//      bitmaps, intersected with the VLANs that actually exist per
-//      CISCO-VTP-MIB::vtpVlanTable — default trunks report all 4096 bits set)
-//      plus CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable (access-port VLAN).
-//   2. Q-BRIDGE-MIB fallback for non-Cisco gear: dot1qPvid per bridge port and
-//      dot1qVlanCurrentTable (or dot1qVlanStaticTable) egress/untagged PortList
-//      bitmaps, translated to ifIndex via BRIDGE-MIB::dot1dBasePortTable.
+// One vendor::Source per incompatible MIB family (probe order and per-device
+// winner cache in collectors::vendor):
+//   - CiscoVtpSource: CISCO-VTP-MIB::vlanTrunkPortTable (trunk native +
+//     allowed-VLAN bitmaps, intersected with the VLANs that actually exist
+//     per CISCO-VTP-MIB::vtpVlanTable — default trunks report all 4096 bits
+//     set) plus CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable (access-port
+//     VLAN).
+//   - QBridgeSource: standard Q-BRIDGE-MIB: dot1qPvid per bridge port and
+//     dot1qVlanCurrentTable (or dot1qVlanStaticTable) egress/untagged
+//     PortList bitmaps, translated to ifIndex via
+//     BRIDGE-MIB::dot1dBasePortTable.
 //
 // Results live only in the in-memory `VlanStore` (no DB, no Prometheus): the
 // data is re-polled on an interval and can also be refreshed on demand per
@@ -18,6 +21,7 @@ extern crate serde_json;
 
 use crate::collectors::entitypoller::{fetch_table, interruptible_sleep, obj_i64, obj_str};
 use crate::collectors::poller::SNMPBotResponse;
+use crate::collectors::vendor::{self, Vendor};
 use crate::db;
 use crate::utilities::tools;
 use rand::prelude::*;
@@ -349,47 +353,83 @@ pub(crate) fn decode_qbridge(
 // Per-device poll
 // ---------------------------------------------------------------------------
 
-fn poll_device(snmpbot_url: &String, fqdn: &String, community: &String) -> Option<DeviceVlans> {
-    let host = format!("{}@{}", community, fqdn);
+struct VlanCtx<'a> {
+    snmpbot_url: &'a String,
+    host: &'a String,
+}
 
-    // Cisco first: the trunk table exists (with rows) on every Cisco switch.
+struct CiscoVtpSource;
+
+impl<'a> vendor::Source<VlanCtx<'a>> for CiscoVtpSource {
+    type Output = DeviceVlans;
+
+    fn name(&self) -> &'static str {
+        "cisco-vtp"
+    }
+
+    fn vendor(&self) -> Vendor {
+        Vendor::Cisco
+    }
+
+    // The trunk table exists (with rows) on every Cisco switch.
     // jaspyVlanTrunkPortTable is a jaspy-specific slim view of
     // vlanTrunkPortTable (snmpbot/mibs/CISCO-VTP-MIB.json) holding only the 6
     // columns we decode: walking the full ~30-column entry (a dozen 128-byte
     // PortList octet strings per row) silently truncates on slow switches
     // (verified on a C2960CX, where the full walk stopped 5 rows short).
-    if let Some(trunk) = fetch_table(snmpbot_url, &host, "CISCO-VTP-MIB::jaspyVlanTrunkPortTable") {
-        if !trunk.entries.is_empty() {
-            let vtp_vlans = fetch_table(snmpbot_url, &host, "CISCO-VTP-MIB::vtpVlanTable");
-            if vtp_vlans.is_none() {
-                println!("[vlanpoller] [{}] vtpVlanTable unavailable; trunk tagged VLANs degrade to native-only", host);
-            }
-            let membership = fetch_table(snmpbot_url, &host, "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable");
-            let decoded = decode_cisco(&trunk, vtp_vlans.as_ref(), membership.as_ref());
-            if !decoded.is_empty() {
-                return Some(DeviceVlans {
-                    interfaces: decoded,
-                    names: vtp_vlans.as_ref().map(cisco_vlan_names).unwrap_or_default(),
-                });
-            }
+    fn collect(&self, ctx: &VlanCtx) -> Option<DeviceVlans> {
+        let trunk = match fetch_table(ctx.snmpbot_url, ctx.host, "CISCO-VTP-MIB::jaspyVlanTrunkPortTable") {
+            Some(t) if !t.entries.is_empty() => t,
+            _ => return None,
+        };
+        let vtp_vlans = fetch_table(ctx.snmpbot_url, ctx.host, "CISCO-VTP-MIB::vtpVlanTable");
+        if vtp_vlans.is_none() {
+            println!("[vlanpoller] [{}] vtpVlanTable unavailable; trunk tagged VLANs degrade to native-only", ctx.host);
         }
+        let membership = fetch_table(ctx.snmpbot_url, ctx.host, "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable");
+        let decoded = decode_cisco(&trunk, vtp_vlans.as_ref(), membership.as_ref());
+        if decoded.is_empty() {
+            // A trunk table with rows but nothing decoded (e.g. all ports
+            // routed): report nothing so selection can try the next source.
+            return None;
+        }
+        Some(DeviceVlans {
+            interfaces: decoded,
+            names: vtp_vlans.as_ref().map(cisco_vlan_names).unwrap_or_default(),
+        })
+    }
+}
+
+struct QBridgeSource;
+
+impl<'a> vendor::Source<VlanCtx<'a>> for QBridgeSource {
+    type Output = DeviceVlans;
+
+    fn name(&self) -> &'static str {
+        "q-bridge"
     }
 
-    // Q-BRIDGE fallback (standards-based; not supported by Cisco IOS switches,
-    // which never reach this point because the trunk table decoded above).
-    let base_ports = fetch_table(snmpbot_url, &host, "BRIDGE-MIB::dot1dBasePortTable")?;
-    let pvid = fetch_table(snmpbot_url, &host, "Q-BRIDGE-MIB::dot1qPortVlanTable");
-    // The Static table is fetched regardless: it is both the port-membership
-    // fallback and the only source of VLAN names in Q-BRIDGE-MIB.
-    let vlan_static = fetch_table(snmpbot_url, &host, "Q-BRIDGE-MIB::dot1qVlanStaticTable");
-    let vlan_ports = match fetch_table(snmpbot_url, &host, "Q-BRIDGE-MIB::dot1qVlanCurrentTable") {
-        Some(current) if !current.entries.is_empty() => Some(current),
-        _ => vlan_static.clone(),
-    };
-    let decoded = decode_qbridge(pvid.as_ref(), vlan_ports.as_ref(), &base_ports);
-    if decoded.is_empty() {
-        None
-    } else {
+    fn vendor(&self) -> Vendor {
+        Vendor::Generic
+    }
+
+    // Standards-based; Cisco IOS switches don't answer Q-BRIDGE, so they only
+    // reach these probes when the Cisco source declined (which its trunk
+    // table usually prevents).
+    fn collect(&self, ctx: &VlanCtx) -> Option<DeviceVlans> {
+        let base_ports = fetch_table(ctx.snmpbot_url, ctx.host, "BRIDGE-MIB::dot1dBasePortTable")?;
+        let pvid = fetch_table(ctx.snmpbot_url, ctx.host, "Q-BRIDGE-MIB::dot1qPortVlanTable");
+        // The Static table is fetched regardless: it is both the port-membership
+        // fallback and the only source of VLAN names in Q-BRIDGE-MIB.
+        let vlan_static = fetch_table(ctx.snmpbot_url, ctx.host, "Q-BRIDGE-MIB::dot1qVlanStaticTable");
+        let vlan_ports = match fetch_table(ctx.snmpbot_url, ctx.host, "Q-BRIDGE-MIB::dot1qVlanCurrentTable") {
+            Some(current) if !current.entries.is_empty() => Some(current),
+            _ => vlan_static.clone(),
+        };
+        let decoded = decode_qbridge(pvid.as_ref(), vlan_ports.as_ref(), &base_ports);
+        if decoded.is_empty() {
+            return None;
+        }
         Some(DeviceVlans {
             interfaces: decoded,
             names: vlan_static.as_ref().map(qbridge_vlan_names).unwrap_or_default(),
@@ -397,19 +437,37 @@ fn poll_device(snmpbot_url: &String, fqdn: &String, community: &String) -> Optio
     }
 }
 
+fn poll_device(snmpbot_url: &String, fqdn: &String, community: &String, hint: Vendor, sources_cache: &vendor::SourceCache) -> Option<DeviceVlans> {
+    let host = format!("{}@{}", community, fqdn);
+    let ctx = VlanCtx { snmpbot_url: snmpbot_url, host: &host };
+    let sources: [&dyn vendor::Source<VlanCtx, Output = DeviceVlans>; 2] = [&CiscoVtpSource, &QBridgeSource];
+    vendor::collect_first(sources_cache, fqdn, hint, &sources, &ctx)
+}
+
 // ---------------------------------------------------------------------------
 // Supervisor
 // ---------------------------------------------------------------------------
 
-fn load_devices(pool: &db::Pool) -> Vec<(String, String)> {
-    let mut devices: Vec<(String, String)> = Vec::new();
+struct VlanDevice {
+    fqdn: String,
+    community: String,
+    // Seeds the source probe order (see collectors::vendor).
+    vendor: Vendor,
+}
+
+fn load_devices(pool: &db::Pool) -> Vec<VlanDevice> {
+    let mut devices: Vec<VlanDevice> = Vec::new();
     if let Ok(mut conn) = pool.get() {
         for device in crate::models::dbo::Device::monitored(&mut *conn).iter() {
             let community = match device.snmp_community {
                 Some(ref c) => c.clone(),
                 None => continue,
             };
-            devices.push((format!("{}.{}", device.name, device.dns_domain), community));
+            devices.push(VlanDevice {
+                fqdn: format!("{}.{}", device.name, device.dns_domain),
+                community: community,
+                vendor: vendor::vendor_hint(device.os_info.as_deref(), device.device_type.as_deref()),
+            });
         }
     } else {
         println!("[vlanpoller] failed to acquire db connection for device listing");
@@ -417,11 +475,18 @@ fn load_devices(pool: &db::Pool) -> Vec<(String, String)> {
     devices
 }
 
-fn poll_batch(snmpbot_url: &String, devices: Vec<(String, String)>, store: &Arc<Mutex<VlanStore>>, jitter_msecs: u64) {
+fn poll_batch(
+    snmpbot_url: &String,
+    devices: Vec<VlanDevice>,
+    store: &Arc<Mutex<VlanStore>>,
+    sources_cache: &Arc<vendor::SourceCache>,
+    jitter_msecs: u64,
+) {
     let mut handles = Vec::new();
-    for (fqdn, community) in devices.into_iter() {
+    for device in devices.into_iter() {
         let snmpbot_url = snmpbot_url.clone();
         let store = store.clone();
+        let sources_cache = sources_cache.clone();
         handles.push(thread::spawn(move || {
             if jitter_msecs > 0 {
                 let sleep = thread_rng().gen_range(0.0, jitter_msecs as f64);
@@ -429,9 +494,9 @@ fn poll_batch(snmpbot_url: &String, devices: Vec<(String, String)>, store: &Arc<
             }
             // Only replace on success so a transient poll failure does not
             // blank previously known VLAN data.
-            if let Some(vlans) = poll_device(&snmpbot_url, &fqdn, &community) {
+            if let Some(vlans) = poll_device(&snmpbot_url, &device.fqdn, &device.community, device.vendor, &sources_cache) {
                 if let Ok(mut store) = store.lock() {
-                    store.replace_device(fqdn, vlans);
+                    store.replace_device(device.fqdn, vlans);
                 }
             }
         }));
@@ -451,18 +516,20 @@ pub fn run(
     println!("[vlanpoller] starting in-process collector (snmpbot={}, interval_msecs={})", snmpbot_url, interval_msecs);
     let pool = db::connect();
     let no_jitter = std::env::var("JASPY_POLLER_NO_JITTER").map(|v| v == "1" || v == "true").unwrap_or(false);
+    let sources_cache = Arc::new(vendor::SourceCache::new());
     let mut next_cycle: u64 = 0; // first full cycle runs immediately
 
     while running.load(atomic::Ordering::Relaxed) {
         let now = tools::get_time_msecs();
         if now >= next_cycle {
             let devices = load_devices(&pool);
-            let keep: HashSet<String> = devices.iter().map(|(fqdn, _)| fqdn.clone()).collect();
+            let keep: HashSet<String> = devices.iter().map(|d| d.fqdn.clone()).collect();
             if let Ok(mut store) = store.lock() {
                 store.retain(&keep);
             }
+            sources_cache.retain(&keep);
             let jitter = if no_jitter { 0 } else { interval_msecs / 2 };
-            poll_batch(&snmpbot_url, devices, &store, jitter);
+            poll_batch(&snmpbot_url, devices, &store, &sources_cache, jitter);
             next_cycle = tools::get_time_msecs() + interval_msecs;
         }
 
@@ -473,11 +540,11 @@ pub fn run(
             Err(_) => HashSet::new(),
         };
         if !triggered.is_empty() {
-            let devices: Vec<(String, String)> = load_devices(&pool)
+            let devices: Vec<VlanDevice> = load_devices(&pool)
                 .into_iter()
-                .filter(|(fqdn, _)| triggered.contains(fqdn))
+                .filter(|d| triggered.contains(&d.fqdn))
                 .collect();
-            poll_batch(&snmpbot_url, devices, &store, 0);
+            poll_batch(&snmpbot_url, devices, &store, &sources_cache, 0);
             if let Ok(mut control) = control.lock() {
                 control.pending.retain(|fqdn| !triggered.contains(fqdn));
             }

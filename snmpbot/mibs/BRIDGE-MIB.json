@@ -398,6 +398,11 @@
           "Value": 5
         }
       ]
+    },
+    {
+      "Name": "jaspyStpBridgeInstance",
+      "OID": ".1.3.6.1.2.1.17.2.99",
+      "Syntax": "INTEGER"
     }
   ],
   "Tables": [
@@ -478,6 +483,21 @@
       ],
       "Name": "dot1dStaticTable",
       "OID": ".1.3.6.1.2.1.17.5.1"
+    },
+    {
+      "Name": "jaspyStpBridgeTable",
+      "OID": ".1.3.6.1.2.1.17.2",
+      "EntryName": "jaspyStpBridgeEntry",
+      "IndexObjects": [
+        "BRIDGE-MIB::jaspyStpBridgeInstance"
+      ],
+      "EntryObjects": [
+        "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange",
+        "BRIDGE-MIB::dot1dStpTopChanges",
+        "BRIDGE-MIB::dot1dStpDesignatedRoot",
+        "BRIDGE-MIB::dot1dStpRootCost",
+        "BRIDGE-MIB::dot1dStpRootPort"
+      ]
     }
   ]
 }

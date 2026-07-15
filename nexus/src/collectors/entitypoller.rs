@@ -12,7 +12,8 @@
 extern crate reqwest;
 extern crate serde_json;
 
-use crate::collectors::poller::{SNMPBotObjectResponse, SNMPBotResponse, SNMPBotResultEntryObjectValue};
+use crate::collectors::poller::{SNMPBotResponse, SNMPBotResultEntryObjectValue};
+use crate::collectors::vendor::{self, Vendor};
 use crate::db;
 use crate::models::metrics::{LabeledMetric, MetricValue};
 use crate::utilities::tools;
@@ -562,6 +563,7 @@ mod tests {
             hostname: "sw1".to_string(),
             fqdn: DEV.to_string(),
             community: "testcomm".to_string(),
+            vendor: Vendor::HpProcurve,
             interfaces: HashMap::new(),
         };
         let mut interfaces = HashMap::new();
@@ -624,6 +626,52 @@ mod tests {
         assert_eq!(v200.time_since_topology_change_secs, Some(2297973));
     }
 
+    // --- bridge scalars via the jaspyStpBridgeTable view ---
+
+    const BRIDGE_SCALARS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/jaspystpbridgetable.json"));
+
+    fn test_device() -> EntityDevice {
+        EntityDevice {
+            hostname: "sw1".to_string(),
+            fqdn: DEV.to_string(),
+            community: "testcomm".to_string(),
+            vendor: Vendor::Cisco,
+            interfaces: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn bridge_scalar_metrics_decodes_all_five() {
+        let table: SNMPBotResponse = serde_json::from_str(BRIDGE_SCALARS).unwrap();
+        let mut store = EntityMetricsStore::new();
+        store.replace_device(DEV.to_string(), bridge_scalar_metrics(&test_device(), 100, &table.entries[0].objects, 7));
+
+        let bridge = &store.device_entity(DEV).stp_bridges[0];
+        assert_eq!(bridge.vlan, 100);
+        assert_eq!(bridge.root_priority, Some(33068));
+        assert_eq!(bridge.root_mac.as_deref(), Some("70:10:6f:63:f2:70"));
+        assert_eq!(bridge.root_cost, Some(20000));
+        assert_eq!(bridge.root_port, Some(5));
+        assert_eq!(bridge.topology_changes, Some(9));
+        assert_eq!(bridge.time_since_topology_change_secs, Some(2297973));
+    }
+
+    #[test]
+    fn bridge_scalar_metrics_skips_missing_and_malformed() {
+        // Unparseable bridge id and absent scalars: only root_cost decodes.
+        let entry: crate::collectors::poller::SNMPBotResultEntry = serde_json::from_str(r#"{
+            "HostID": "h",
+            "Index": {"BRIDGE-MIB::jaspyStpBridgeInstance": 0},
+            "Objects": {
+                "BRIDGE-MIB::dot1dStpDesignatedRoot": "zz zz",
+                "BRIDGE-MIB::dot1dStpRootCost": 4
+            }
+        }"#).unwrap();
+        let metrics = bridge_scalar_metrics(&test_device(), 100, &entry.objects, 7);
+        assert_eq!(metrics.len(), 1);
+        assert_eq!(metrics[0].name, "jaspy_stp_bridge_root_cost");
+    }
+
     #[test]
     fn bridge_metric_renders_exact_text() {
         let metric = bridge_metric("root_priority", 33068, "100", &[("root_mac", "aa:bb:cc:dd:ee:ff")], 7);
@@ -643,6 +691,8 @@ struct EntityDevice {
     hostname: String,
     fqdn: String,
     community: String,
+    // Seeds the STP source probe order (see collectors::vendor).
+    vendor: Vendor,
     // Interface lookup keyed by both interface name and description, mapping to
     // (interface name, interface id) for sensor->interface association.
     interfaces: HashMap<String, (String, i32)>,
@@ -669,6 +719,7 @@ fn load_devices(pool: &db::Pool) -> Vec<EntityDevice> {
                 hostname: device.name.clone(),
                 fqdn: fqdn,
                 community: community,
+                vendor: vendor::vendor_hint(device.os_info.as_deref(), device.device_type.as_deref()),
                 interfaces: interfaces,
             });
         }
@@ -709,29 +760,6 @@ pub(crate) fn fetch_table(snmpbot_url: &String, host: &String, table: &str) -> O
             None
         }
     }
-}
-
-// Single-object query in the same inline host form (community@vlan@fqdn) as
-// fetch_table. Returns the raw value so callers can distinguish numbers from
-// octet-string renderings.
-pub(crate) fn fetch_object(snmpbot_url: &String, host: &String, object: &str) -> Option<SNMPBotResultEntryObjectValue> {
-    let url = format!("{}/api/hosts/{}/objects/{}", snmpbot_url, host, object);
-    let response = reqwest::blocking::get(&url).ok()?;
-    if !response.status().is_success() {
-        return None;
-    }
-    let parsed: SNMPBotObjectResponse = match response.json() {
-        Ok(p) => p,
-        Err(e) => {
-            println!("[{}] error decoding object {}: {}", host, object, e);
-            return None;
-        }
-    };
-    if parsed.instances.len() > 1 {
-        println!("[{}] expected <= 1 results for {}, got {}", host, object, parsed.instances.len());
-        return None;
-    }
-    parsed.instances.into_iter().next()?.value
 }
 
 fn obj_f64(objects: &HashMap<String, SNMPBotResultEntryObjectValue>, key: &str) -> Option<f64> {
@@ -957,8 +985,28 @@ fn get_entities_by_physical_index(
 }
 
 // ---------------------------------------------------------------------------
-// STP polling (CISCO-STP-EXTENSIONS-MIB + BRIDGE-MIB, per VLAN)
+// STP polling, one vendor::Source per incompatible MIB family:
+//   - CiscoStpxSource: CISCO-STP-EXTENSIONS-MIB roles + per-VLAN BRIDGE-MIB
+//   - HpRpvstSource:   HP-ICF-RPVST-MIB (ProCurve RPVST+)
+// The probe order and per-device winner cache live in collectors::vendor.
 // ---------------------------------------------------------------------------
+
+struct StpCtx<'a> {
+    snmpbot_url: &'a String,
+    device: &'a EntityDevice,
+    host: &'a String,
+}
+
+fn get_stp(snmpbot_url: &String, device: &EntityDevice, cache: &vendor::SourceCache, out: &mut Vec<LabeledMetric>) {
+    let host = format!("{}@{}", device.community, device.fqdn);
+    let ctx = StpCtx { snmpbot_url: snmpbot_url, device: device, host: &host };
+    let sources: [&dyn vendor::Source<StpCtx, Output = Vec<LabeledMetric>>; 2] = [&CiscoStpxSource, &HpRpvstSource];
+    if let Some(metrics) = vendor::collect_first(cache, &device.fqdn, device.vendor, &sources, &ctx) {
+        out.extend(metrics);
+    }
+    // All sources None: the device exposes no STP data (or is unreachable);
+    // nothing to add, and the next cycle re-probes from the hint order.
+}
 
 #[derive(Clone)]
 struct StpPortInfo {
@@ -967,16 +1015,30 @@ struct StpPortInfo {
     interface_name: String, // ifDescr of that ifIndex, "UNKNOWN" if unknown
 }
 
-fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMetric>) {
-    let host = format!("{}@{}", device.community, device.fqdn);
-    // Cisco first; switches that don't speak CISCO-STP-EXTENSIONS-MIB (e.g.
-    // HP ProCurve running RPVST+) fall back to HP-ICF-RPVST-MIB.
-    let role_table = match fetch_table(snmpbot_url, &host, "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable") {
+struct CiscoStpxSource;
+
+impl<'a> vendor::Source<StpCtx<'a>> for CiscoStpxSource {
+    type Output = Vec<LabeledMetric>;
+
+    fn name(&self) -> &'static str {
+        "cisco-stpx"
+    }
+
+    fn vendor(&self) -> Vendor {
+        Vendor::Cisco
+    }
+
+    fn collect(&self, ctx: &StpCtx) -> Option<Vec<LabeledMetric>> {
+        cisco_stpx_collect(ctx.snmpbot_url, ctx.device, ctx.host)
+    }
+}
+
+fn cisco_stpx_collect(snmpbot_url: &String, device: &EntityDevice, host: &String) -> Option<Vec<LabeledMetric>> {
+    // The role table is the applicability probe: absent or empty means this
+    // device doesn't speak CISCO-STP-EXTENSIONS-MIB.
+    let role_table = match fetch_table(snmpbot_url, host, "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable") {
         Some(t) if !t.entries.is_empty() => t,
-        _ => {
-            get_stp_rpvst(snmpbot_url, device, &host, out);
-            return;
-        }
+        _ => return None,
     };
 
     // vlan -> bridge port -> StpPortInfo
@@ -1001,10 +1063,15 @@ fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMet
         });
     }
 
-    // ifTable (base community) for real ifIndex -> ifDescr names.
-    let iftable = match fetch_table(snmpbot_url, &host, "IF-MIB::ifTable") {
+    let mut out: Vec<LabeledMetric> = Vec::new();
+
+    // ifTable (base community) for real ifIndex -> ifDescr names. The role
+    // table already answered, so this device IS the Cisco source's — report
+    // it as such (with whatever collected) rather than falling through to
+    // the other sources on a transient failure.
+    let iftable = match fetch_table(snmpbot_url, host, "IF-MIB::ifTable") {
         Some(t) => t,
-        None => return,
+        None => return Some(out),
     };
     let mut interfaces: HashMap<i64, String> = HashMap::new();
     for entry in iftable.entries.iter() {
@@ -1022,9 +1089,12 @@ fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMet
         let per_vlan_host = format!("{}@{}@{}", device.community, vlan, device.fqdn);
 
         // dot1dBasePortTable: bridge port -> real ifIndex (+ resolve ifDescr).
+        // A per-VLAN fetch failure skips only this VLAN: aborting the whole
+        // device on one bad community@vlan context would drop a random subset
+        // of the remaining VLANs (HashMap order) and make the tree flicker.
         let base_table = match fetch_table(snmpbot_url, &per_vlan_host, "BRIDGE-MIB::dot1dBasePortTable") {
             Some(t) => t,
-            None => return,
+            None => continue,
         };
         for entry in base_table.entries.iter() {
             let bridge_port = match entry.index.get("BRIDGE-MIB::dot1dBasePort") {
@@ -1046,7 +1116,7 @@ fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMet
         // dot1dStpPortTable: cost/priority/transitions/state/enable per port.
         let stp_table = match fetch_table(snmpbot_url, &per_vlan_host, "BRIDGE-MIB::dot1dStpPortTable") {
             Some(t) => t,
-            None => return,
+            None => continue,
         };
         for entry in stp_table.entries.iter() {
             let bridge_port = match entry.index.get("BRIDGE-MIB::dot1dStpPort") {
@@ -1065,24 +1135,26 @@ fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMet
             let enable = obj_str(&entry.objects, "BRIDGE-MIB::dot1dStpPortEnable").unwrap_or_default();
             let state = obj_str(&entry.objects, "BRIDGE-MIB::dot1dStpPortState").unwrap_or_default();
 
-            push_stp_metric(out, device, port, *vlan, bridge_port, "port_designated_cost", designated_cost, timestamp);
-            push_stp_metric(out, device, port, *vlan, bridge_port, "port_path_cost", path_cost, timestamp);
-            push_stp_metric(out, device, port, *vlan, bridge_port, "port_priority", priority, timestamp);
-            push_stp_metric(out, device, port, *vlan, bridge_port, "port_forward_transitions", forward_transitions, timestamp);
-            push_stp_metric(out, device, port, *vlan, bridge_port, "port_enabled", stp_port_enable_numeric(&enable), timestamp);
-            push_stp_metric(out, device, port, *vlan, bridge_port, "port_role", rstp_port_role_numeric(&port.role), timestamp);
-            push_stp_metric(out, device, port, *vlan, bridge_port, "port_state", stp_port_state_numeric(&state), timestamp);
+            push_stp_metric(&mut out, device, port, *vlan, bridge_port, "port_designated_cost", designated_cost, timestamp);
+            push_stp_metric(&mut out, device, port, *vlan, bridge_port, "port_path_cost", path_cost, timestamp);
+            push_stp_metric(&mut out, device, port, *vlan, bridge_port, "port_priority", priority, timestamp);
+            push_stp_metric(&mut out, device, port, *vlan, bridge_port, "port_forward_transitions", forward_transitions, timestamp);
+            push_stp_metric(&mut out, device, port, *vlan, bridge_port, "port_enabled", stp_port_enable_numeric(&enable), timestamp);
+            push_stp_metric(&mut out, device, port, *vlan, bridge_port, "port_role", rstp_port_role_numeric(&port.role), timestamp);
+            push_stp_metric(&mut out, device, port, *vlan, bridge_port, "port_state", stp_port_state_numeric(&state), timestamp);
         }
 
         // Bridge-level scalars for this vlan (BRIDGE-MIB dot1dStp group): the
         // reported root identity for cross-checking the computed tree, plus
-        // topology-change churn. Five extra object GETs per vlan per cycle.
-        get_stp_bridge(snmpbot_url, device, &per_vlan_host, *vlan, timestamp, out);
+        // topology-change churn. One batched objects GET per vlan per cycle.
+        get_stp_bridge(snmpbot_url, device, &per_vlan_host, *vlan, timestamp, &mut out);
     }
+
+    Some(out)
 }
 
 // ---------------------------------------------------------------------------
-// HP RPVST+ fallback (HP-ICF-RPVST-MIB). ProCurve switches expose per-VLAN
+// HP RPVST+ source (HP-ICF-RPVST-MIB). ProCurve switches expose per-VLAN
 // spanning tree only here: neither classic BRIDGE-MIB dot1dStp nor the Cisco
 // stpx tables answer (verified on 2530-8G, YA.15.16). The port-vlan data is
 // fetched through jaspy-specific single-column table views (see
@@ -1090,10 +1162,28 @@ fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMet
 // walk misaligns on this sparse table. Port index == ifIndex on ProCurve.
 // ---------------------------------------------------------------------------
 
-fn get_stp_rpvst(snmpbot_url: &String, device: &EntityDevice, host: &String, out: &mut Vec<LabeledMetric>) {
+struct HpRpvstSource;
+
+impl<'a> vendor::Source<StpCtx<'a>> for HpRpvstSource {
+    type Output = Vec<LabeledMetric>;
+
+    fn name(&self) -> &'static str {
+        "hp-rpvst"
+    }
+
+    fn vendor(&self) -> Vendor {
+        Vendor::HpProcurve
+    }
+
+    fn collect(&self, ctx: &StpCtx) -> Option<Vec<LabeledMetric>> {
+        hp_rpvst_collect(ctx.snmpbot_url, ctx.device, ctx.host)
+    }
+}
+
+fn hp_rpvst_collect(snmpbot_url: &String, device: &EntityDevice, host: &String) -> Option<Vec<LabeledMetric>> {
     let roles = match fetch_table(snmpbot_url, host, "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable") {
         Some(t) if !t.entries.is_empty() => t,
-        _ => return, // no RPVST either — the device just has no STP data
+        _ => return None, // no RPVST — not this source's device
     };
     let states = fetch_table(snmpbot_url, host, "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanStateTable");
     let costs = fetch_table(snmpbot_url, host, "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanCostTable");
@@ -1110,7 +1200,7 @@ fn get_stp_rpvst(snmpbot_url: &String, device: &EntityDevice, host: &String, out
     }
 
     let timestamp = tools::get_time_msecs();
-    out.extend(rpvst_metrics(device, &interfaces, &roles, states.as_ref(), costs.as_ref(), vlans.as_ref(), timestamp));
+    Some(rpvst_metrics(device, &interfaces, &roles, states.as_ref(), costs.as_ref(), vlans.as_ref(), timestamp))
 }
 
 // (vlan, port) index of an RPVST port-vlan row.
@@ -1203,30 +1293,48 @@ fn value_i64(value: &SNMPBotResultEntryObjectValue) -> Option<i64> {
     }
 }
 
+// jaspyStpBridgeTable is a jaspy-specific view over the five BRIDGE-MIB
+// dot1dStp scalars (snmpbot/mibs/BRIDGE-MIB.json): one table walk fetches
+// them all, where five single-object GETs would each carry a full transient-
+// host MIB probe. Real snmpbot can't batch them via `/objects/?object=`
+// either — that form only spans MIBs its probe detected, and BRIDGE-MIB
+// probing fails on gear that answers dot1dStp GETs fine (verified on a live
+// C2960CX).
 fn get_stp_bridge(snmpbot_url: &String, device: &EntityDevice, per_vlan_host: &String, vlan: i64, timestamp: u64, out: &mut Vec<LabeledMetric>) {
+    let table = match fetch_table(snmpbot_url, per_vlan_host, "BRIDGE-MIB::jaspyStpBridgeTable") {
+        Some(t) => t,
+        None => return,
+    };
+    // Scalars: a single row (index .0).
+    if let Some(entry) = table.entries.first() {
+        out.extend(bridge_scalar_metrics(device, vlan, &entry.objects, timestamp));
+    }
+}
+
+fn bridge_scalar_metrics(device: &EntityDevice, vlan: i64, values: &HashMap<String, SNMPBotResultEntryObjectValue>, timestamp: u64) -> Vec<LabeledMetric> {
     use crate::utilities::stp::{parse_bridge_id, timeticks_secs};
 
-    let fetch = |object: &str| fetch_object(snmpbot_url, per_vlan_host, object);
-
-    if let Some(SNMPBotResultEntryObjectValue::Str(raw)) = fetch("BRIDGE-MIB::dot1dStpDesignatedRoot") {
-        if let Some((priority, mac)) = parse_bridge_id(&raw) {
-            push_stp_bridge_metric(out, device, vlan, "root_priority", priority, &[("root_mac", &mac)], timestamp);
+    let mut out: Vec<LabeledMetric> = Vec::new();
+    if let Some(SNMPBotResultEntryObjectValue::Str(raw)) = values.get("BRIDGE-MIB::dot1dStpDesignatedRoot") {
+        if let Some((priority, mac)) = parse_bridge_id(raw) {
+            push_stp_bridge_metric(&mut out, device, vlan, "root_priority", priority, &[("root_mac", &mac)], timestamp);
         } else {
-            println!("[{}] unparseable dot1dStpDesignatedRoot: {:.40}", per_vlan_host, raw);
+            println!("[{}] unparseable dot1dStpDesignatedRoot: {:.40}", device.fqdn, raw);
         }
     }
-    if let Some(cost) = fetch("BRIDGE-MIB::dot1dStpRootCost").as_ref().and_then(value_i64) {
-        push_stp_bridge_metric(out, device, vlan, "root_cost", cost, &[], timestamp);
+    if let Some(cost) = values.get("BRIDGE-MIB::dot1dStpRootCost").and_then(value_i64) {
+        push_stp_bridge_metric(&mut out, device, vlan, "root_cost", cost, &[], timestamp);
     }
-    if let Some(port) = fetch("BRIDGE-MIB::dot1dStpRootPort").as_ref().and_then(value_i64) {
-        push_stp_bridge_metric(out, device, vlan, "root_port", port, &[], timestamp);
+    if let Some(port) = values.get("BRIDGE-MIB::dot1dStpRootPort").and_then(value_i64) {
+        push_stp_bridge_metric(&mut out, device, vlan, "root_port", port, &[], timestamp);
     }
-    if let Some(changes) = fetch("BRIDGE-MIB::dot1dStpTopChanges").as_ref().and_then(value_i64) {
-        push_stp_bridge_metric(out, device, vlan, "topology_changes", changes, &[], timestamp);
+    if let Some(changes) = values.get("BRIDGE-MIB::dot1dStpTopChanges").and_then(value_i64) {
+        push_stp_bridge_metric(&mut out, device, vlan, "topology_changes", changes, &[], timestamp);
     }
-    if let Some(secs) = fetch("BRIDGE-MIB::dot1dStpTimeSinceTopologyChange").as_ref().and_then(timeticks_secs) {
-        push_stp_bridge_metric(out, device, vlan, "time_since_topology_change", secs, &[], timestamp);
+    if let Some(secs) = values.get("BRIDGE-MIB::dot1dStpTimeSinceTopologyChange").and_then(timeticks_secs) {
+        push_stp_bridge_metric(&mut out, device, vlan, "time_since_topology_change", secs, &[], timestamp);
     }
+    out
 }
 
 fn push_stp_bridge_metric(out: &mut Vec<LabeledMetric>, device: &EntityDevice, vlan: i64, key: &str, value: i64, extra_labels: &[(&str, &str)], timestamp: u64) {
@@ -1279,22 +1387,25 @@ pub fn run(snmpbot_url: String, interval_msecs: u64, disable_sensors: bool, disa
         snmpbot_url, interval_msecs, !disable_sensors, !disable_stp);
     let pool = db::connect();
     let no_jitter = std::env::var("JASPY_POLLER_NO_JITTER").map(|v| v == "1" || v == "true").unwrap_or(false);
+    let stp_sources = Arc::new(vendor::SourceCache::new());
 
     while running.load(atomic::Ordering::Relaxed) {
         let cycle_start = tools::get_time_msecs();
         let devices = load_devices(&pool);
 
-        // Drop metrics for devices that are no longer monitored.
+        // Drop metrics + cached STP sources for devices no longer monitored.
         let keep: HashSet<String> = devices.iter().map(|d| d.fqdn.clone()).collect();
         if let Ok(mut store) = store.lock() {
             store.retain(&keep);
         }
+        stp_sources.retain(&keep);
 
         // One worker thread per device, joined at a barrier (Go runOnce+WaitGroup).
         let mut handles = Vec::new();
         for device in devices.into_iter() {
             let snmpbot_url = snmpbot_url.clone();
             let store = store.clone();
+            let stp_sources = stp_sources.clone();
             handles.push(thread::spawn(move || {
                 if !no_jitter {
                     let sleep = thread_rng().gen_range(0.0, (interval_msecs / 2) as f64);
@@ -1305,7 +1416,7 @@ pub fn run(snmpbot_url: String, interval_msecs: u64, disable_sensors: bool, disa
                     get_entities(&snmpbot_url, &device, &mut metrics);
                 }
                 if !disable_stp {
-                    get_stp(&snmpbot_url, &device, &mut metrics);
+                    get_stp(&snmpbot_url, &device, &stp_sources, &mut metrics);
                 }
                 if let Ok(mut store) = store.lock() {
                     store.replace_device(device.fqdn.clone(), metrics);

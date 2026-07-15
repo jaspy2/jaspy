@@ -1,0 +1,28 @@
+{
+  "ID": "BRIDGE-MIB::jaspyStpBridgeTable",
+  "IndexKeys": [
+    "BRIDGE-MIB::jaspyStpBridgeInstance"
+  ],
+  "ObjectKeys": [
+    "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange",
+    "BRIDGE-MIB::dot1dStpTopChanges",
+    "BRIDGE-MIB::dot1dStpDesignatedRoot",
+    "BRIDGE-MIB::dot1dStpRootCost",
+    "BRIDGE-MIB::dot1dStpRootPort"
+  ],
+  "Entries": [
+    {
+      "HostID": "testcomm@100@sw1.test.example",
+      "Index": {
+        "BRIDGE-MIB::jaspyStpBridgeInstance": 0
+      },
+      "Objects": {
+        "BRIDGE-MIB::dot1dStpDesignatedRoot": "81 2c 70 10 6f 63 f2 70",
+        "BRIDGE-MIB::dot1dStpRootCost": 20000,
+        "BRIDGE-MIB::dot1dStpRootPort": 5,
+        "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange": 2297973,
+        "BRIDGE-MIB::dot1dStpTopChanges": 9
+      }
+    }
+  ]
+}

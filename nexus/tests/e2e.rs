@@ -166,13 +166,10 @@ fn entitypoller_sensor_and_stp_metrics(db: DbHarness) {
     mock.stub_host_table(&vlan_host, "BRIDGE-MIB::dot1dBasePortTable", &read_fixture("dot1dbaseporttable.json"));
     let stp = mock.stub_host_table(&vlan_host, "BRIDGE-MIB::dot1dStpPortTable", &read_fixture("dot1dstpporttable.json"));
 
-    // Bridge-level scalars, polled per-vlan as single objects (values in the
-    // shapes real snmpbot emits: spaced hex bridge id, numeric TimeTicks).
-    let root = mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpDesignatedRoot", json!("81 2c 70 10 6f 63 f2 70"));
-    mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpRootCost", json!(20000));
-    mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpRootPort", json!(5));
-    mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpTopChanges", json!(9));
-    mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange", json!(2297973));
+    // Bridge-level scalars, polled per-vlan as one walk of the jaspy scalar
+    // view (fixture values in the shapes real snmpbot emits: spaced hex
+    // bridge id, numeric TimeTicks).
+    let bridge_scalars = mock.stub_host_table(&vlan_host, "BRIDGE-MIB::jaspyStpBridgeTable", &read_fixture("jaspystpbridgetable.json"));
 
     let nexus = Nexus::builder(db.db_url())
         .snmpbot(&mock.url())
@@ -248,7 +245,7 @@ fn entitypoller_sensor_and_stp_metrics(db: DbHarness) {
 
     // (d) bridge scalars: raw metrics, the per-device entity DTO, and the
     // network-wide STP endpoints built from the same store.
-    assert!(root.hits() >= 1, "dot1dStpDesignatedRoot should have been queried");
+    assert!(bridge_scalars.hits() >= 1, "bridge scalars should have been queried as one batch");
     assert_eq!(metric_value(&body, "jaspy_stp_bridge_root_cost", &["vlan=\"100\""]), Some(20000));
     assert_eq!(metric_value(&body, "jaspy_stp_bridge_root_priority", &["root_mac=\"70:10:6f:63:f2:70\""]), Some(33068));
     // snmpbot TimeTicks are seconds (2297973 s ≈ 26.6 days on the live rig).

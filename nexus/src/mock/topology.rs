@@ -702,6 +702,25 @@ impl Topology {
                 }).collect();
                 Some(response(table_id, entries))
             }
+            "BRIDGE-MIB::jaspyStpBridgeTable" => {
+                // One-row jaspy view over the five per-vlan dot1dStp scalars
+                // (the entitypoller's bridge polling); values delegate to
+                // object() so the two addressing forms always agree.
+                let objects: serde_json::Map<String, serde_json::Value> = [
+                    "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange",
+                    "BRIDGE-MIB::dot1dStpTopChanges",
+                    "BRIDGE-MIB::dot1dStpDesignatedRoot",
+                    "BRIDGE-MIB::dot1dStpRootCost",
+                    "BRIDGE-MIB::dot1dStpRootPort",
+                ]
+                .iter()
+                .filter_map(|id| self.object(fqdn, vlan, id, elapsed).map(|value| (id.to_string(), value)))
+                .collect();
+                if objects.is_empty() {
+                    return None;
+                }
+                Some(response(table_id, vec![entry(json!({"BRIDGE-MIB::jaspyStpBridgeInstance": 0}), json!(objects))]))
+            }
             "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable"
             | "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanStateTable"
             | "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanCostTable" => {
