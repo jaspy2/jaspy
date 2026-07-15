@@ -10,6 +10,7 @@ import type {
   ResetResult,
   Summary,
   SystemStatus,
+  VlanSummary,
 } from './types';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -62,6 +63,7 @@ export const api = {
     request<DiscoveryStatus>('/api/v1/discovery/run', { method: 'POST', body: '{}' }),
   pollVlans: (fqdn: string) =>
     request<void>(`/api/v1/devices/${encodeURIComponent(fqdn)}/vlans/poll`, { method: 'POST' }),
+  vlans: () => request<VlanSummary[]>('/api/v1/vlans'),
 };
 
 // WebSocket endpoint for live log tailing (backlog replay + push). Relative to

@@ -8,10 +8,12 @@ import DeviceDetail from './pages/DeviceDetail';
 import Discovery from './pages/Discovery';
 import ClientLocations from './pages/ClientLocations';
 import Maintenance from './pages/Maintenance';
+import Vlans from './pages/Vlans';
 
 const NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/devices', label: 'Devices' },
+  { to: '/vlans', label: 'VLANs' },
   { to: '/discovery', label: 'Discovery' },
   { to: '/clients', label: 'Client locations' },
   { to: '/maintenance', label: 'Maintenance' },
@@ -63,6 +65,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/devices" element={<Devices />} />
             <Route path="/devices/:fqdn" element={<DeviceDetail />} />
+            <Route path="/vlans" element={<Vlans />} />
             <Route path="/discovery" element={<Discovery />} />
             <Route path="/clients" element={<ClientLocations />} />
             <Route path="/maintenance" element={<Maintenance />} />

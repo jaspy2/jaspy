@@ -203,6 +203,28 @@ pub struct ApiVlan {
     pub name: Option<String>,
 }
 
+// GET /api/v1/vlans: network-wide VLAN inventory aggregated across every
+// polled device, straight from the in-memory vlanpoller store.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiVlanDevice {
+    pub fqdn: String,
+    // This device's name for the VLAN (null when the device has no name row).
+    pub name: Option<String>,
+    pub native_ports: i64,
+    pub tagged_ports: i64,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiVlanSummary {
+    pub id: i64,
+    // Distinct names across devices, sorted; more than one entry means the
+    // network disagrees about this VLAN's name.
+    pub names: Vec<String>,
+    pub devices: Vec<ApiVlanDevice>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiDeviceDetail {

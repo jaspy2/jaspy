@@ -67,6 +67,37 @@ impl VlanStore {
     pub fn device_vlans(&self, fqdn: &str) -> DeviceVlans {
         self.devices.get(fqdn).cloned().unwrap_or_default()
     }
+
+    // Network-wide inventory for GET /api/v1/vlans: every VLAN known on any
+    // device (named or referenced by a port), with the per-device name and
+    // port usage. `names` collects the distinct names across devices — more
+    // than one entry means the switches disagree about the VLAN's name.
+    pub fn network_vlans(&self) -> Vec<crate::models::json::ApiVlanSummary> {
+        use crate::models::json::{ApiVlanDevice, ApiVlanSummary};
+        let mut by_id: std::collections::BTreeMap<i64, Vec<ApiVlanDevice>> = std::collections::BTreeMap::new();
+        for (fqdn, device) in self.devices.iter() {
+            let mut ids: std::collections::BTreeSet<i64> = device.names.keys().cloned().collect();
+            for interface in device.interfaces.values() {
+                ids.extend(interface.native_vlan.iter());
+                ids.extend(interface.tagged_vlans.iter());
+            }
+            for id in ids {
+                by_id.entry(id).or_default().push(ApiVlanDevice {
+                    fqdn: fqdn.clone(),
+                    name: device.names.get(&id).cloned(),
+                    native_ports: device.interfaces.values().filter(|i| i.native_vlan == Some(id)).count() as i64,
+                    tagged_ports: device.interfaces.values().filter(|i| i.tagged_vlans.contains(&id)).count() as i64,
+                });
+            }
+        }
+        by_id.into_iter().map(|(id, mut devices)| {
+            devices.sort_by(|a, b| a.fqdn.cmp(&b.fqdn));
+            let mut names: Vec<String> = devices.iter().filter_map(|d| d.name.clone()).collect();
+            names.sort();
+            names.dedup();
+            ApiVlanSummary { id, names, devices }
+        }).collect()
+    }
 }
 
 // Poll-now queue: fqdns stay in `pending` from the POST until their triggered
@@ -689,6 +720,66 @@ mod tests {
         let snapshot = VlanStore::new().device_vlans("ghost.example.com");
         assert!(snapshot.interfaces.is_empty());
         assert!(snapshot.names.is_empty());
+    }
+
+    // --- network_vlans aggregation ---
+
+    fn device(entries: &[(i64, Option<i64>, &[i64])], names: &[(i64, &str)]) -> DeviceVlans {
+        DeviceVlans {
+            interfaces: entries.iter().map(|(ifindex, native, tagged)| {
+                (*ifindex, InterfaceVlans { native_vlan: *native, tagged_vlans: tagged.to_vec() })
+            }).collect(),
+            names: names.iter().map(|(id, name)| (*id, name.to_string())).collect(),
+        }
+    }
+
+    #[test]
+    fn network_vlans_aggregates_names_and_port_counts() {
+        let mut store = VlanStore::new();
+        store.replace_device("a.example.com".to_string(), device(
+            &[(1, Some(300), &[10, 20]), (2, Some(10), &[])],
+            &[(10, "users"), (20, "voice"), (300, "Mgmt")],
+        ));
+        store.replace_device("b.example.com".to_string(), device(
+            &[(1, Some(300), &[10])],
+            &[(10, "users"), (300, "management"), (999, "unused")],
+        ));
+
+        let vlans = store.network_vlans();
+        let ids: Vec<i64> = vlans.iter().map(|v| v.id).collect();
+        assert_eq!(ids, vec![10, 20, 300, 999], "sorted by id");
+
+        let v10 = vlans.iter().find(|v| v.id == 10).unwrap();
+        assert_eq!(v10.names, vec!["users"], "same name on both devices dedupes");
+        assert_eq!(v10.devices.len(), 2);
+        assert_eq!(v10.devices[0].fqdn, "a.example.com");
+        assert_eq!((v10.devices[0].native_ports, v10.devices[0].tagged_ports), (1, 1));
+        assert_eq!((v10.devices[1].native_ports, v10.devices[1].tagged_ports), (0, 1));
+
+        // Conflicting names surface as multiple entries, sorted.
+        let v300 = vlans.iter().find(|v| v.id == 300).unwrap();
+        assert_eq!(v300.names, vec!["Mgmt", "management"]);
+
+        // A named VLAN with no port usage still appears (0/0).
+        let v999 = vlans.iter().find(|v| v.id == 999).unwrap();
+        assert_eq!(v999.devices.len(), 1);
+        assert_eq!((v999.devices[0].native_ports, v999.devices[0].tagged_ports), (0, 0));
+    }
+
+    #[test]
+    fn network_vlans_includes_unnamed_referenced_vlans() {
+        let mut store = VlanStore::new();
+        store.replace_device("a.example.com".to_string(), device(&[(1, Some(42), &[])], &[]));
+        let vlans = store.network_vlans();
+        assert_eq!(vlans.len(), 1);
+        assert_eq!(vlans[0].id, 42);
+        assert!(vlans[0].names.is_empty());
+        assert_eq!(vlans[0].devices[0].name, None);
+    }
+
+    #[test]
+    fn network_vlans_empty_store_is_empty() {
+        assert!(VlanStore::new().network_vlans().is_empty());
     }
 
     #[test]

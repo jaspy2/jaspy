@@ -617,10 +617,14 @@ impl Topology {
                     }
                     let len = (dev.interfaces.len() + 7) / 8;
                     if is_static {
+                        // VLAN 20 is deliberately named differently from the
+                        // Cisco devices' vtpVlanName so the VLANs page's
+                        // name-mismatch warning has something to show.
+                        let name = if *vlan == 20 { "guest-legacy".to_string() } else { format!("mock-vlan-{}", vlan) };
                         entry(
                             json!({"Q-BRIDGE-MIB::dot1qVlanIndex": vlan}),
                             json!({
-                                "Q-BRIDGE-MIB::dot1qVlanStaticName": format!("mock-vlan-{}", vlan),
+                                "Q-BRIDGE-MIB::dot1qVlanStaticName": name,
                                 "Q-BRIDGE-MIB::dot1qVlanStaticEgressPorts": hex_bitmap(&egress, 1, len),
                                 "Q-BRIDGE-MIB::dot1qVlanStaticUntaggedPorts": hex_bitmap(&untagged, 1, len),
                             }),
@@ -917,9 +921,11 @@ mod tests {
         let qbridge = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::QBridge).unwrap();
         let vlan_static = topo.table(&qbridge.fqdn(), None, "Q-BRIDGE-MIB::dot1qVlanStaticTable", 0.0).unwrap();
         let names = qbridge_vlan_names(&vlan_static);
-        for vlan in qbridge.vlans.iter() {
+        for vlan in qbridge.vlans.iter().filter(|v| **v != 20) {
             assert_eq!(names.get(vlan).map(String::as_str), Some(format!("mock-vlan-{}", vlan).as_str()));
         }
+        // The deliberate name mismatch that feeds the VLANs page warning.
+        assert_eq!(names.get(&20).map(String::as_str), Some("guest-legacy"));
     }
 
     #[test]

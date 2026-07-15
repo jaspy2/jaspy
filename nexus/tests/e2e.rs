@@ -294,6 +294,16 @@ fn vlanpoller_vlans_in_device_detail(db: DbHarness) {
     assert!(vlans.contains(&json!({"id": 300, "name": "Mgmt"})), "vlans: {:?}", vlans);
     assert!(vlans.contains(&json!({"id": 311, "name": "Org"})), "vlans: {:?}", vlans);
 
+    // The network-wide inventory aggregates the same store per VLAN id:
+    // 311 is native on the access port (10102) and tagged on both trunking
+    // rows (10101 and the port-channel 5001).
+    let network = nexus.get_json("/api/v1/vlans");
+    let v311 = network.as_array().unwrap().iter().find(|v| v["id"] == 311).expect("vlan 311 in /api/v1/vlans");
+    assert_eq!(v311["names"], json!(["Org"]));
+    assert_eq!(v311["devices"][0]["fqdn"], FQDN);
+    assert_eq!(v311["devices"][0]["nativePorts"], 1);
+    assert_eq!(v311["devices"][0]["taggedPorts"], 2);
+
     // Poll-now: known device queues (202), unknown device 404.
     let accepted = nexus.post_json(&format!("/api/v1/devices/{}/vlans/poll", FQDN), &json!({}));
     assert_eq!(accepted.status().as_u16(), 202);

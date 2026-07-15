@@ -350,6 +350,7 @@ async fn server_main() {
                 routes::api::v1::device_detail,
                 routes::api::v1::device_entity,
                 routes::api::v1::device_vlan_poll,
+                routes::api::v1::vlans,
                 routes::api::v1::device_create,
                 routes::api::v1::device_update,
                 routes::api::v1::device_delete,

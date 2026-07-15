@@ -122,6 +122,20 @@ export interface Vlan {
   name: string | null;
 }
 
+// GET /api/v1/vlans — network-wide VLAN inventory from the vlanpoller.
+export interface VlanDevice {
+  fqdn: string;
+  name: string | null; // this device's name for the VLAN
+  nativePorts: number;
+  taggedPorts: number;
+}
+
+export interface VlanSummary {
+  id: number;
+  names: string[]; // distinct names across devices; >1 = naming conflict
+  devices: VlanDevice[];
+}
+
 export interface DeviceDetail {
   device: Device;
   interfaces: Interface[];

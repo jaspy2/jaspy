@@ -209,6 +209,17 @@ pub fn device_entity(device_fqdn: &str, entity_metrics: &State<Arc<Mutex<crate::
     Json(entity)
 }
 
+// Network-wide VLAN inventory (id, per-device names, port usage), straight
+// from the in-memory vlanpoller store — no DB. Empty until the first poll.
+#[get("/vlans")]
+pub fn vlans(vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>) -> Json<Vec<models::json::ApiVlanSummary>> {
+    let vlans = match vlan_store.inner().lock() {
+        Ok(store) => store.network_vlans(),
+        Err(_) => Vec::new(),
+    };
+    Json(vlans)
+}
+
 // Queue an immediate VLAN membership poll for one device. The vlanpoller
 // supervisor drains the queue on its next 1s tick, so fresh data lands in
 // GET /devices/<fqdn> within a couple of seconds instead of the regular

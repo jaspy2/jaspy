@@ -247,6 +247,7 @@ button.vlan-toggle:hover:not(:disabled) { filter: none; text-decoration: underli
   align-items: center;
 }
 tr.vlan-detail-row td { white-space: normal; background: var(--muted-bg); }
+.warn-text { color: var(--warn); }
 
 /* Live log tail (WebSocket) */
 .livelog-lines {
