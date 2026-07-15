@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Device, DeviceUpdate, Interface, LiveEvent } from '../api/types';
+import type { Device, DeviceUpdate, Interface, LiveEvent, PortChannelMember } from '../api/types';
 import { PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import useLiveSocket from '../hooks/useLiveSocket';
 
@@ -58,6 +58,41 @@ function InterfaceVlanList({ iface, names }: { iface: Interface; names: Map<numb
       ))}
     </div>
   );
+}
+
+// Machine-matchable warning codes from the backend (see
+// lagpoller::port_channel_warnings) rendered as readable text.
+function portChannelWarningText(code: string): string {
+  const [kind, detail] = code.split(':', 2) as [string, string | undefined];
+  switch (kind) {
+    case 'not-lacp':
+      return `not running LACP (${detail})`;
+    case 'single-member':
+      return 'only one member port';
+    case 'member-no-lacp-partner':
+      return `${detail}: the far end is not running LACP on this link`;
+    case 'member-not-bundled':
+      return `${detail}: configured but not bundled`;
+    case 'members-report-different-partners':
+      return 'members are bundled to different switches (LACP partner ids differ)';
+    case 'members-wired-to-different-devices':
+      return 'members are cabled to different devices';
+    case 'far-end-lag-not-found':
+      return 'the far-end switch has no matching port-channel';
+    case 'far-end-member-count-mismatch':
+      return 'the far-end port-channel has a different member count';
+    default:
+      return code;
+  }
+}
+
+function MemberStateBadge({ member }: { member: PortChannelMember }) {
+  if (member.bundled) return <span className="badge badge-ok">bundled</span>;
+  if (member.actorState.some((s) => s === 'defaulted' || s === 'expired')) {
+    return <span className="badge badge-bad">no partner</span>;
+  }
+  if (member.actorState.length === 0) return <span className="badge badge-muted">no LACP</span>;
+  return <span className="badge badge-warn">negotiating</span>;
 }
 
 // "· updated Ns ago" heading suffix from the newest row timestamp (msecs).
@@ -170,6 +205,7 @@ export default function DeviceDetail() {
 
   const { device, interfaces } = detail.data;
   const vlanNames = new Map((detail.data.vlans ?? []).map((v) => [v.id, v.name]));
+  const portChannels = detail.data.portChannels ?? [];
   const sensors = entity.data?.sensors ?? [];
   const stp = entity.data?.stp ?? [];
   const entitypollerEnabled = system.data?.entitypollerEnabled === true;
@@ -222,6 +258,7 @@ export default function DeviceDetail() {
           <div key={iface.id} className="item-card">
             <span className="item-title">
               <span>{iface.displayName ?? iface.name}</span>
+              {iface.portChannel && <span className="badge badge-muted">{iface.portChannel}</span>}
               <UpBadge up={iface.up} />
             </span>
             <span className="item-sub">
@@ -270,7 +307,10 @@ export default function DeviceDetail() {
             {interfaces.map((iface) => (
               <Fragment key={iface.id}>
                 <tr>
-                  <td>{iface.displayName ?? iface.name}</td>
+                  <td>
+                    {iface.displayName ?? iface.name}
+                    {iface.portChannel && <> <span className="badge badge-muted">{iface.portChannel}</span></>}
+                  </td>
                   <td><UpBadge up={iface.up} /></td>
                   <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
                   <td>
@@ -313,6 +353,66 @@ export default function DeviceDetail() {
           </tbody>
         </table>
       </div>
+
+      {portChannels.length > 0 && (
+        <>
+          <h2>Port-channels ({portChannels.length})</h2>
+          {portChannels.map((po) => (
+            <div key={po.ifindex} className="panel">
+              <span className="item-title">
+                <span>{po.name ?? `ifIndex ${po.ifindex}`}</span>
+                <UpBadge up={po.up} />
+                <span className={`badge ${po.protocol === 'lacp' ? 'badge-ok' : 'badge-warn'}`}>{po.protocol}</span>
+                {po.partnerSystemId && <span className="muted">partner {po.partnerSystemId}</span>}
+              </span>
+              {po.warnings.length > 0 && (
+                <ul className="po-warnings">
+                  {po.warnings.map((code) => (
+                    <li key={code} className="warn-text">
+                      ⚠ {portChannelWarningText(code)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Member</th>
+                      <th>Status</th>
+                      <th>Connected to</th>
+                      <th className="hide-mobile">Partner port</th>
+                      <th className="hide-mobile">LACP state</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {po.members.map((member) => (
+                      <tr key={member.ifindex}>
+                        <td className="wrap-mobile">{member.name ?? `ifIndex ${member.ifindex}`}</td>
+                        <td><MemberStateBadge member={member} /></td>
+                        <td className="wrap-mobile">
+                          {member.connectedTo ? (
+                            <>
+                              <Link to={`/devices/${encodeURIComponent(member.connectedTo.fqdn)}`}>
+                                {member.connectedTo.fqdn.split('.')[0]}
+                              </Link>
+                              :{member.connectedTo.interface}
+                            </>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="hide-mobile">{member.partnerPort ?? '—'}</td>
+                        <td className="hide-mobile muted">{member.actorState.length > 0 ? member.actorState.join(', ') : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
 
       {sensors.length > 0 && (
         <>

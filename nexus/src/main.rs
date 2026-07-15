@@ -124,6 +124,11 @@ async fn server_main() {
     let enable_vlanpoller = c.get_bool("enable_vlanpoller").unwrap_or(true);
     let vlanpoller_interval_msecs = c.get_int("vlanpoller_interval_msecs").unwrap_or(300000) as u64;
 
+    // lagpoller collector: port-channel membership + LACP health into an
+    // in-memory store, default poll interval 5 minutes.
+    let enable_lagpoller = c.get_bool("enable_lagpoller").unwrap_or(true);
+    let lagpoller_interval_msecs = c.get_int("lagpoller_interval_msecs").unwrap_or(300000) as u64;
+
     // Discovery engine (formerly the standalone Python `discover` tool). The
     // in-memory config is seeded from JASPY_DISCOVERY_* env vars and mutable
     // via PUT /dev/discovery/config; setting an interval enables periodic runs.
@@ -184,6 +189,7 @@ async fn server_main() {
     // Managed unconditionally (like entity_metrics) so the /api/v1 routes work
     // even when the collector thread is disabled — they just serve empty data.
     let vlan_store : Arc<Mutex<collectors::vlanpoller::VlanStore>> = Arc::new(Mutex::new(collectors::vlanpoller::VlanStore::new()));
+    let lag_store : Arc<Mutex<collectors::lagpoller::LagStore>> = Arc::new(Mutex::new(collectors::lagpoller::LagStore::new()));
     let vlan_control : Arc<Mutex<collectors::vlanpoller::VlanPollerControl>> = Arc::new(Mutex::new(collectors::vlanpoller::VlanPollerControl::new()));
     let cache_controller : Arc<Mutex<utilities::cache::CacheController>> = Arc::new(Mutex::new(utilities::cache::CacheController::new()));
 
@@ -246,6 +252,18 @@ async fn server_main() {
         None
     };
 
+    let lagpoller_thread = if enable_lagpoller {
+        let store_collector = lag_store.clone();
+        let running_collector = running.clone();
+        let snmpbot_url_collector = snmpbot_url.clone();
+        Some(std::thread::spawn(move || {
+            collectors::lagpoller::run(snmpbot_url_collector, lagpoller_interval_msecs, store_collector, running_collector);
+        }))
+    } else {
+        println!("[lagpoller] disabled via JASPY_ENABLE_LAGPOLLER");
+        None
+    };
+
     let discovery_control: Arc<Mutex<collectors::discovery::DiscoveryControl>> =
         Arc::new(Mutex::new(collectors::discovery::DiscoveryControl::new(discovery_config)));
     let discovery_thread = {
@@ -278,6 +296,8 @@ async fn server_main() {
         entitypoller_stp_enabled: !entitypoller_disable_stp,
         vlanpoller_enabled: enable_vlanpoller,
         vlanpoller_interval_msecs: vlanpoller_interval_msecs,
+        lagpoller_enabled: enable_lagpoller,
+        lagpoller_interval_msecs: lagpoller_interval_msecs,
         weathermap_dir: if weathermap_dir_present { Some(weathermap_dir.clone()) } else { None },
         db_url: db::redacted_db_url(&std::env::var("JASPY_DB_URL").unwrap_or_default()),
         db_backend: db::backend_kind(&std::env::var("JASPY_DB_URL").unwrap_or_default()).as_str().to_string(),
@@ -380,6 +400,7 @@ async fn server_main() {
         .manage(imds.clone())
         .manage(entity_metrics.clone())
         .manage(vlan_store.clone())
+        .manage(lag_store.clone())
         .manage(vlan_control.clone())
         .manage(discovery_control.clone())
         .manage(cache_controller.clone())
@@ -405,5 +426,6 @@ async fn server_main() {
     if let Some(pinger_thread) = pinger_thread { let _ = pinger_thread.join(); }
     if let Some(entitypoller_thread) = entitypoller_thread { let _ = entitypoller_thread.join(); }
     if let Some(vlanpoller_thread) = vlanpoller_thread { let _ = vlanpoller_thread.join(); }
+    if let Some(lagpoller_thread) = lagpoller_thread { let _ = lagpoller_thread.join(); }
     let _ = discovery_thread.join();
 }

@@ -313,9 +313,11 @@ pub struct NexusBuilder {
     enable_pinger: bool,
     enable_entitypoller: bool,
     enable_vlanpoller: bool,
+    enable_lagpoller: bool,
     poll_loop_msecs: u64,
     entitypoller_interval_msecs: u64,
     vlanpoller_interval_msecs: u64,
+    lagpoller_interval_msecs: u64,
     extra_env: Vec<(String, String)>,
     args: Vec<String>,
     omit_db_url: bool,
@@ -353,6 +355,16 @@ impl NexusBuilder {
         self.entitypoller_interval_msecs = ms;
         self
     }
+    pub fn lagpoller(mut self, on: bool) -> Self {
+        self.enable_lagpoller = on;
+        self
+    }
+
+    pub fn lagpoller_interval_msecs(mut self, ms: u64) -> Self {
+        self.lagpoller_interval_msecs = ms;
+        self
+    }
+
     pub fn vlanpoller(mut self, on: bool) -> Self {
         self.enable_vlanpoller = on;
         self
@@ -398,9 +410,11 @@ impl NexusBuilder {
             .env("JASPY_ENABLE_PINGER", self.enable_pinger.to_string())
             .env("JASPY_ENABLE_ENTITYPOLLER", self.enable_entitypoller.to_string())
             .env("JASPY_ENABLE_VLANPOLLER", self.enable_vlanpoller.to_string())
+            .env("JASPY_ENABLE_LAGPOLLER", self.enable_lagpoller.to_string())
             .env("JASPY_POLL_LOOP_MSECS", self.poll_loop_msecs.to_string())
             .env("JASPY_ENTITYPOLLER_INTERVAL_MSECS", self.entitypoller_interval_msecs.to_string())
             .env("JASPY_VLANPOLLER_INTERVAL_MSECS", self.vlanpoller_interval_msecs.to_string())
+            .env("JASPY_LAGPOLLER_INTERVAL_MSECS", self.lagpoller_interval_msecs.to_string())
             .env("JASPY_IMDS_REFRESH_SECS", "1")
             .env("JASPY_POLLER_NO_JITTER", "1")
             // Discovery fixtures use non-resolvable FQDNs.
@@ -447,9 +461,11 @@ impl Nexus {
             enable_pinger: false,
             enable_entitypoller: false,
             enable_vlanpoller: false,
+            enable_lagpoller: false,
             poll_loop_msecs: 300,
             entitypoller_interval_msecs: 300,
             vlanpoller_interval_msecs: 300,
+            lagpoller_interval_msecs: 300,
             extra_env: Vec::new(),
             args: Vec::new(),
             omit_db_url: false,

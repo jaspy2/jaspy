@@ -1,0 +1,18 @@
+{
+  "ID": "IEEE8023-LAG-MIB::dot3adAggTable",
+  "IndexKeys": ["IEEE8023-LAG-MIB::dot3adAggIndex"],
+  "ObjectKeys": [
+    "IEEE8023-LAG-MIB::dot3adAggActorSystemID",
+    "IEEE8023-LAG-MIB::dot3adAggPartnerSystemID"
+  ],
+  "Entries": [
+    {
+      "HostID": "testcomm@sw1.test.example",
+      "Index": {"IEEE8023-LAG-MIB::dot3adAggIndex": 5001},
+      "Objects": {
+        "IEEE8023-LAG-MIB::dot3adAggActorSystemID": "aa:bb:cc:dd:ee:01",
+        "IEEE8023-LAG-MIB::dot3adAggPartnerSystemID": "aa:bb:cc:dd:ee:02"
+      }
+    }
+  ]
+}

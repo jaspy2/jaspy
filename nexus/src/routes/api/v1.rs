@@ -105,7 +105,7 @@ pub fn devices(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::im
 }
 
 #[get("/devices/<device_fqdn>")]
-pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
+pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>, lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
     let device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
     // Live interface state (up/speed) from IMDS, keyed by ifIndex.
@@ -128,6 +128,19 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         Err(_) => crate::collectors::vlanpoller::DeviceVlans::default(),
     };
     let vlans = &device_vlans.interfaces;
+
+    // Port-channel membership from the in-memory lagpoller store.
+    let device_lags = match lag_store.inner().lock() {
+        Ok(store) => store.device_lags(&device_fqdn).unwrap_or_default(),
+        Err(_) => crate::collectors::lagpoller::DeviceLags::default(),
+    };
+    // member ifIndex -> aggregate ifIndex, for the per-interface chip.
+    let mut member_groups: std::collections::HashMap<i64, i64> = std::collections::HashMap::new();
+    for (agg, group) in device_lags.groups.iter() {
+        for member in group.members.keys() {
+            member_groups.insert(*member, *agg);
+        }
+    }
 
     // Links are stored one-directionally (interfaces.connected_interface), and
     // discovery does not always resolve both ends. Union the reverse direction
@@ -162,6 +175,9 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         }).or_else(|| reverse_links.get(&interface.id).cloned());
         let (up, speed) = live.get(&interface.index).cloned().unwrap_or((None, None));
         let interface_vlans = vlans.get(&(interface.index as i64));
+        let port_channel = member_groups
+            .get(&(interface.index as i64))
+            .map(|agg| device_interfaces.iter().find(|i| i.index as i64 == *agg).map(|i| i.name.clone()).unwrap_or_else(|| format!("ifIndex {}", agg)));
         interfaces.push(models::json::ApiInterface {
             id: interface.id,
             index: interface.index,
@@ -177,9 +193,62 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             speed: speed,
             native_vlan: interface_vlans.and_then(|v| v.native_vlan),
             tagged_vlans: interface_vlans.map(|v| v.tagged_vlans.clone()),
+            port_channel: port_channel,
         });
     }
     interfaces.sort_by_key(|i| i.index);
+
+    // Port-channels: LAG data joined with the interface rows built above,
+    // plus the mismatch warnings (LACP state + topology + monitored far end).
+    let mut port_channels: Vec<models::json::ApiPortChannel> = Vec::new();
+    for (agg, group) in device_lags.groups.iter() {
+        let agg_interface = interfaces.iter().find(|i| i.index as i64 == *agg);
+        let meta: std::collections::HashMap<i64, crate::collectors::lagpoller::MemberMeta> = group
+            .members
+            .keys()
+            .filter_map(|member| {
+                interfaces.iter().find(|i| i.index as i64 == *member).map(|i| {
+                    (*member, crate::collectors::lagpoller::MemberMeta {
+                        name: i.name.clone(),
+                        connected_to_fqdn: i.connected_to.as_ref().map(|c| c.fqdn.clone()),
+                    })
+                })
+            })
+            .collect();
+        // LAG data of the monitored peer devices the members are wired to,
+        // for the far-end cross-check.
+        let mut peer_lags: std::collections::HashMap<String, crate::collectors::lagpoller::DeviceLags> = std::collections::HashMap::new();
+        if let Ok(store) = lag_store.inner().lock() {
+            for peer_fqdn in meta.values().filter_map(|m| m.connected_to_fqdn.clone()) {
+                if let Some(peer) = store.device_lags(&peer_fqdn) {
+                    peer_lags.insert(peer_fqdn, peer);
+                }
+            }
+        }
+        let warnings = crate::collectors::lagpoller::port_channel_warnings(group, &meta, &peer_lags);
+        let members = group.members.iter().map(|(member, state)| {
+            let member_interface = interfaces.iter().find(|i| i.index as i64 == *member);
+            models::json::ApiPortChannelMember {
+                ifindex: *member,
+                name: member_interface.map(|i| i.name.clone()),
+                up: member_interface.and_then(|i| i.up),
+                connected_to: member_interface.and_then(|i| i.connected_to.clone()),
+                actor_state: state.actor_state.clone(),
+                partner_state: state.partner_state.clone(),
+                partner_port: state.partner_port,
+                bundled: crate::collectors::lagpoller::lacp_bundled(&state.actor_state),
+            }
+        }).collect();
+        port_channels.push(models::json::ApiPortChannel {
+            ifindex: *agg,
+            name: agg_interface.map(|i| i.name.clone()),
+            up: agg_interface.and_then(|i| i.up),
+            protocol: group.protocol.clone(),
+            partner_system_id: group.partner_system_id.clone(),
+            members: members,
+            warnings: warnings,
+        });
+    }
 
     // The device's VLAN id -> name catalog: every named VLAN, plus any id
     // referenced by an interface that has no name row (name stays null).
@@ -194,7 +263,7 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
     }).collect();
 
     let device = api_device(&mut connection, imds, &device);
-    Some(Json(models::json::ApiDeviceDetail { device: device, interfaces: interfaces, vlans: vlans }))
+    Some(Json(models::json::ApiDeviceDetail { device: device, interfaces: interfaces, vlans: vlans, port_channels: port_channels }))
 }
 
 // Latest entitypoller results (entity sensors + per-VLAN STP) for one device,
@@ -529,6 +598,8 @@ pub fn system_status(
         entitypoller_stp_enabled: system.entitypoller_stp_enabled,
         vlanpoller_enabled: system.vlanpoller_enabled,
         vlanpoller_interval_msecs: system.vlanpoller_interval_msecs,
+        lagpoller_enabled: system.lagpoller_enabled,
+        lagpoller_interval_msecs: system.lagpoller_interval_msecs,
         mqtt_enabled: mqtt_broker.is_some(),
         mqtt_broker: mqtt_broker,
         mqtt_connected: mqtt_connected,

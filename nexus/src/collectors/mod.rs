@@ -19,3 +19,6 @@ pub mod vlanpoller;
 pub mod vendor;
 // pool bounds the per-device fan-out of the entity and VLAN collectors.
 pub mod pool;
+// lagpoller collects port-channel membership + LACP health into an in-memory
+// store served by /api/v1 only — no DB, no Prometheus.
+pub mod lagpoller;

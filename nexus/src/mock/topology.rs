@@ -55,6 +55,19 @@ pub struct MockInterface {
     pub up: bool,
 }
 
+// A declared link aggregate for the LAG tables (pagpPortTable + dot3ad).
+// Members with a topology peer report that peer's base MAC as their LACP
+// partner (so bundles spanning two peers demo the mismatch warnings);
+// unpeered members report `partner_mac` (an unmonitored server, say).
+pub struct MockLag {
+    pub ifindex: i64,
+    pub members: &'static [i64],
+    pub partner_mac: &'static str,
+    // Members that report the `defaulted` LACP bit: sending LACPDUs but
+    // hearing nothing back (far end not running LACP).
+    pub defaulted_members: &'static [i64],
+}
+
 pub struct MockDevice {
     pub name: &'static str,
     pub model: &'static str,
@@ -69,6 +82,7 @@ pub struct MockDevice {
     // rest. Unpeered ports are access ports on access_vlan(ifindex).
     pub vlans: &'static [i64],
     pub interfaces: Vec<MockInterface>,
+    pub lags: Vec<MockLag>,
 }
 
 impl MockDevice {
@@ -112,6 +126,7 @@ pub fn build() -> Topology {
                 // (its backup uplink), giving trees a realistic blocked link.
                 uplink(10104, "Te1/0/4", "TenGigabitEthernet1/0/4", "backup downlink hall a 02", 10000, ("access-hall-a-02", "Te1/1/2")),
             ],
+            lags: Vec::new(),
         },
         MockDevice {
             name: "dist1",
@@ -137,6 +152,7 @@ pub fn build() -> Topology {
                     up: true,
                 },
             ],
+            lags: Vec::new(),
         },
         MockDevice {
             name: "dist2",
@@ -153,13 +169,36 @@ pub fn build() -> Topology {
                 uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "downlink hall b 01", 10000, ("access-hall-b-01", "Te1/1/1")),
                 uplink(10104, "Te1/1/4", "TenGigabitEthernet1/1/4", "wlc uplink", 10000, ("wlc1", "Te0/0/1")),
             ],
+            lags: Vec::new(),
         },
-        access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco, &[10], StpStyle::Cisco),
+        {
+            // a-01 carries a healthy 2-member LACP bundle to an unmonitored
+            // server (all members bundled, no warnings).
+            let mut a01 = access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco, &[10], StpStyle::Cisco);
+            a01.interfaces.push(access_port(5001, "Po1", "Port-channel1", true));
+            a01.lags = vec![MockLag {
+                ifindex: 5001,
+                members: &[10201, 10202],
+                partner_mac: "02:00:00:00:99:01",
+                defaulted_members: &[],
+            }];
+            a01
+        },
         {
             // a-02 gets a second, redundant uplink straight to core1; STP
             // keeps the dist1 path and blocks this one (see stp_role).
             let mut a02 = access_switch("access-hall-a-02", ("dist1", "Te1/1/3"), true, VlanStyle::Cisco, &[10], StpStyle::Cisco);
             a02.interfaces.insert(1, uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "backup uplink core1", 10000, ("core1", "Te1/0/4")));
+            // Misconfigured bundle over the two uplinks: they land on
+            // different devices, and the core1 side is not running LACP —
+            // demo data for the port-channel warnings.
+            a02.interfaces.push(access_port(5001, "Po1", "Port-channel1", true));
+            a02.lags = vec![MockLag {
+                ifindex: 5001,
+                members: &[10101, 10102],
+                partner_mac: "",
+                defaulted_members: &[10102],
+            }];
             a02
         },
         // hall b answers only the standards-based Q-BRIDGE tables so the mock
@@ -180,6 +219,7 @@ pub fn build() -> Topology {
             interfaces: vec![
                 uplink(1, "Te0/0/1", "TenGigE0/0/1", "uplink dist2", 10000, ("dist2", "Te1/1/4")),
             ],
+            lags: Vec::new(),
         },
         MockDevice {
             name: "fw1",
@@ -194,6 +234,7 @@ pub fn build() -> Topology {
             interfaces: vec![
                 uplink(1, "port1", "port1", "uplink core1", 10000, ("core1", "Te1/0/3")),
             ],
+            lags: Vec::new(),
         },
     ];
     Topology { devices, started: crate::utilities::tools::get_time() }
@@ -235,6 +276,7 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
         vlan_style,
         vlans: &[1, 10, 20],
         interfaces,
+        lags: Vec::new(),
     }
 }
 
@@ -808,8 +850,83 @@ impl Topology {
             }
             // Valid-but-empty keeps the discovery log free of CDP noise.
             "CISCO-CDP-MIB::cdpCacheTable" => Some(response(table_id, Vec::new())),
+            // LAG tables for the lagpoller. Cisco-style devices answer the
+            // PAgP table with a row per physical port (group = the aggregate
+            // ifIndex for members, 0 otherwise — the live C2960CX shape);
+            // others answer valid-but-empty to keep the logs quiet.
+            "CISCO-PAGP-MIB::pagpPortTable" => {
+                if dev.vlan_style != VlanStyle::Cisco {
+                    return Some(response(table_id, Vec::new()));
+                }
+                let entries = dev.interfaces.iter()
+                    .filter(|iface| !dev.lags.iter().any(|lag| lag.ifindex == iface.ifindex))
+                    .map(|iface| {
+                        let group = dev.lags.iter().find(|lag| lag.members.contains(&iface.ifindex)).map(|lag| lag.ifindex).unwrap_or(0);
+                        entry(
+                            json!({"IF-MIB::ifIndex": iface.ifindex}),
+                            json!({"CISCO-PAGP-MIB::pagpEthcOperationMode": 1, "CISCO-PAGP-MIB::pagpGroupIfIndex": group}),
+                        )
+                    })
+                    .collect();
+                Some(response(table_id, entries))
+            }
+            "IEEE8023-LAG-MIB::dot3adAggTable" => {
+                let entries = dev.lags.iter().map(|lag| {
+                    let partner = lag.members.iter()
+                        .find(|m| !lag.defaulted_members.contains(m))
+                        .map(|m| self.lag_partner_mac(dev, lag, *m))
+                        .unwrap_or_else(|| "00:00:00:00:00:00".to_string());
+                    entry(
+                        json!({"IEEE8023-LAG-MIB::dot3adAggIndex": lag.ifindex}),
+                        json!({
+                            "IEEE8023-LAG-MIB::dot3adAggActorSystemID": base_mac(dev_idx),
+                            "IEEE8023-LAG-MIB::dot3adAggPartnerSystemID": partner,
+                        }),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "IEEE8023-LAG-MIB::dot3adAggPortTable" => {
+                let mut entries = Vec::new();
+                for lag in dev.lags.iter() {
+                    for (pos, member) in lag.members.iter().enumerate() {
+                        let defaulted = lag.defaulted_members.contains(member);
+                        let actor_state = if defaulted {
+                            json!(["lacpActivity", "aggregation", "defaulted"])
+                        } else {
+                            json!(["lacpActivity", "aggregation", "synchronization", "collecting", "distributing"])
+                        };
+                        entries.push(entry(
+                            json!({"IEEE8023-LAG-MIB::dot3adAggPortIndex": member}),
+                            json!({
+                                "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID":
+                                    if defaulted { "00:00:00:00:00:00".to_string() } else { self.lag_partner_mac(dev, lag, *member) },
+                                "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": lag.ifindex,
+                                "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort": if defaulted { 0 } else { pos as i64 + 1 },
+                                "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": actor_state,
+                                "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": if defaulted { json!([]) } else { actor_state.clone() },
+                            }),
+                        ));
+                    }
+                }
+                Some(response(table_id, entries))
+            }
             _ => None,
         }
+    }
+
+    // LACP partner system id for one bundle member: the topology peer's base
+    // MAC when the member is a discovered link, else the lag's declared
+    // partner (an unmonitored device).
+    fn lag_partner_mac(&self, dev: &MockDevice, lag: &MockLag, member: i64) -> String {
+        if let Some(iface) = dev.interfaces.iter().find(|i| i.ifindex == member) {
+            if let Some((peer_name, _)) = iface.peer {
+                if let Some((peer_idx, _)) = self.devices.iter().enumerate().find(|(_, d)| d.name == peer_name) {
+                    return base_mac(peer_idx);
+                }
+            }
+        }
+        lag.partner_mac.to_string()
     }
 
     pub fn object(&self, fqdn: &str, vlan: Option<i64>, object_id: &str, elapsed: f64) -> Option<serde_json::Value> {
@@ -851,7 +968,7 @@ mod tests {
     use super::*;
     use crate::collectors::poller::SNMPBotResultEntryObjectValue;
 
-    const ALL_TABLES: [&str; 19] = [
+    const ALL_TABLES: [&str; 22] = [
         "IF-MIB::ifTable",
         "IF-MIB::ifXTable",
         "ENTITY-MIB::entPhysicalTable",
@@ -871,6 +988,9 @@ mod tests {
         "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanStateTable",
         "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanCostTable",
         "HP-ICF-RPVST-MIB::hpicfRpvstVlanTable",
+        "CISCO-PAGP-MIB::pagpPortTable",
+        "IEEE8023-LAG-MIB::dot3adAggTable",
+        "IEEE8023-LAG-MIB::dot3adAggPortTable",
     ];
 
     #[test]
@@ -891,6 +1011,40 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn lag_tables_decode_through_the_lagpoller() {
+        use crate::collectors::lagpoller;
+        let topo = build();
+        let decode = |fqdn: &str| {
+            let pagp = topo.table(fqdn, None, "CISCO-PAGP-MIB::pagpPortTable", 0.0).unwrap();
+            let agg = topo.table(fqdn, None, "IEEE8023-LAG-MIB::dot3adAggTable", 0.0).unwrap();
+            let ports = topo.table(fqdn, None, "IEEE8023-LAG-MIB::dot3adAggPortTable", 0.0).unwrap();
+            let (groups, modes) = lagpoller::decode_pagp(&pagp);
+            lagpoller::merge_cisco(lagpoller::decode_dot3ad(Some(&agg), Some(&ports)), groups, &modes)
+        };
+
+        // a-01: healthy 2-member LACP bundle to an unmonitored server.
+        let lags = decode("access-hall-a-01.mock.jaspy");
+        let group = &lags.groups[&5001];
+        assert_eq!(group.protocol, "lacp");
+        assert_eq!(group.members.len(), 2);
+        assert!(group.members.values().all(|m| lagpoller::lacp_bundled(&m.actor_state)));
+        let partners: std::collections::BTreeSet<_> = group.members.values().filter_map(|m| m.partner_system_id.clone()).collect();
+        assert_eq!(partners.len(), 1, "healthy bundle agrees on one partner");
+
+        // a-02: the broken demo — one member defaulted, the other bundled to
+        // a different device than the defaulted one is wired to.
+        let lags = decode("access-hall-a-02.mock.jaspy");
+        let group = &lags.groups[&5001];
+        assert_eq!(group.members.len(), 2);
+        assert!(group.members[&10102].actor_state.iter().any(|s| s == "defaulted"));
+        assert!(lagpoller::lacp_bundled(&group.members[&10101].actor_state));
+
+        // Devices without bundles decode to zero groups (but the pagp table
+        // still answers, so the Cisco source claims them).
+        assert!(decode("core1.mock.jaspy").groups.is_empty());
     }
 
     #[test]

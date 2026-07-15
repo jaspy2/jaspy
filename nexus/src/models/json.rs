@@ -122,6 +122,10 @@ pub struct ApiSystemStatus {
     pub entitypoller_stp_enabled: bool,
     pub vlanpoller_enabled: bool,
     pub vlanpoller_interval_msecs: u64,
+    #[serde(default)]
+    pub lagpoller_enabled: bool,
+    #[serde(default)]
+    pub lagpoller_interval_msecs: u64,
     pub mqtt_enabled: bool,
     pub mqtt_broker: Option<String>,
     pub mqtt_connected: Option<bool>,
@@ -184,6 +188,10 @@ pub struct ApiInterface {
     pub native_vlan: Option<i64>,
     #[serde(default)]
     pub tagged_vlans: Option<Vec<i64>>,
+    // Name of the port-channel this interface is a member of (lagpoller
+    // store); null for non-members. Additive: default-deserialized.
+    #[serde(default)]
+    pub port_channel: Option<String>,
 }
 
 // Link peer of an interface; structured so the UI can link to the device.
@@ -311,6 +319,41 @@ pub struct ApiDeviceDetail {
     // default-deserialized for older payloads.
     #[serde(default)]
     pub vlans: Vec<ApiVlan>,
+    // Port-channels from the in-memory lagpoller store; empty until the first
+    // successful LAG poll. Additive: default-deserialized for older payloads.
+    #[serde(default)]
+    pub port_channels: Vec<ApiPortChannel>,
+}
+
+// One link aggregate (Cisco port-channel / HP trk) with its member ports and
+// the mismatch warnings computed against LACP state and the discovered
+// topology (see lagpoller::port_channel_warnings for the codes).
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiPortChannel {
+    pub ifindex: i64,
+    pub name: Option<String>, // interface name of the aggregate, if known
+    pub up: Option<bool>,
+    pub protocol: String, // "lacp" | "pagp" | "static"
+    pub partner_system_id: Option<String>,
+    pub members: Vec<ApiPortChannelMember>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiPortChannelMember {
+    pub ifindex: i64,
+    pub name: Option<String>,
+    pub up: Option<bool>,
+    pub connected_to: Option<ApiInterfaceConnection>,
+    // IEEE 802.1AX LacpState bit names; empty for members that are configured
+    // but not running LACP (mode "on", or link down).
+    pub actor_state: Vec<String>,
+    pub partner_state: Vec<String>,
+    pub partner_port: Option<i64>,
+    // synchronization + collecting + distributing all set.
+    pub bundled: bool,
 }
 
 // GET /api/v1/devices/<fqdn>/entity: latest entitypoller results for one

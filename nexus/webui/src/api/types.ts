@@ -114,6 +114,9 @@ export interface Interface {
   // (or when the device does not expose the VLAN MIBs).
   nativeVlan: number | null;
   taggedVlans: number[] | null;
+  // Name of the port-channel this interface is a member of (lagpoller);
+  // null for non-members.
+  portChannel: string | null;
 }
 
 // A VLAN known on the device, for resolving interface VLAN ids to names.
@@ -136,10 +139,36 @@ export interface VlanSummary {
   devices: VlanDevice[];
 }
 
+// One link aggregate (Cisco port-channel / HP trk) from the lagpoller, with
+// mismatch warnings computed against LACP state and the discovered topology.
+export interface PortChannelMember {
+  ifindex: number;
+  name: string | null;
+  up: boolean | null;
+  connectedTo: InterfaceConnection | null;
+  // IEEE 802.1AX LacpState bit names; empty when the member is configured
+  // but not running LACP (mode "on", or link down).
+  actorState: string[];
+  partnerState: string[];
+  partnerPort: number | null;
+  bundled: boolean; // synchronization + collecting + distributing all set
+}
+
+export interface PortChannel {
+  ifindex: number;
+  name: string | null;
+  up: boolean | null;
+  protocol: string; // "lacp" | "pagp" | "static"
+  partnerSystemId: string | null;
+  members: PortChannelMember[];
+  warnings: string[];
+}
+
 export interface DeviceDetail {
   device: Device;
   interfaces: Interface[];
   vlans: Vlan[];
+  portChannels: PortChannel[];
 }
 
 // GET /api/v1/devices/<fqdn>/entity — latest entitypoller results. Empty

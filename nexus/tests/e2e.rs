@@ -345,6 +345,70 @@ fn vlanpoller_vlans_in_device_detail(db: DbHarness) {
 }
 
 // ---------------------------------------------------------------------------
+// 1b³. Lagpoller: port-channel membership + LACP health in the device detail
+// ---------------------------------------------------------------------------
+e2e_both!(lagpoller_port_channels_in_device_detail);
+fn lagpoller_port_channels_in_device_detail(db: DbHarness) {
+    let mock = SnmpbotMock::start();
+
+    // lagpoller addresses snmpbot hosts inline as community@fqdn. Fixtures
+    // model the live C2960CX shapes: pagpGroupIfIndex names the aggregate for
+    // members (5001 = Port-channel1), the dot3ad tables carry the LACP state.
+    let host = format!("{}@{}", COMMUNITY, FQDN);
+    let pagp = mock.stub_host_table(&host, "CISCO-PAGP-MIB::pagpPortTable", &read_fixture("pagpporttable.json"));
+    mock.stub_host_table(&host, "IEEE8023-LAG-MIB::dot3adAggTable", &read_fixture("dot3adaggtable.json"));
+    let dot3ad = mock.stub_host_table(&host, "IEEE8023-LAG-MIB::dot3adAggPortTable", &read_fixture("dot3adaggporttable.json"));
+
+    let nexus = Nexus::builder(db.db_url())
+        .snmpbot(&mock.url())
+        .lagpoller(true)
+        .start();
+
+    nexus.post_json("/dev/device", &device_body(true));
+    // Seed the member ports and the port-channel interface itself, so the API
+    // resolves names for both.
+    nexus.put_json("/dev/discovery/device", &json!({
+        "name": "sw1", "dnsDomain": "test.example", "snmpCommunity": COMMUNITY,
+        "baseMac": null, "osInfo": null, "deviceType": null, "softwareVersion": null,
+        "interfaces": {
+            "GigabitEthernet0/1": {"index":10101,"interfaceType":"ethernetCsmacd","displayName":null,"name":"GigabitEthernet0/1","alias":null,"description":"GigabitEthernet0/1"},
+            "GigabitEthernet0/2": {"index":10102,"interfaceType":"ethernetCsmacd","displayName":null,"name":"GigabitEthernet0/2","alias":null,"description":"GigabitEthernet0/2"},
+            "Port-channel1": {"index":5001,"interfaceType":"ieee8023adLag","displayName":null,"name":"Port-channel1","alias":null,"description":"Port-channel1"}
+        }
+    }));
+
+    let ok = wait_until(Duration::from_secs(20), || {
+        let detail = nexus.get_json(&format!("/api/v1/devices/{}", FQDN));
+        !detail["portChannels"].as_array().map(|p| p.is_empty()).unwrap_or(true)
+    });
+    let detail = nexus.get_json(&format!("/api/v1/devices/{}", FQDN));
+    assert!(ok, "portChannels never appeared in device detail: {}", detail);
+    assert!(pagp.hits() >= 1, "pagpPortTable should have been queried");
+    assert!(dot3ad.hits() >= 1, "dot3adAggPortTable should have been queried");
+
+    let po = &detail["portChannels"][0];
+    assert_eq!(po["ifindex"], 5001);
+    assert_eq!(po["name"], "Port-channel1");
+    assert_eq!(po["protocol"], "lacp");
+    assert_eq!(po["partnerSystemId"], "aa:bb:cc:dd:ee:02");
+    let members = po["members"].as_array().unwrap();
+    assert_eq!(members.len(), 2);
+    assert_eq!(members[0]["ifindex"], 10101);
+    assert_eq!(members[0]["name"], "GigabitEthernet0/1");
+    assert_eq!(members[0]["bundled"], true);
+    assert_eq!(members[0]["partnerPort"], 5);
+    assert!(members[0]["actorState"].as_array().unwrap().iter().any(|s| s == "collecting"));
+    // Healthy 2-member LACP bundle with no topology data: no warnings.
+    assert_eq!(po["warnings"], json!([]));
+
+    // Member interfaces carry the aggregate's name; others stay null.
+    let gi1 = detail["interfaces"].as_array().unwrap().iter().find(|i| i["index"] == 10101).unwrap();
+    assert_eq!(gi1["portChannel"], "Port-channel1");
+    let po_if = detail["interfaces"].as_array().unwrap().iter().find(|i| i["index"] == 5001).unwrap();
+    assert_eq!(po_if["portChannel"], serde_json::Value::Null);
+}
+
+// ---------------------------------------------------------------------------
 // 1c. In-process discovery engine: crawl, device metadata, links, periodic
 // ---------------------------------------------------------------------------
 

@@ -13,6 +13,8 @@ pub struct SystemInfo {
     pub entitypoller_stp_enabled: bool,
     pub vlanpoller_enabled: bool,
     pub vlanpoller_interval_msecs: u64,
+    pub lagpoller_enabled: bool,
+    pub lagpoller_interval_msecs: u64,
     pub weathermap_dir: Option<String>,
     pub db_url: String, // password redacted
     pub db_backend: String, // "postgresql" | "sqlite"

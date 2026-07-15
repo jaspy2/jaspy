@@ -1,0 +1,198 @@
+{
+  "Name": "IEEE8023-LAG-MIB",
+  "Objects": [
+    {
+      "Name": "dot3adAggIndex",
+      "OID": ".1.2.840.10006.300.43.1.1.1.1.1",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggMACAddress",
+      "OID": ".1.2.840.10006.300.43.1.1.1.1.2",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot3adAggActorSystemID",
+      "OID": ".1.2.840.10006.300.43.1.1.1.1.4",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot3adAggActorAdminKey",
+      "OID": ".1.2.840.10006.300.43.1.1.1.1.6",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggActorOperKey",
+      "OID": ".1.2.840.10006.300.43.1.1.1.1.7",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggPartnerSystemID",
+      "OID": ".1.2.840.10006.300.43.1.1.1.1.8",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot3adAggPartnerOperKey",
+      "OID": ".1.2.840.10006.300.43.1.1.1.1.10",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggPortListPorts",
+      "OID": ".1.2.840.10006.300.43.1.1.2.1.1",
+      "Syntax": "OCTET STRING"
+    },
+    {
+      "Name": "dot3adAggPortIndex",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.1",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggPortActorOperKey",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.5",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggPortPartnerOperSystemID",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.9",
+      "Syntax": "SNMPv2-TC::MacAddress"
+    },
+    {
+      "Name": "dot3adAggPortPartnerOperKey",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.11",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggPortSelectedAggID",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.12",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggPortAttachedAggID",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.13",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggPortPartnerOperPort",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.17",
+      "Syntax": "INTEGER"
+    },
+    {
+      "Name": "dot3adAggPortActorOperState",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.21",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "lacpActivity"
+        },
+        {
+          "Bit": 1,
+          "Name": "lacpTimeout"
+        },
+        {
+          "Bit": 2,
+          "Name": "aggregation"
+        },
+        {
+          "Bit": 3,
+          "Name": "synchronization"
+        },
+        {
+          "Bit": 4,
+          "Name": "collecting"
+        },
+        {
+          "Bit": 5,
+          "Name": "distributing"
+        },
+        {
+          "Bit": 6,
+          "Name": "defaulted"
+        },
+        {
+          "Bit": 7,
+          "Name": "expired"
+        }
+      ]
+    },
+    {
+      "Name": "dot3adAggPortPartnerOperState",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.23",
+      "Syntax": "BITS",
+      "SyntaxOptions": [
+        {
+          "Bit": 0,
+          "Name": "lacpActivity"
+        },
+        {
+          "Bit": 1,
+          "Name": "lacpTimeout"
+        },
+        {
+          "Bit": 2,
+          "Name": "aggregation"
+        },
+        {
+          "Bit": 3,
+          "Name": "synchronization"
+        },
+        {
+          "Bit": 4,
+          "Name": "collecting"
+        },
+        {
+          "Bit": 5,
+          "Name": "distributing"
+        },
+        {
+          "Bit": 6,
+          "Name": "defaulted"
+        },
+        {
+          "Bit": 7,
+          "Name": "expired"
+        }
+      ]
+    }
+  ],
+  "Tables": [
+    {
+      "Name": "dot3adAggTable",
+      "OID": ".1.2.840.10006.300.43.1.1.1",
+      "EntryName": "dot3adAggEntry",
+      "IndexObjects": [
+        "IEEE8023-LAG-MIB::dot3adAggIndex"
+      ],
+      "EntryObjects": [
+        "IEEE8023-LAG-MIB::dot3adAggActorSystemID",
+        "IEEE8023-LAG-MIB::dot3adAggPartnerSystemID"
+      ]
+    },
+    {
+      "Name": "dot3adAggPortListTable",
+      "OID": ".1.2.840.10006.300.43.1.1.2",
+      "EntryName": "dot3adAggPortListEntry",
+      "IndexObjects": [
+        "IEEE8023-LAG-MIB::dot3adAggIndex"
+      ],
+      "EntryObjects": [
+        "IEEE8023-LAG-MIB::dot3adAggPortListPorts"
+      ]
+    },
+    {
+      "Name": "dot3adAggPortTable",
+      "OID": ".1.2.840.10006.300.43.1.2.1",
+      "EntryName": "dot3adAggPortEntry",
+      "IndexObjects": [
+        "IEEE8023-LAG-MIB::dot3adAggPortIndex"
+      ],
+      "EntryObjects": [
+        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID",
+        "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID",
+        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort",
+        "IEEE8023-LAG-MIB::dot3adAggPortActorOperState",
+        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState"
+      ]
+    }
+  ]
+}
