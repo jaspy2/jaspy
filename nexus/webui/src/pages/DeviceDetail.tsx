@@ -160,7 +160,32 @@ export default function DeviceDetail() {
       </div>
 
       <h2>Interfaces ({interfaces.length})</h2>
-      <div className="table-wrap">
+      <div className="item-list mobile-only">
+        {interfaces.map((iface) => (
+          <div key={iface.id} className="item-card">
+            <span className="item-title">
+              <span>{iface.displayName ?? iface.name}</span>
+              <UpBadge up={iface.up} />
+            </span>
+            <span className="item-sub">
+              {iface.speed !== null && <span>{iface.speed} Mb/s</span>}
+              {iface.alias && <span>{iface.alias}</span>}
+            </span>
+            {iface.connectedTo && (
+              <span className="item-sub">
+                <span>
+                  →{' '}
+                  <Link to={`/devices/${encodeURIComponent(iface.connectedTo.fqdn)}`}>
+                    {iface.connectedTo.fqdn}
+                  </Link>
+                  :{iface.connectedTo.interface}
+                </span>
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="table-wrap desktop-only">
         <table>
           <thead>
             <tr>
@@ -210,17 +235,17 @@ export default function DeviceDetail() {
                 <tr>
                   <th>Sensor</th>
                   <th>Value</th>
-                  <th>Interface</th>
-                  <th>Description</th>
+                  <th className="hide-mobile">Interface</th>
+                  <th className="hide-mobile">Description</th>
                 </tr>
               </thead>
               <tbody>
                 {sensors.map((sensor) => (
                   <tr key={`${sensor.sensorId}-${sensor.name}-${sensor.valueType}`}>
-                    <td>{sensor.name || `sensor ${sensor.sensorId}`}</td>
+                    <td className="wrap-mobile">{sensor.name || `sensor ${sensor.sensorId}`}</td>
                     <td>{formatSensorValue(sensor.value, sensor.valueType)}</td>
-                    <td>{sensor.interfaceName ?? '—'}</td>
-                    <td className="muted">{sensor.description || '—'}</td>
+                    <td className="hide-mobile">{sensor.interfaceName ?? '—'}</td>
+                    <td className="hide-mobile muted">{sensor.description || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -243,25 +268,25 @@ export default function DeviceDetail() {
                   <th>Interface</th>
                   <th>Role</th>
                   <th>State</th>
-                  <th>Enabled</th>
-                  <th>Path cost</th>
-                  <th>Designated cost</th>
-                  <th>Priority</th>
-                  <th>Fwd transitions</th>
+                  <th className="hide-mobile">Enabled</th>
+                  <th className="hide-mobile">Path cost</th>
+                  <th className="hide-mobile">Designated cost</th>
+                  <th className="hide-mobile">Priority</th>
+                  <th className="hide-mobile">Fwd transitions</th>
                 </tr>
               </thead>
               <tbody>
                 {stp.map((port) => (
                   <tr key={`${port.vlan}-${port.stpPortId}`}>
                     <td>{port.vlan}</td>
-                    <td>{port.interfaceName ?? `port ${port.stpPortId}`}</td>
+                    <td className="wrap-mobile">{port.interfaceName ?? `port ${port.stpPortId}`}</td>
                     <td>{port.role}</td>
                     <td><StpStateBadge state={port.state} /></td>
-                    <td>{port.enabled === null ? '—' : port.enabled ? 'yes' : <span className="badge badge-warn">no</span>}</td>
-                    <td>{port.pathCost}</td>
-                    <td>{port.designatedCost}</td>
-                    <td>{port.priority}</td>
-                    <td>{port.forwardTransitions}</td>
+                    <td className="hide-mobile">{port.enabled === null ? '—' : port.enabled ? 'yes' : <span className="badge badge-warn">no</span>}</td>
+                    <td className="hide-mobile">{port.pathCost}</td>
+                    <td className="hide-mobile">{port.designatedCost}</td>
+                    <td className="hide-mobile">{port.priority}</td>
+                    <td className="hide-mobile">{port.forwardTransitions}</td>
                   </tr>
                 ))}
               </tbody>

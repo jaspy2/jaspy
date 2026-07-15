@@ -61,9 +61,9 @@ export default function ClientLocations() {
               const fqdn = deviceById.get(l.deviceId);
               return (
                 <tr key={l.id}>
-                  <td>{l.ipAddress}</td>
-                  <td>{l.hwAddress}</td>
-                  <td>{fqdn ? <Link to={`/devices/${encodeURIComponent(fqdn)}`}>{fqdn}</Link> : `device #${l.deviceId}`}</td>
+                  <td className="mono">{l.ipAddress}</td>
+                  <td className="mono">{l.hwAddress}</td>
+                  <td className="wrap-mobile">{fqdn ? <Link to={`/devices/${encodeURIComponent(fqdn)}`}>{fqdn}</Link> : `device #${l.deviceId}`}</td>
                   <td>{l.portInfo}</td>
                 </tr>
               );

@@ -69,10 +69,55 @@ export default function Devices() {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
+        {/* On mobile the sortable table headers are hidden; offer sort here. */}
+        <select
+          className="mobile-only"
+          aria-label="Sort devices"
+          value={`${sortKey}:${sortAsc ? 'asc' : 'desc'}`}
+          onChange={(e) => {
+            const [key, dir] = e.target.value.split(':');
+            setSortKey(key as SortKey);
+            setSortAsc(dir === 'asc');
+          }}
+        >
+          <option value="fqdn:asc">Name A–Z</option>
+          <option value="fqdn:desc">Name Z–A</option>
+          <option value="up:asc">Down first</option>
+          <option value="lastPoll:desc">Stalest poll first</option>
+          <option value="interfaceCount:desc">Most interfaces</option>
+        </select>
         <span className="muted">{rows.length} devices</span>
       </div>
       {devices.isError && <p className="error">Failed to load devices: {String(devices.error)}</p>}
-      <div className="table-wrap">
+
+      <div className="item-list mobile-only">
+        {rows.map((d) => (
+          <div
+            key={d.id}
+            className="item-card clickable"
+            onClick={() => navigate(`/devices/${encodeURIComponent(d.fqdn)}`)}
+          >
+            <span className="item-title">
+              <span>{d.fqdn}</span>
+              <UpBadge up={d.up} />
+            </span>
+            <span className="item-sub">
+              <span>{d.deviceType ?? 'unknown type'}</span>
+              {d.softwareVersion && <span>{d.softwareVersion}</span>}
+            </span>
+            <span className="item-sub">
+              <span>{d.interfaceCount} interfaces</span>
+              <span>polled {lastPollText(d.secondsSinceLastPoll)}</span>
+              {d.pollingEnabled === false && <span className="badge badge-warn">polling off</span>}
+            </span>
+          </div>
+        ))}
+        {rows.length === 0 && !devices.isLoading && (
+          <p className="muted">No devices. Run discovery to populate the inventory.</p>
+        )}
+      </div>
+
+      <div className="table-wrap desktop-only">
         <table>
           <thead>
             <tr>

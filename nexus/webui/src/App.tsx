@@ -41,6 +41,7 @@ export default function App() {
         )}
       </header>
       <div className="body">
+        {navOpen && <div className="backdrop" onClick={() => setNavOpen(false)} />}
         <nav className={`sidebar ${navOpen ? 'open' : ''}`}>
           {NAV.map((item) => (
             <NavLink

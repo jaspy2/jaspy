@@ -49,7 +49,13 @@ body {
   color: var(--text);
 }
 
-.app { display: flex; flex-direction: column; min-height: 100vh; }
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* iOS Safari: 100vh overflows behind the URL bar; prefer the dynamic unit. */
+  min-height: 100dvh;
+}
 
 /* Top bar */
 .topbar {
@@ -97,9 +103,24 @@ body {
 }
 .nav-link:hover { background: var(--muted-bg); }
 .nav-link.active { background: var(--accent); color: var(--accent-text); }
-.content { flex: 1; padding: 20px 24px 48px; max-width: 1200px; }
+.content {
+  flex: 1;
+  /* min-width: 0 lets .table-wrap's overflow-x engage instead of a wide table
+     stretching this flex item (and the whole page) past the viewport. */
+  min-width: 0;
+  padding: 20px 24px 48px;
+  max-width: 1200px;
+}
 
-h1 { font-size: 22px; margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
+h1 {
+  font-size: 22px;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere; /* long device fqdns on narrow screens */
+}
 h2 { font-size: 16px; margin: 24px 0 10px; }
 a { color: var(--accent); }
 
@@ -139,7 +160,8 @@ a { color: var(--accent); }
 .form label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
 .form label.checkbox { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
 
-input {
+input,
+select {
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
@@ -147,7 +169,8 @@ input {
   padding: 8px 10px;
   font: inherit;
 }
-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+input:focus,
+select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
 button {
   background: var(--accent);
@@ -157,6 +180,7 @@ button {
   padding: 8px 14px;
   font: inherit;
   cursor: pointer;
+  touch-action: manipulation; /* no double-tap zoom delay on touch devices */
 }
 button:hover:not(:disabled) { filter: brightness(1.1); }
 button:disabled { opacity: 0.5; cursor: default; }
@@ -188,6 +212,15 @@ tr.clickable:hover td { background: var(--muted-bg); }
   border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+}
+.item-title .badge { flex-shrink: 0; }
+
+/* Compact fixed-width text (MACs, IPs) that must not wrap mid-value */
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 .badge-ok { background: var(--ok-bg); color: var(--ok); }
 .badge-bad { background: var(--bad-bg); color: var(--bad); }
@@ -218,6 +251,44 @@ tr.clickable:hover td { background: var(--muted-bg); }
 .danger-zone { border-color: var(--danger); }
 .danger-zone label { display: flex; flex-direction: column; gap: 4px; max-width: 300px; margin-top: 8px; }
 
+/* Mobile / desktop visibility toggles (mobile breakpoint is 800px).
+   Scoped inside media queries so they beat later display rules regardless of
+   cascade order, and elements keep their authored display when visible. */
+@media (min-width: 801px) {
+  .mobile-only { display: none !important; }
+}
+
+/* Item cards: the mobile replacement for wide table rows */
+.item-list { display: flex; flex-direction: column; gap: 8px; }
+.item-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.item-card.clickable { cursor: pointer; }
+.item-card.clickable:active { background: var(--muted-bg); }
+.item-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.item-title > :first-child { min-width: 0; }
+.item-sub {
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
 /* Mobile */
 @media (max-width: 800px) {
   .hamburger { display: block; }
@@ -225,12 +296,41 @@ tr.clickable:hover td { background: var(--muted-bg); }
     position: fixed;
     top: 48px;
     bottom: 0;
-    left: calc(-1 * var(--sidebar-w) - 2px);
+    left: calc(-1 * var(--sidebar-w) - 18px); /* clear the open-state shadow */
     transition: left 0.15s ease-out;
     z-index: 9;
+    overflow-y: auto;
   }
   .sidebar.open { left: 0; box-shadow: 4px 0 16px rgba(0, 0, 0, 0.3); }
+  /* Dim + catch taps behind the open nav drawer */
+  .backdrop {
+    position: fixed;
+    inset: 48px 0 0 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 8;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+  }
   .content { padding: 16px 12px 48px; }
   .event-name { display: none; }
+  .toolbar { flex-wrap: wrap; }
   .toolbar input[type='search'] { min-width: 0; flex: 1; }
+
+  .desktop-only { display: none !important; }
+  .hide-mobile { display: none !important; }
+
+  /* iOS zooms the page when a focused input's font-size is below 16px. */
+  input, select { font-size: 16px; }
+  /* Comfortable touch targets */
+  button { padding: 10px 16px; }
+  .nav-link { padding: 12px 14px; }
+
+  th, td { padding: 8px 10px; }
+  /* Values may wrap on mobile where marked (e.g. long fqdn link cells). */
+  td.wrap-mobile { white-space: normal; overflow-wrap: anywhere; }
+
+  h1 { font-size: 20px; }
+  .kv { grid-template-columns: minmax(96px, max-content) 1fr; }
+  .kv > span:nth-child(even) { overflow-wrap: anywhere; min-width: 0; }
 }
