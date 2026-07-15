@@ -51,13 +51,15 @@ fn send_link_event(jaspy_url: &str, unix_time: f64, hostname: &String, ifindex: 
     send_interface_event(jaspy_url, ifm);
 }
 
-fn handle_parsed_trap(jaspy_url: &str, unix_time: f64, hostname: &String, trap: HashMap<String, String>) {
+// Link state change carried by a trap: (ifIndex, is_up). None if the trap is
+// not a linkUp/linkDown trap or lacks a usable ifIndex.
+fn link_event_from_trap(trap: &HashMap<String, String>) -> Option<(i64, bool)> {
     let trap_type = match trap.get("SNMPv2-MIB::snmpTrapOID") {
         Some(value) => value,
         None => {
             println!("failed to find OID in trap");
             println!("{:?}", trap);
-            return;
+            return None;
         }
     };
     let is_link_up = trap_type.starts_with("IF-MIB::linkUp");
@@ -65,23 +67,30 @@ fn handle_parsed_trap(jaspy_url: &str, unix_time: f64, hostname: &String, trap: 
     if is_link_up || is_link_down {
         let ifindex_ifmib: Option<i64> = trap.get("IF-MIB::ifIndex").and_then(|v| v.parse().ok());
         let ifindex_rfc1213mib: Option<i64> = trap.get("RFC1213-MIB::ifIndex").and_then(|v| v.parse().ok());
-        let ifindex = match ifindex_ifmib.or(ifindex_rfc1213mib) {
-            Some(ifindex) => ifindex,
+        match ifindex_ifmib.or(ifindex_rfc1213mib) {
+            Some(ifindex) => Some((ifindex, is_link_up)),
             None => {
                 println!("failed to find/parse ifIndex from trap");
-                return;
+                None
             }
-        };
-        send_link_event(jaspy_url, unix_time, hostname, ifindex, is_link_up);
+        }
+    } else {
+        None
     }
 }
 
-fn handle_trap(jaspy_url: &str, trap: String, unix_time: f64) {
+fn handle_parsed_trap(jaspy_url: &str, unix_time: f64, hostname: &String, trap: HashMap<String, String>) {
+    if let Some((ifindex, up)) = link_event_from_trap(&trap) {
+        send_link_event(jaspy_url, unix_time, hostname, ifindex, up);
+    }
+}
+
+fn parse_trap_text(trap: &str) -> Option<(String, HashMap<String, String>)> {
     let mut lines = trap.split("\n");
 
     let hostname = match lines.next() {
         Some(line) => line.trim(),
-        None => return,
+        None => return None,
     };
 
     let mut trap_info: HashMap<String, String> = HashMap::new();
@@ -104,7 +113,104 @@ fn handle_trap(jaspy_url: &str, trap: String, unix_time: f64) {
         }
     }
 
-    handle_parsed_trap(jaspy_url, unix_time, &hostname.to_string(), trap_info);
+    Some((hostname.to_string(), trap_info))
+}
+
+fn handle_trap(jaspy_url: &str, trap: String, unix_time: f64) {
+    if let Some((hostname, trap_info)) = parse_trap_text(&trap) {
+        handle_parsed_trap(jaspy_url, unix_time, &hostname, trap_info);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LINKDOWN_TRAP: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/trap_linkdown.txt"));
+    const LINKUP_TRAP: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/trap_linkup.txt"));
+
+    #[test]
+    fn parse_linkdown_fixture() {
+        let (hostname, trap) = parse_trap_text(LINKDOWN_TRAP).unwrap();
+        assert_eq!(hostname, "sw1.test.example");
+        // Instance suffix (".0") is stripped from keys.
+        assert_eq!(trap.get("SNMPv2-MIB::snmpTrapOID").map(String::as_str), Some("IF-MIB::linkDown.0"));
+        assert_eq!(trap.get("IF-MIB::ifIndex").map(String::as_str), Some("10101"));
+    }
+
+    #[test]
+    fn parse_first_key_wins() {
+        let trap_text = "host.example\nIF-MIB::ifIndex.0 111\nIF-MIB::ifIndex.1 222\n";
+        let (_, trap) = parse_trap_text(trap_text).unwrap();
+        assert_eq!(trap.get("IF-MIB::ifIndex").map(String::as_str), Some("111"));
+    }
+
+    #[test]
+    fn parse_skips_valueless_lines() {
+        let trap_text = "host.example\njustakey\n\nIF-MIB::ifIndex.0 7\n";
+        let (_, trap) = parse_trap_text(trap_text).unwrap();
+        assert!(!trap.contains_key("justakey"));
+        assert_eq!(trap.len(), 1);
+    }
+
+    #[test]
+    fn link_event_linkdown() {
+        let (_, trap) = parse_trap_text(LINKDOWN_TRAP).unwrap();
+        assert_eq!(link_event_from_trap(&trap), Some((10101, false)));
+    }
+
+    #[test]
+    fn link_event_linkup() {
+        let (_, trap) = parse_trap_text(LINKUP_TRAP).unwrap();
+        assert_eq!(link_event_from_trap(&trap), Some((10101, true)));
+    }
+
+    #[test]
+    fn link_event_rfc1213_ifindex_fallback() {
+        let mut trap = HashMap::new();
+        trap.insert("SNMPv2-MIB::snmpTrapOID".to_string(), "IF-MIB::linkUp.0".to_string());
+        trap.insert("RFC1213-MIB::ifIndex".to_string(), "42".to_string());
+        assert_eq!(link_event_from_trap(&trap), Some((42, true)));
+    }
+
+    #[test]
+    fn link_event_prefers_ifmib_ifindex() {
+        let mut trap = HashMap::new();
+        trap.insert("SNMPv2-MIB::snmpTrapOID".to_string(), "IF-MIB::linkDown.0".to_string());
+        trap.insert("IF-MIB::ifIndex".to_string(), "1".to_string());
+        trap.insert("RFC1213-MIB::ifIndex".to_string(), "2".to_string());
+        assert_eq!(link_event_from_trap(&trap), Some((1, false)));
+    }
+
+    #[test]
+    fn link_event_missing_oid_is_none() {
+        let mut trap = HashMap::new();
+        trap.insert("IF-MIB::ifIndex".to_string(), "42".to_string());
+        assert_eq!(link_event_from_trap(&trap), None);
+    }
+
+    #[test]
+    fn link_event_missing_ifindex_is_none() {
+        let mut trap = HashMap::new();
+        trap.insert("SNMPv2-MIB::snmpTrapOID".to_string(), "IF-MIB::linkDown.0".to_string());
+        assert_eq!(link_event_from_trap(&trap), None);
+    }
+
+    #[test]
+    fn link_event_unparseable_ifindex_is_none() {
+        let mut trap = HashMap::new();
+        trap.insert("SNMPv2-MIB::snmpTrapOID".to_string(), "IF-MIB::linkUp.0".to_string());
+        trap.insert("IF-MIB::ifIndex".to_string(), "not-a-number".to_string());
+        assert_eq!(link_event_from_trap(&trap), None);
+    }
+
+    #[test]
+    fn non_link_trap_is_none() {
+        let mut trap = HashMap::new();
+        trap.insert("SNMPv2-MIB::snmpTrapOID".to_string(), "SNMPv2-MIB::coldStart.0".to_string());
+        trap.insert("IF-MIB::ifIndex".to_string(), "42".to_string());
+        assert_eq!(link_event_from_trap(&trap), None);
+    }
 }
 
 pub fn run() {

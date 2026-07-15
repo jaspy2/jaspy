@@ -79,6 +79,13 @@ impl MessageBus {
         return MessageBus { client: Some(client), broker_addr: Some(broker_addr), connected: connected };
     }
 
+    // Bus with MQTT disabled, for unit tests that need an IMDS without
+    // depending on JASPY_MQTT_SERVER or spawning a connection thread.
+    #[cfg(test)]
+    pub fn disconnected() -> MessageBus {
+        MessageBus { client: None, broker_addr: None, connected: Arc::new(Mutex::new(None)) }
+    }
+
     // Broker address when MQTT is configured; None = disabled.
     pub fn broker(&self) -> Option<String> {
         self.broker_addr.clone()

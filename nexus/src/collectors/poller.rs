@@ -110,6 +110,145 @@ fn interface_report_from_entry(if_index: &i32, objects: &HashMap<String, SNMPBot
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const IFTABLE_JSON: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/iftable.json"));
+    const IFXTABLE_JSON: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/ifxtable.json"));
+
+    fn merged_fixture_stats() -> HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>> {
+        let iftable: SNMPBotResponse = serde_json::from_str(IFTABLE_JSON).unwrap();
+        let ifxtable: SNMPBotResponse = serde_json::from_str(IFXTABLE_JSON).unwrap();
+        let mut stats = HashMap::new();
+        merge_query_result(&mut stats, &iftable);
+        merge_query_result(&mut stats, &ifxtable);
+        stats
+    }
+
+    #[test]
+    fn null_entries_decode_as_empty() {
+        let response: SNMPBotResponse =
+            serde_json::from_str(r#"{"ID": "IF-MIB::ifTable", "IndexKeys": null, "ObjectKeys": null, "Entries": null}"#).unwrap();
+        assert!(response.entries.is_empty());
+        assert!(response.index_keys.is_empty());
+        assert!(response.object_keys.is_empty());
+    }
+
+    #[test]
+    fn untagged_value_decoding() {
+        let entry: SNMPBotResultEntry = serde_json::from_str(
+            r#"{"HostID": "h", "Index": {}, "Objects": {
+                "uint": 42,
+                "float": 4.5,
+                "str": "up",
+                "bool": true,
+                "empty": null,
+                "other": {"Error": "timeout"}
+            }}"#,
+        ).unwrap();
+        assert!(matches!(entry.objects.get("uint"), Some(SNMPBotResultEntryObjectValue::Uint64(42))));
+        assert!(matches!(entry.objects.get("float"), Some(SNMPBotResultEntryObjectValue::Float64(_))));
+        assert!(matches!(entry.objects.get("str"), Some(SNMPBotResultEntryObjectValue::Str(_))));
+        assert!(matches!(entry.objects.get("bool"), Some(SNMPBotResultEntryObjectValue::Bool(true))));
+        assert!(matches!(entry.objects.get("empty"), Some(SNMPBotResultEntryObjectValue::Empty)));
+        assert!(matches!(entry.objects.get("other"), Some(SNMPBotResultEntryObjectValue::Other(_))));
+    }
+
+    #[test]
+    fn try_get_u64_variants() {
+        assert_eq!(try_get_u64(Some(&SNMPBotResultEntryObjectValue::Uint64(7))), Some(7));
+        assert_eq!(try_get_u64(Some(&SNMPBotResultEntryObjectValue::Str("7".to_string()))), None);
+        assert_eq!(try_get_u64(None), None);
+    }
+
+    #[test]
+    fn try_get_i32_rejects_overflow() {
+        assert_eq!(try_get_i32(Some(&SNMPBotResultEntryObjectValue::Uint64(1000))), Some(1000));
+        assert_eq!(try_get_i32(Some(&SNMPBotResultEntryObjectValue::Uint64(i32::MAX as u64))), Some(i32::MAX));
+        assert_eq!(try_get_i32(Some(&SNMPBotResultEntryObjectValue::Uint64(i32::MAX as u64 + 1))), None);
+        assert_eq!(try_get_i32(None), None);
+    }
+
+    #[test]
+    fn try_get_updown_is_case_insensitive() {
+        assert_eq!(try_get_updown_as_bool(Some(&SNMPBotResultEntryObjectValue::Str("up".to_string()))), Some(true));
+        assert_eq!(try_get_updown_as_bool(Some(&SNMPBotResultEntryObjectValue::Str("UP".to_string()))), Some(true));
+        assert_eq!(try_get_updown_as_bool(Some(&SNMPBotResultEntryObjectValue::Str("down".to_string()))), Some(false));
+        assert_eq!(try_get_updown_as_bool(Some(&SNMPBotResultEntryObjectValue::Str("lowerLayerDown".to_string()))), Some(false));
+        assert_eq!(try_get_updown_as_bool(Some(&SNMPBotResultEntryObjectValue::Uint64(1))), None);
+        assert_eq!(try_get_updown_as_bool(None), None);
+    }
+
+    #[test]
+    fn merge_combines_tables_per_ifindex() {
+        let stats = merged_fixture_stats();
+        assert_eq!(stats.len(), 2);
+        let port = stats.get(&10101).unwrap();
+        // Objects from both tables land under the same ifindex.
+        assert!(matches!(port.get("IF-MIB::ifOperStatus"), Some(SNMPBotResultEntryObjectValue::Str(_))));
+        assert!(matches!(port.get("IF-MIB::ifHCInOctets"), Some(SNMPBotResultEntryObjectValue::Uint64(1000000))));
+    }
+
+    #[test]
+    fn merge_first_writer_wins() {
+        let first: SNMPBotResponse = serde_json::from_str(
+            r#"{"ID": "t", "IndexKeys": [], "ObjectKeys": [], "Entries": [
+                {"HostID": "h", "Index": {"IF-MIB::ifIndex": 1}, "Objects": {"IF-MIB::ifInErrors": 5}}
+            ]}"#,
+        ).unwrap();
+        let second: SNMPBotResponse = serde_json::from_str(
+            r#"{"ID": "t", "IndexKeys": [], "ObjectKeys": [], "Entries": [
+                {"HostID": "h", "Index": {"IF-MIB::ifIndex": 1}, "Objects": {"IF-MIB::ifInErrors": 99}}
+            ]}"#,
+        ).unwrap();
+        let mut stats = HashMap::new();
+        merge_query_result(&mut stats, &first);
+        merge_query_result(&mut stats, &second);
+        assert!(matches!(stats.get(&1).unwrap().get("IF-MIB::ifInErrors"), Some(SNMPBotResultEntryObjectValue::Uint64(5))));
+    }
+
+    #[test]
+    fn merge_skips_entries_without_ifindex() {
+        let response: SNMPBotResponse = serde_json::from_str(
+            r#"{"ID": "t", "IndexKeys": [], "ObjectKeys": [], "Entries": [
+                {"HostID": "h", "Index": {}, "Objects": {"IF-MIB::ifInErrors": 5}}
+            ]}"#,
+        ).unwrap();
+        let mut stats = HashMap::new();
+        merge_query_result(&mut stats, &response);
+        assert!(stats.is_empty());
+    }
+
+    #[test]
+    fn interface_report_from_fixture() {
+        let stats = merged_fixture_stats();
+        let report = interface_report_from_entry(&10101, stats.get(&10101).unwrap());
+        assert_eq!(report.if_index, 10101);
+        assert_eq!(report.in_octets, Some(1000000));
+        assert_eq!(report.out_octets, Some(2000000));
+        assert_eq!(report.in_unicast_packets, Some(100));
+        assert_eq!(report.out_broadcast_packets, Some(8));
+        assert_eq!(report.in_errors, Some(0));
+        assert_eq!(report.up, Some(true));
+        assert_eq!(report.speed, Some(1000));
+
+        let report = interface_report_from_entry(&10102, stats.get(&10102).unwrap());
+        assert_eq!(report.up, Some(false));
+        assert_eq!(report.in_errors, Some(2));
+        assert_eq!(report.out_discards, Some(3));
+    }
+
+    #[test]
+    fn interface_report_missing_objects_are_none() {
+        let report = interface_report_from_entry(&1, &HashMap::new());
+        assert_eq!(report.if_index, 1);
+        assert_eq!(report.in_octets, None);
+        assert_eq!(report.up, None);
+        assert_eq!(report.speed, None);
+    }
+}
+
 // --- collector internals ---
 
 #[derive(Clone)]
@@ -158,6 +297,10 @@ fn snmpbot_query(device_fqdn: &String, statistics: &mut HashMap<i32, HashMap<Str
         }
     }
 
+    merge_query_result(statistics, &query_result);
+}
+
+fn merge_query_result(statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, query_result: &SNMPBotResponse) {
     for query_result_entry in query_result.entries.iter() {
         let ifindex: i32;
         if let Some(ifindex_result) = query_result_entry.index.get("IF-MIB::ifIndex") {

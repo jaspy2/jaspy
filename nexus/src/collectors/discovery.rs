@@ -1156,6 +1156,642 @@ fn next_run_params(snmpbot_url: &str, skip_dns: bool, control: &Arc<Mutex<Discov
     })
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn entry(index: serde_json::Value, objects: serde_json::Value) -> SNMPBotResultEntry {
+        serde_json::from_value(json!({"HostID": "test", "Index": index, "Objects": objects})).unwrap()
+    }
+
+    fn test_params() -> RunParams {
+        RunParams {
+            snmpbot_url: "http://127.0.0.1:8286".to_string(),
+            root_device: "root.example.com".to_string(),
+            community: "public".to_string(),
+            dns_domains: vec!["example.com".to_string(), "example.net".to_string()],
+            ignore: Vec::new(),
+            remap: HashMap::new(),
+            topology_stable: false,
+            skip_dns: true,
+            trigger: "manual",
+        }
+    }
+
+    // Device with named interfaces, anything_to_interface prebuilt.
+    fn device_with_ifaces(fqdn: &str, ifaces: &[(i64, &str)]) -> DetectedDevice {
+        let mut device = DetectedDevice::new(fqdn, "public");
+        for (ifindex, name) in ifaces.iter() {
+            let mut iface = DiscoveredIface::default();
+            iface.ifindex = *ifindex;
+            iface.name = Some(name.to_string());
+            device.interfaces.insert(*ifindex, iface);
+        }
+        device.build_anything_to_interface();
+        device
+    }
+
+    fn lldp_neighbor(sys_name: &str, port_id: &str, subtype: &str) -> LldpNeighbor {
+        LldpNeighbor {
+            rem_sys_name: sys_name.to_string(),
+            rem_chassis_id: String::new(),
+            rem_port_id: port_id.to_string(),
+            rem_port_id_subtype: subtype.to_string(),
+        }
+    }
+
+    // --- try_unhex_ascii ---
+
+    #[test]
+    fn unhex_decodes_ascii() {
+        assert_eq!(try_unhex_ascii("45746865726e657431"), Some("Ethernet1".to_string()));
+    }
+
+    #[test]
+    fn unhex_strips_whitespace() {
+        assert_eq!(try_unhex_ascii("45 74 68"), Some("Eth".to_string()));
+    }
+
+    #[test]
+    fn unhex_drops_non_ascii_bytes() {
+        assert_eq!(try_unhex_ascii("ff41"), Some("A".to_string()));
+    }
+
+    #[test]
+    fn unhex_rejects_odd_length_empty_and_garbage() {
+        assert_eq!(try_unhex_ascii("454"), None);
+        assert_eq!(try_unhex_ascii(""), None);
+        assert_eq!(try_unhex_ascii("zz"), None);
+    }
+
+    // --- snmpbot_url_for ---
+
+    #[test]
+    fn snmpbot_url_has_path_and_community() {
+        let url = snmpbot_url_for("http://127.0.0.1:8286", "sw1.example.com", "public", "tables", "IF-MIB::ifTable").unwrap();
+        assert_eq!(url.path(), "/api/hosts/sw1.example.com/tables/IF-MIB::ifTable");
+        let pairs: Vec<(String, String)> = url.query_pairs().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        assert_eq!(pairs, vec![("snmp".to_string(), "public@sw1.example.com".to_string())]);
+    }
+
+    #[test]
+    fn snmpbot_url_rejects_unparseable_base() {
+        assert!(snmpbot_url_for("not a url", "sw1", "public", "tables", "t").is_none());
+    }
+
+    // --- try_resolve (skip_dns) ---
+
+    #[test]
+    fn resolve_passes_through_fqdn() {
+        assert_eq!(try_resolve("sw1.example.com", &test_params()), Some("sw1.example.com".to_string()));
+    }
+
+    #[test]
+    fn resolve_expands_bare_name_with_first_domain() {
+        assert_eq!(try_resolve("sw1", &test_params()), Some("sw1.example.com".to_string()));
+    }
+
+    #[test]
+    fn resolve_bare_name_without_domains_is_none() {
+        let mut params = test_params();
+        params.dns_domains.clear();
+        assert_eq!(try_resolve("sw1", &params), None);
+    }
+
+    #[test]
+    fn resolve_applies_remap_first() {
+        let mut params = test_params();
+        params.remap.insert("chassis-id-name".to_string(), "sw1.example.org".to_string());
+        assert_eq!(try_resolve("chassis-id-name", &params), Some("sw1.example.org".to_string()));
+    }
+
+    #[test]
+    fn resolve_rejects_empty_and_whitespace() {
+        assert_eq!(try_resolve("", &test_params()), None);
+        assert_eq!(try_resolve("   ", &test_params()), None);
+    }
+
+    #[test]
+    fn resolve_rejects_non_hostname_bytes() {
+        // HP CDP-compat tables report raw MACs as device ids.
+        assert_eq!(try_resolve("aa:bb:cc:dd:ee:ff", &test_params()), None);
+        assert_eq!(try_resolve("sw1 example", &test_params()), None);
+    }
+
+    // --- DetectedDevice basics ---
+
+    #[test]
+    fn chassis_id_prefers_bridge_address() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        device.bridge_address = Some("aa bb cc dd ee ff".to_string());
+        device.lldp_loc_chassis_id = Some("11:22:33:44:55:66".to_string());
+        assert_eq!(device.get_chassis_id(), Some("aa:bb:cc:dd:ee:ff".to_string()));
+    }
+
+    #[test]
+    fn chassis_id_falls_back_to_lldp_then_none() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        assert_eq!(device.get_chassis_id(), None);
+        device.lldp_loc_chassis_id = Some("11:22:33:44:55:66".to_string());
+        assert_eq!(device.get_chassis_id(), Some("11:22:33:44:55:66".to_string()));
+    }
+
+    #[test]
+    fn device_type_and_software_version_join_or_unknown() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        assert_eq!(device.device_type(), "UNKNOWN");
+        assert_eq!(device.software_version(), "UNKNOWN");
+        assert_eq!(device.os_info(), "UNKNOWN");
+        device.device_types = vec!["C9300".to_string(), "C9300X".to_string()];
+        device.software_versions = vec!["17.9".to_string()];
+        device.sys_descr = Some("Cisco IOS".to_string());
+        assert_eq!(device.device_type(), "C9300,C9300X");
+        assert_eq!(device.software_version(), "17.9");
+        assert_eq!(device.os_info(), "Cisco IOS");
+    }
+
+    #[test]
+    fn merge_ifmib_entries_accumulate_per_ifindex() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        // ifXTable first (name/alias), then ifTable (descr/type/phys) — as in get_ifmibs.
+        device.merge_ifmib_entry(&entry(
+            json!({"IF-MIB::ifIndex": 1}),
+            json!({"IF-MIB::ifName": "Eth1", "IF-MIB::ifAlias": "uplink"}),
+        ));
+        device.merge_ifmib_entry(&entry(
+            json!({"IF-MIB::ifIndex": 1}),
+            json!({"IF-MIB::ifDescr": "Ethernet1", "IF-MIB::ifType": "ethernetCsmacd", "IF-MIB::ifPhysAddress": "aa:bb:cc:dd:ee:01"}),
+        ));
+        assert_eq!(device.interfaces.len(), 1);
+        let iface = &device.interfaces[&1];
+        assert_eq!(iface.name.as_deref(), Some("Eth1"));
+        assert_eq!(iface.alias.as_deref(), Some("uplink"));
+        assert_eq!(iface.descr.as_deref(), Some("Ethernet1"));
+        assert_eq!(iface.iftype.as_deref(), Some("ethernetCsmacd"));
+        assert_eq!(iface.phys_address.as_deref(), Some("aa:bb:cc:dd:ee:01"));
+    }
+
+    #[test]
+    fn merge_ifmib_entry_without_ifindex_is_ignored() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        device.merge_ifmib_entry(&entry(json!({}), json!({"IF-MIB::ifName": "Eth1"})));
+        assert!(device.interfaces.is_empty());
+    }
+
+    #[test]
+    fn anything_mapping_keys_alias_name_descr_and_mac() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        device.merge_ifmib_entry(&entry(
+            json!({"IF-MIB::ifIndex": 1}),
+            json!({"IF-MIB::ifName": "Eth1", "IF-MIB::ifAlias": "uplink", "IF-MIB::ifDescr": "Ethernet1",
+                   "IF-MIB::ifType": "ethernetCsmacd", "IF-MIB::ifPhysAddress": "aa:bb:cc:dd:ee:01"}),
+        ));
+        device.build_anything_to_interface();
+        for key in ["Eth1", "uplink", "Ethernet1", "aa:bb:cc:dd:ee:01", "aa bb cc dd ee 01"] {
+            assert_eq!(device.anything_to_interface.get(key), Some(&1), "missing key {}", key);
+        }
+    }
+
+    #[test]
+    fn anything_mapping_first_mac_wins() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        for ifindex in [1, 2] {
+            device.merge_ifmib_entry(&entry(
+                json!({"IF-MIB::ifIndex": ifindex}),
+                json!({"IF-MIB::ifName": format!("Eth{}", ifindex), "IF-MIB::ifType": "ethernetCsmacd",
+                       "IF-MIB::ifPhysAddress": "aa:bb:cc:dd:ee:01"}),
+            ));
+        }
+        device.build_anything_to_interface();
+        assert_eq!(device.anything_to_interface.get("aa:bb:cc:dd:ee:01"), Some(&1));
+    }
+
+    #[test]
+    fn anything_mapping_skips_mac_of_non_ethernet_and_blank_values() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        device.merge_ifmib_entry(&entry(
+            json!({"IF-MIB::ifIndex": 1}),
+            json!({"IF-MIB::ifName": "Vlan1", "IF-MIB::ifType": "l3ipvlan",
+                   "IF-MIB::ifPhysAddress": "aa:bb:cc:dd:ee:02", "IF-MIB::ifAlias": "  "}),
+        ));
+        device.build_anything_to_interface();
+        assert_eq!(device.anything_to_interface.get("aa:bb:cc:dd:ee:02"), None);
+        assert_eq!(device.anything_to_interface.get(""), None);
+        assert_eq!(device.anything_to_interface.get("Vlan1"), Some(&1));
+    }
+
+    #[test]
+    fn interface_sanity_fills_name_and_iftype() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        device.merge_ifmib_entry(&entry(json!({"IF-MIB::ifIndex": 1}), json!({"IF-MIB::ifDescr": "Ethernet1"})));
+        device.ensure_interface_sanity();
+        let iface = &device.interfaces[&1];
+        assert_eq!(iface.name.as_deref(), Some("Ethernet1"));
+        assert_eq!(iface.iftype.as_deref(), Some("other"));
+    }
+
+    // --- LLDP local port table ---
+
+    #[test]
+    fn lldp_loc_port_maps_interface_name() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        device.handle_lldp_loc_port_table(&vec![entry(
+            json!({"LLDP-MIB::lldpLocPortNum": 100}),
+            json!({"LLDP-MIB::lldpLocPortIdSubtype": "interfaceName", "LLDP-MIB::lldpLocPortId": "Eth1"}),
+        )]);
+        assert_eq!(device.lldp_index_to_interface.get(&100), Some(&1));
+    }
+
+    #[test]
+    fn lldp_loc_port_duplicate_macs_fall_back_to_index_identity() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(1, "Eth1"), (2, "Eth2")]);
+        let entries = vec![
+            entry(json!({"LLDP-MIB::lldpLocPortNum": 1}),
+                  json!({"LLDP-MIB::lldpLocPortIdSubtype": "macAddress", "LLDP-MIB::lldpLocPortId": "aa:bb:cc:dd:ee:ff"})),
+            entry(json!({"LLDP-MIB::lldpLocPortNum": 2}),
+                  json!({"LLDP-MIB::lldpLocPortIdSubtype": "macAddress", "LLDP-MIB::lldpLocPortId": "aa:bb:cc:dd:ee:ff"})),
+        ];
+        device.handle_lldp_loc_port_table(&entries);
+        assert!(device.has_bug(DeviceBug::LldpMacaddressDuplicate));
+        // lldp index presumed equal to ifindex when MACs are unusable.
+        assert_eq!(device.lldp_index_to_interface.get(&1), Some(&1));
+        assert_eq!(device.lldp_index_to_interface.get(&2), Some(&2));
+    }
+
+    #[test]
+    fn lldp_loc_port_unique_mac_associates_via_phys_address() {
+        let mut device = DetectedDevice::new("sw1.example.com", "public");
+        device.merge_ifmib_entry(&entry(
+            json!({"IF-MIB::ifIndex": 7}),
+            json!({"IF-MIB::ifName": "Eth7", "IF-MIB::ifType": "ethernetCsmacd", "IF-MIB::ifPhysAddress": "aa:bb:cc:dd:ee:07"}),
+        ));
+        device.build_anything_to_interface();
+        device.handle_lldp_loc_port_table(&vec![entry(
+            json!({"LLDP-MIB::lldpLocPortNum": 100}),
+            json!({"LLDP-MIB::lldpLocPortIdSubtype": "macAddress", "LLDP-MIB::lldpLocPortId": "aa:bb:cc:dd:ee:07"}),
+        )]);
+        assert_eq!(device.lldp_index_to_interface.get(&100), Some(&7));
+        assert!(!device.has_bug(DeviceBug::LldpMacaddressDuplicate));
+    }
+
+    #[test]
+    fn lldp_loc_port_local_numeric_portdesc_fills_local_mapping() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(3, "Eth3")]);
+        device.handle_lldp_loc_port_table(&vec![entry(
+            json!({"LLDP-MIB::lldpLocPortNum": 100}),
+            json!({"LLDP-MIB::lldpLocPortIdSubtype": "local", "LLDP-MIB::lldpLocPortId": "Port3", "LLDP-MIB::lldpLocPortDesc": "3"}),
+        )]);
+        assert_eq!(device.lldp_local_mapping.get("Port3"), Some(&3));
+    }
+
+    #[test]
+    fn lldp_loc_port_hex_encoded_numeric_id_maps_to_ifindex() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(9, "Eth9")]);
+        // hex "39" == ascii "9"
+        device.handle_lldp_loc_port_table(&vec![entry(
+            json!({"LLDP-MIB::lldpLocPortNum": 100}),
+            json!({"LLDP-MIB::lldpLocPortIdSubtype": "local", "LLDP-MIB::lldpLocPortId": "39"}),
+        )]);
+        assert_eq!(device.lldp_index_to_interface.get(&100), Some(&9));
+    }
+
+    #[test]
+    fn lldp_loc_port_cisco_nexus_eth_quirk() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(9, "Ethernet9")]);
+        // hex "45746839" == ascii "Eth9"; only "Ethernet9" exists.
+        device.handle_lldp_loc_port_table(&vec![entry(
+            json!({"LLDP-MIB::lldpLocPortNum": 100}),
+            json!({"LLDP-MIB::lldpLocPortIdSubtype": "interfaceName", "LLDP-MIB::lldpLocPortId": "45746839"}),
+        )]);
+        assert_eq!(device.lldp_index_to_interface.get(&100), Some(&9));
+        assert!(device.has_bug(DeviceBug::LldpNoAssociationToInterface));
+    }
+
+    // --- LLDP remote table ---
+
+    #[test]
+    fn lldp_rem_table_attaches_neighbor_to_mapped_interface() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        device.lldp_index_to_interface.insert(100, 1);
+        device.handle_lldp_rem_table(&vec![entry(
+            json!({"LLDP-MIB::lldpRemLocalPortNum": 100}),
+            json!({"LLDP-MIB::lldpRemSysName": "sw2", "LLDP-MIB::lldpRemChassisId": "aa bb",
+                   "LLDP-MIB::lldpRemPortId": "Eth9", "LLDP-MIB::lldpRemPortIdSubtype": "interfaceName"}),
+        )]);
+        let lldp = &device.interfaces[&1].lldp;
+        assert_eq!(lldp.len(), 1);
+        assert_eq!(lldp[0].rem_sys_name, "sw2");
+        assert_eq!(lldp[0].rem_chassis_id, "aa bb");
+        assert_eq!(lldp[0].rem_port_id, "Eth9");
+    }
+
+    #[test]
+    fn lldp_rem_table_skips_blank_sysname_and_unmapped_index() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        device.lldp_index_to_interface.insert(100, 1);
+        device.handle_lldp_rem_table(&vec![
+            entry(json!({"LLDP-MIB::lldpRemLocalPortNum": 100}), json!({"LLDP-MIB::lldpRemSysName": "  "})),
+            entry(json!({"LLDP-MIB::lldpRemLocalPortNum": 999}), json!({"LLDP-MIB::lldpRemSysName": "sw2"})),
+        ]);
+        assert!(device.interfaces[&1].lldp.is_empty());
+    }
+
+    #[test]
+    fn lldp_rem_table_reassigns_dot_zero_subinterface_to_parent() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(4, "xe-0/0/0"), (10, "xe-0/0/0.0")]);
+        device.lldp_index_to_interface.insert(100, 10);
+        device.handle_lldp_rem_table(&vec![entry(
+            json!({"LLDP-MIB::lldpRemLocalPortNum": 100}),
+            json!({"LLDP-MIB::lldpRemSysName": "sw2"}),
+        )]);
+        assert!(device.interfaces[&10].lldp.is_empty());
+        assert_eq!(device.interfaces[&4].lldp.len(), 1);
+    }
+
+    // --- link resolution lookups ---
+
+    #[test]
+    fn lookup_by_cdp_info_uses_anything_mapping() {
+        let device = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        assert_eq!(device.lookup_port_by_cdp_info("Eth1"), Some(1));
+        assert_eq!(device.lookup_port_by_cdp_info("Eth9"), None);
+    }
+
+    #[test]
+    fn lookup_by_lldp_remote_info_paths() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(1, "Eth1"), (3, "Eth3")]);
+        device.lldp_local_mapping.insert("Port3".to_string(), 3);
+        // direct anything match
+        assert_eq!(device.lookup_port_by_lldp_remote_info("Eth1", "interfaceName"), Some(1));
+        // local mapping first
+        assert_eq!(device.lookup_port_by_lldp_remote_info("Port3", "local"), Some(3));
+        // hexstr fallback: "45746831" == "Eth1"
+        assert_eq!(device.lookup_port_by_lldp_remote_info("45746831", "interfaceName"), Some(1));
+        // unknown
+        assert_eq!(device.lookup_port_by_lldp_remote_info("Eth9", "interfaceName"), None);
+    }
+
+    #[test]
+    fn lookup_by_lldp_remote_info_mac_with_duplicate_bug_is_none() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        device.add_bug(DeviceBug::LldpMacaddressDuplicate);
+        assert_eq!(device.lookup_port_by_lldp_remote_info("Eth1", "macAddress"), None);
+    }
+
+    #[test]
+    fn lookup_lldp_neighbor_by_sysname_and_chassis_fallback() {
+        let params = test_params();
+        let mut detected: HashMap<String, DetectedDevice> = HashMap::new();
+        let mut sw2 = device_with_ifaces("sw2.example.com", &[(9, "Eth9")]);
+        sw2.bridge_address = Some("aa bb cc dd ee ff".to_string());
+        detected.insert("sw2.example.com".to_string(), sw2);
+
+        // Bare sysname expands via the search domain.
+        let by_name = lookup_lldp_neighbor(&detected, &lldp_neighbor("sw2", "Eth9", "interfaceName"), &params);
+        assert_eq!(by_name.map(|d| d.fqdn.as_str()), Some("sw2.example.com"));
+
+        // Unresolvable sysname falls back to chassis-id comparison.
+        let mut descriptor = lldp_neighbor("", "Eth9", "interfaceName");
+        descriptor.rem_chassis_id = "aa bb cc dd ee ff".to_string();
+        let by_chassis = lookup_lldp_neighbor(&detected, &descriptor, &params);
+        assert_eq!(by_chassis.map(|d| d.fqdn.as_str()), Some("sw2.example.com"));
+
+        // Neither matches.
+        let miss = lookup_lldp_neighbor(&detected, &lldp_neighbor("ghost", "Eth9", "interfaceName"), &params);
+        assert!(miss.is_none());
+    }
+
+    // --- build_connections ---
+
+    #[test]
+    fn build_connections_symmetric_lldp_link() {
+        let params = test_params();
+        let mut detected: HashMap<String, DetectedDevice> = HashMap::new();
+        let mut sw1 = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        sw1.interfaces.get_mut(&1).unwrap().lldp.push(lldp_neighbor("sw2", "Eth9", "interfaceName"));
+        let mut sw2 = device_with_ifaces("sw2.example.com", &[(9, "Eth9")]);
+        sw2.interfaces.get_mut(&9).unwrap().lldp.push(lldp_neighbor("sw1", "Eth1", "interfaceName"));
+        detected.insert("sw1.example.com".to_string(), sw1);
+        detected.insert("sw2.example.com".to_string(), sw2);
+
+        let links = build_connections(&detected, &params);
+        assert_eq!(links["sw1.example.com"][&1], ("sw2.example.com".to_string(), 9));
+        assert_eq!(links["sw2.example.com"][&9], ("sw1.example.com".to_string(), 1));
+    }
+
+    #[test]
+    fn build_connections_cdp_only_link() {
+        let params = test_params();
+        let mut detected: HashMap<String, DetectedDevice> = HashMap::new();
+        let mut sw1 = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        sw1.interfaces.get_mut(&1).unwrap().cdp = Some(CdpNeighbor {
+            device_id: "sw2.example.com".to_string(),
+            device_port: "Eth9".to_string(),
+        });
+        detected.insert("sw1.example.com".to_string(), sw1);
+        detected.insert("sw2.example.com".to_string(), device_with_ifaces("sw2.example.com", &[(9, "Eth9")]));
+
+        let links = build_connections(&detected, &params);
+        assert_eq!(links["sw1.example.com"][&1], ("sw2.example.com".to_string(), 9));
+    }
+
+    #[test]
+    fn build_connections_prefers_lldp_over_cdp() {
+        let params = test_params();
+        let mut detected: HashMap<String, DetectedDevice> = HashMap::new();
+        let mut sw1 = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        {
+            let iface = sw1.interfaces.get_mut(&1).unwrap();
+            iface.lldp.push(lldp_neighbor("sw2", "Eth8", "interfaceName"));
+            iface.cdp = Some(CdpNeighbor { device_id: "sw2.example.com".to_string(), device_port: "Eth9".to_string() });
+        }
+        detected.insert("sw1.example.com".to_string(), sw1);
+        detected.insert("sw2.example.com".to_string(), device_with_ifaces("sw2.example.com", &[(8, "Eth8"), (9, "Eth9")]));
+
+        let links = build_connections(&detected, &params);
+        assert_eq!(links["sw1.example.com"][&1], ("sw2.example.com".to_string(), 8));
+    }
+
+    #[test]
+    fn build_connections_uncrawled_neighbor_does_not_shadow() {
+        let params = test_params();
+        let mut detected: HashMap<String, DetectedDevice> = HashMap::new();
+        let mut sw1 = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        {
+            // LLDP flooded through a downstream switch: first entry names a
+            // device we never crawled, second is the real peer.
+            let iface = sw1.interfaces.get_mut(&1).unwrap();
+            iface.lldp.push(lldp_neighbor("ghost", "Eth1", "interfaceName"));
+            iface.lldp.push(lldp_neighbor("sw2", "Eth9", "interfaceName"));
+        }
+        detected.insert("sw1.example.com".to_string(), sw1);
+        detected.insert("sw2.example.com".to_string(), device_with_ifaces("sw2.example.com", &[(9, "Eth9")]));
+
+        let links = build_connections(&detected, &params);
+        assert_eq!(links["sw1.example.com"][&1], ("sw2.example.com".to_string(), 9));
+    }
+
+    #[test]
+    fn lldp_neighbor_port_single_reference_fallback() {
+        let params = test_params();
+        let mut detected: HashMap<String, DetectedDevice> = HashMap::new();
+        let mut sw1 = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        // Remote port id that maps to nothing on sw2.
+        sw1.interfaces.get_mut(&1).unwrap().lldp.push(lldp_neighbor("sw2", "garbage", "interfaceName"));
+        let mut sw2 = device_with_ifaces("sw2.example.com", &[(9, "Eth9"), (10, "Eth10")]);
+        // Exactly one sw2 interface references sw1 back (also with an unmappable port).
+        sw2.interfaces.get_mut(&9).unwrap().lldp.push(lldp_neighbor("sw1", "bogus", "interfaceName"));
+        detected.insert("sw1.example.com".to_string(), sw1);
+        detected.insert("sw2.example.com".to_string(), sw2);
+
+        let links = build_connections(&detected, &params);
+        assert_eq!(links["sw1.example.com"][&1], ("sw2.example.com".to_string(), 9));
+    }
+
+    // --- payloads ---
+
+    #[test]
+    fn discovered_device_payload_splits_fqdn_and_keys_interfaces() {
+        let mut device = device_with_ifaces("sw1.example.com", &[(1, "Eth1")]);
+        device.bridge_address = Some("aa bb cc dd ee ff".to_string());
+        device.device_types = vec!["C9300".to_string()];
+        device.software_versions = vec!["17.9".to_string()];
+        device.ensure_interface_sanity();
+        let payload = discovered_device_payload(&device).unwrap();
+        assert_eq!(payload.name, "sw1");
+        assert_eq!(payload.dns_domain, "example.com");
+        assert_eq!(payload.snmp_community.as_deref(), Some("public"));
+        assert_eq!(payload.base_mac.as_deref(), Some("aa:bb:cc:dd:ee:ff"));
+        assert_eq!(payload.device_type.as_deref(), Some("C9300"));
+        assert_eq!(payload.software_version.as_deref(), Some("17.9"));
+        assert_eq!(payload.interfaces["Eth1"].index, 1);
+        assert_eq!(payload.interfaces["Eth1"].interface_type, "other");
+    }
+
+    #[test]
+    fn discovered_device_payload_requires_domain() {
+        let device = DetectedDevice::new("hostnameonly", "public");
+        assert!(discovered_device_payload(&device).is_none());
+    }
+
+    #[test]
+    fn link_info_payload_maps_linked_and_unlinked_interfaces() {
+        let mut detected: HashMap<String, DetectedDevice> = HashMap::new();
+        detected.insert("sw2.example.com".to_string(), device_with_ifaces("sw2.example.com", &[(9, "Eth9")]));
+        let sw1 = device_with_ifaces("sw1.example.com", &[(1, "Eth1"), (2, "Eth2")]);
+
+        let mut links: LinkMap = HashMap::new();
+        links.entry("sw1.example.com".to_string()).or_insert_with(HashMap::new)
+            .insert(1, ("sw2.example.com".to_string(), 9));
+
+        let payload = link_info_payload(&sw1, &links, &detected, true);
+        assert_eq!(payload.device_fqdn, "sw1.example.com");
+        assert!(payload.topology_stable);
+        let peer = payload.interfaces["Eth1"].as_ref().unwrap();
+        assert_eq!(peer.name, "sw2");
+        assert_eq!(peer.dns_domain, "example.com");
+        assert_eq!(peer.interface, "Eth9");
+        assert!(payload.interfaces["Eth2"].is_none());
+    }
+
+    // --- next_run_params scheduler ---
+
+    fn control_with(config: models::json::DiscoveryConfig) -> Arc<Mutex<DiscoveryControl>> {
+        Arc::new(Mutex::new(DiscoveryControl::new(config)))
+    }
+
+    fn configured() -> models::json::DiscoveryConfig {
+        let mut config = models::json::DiscoveryConfig::default();
+        config.root_device = Some("root.example.com".to_string());
+        config.community = Some("public".to_string());
+        config.dns_domains = vec!["example.com".to_string()];
+        config
+    }
+
+    #[test]
+    fn next_run_idle_returns_none() {
+        let control = control_with(configured());
+        assert!(next_run_params("http://sb", true, &control).is_none());
+        assert!(!control.lock().unwrap().status.running);
+    }
+
+    #[test]
+    fn next_run_manual_trigger_consumes_overrides() {
+        let control = control_with(configured());
+        {
+            let mut control = control.lock().unwrap();
+            control.status.last_error = Some("previous failure".to_string());
+            control.trigger_requested = true;
+            control.trigger_overrides = Some(models::json::DiscoveryRunRequest {
+                root_device: Some("other-root.example.com".to_string()),
+                community: Some("private".to_string()),
+                dns_domains: None,
+                topology_stable: Some(true),
+            });
+        }
+        let params = next_run_params("http://sb", true, &control).unwrap();
+        assert_eq!(params.root_device, "other-root.example.com");
+        assert_eq!(params.community, "private");
+        assert_eq!(params.dns_domains, vec!["example.com".to_string()]);
+        assert!(params.topology_stable);
+        assert_eq!(params.trigger, "manual");
+
+        let control = control.lock().unwrap();
+        assert!(!control.trigger_requested);
+        assert!(control.trigger_overrides.is_none());
+        assert!(control.status.running);
+        assert!(control.status.last_started.is_some());
+        assert!(control.status.last_error.is_none());
+    }
+
+    #[test]
+    fn next_run_unconfigured_sets_last_error() {
+        let control = control_with(models::json::DiscoveryConfig::default());
+        control.lock().unwrap().trigger_requested = true;
+        assert!(next_run_params("http://sb", true, &control).is_none());
+        let control = control.lock().unwrap();
+        assert!(control.status.last_error.as_ref().unwrap().contains("not configured"));
+        assert!(!control.status.running);
+    }
+
+    #[test]
+    fn next_run_periodic_due_and_not_due() {
+        let mut config = configured();
+        config.periodic_enabled = true;
+        config.interval_secs = 60;
+        let control = control_with(config);
+
+        // Never ran: due immediately.
+        let params = next_run_params("http://sb", true, &control).unwrap();
+        assert_eq!(params.trigger, "periodic");
+
+        // Just finished: not due.
+        {
+            let mut control = control.lock().unwrap();
+            control.status.running = false;
+            control.status.last_finished = Some(utilities::tools::get_time() - 5.0);
+        }
+        assert!(next_run_params("http://sb", true, &control).is_none());
+
+        // Interval elapsed: due again.
+        control.lock().unwrap().status.last_finished = Some(utilities::tools::get_time() - 61.0);
+        assert!(next_run_params("http://sb", true, &control).is_some());
+    }
+
+    #[test]
+    fn next_run_periodic_interval_is_floored() {
+        let mut config = configured();
+        config.periodic_enabled = true;
+        config.interval_secs = 0; // bad config: must not busy-loop
+        let control = control_with(config);
+        control.lock().unwrap().status.last_finished = Some(utilities::tools::get_time() - 5.0);
+        assert!(next_run_params("http://sb", true, &control).is_none());
+        control.lock().unwrap().status.last_finished = Some(utilities::tools::get_time() - 11.0);
+        assert!(next_run_params("http://sb", true, &control).is_some());
+    }
+}
+
 pub fn run(
     snmpbot_url: String,
     control: Arc<Mutex<DiscoveryControl>>,

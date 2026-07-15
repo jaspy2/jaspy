@@ -1,4 +1,43 @@
-# jaspy-nexus end-to-end tests
+# jaspy-nexus tests
+
+There are two suites:
+
+- **Unit tests** — inline `#[cfg(test)] mod tests` modules in `src/`, run with
+  `cargo test --bin jaspy-nexus`. No PostgreSQL, MQTT, or network needed;
+  they finish in well under a second. This is where most coverage lives.
+- **End-to-end tests** — `tests/e2e.rs`, run with `cargo test --test e2e`.
+  Boots the real binary against ephemeral Postgres + mock snmpbot + embedded
+  MQTT (see below). Slow but exercises the full process.
+
+Plain `cargo test` runs both.
+
+## Testing policy
+
+**Unit-first.** New logic gets unit tests in its own module, written against
+the pure core: parsing, table/entry transforms, state machines, metric
+rendering. If the logic you want to test is tangled with I/O (HTTP, DB, MQTT),
+prefer extracting a pure function and unit-testing that over booting the e2e
+harness — see `traphandler::parse_trap_text` / `link_event_from_trap` and
+`poller::merge_query_result` for examples of exactly this split.
+
+**E2e is reserved for** (a) crucial core flows — the HTTP↔DB ingest contracts,
+snmpbot query shapes on the wire, MQTT event publication, trap ingest wiring,
+discovery crawling end to end — and (b) behavior that unit tests cannot reach
+(process startup, migrations, Rocket routing/guards, config/env plumbing).
+Don't add an e2e test for logic a unit test can cover.
+
+Unit test conventions:
+
+- Inline `#[cfg(test)] mod tests { use super::*; ... }` at the bottom of the
+  module under test; this gives access to private functions — don't widen
+  visibility for tests.
+- Reuse the snmpbot/trap fixtures via
+  `include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/..."))`.
+- Build an IMDS with `MessageBus::disconnected()` (test-only constructor).
+- Never read or write real environment variables in unit tests — tests run in
+  parallel in one process.
+
+# End-to-end tests
 
 `tests/e2e.rs` boots the **real** `jaspy-nexus` binary against a **mock snmpbot**
 (`httpmock`), an **ephemeral PostgreSQL** (spun up per test via `initdb`/`pg_ctl`),

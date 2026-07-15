@@ -240,3 +240,72 @@ impl Event {
         return event;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn constructors_set_event_type_and_fqdn() {
+        let fqdn = "sw1.example.com".to_string();
+        let cases: Vec<(Event, &str)> = vec![
+            (Event::device_created_event(&fqdn), "deviceCreated"),
+            (Event::device_deleted_event(&fqdn), "deviceDeleted"),
+            (Event::device_polling_changed_event(&fqdn, Some(false), Some(true)), "devicePollingChanged"),
+            (Event::device_os_info_changed_event(&fqdn, &None, &Some("IOS 15.2".to_string())), "deviceOsInfoChanged"),
+            (Event::device_base_mac_changed_event(&fqdn, &None, &Some("aa:bb:cc:dd:ee:ff".to_string())), "deviceBaseMacChanged"),
+            (Event::ping_change_event(&fqdn, std::collections::HashSet::new(), false, true), "pingChange"),
+            (Event::interface_updown_event(&fqdn, &"Ethernet1/1".to_string(), None, None, &HashMap::new(), false, true), "interfaceUpDown"),
+            (Event::interface_speed_event(&fqdn, &"Ethernet1/1".to_string(), None, None, 100, 1000), "interfaceSpeed"),
+        ];
+        for (event, expected_type) in cases {
+            assert_eq!(event.event_type, expected_type);
+            assert_eq!(event.fqdn(), Some(fqdn.as_str()), "fqdn missing for {}", expected_type);
+        }
+    }
+
+    #[test]
+    fn new_empty_has_no_fqdn() {
+        assert_eq!(Event::new_empty("somethingElse").fqdn(), None);
+    }
+
+    #[test]
+    fn ping_change_sorts_neighbors() {
+        let mut neighbors = HashSet::new();
+        neighbors.insert("bravo.example.com".to_string());
+        neighbors.insert("alpha.example.com".to_string());
+        let event = Event::ping_change_event(&"sw1.example.com".to_string(), neighbors, true, false);
+        let json = serde_json::to_value(&event).unwrap();
+        assert_eq!(
+            json["pingChange"]["neighbors"],
+            serde_json::json!(["alpha.example.com", "bravo.example.com"])
+        );
+    }
+
+    #[test]
+    fn event_json_uses_camel_case_and_omits_absent_variants() {
+        let mut link_statuses = HashMap::new();
+        link_statuses.insert("Ethernet1/2".to_string(), "up".to_string());
+        let event = Event::interface_updown_event(
+            &"sw1.example.com".to_string(),
+            &"Ethernet1/1".to_string(),
+            Some("sw2.example.com".to_string()),
+            Some("Ethernet2/1".to_string()),
+            &link_statuses,
+            true,
+            false,
+        );
+        let json = serde_json::to_value(&event).unwrap();
+        let obj = json.as_object().unwrap();
+        assert_eq!(obj["eventType"], "interfaceUpDown");
+        let payload = obj["interfaceUpDown"].as_object().unwrap();
+        assert_eq!(payload["oldState"], true);
+        assert_eq!(payload["newState"], false);
+        assert_eq!(payload["neighborName"], "Ethernet2/1");
+        assert_eq!(payload["neighborLinksState"]["Ethernet1/2"], "up");
+        // skip_serializing_if drops every unused variant.
+        assert!(!obj.contains_key("pingChange"));
+        assert!(!obj.contains_key("deviceCreated"));
+        assert!(!obj.contains_key("interfaceSpeed"));
+    }
+}

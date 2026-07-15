@@ -56,6 +56,102 @@ impl EntityMetricsStore {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn metric(name: &str, value: i64) -> LabeledMetric {
+        LabeledMetric::from_parts(name, MetricValue::Int64(value), &[("fqdn", "sw1.example.com")], 1)
+    }
+
+    #[test]
+    fn rstp_role_numeric_all_variants() {
+        assert_eq!(rstp_port_role_numeric("disabled"), 1);
+        assert_eq!(rstp_port_role_numeric("root"), 2);
+        assert_eq!(rstp_port_role_numeric("designated"), 3);
+        assert_eq!(rstp_port_role_numeric("alternate"), 4);
+        assert_eq!(rstp_port_role_numeric("backUp"), 5);
+        assert_eq!(rstp_port_role_numeric("boundary"), 6);
+        assert_eq!(rstp_port_role_numeric("master"), 7);
+        assert_eq!(rstp_port_role_numeric("something-new"), 0);
+    }
+
+    #[test]
+    fn stp_state_numeric_all_variants() {
+        assert_eq!(stp_port_state_numeric("disabled"), 1);
+        assert_eq!(stp_port_state_numeric("blocking"), 2);
+        assert_eq!(stp_port_state_numeric("listening"), 3);
+        assert_eq!(stp_port_state_numeric("learning"), 4);
+        assert_eq!(stp_port_state_numeric("forwarding"), 5);
+        assert_eq!(stp_port_state_numeric("broken"), 6);
+        assert_eq!(stp_port_state_numeric(""), 0);
+    }
+
+    #[test]
+    fn stp_enable_numeric_all_variants() {
+        assert_eq!(stp_port_enable_numeric("enabled"), 1);
+        assert_eq!(stp_port_enable_numeric("disabled"), 2);
+        assert_eq!(stp_port_enable_numeric(""), 0);
+    }
+
+    fn objects(json: &str) -> HashMap<String, SNMPBotResultEntryObjectValue> {
+        serde_json::from_str(json).unwrap()
+    }
+
+    #[test]
+    fn obj_f64_accepts_numbers_rejects_strings() {
+        let objs = objects(r#"{"uint": 42, "float": 4.5, "str": "42"}"#);
+        assert_eq!(obj_f64(&objs, "uint"), Some(42.0));
+        assert_eq!(obj_f64(&objs, "float"), Some(4.5));
+        assert_eq!(obj_f64(&objs, "str"), None);
+        assert_eq!(obj_f64(&objs, "missing"), None);
+    }
+
+    #[test]
+    fn obj_i64_accepts_numbers_rejects_strings() {
+        let objs = objects(r#"{"uint": 42, "float": 4.9, "str": "42"}"#);
+        assert_eq!(obj_i64(&objs, "uint"), Some(42));
+        assert_eq!(obj_i64(&objs, "float"), Some(4));
+        assert_eq!(obj_i64(&objs, "str"), None);
+    }
+
+    #[test]
+    fn obj_str_accepts_strings_only() {
+        let objs = objects(r#"{"uint": 42, "str": "up"}"#);
+        assert_eq!(obj_str(&objs, "str"), Some("up".to_string()));
+        assert_eq!(obj_str(&objs, "uint"), None);
+        assert_eq!(obj_str(&objs, "missing"), None);
+    }
+
+    #[test]
+    fn store_replace_and_render() {
+        let mut store = EntityMetricsStore::new();
+        store.replace_device("sw1.example.com".to_string(), vec![metric("jaspy_stp_port_state", 5)]);
+        assert_eq!(store.render(), "jaspy_stp_port_state{fqdn=\"sw1.example.com\"} 5 1\n");
+
+        // Replacing a device overwrites its previous metrics wholesale.
+        store.replace_device("sw1.example.com".to_string(), vec![metric("jaspy_stp_port_state", 2)]);
+        assert_eq!(store.render(), "jaspy_stp_port_state{fqdn=\"sw1.example.com\"} 2 1\n");
+    }
+
+    #[test]
+    fn store_retain_drops_unmonitored_devices() {
+        let mut store = EntityMetricsStore::new();
+        store.replace_device("keep.example.com".to_string(), vec![metric("jaspy_sensors", 1)]);
+        store.replace_device("drop.example.com".to_string(), vec![metric("jaspy_sensors", 2)]);
+        let keep: HashSet<String> = vec!["keep.example.com".to_string()].into_iter().collect();
+        store.retain(&keep);
+        let rendered = store.render();
+        assert!(rendered.contains("jaspy_sensors"));
+        assert_eq!(rendered.lines().count(), 1);
+    }
+
+    #[test]
+    fn render_empty_store_is_empty() {
+        assert_eq!(EntityMetricsStore::new().render(), "");
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Per-device metadata loaded from the DB (replaces the Go /dev/device API calls)
 // ---------------------------------------------------------------------------

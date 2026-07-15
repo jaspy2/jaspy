@@ -68,11 +68,19 @@ impl LabeledMetric {
         }
     }
 
+    #[cfg(test)]
+    pub fn from_parts(name: &str, value: MetricValue, labels: &[(&str, &str)], timestamp: u64) -> LabeledMetric {
+        let labels: HashMap<String, String> = labels.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        LabeledMetric::new(&name.to_string(), value, &labels, timestamp)
+    }
+
     pub fn as_text(self: &LabeledMetric) -> String {
         let mut label_data : Vec<String> = Vec::new();
         for (label, value) in self.labels.iter() {
             label_data.push(format!("{}=\"{}\"", label, value));
         }
+        // Deterministic output regardless of HashMap iteration order.
+        label_data.sort();
         let labeltext = label_data.join(",");
         let body;
         match self.value {
@@ -87,5 +95,48 @@ impl LabeledMetric {
             }
         }
         return format!("{}", body);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn as_text_int64() {
+        let m = LabeledMetric::from_parts("jaspy_device_up", MetricValue::Int64(-1), &[("fqdn", "sw1.example.com")], 1000);
+        assert_eq!(m.as_text(), "jaspy_device_up{fqdn=\"sw1.example.com\"} -1 1000");
+    }
+
+    #[test]
+    fn as_text_uint64() {
+        let m = LabeledMetric::from_parts("jaspy_octets", MetricValue::Uint64(u64::MAX), &[("direction", "rx")], 5);
+        assert_eq!(m.as_text(), format!("jaspy_octets{{direction=\"rx\"}} {} 5", u64::MAX));
+    }
+
+    #[test]
+    fn as_text_float64() {
+        let m = LabeledMetric::from_parts("jaspy_sensor", MetricValue::Float64(21.5), &[("sensor", "temp")], 7);
+        assert_eq!(m.as_text(), "jaspy_sensor{sensor=\"temp\"} 21.5 7");
+    }
+
+    #[test]
+    fn as_text_no_labels() {
+        let m = LabeledMetric::from_parts("jaspy_thing", MetricValue::Uint64(1), &[], 1);
+        assert_eq!(m.as_text(), "jaspy_thing{} 1 1");
+    }
+
+    #[test]
+    fn as_text_sorts_labels() {
+        let m = LabeledMetric::from_parts(
+            "jaspy_interface_up",
+            MetricValue::Int64(1),
+            &[("neighbors", "yes"), ("fqdn", "sw1.example.com"), ("name", "Ethernet1/1")],
+            42,
+        );
+        assert_eq!(
+            m.as_text(),
+            "jaspy_interface_up{fqdn=\"sw1.example.com\",name=\"Ethernet1/1\",neighbors=\"yes\"} 1 42"
+        );
     }
 }

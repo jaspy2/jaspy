@@ -74,3 +74,26 @@ impl<'r> FromRequest<'r> for JaspyDB {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn redacts_password() {
+        let redacted = redacted_db_url("postgres://jaspy:sup3rsecret@db.example.com:5432/jaspy");
+        assert!(!redacted.contains("sup3rsecret"));
+        assert!(redacted.contains("***"));
+        assert!(redacted.contains("db.example.com"));
+    }
+
+    #[test]
+    fn url_without_password_is_unchanged() {
+        assert_eq!(redacted_db_url("postgres://jaspy@localhost/jaspy"), "postgres://jaspy@localhost/jaspy");
+    }
+
+    #[test]
+    fn unparseable_url_is_replaced_entirely() {
+        assert_eq!(redacted_db_url("not a url"), "<unparseable JASPY_DB_URL>");
+    }
+}

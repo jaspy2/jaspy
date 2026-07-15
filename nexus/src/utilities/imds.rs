@@ -467,6 +467,11 @@ impl IMDS {
         return metric_values;
     }
 
+    #[cfg(test)]
+    fn interface_mut(self: &mut IMDS, device_fqdn: &str, if_index: i32) -> &mut models::metrics::InterfaceMetrics {
+        self.metrics_storage.devices.get_mut(device_fqdn).unwrap().interfaces.get_mut(&if_index).unwrap()
+    }
+
     pub fn get_fast_metrics(self: &IMDS) -> Vec<models::metrics::LabeledMetric> {
         let jaspy_device_up = "jaspy_device_up".to_string();
         let jaspy_interface_up = "jaspy_interface_up".to_string();
@@ -510,5 +515,283 @@ impl IMDS {
         }
 
         return metric_values;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::json::InterfaceMonitorInterfaceReport;
+    use crate::models::metrics::{InterfaceMetrics, LabeledMetric, MetricValue};
+
+    fn test_imds() -> IMDS {
+        IMDS::new(Arc::new(Mutex::new(utilities::msgbus::MessageBus::disconnected())))
+    }
+
+    fn empty_report(if_index: i32) -> InterfaceMonitorInterfaceReport {
+        InterfaceMonitorInterfaceReport {
+            if_index: if_index,
+            in_octets: None,
+            out_octets: None,
+            in_unicast_packets: None,
+            in_multicast_packets: None,
+            in_broadcast_packets: None,
+            out_unicast_packets: None,
+            out_multicast_packets: None,
+            out_broadcast_packets: None,
+            in_errors: None,
+            out_errors: None,
+            out_discards: None,
+            up: None,
+            speed: None,
+        }
+    }
+
+    fn empty_interface(name: &str) -> InterfaceMetrics {
+        InterfaceMetrics {
+            name: name.to_string(),
+            neighbors: false,
+            interface_type: "ethernetCsmacd".to_string(),
+            last_report: 0,
+            speed_override: None,
+            in_octets: None,
+            out_octets: None,
+            in_unicast_packets: None,
+            in_multicast_packets: None,
+            in_broadcast_packets: None,
+            out_unicast_packets: None,
+            out_multicast_packets: None,
+            out_broadcast_packets: None,
+            in_errors: None,
+            out_errors: None,
+            out_discards: None,
+            up: None,
+            speed: None,
+            counter_violations: 0,
+        }
+    }
+
+    fn metrics_by_name<'a>(metrics: &'a [LabeledMetric], name: &str) -> Vec<&'a LabeledMetric> {
+        metrics.iter().filter(|m| m.name == name).collect()
+    }
+
+    // --- counter validation ---
+
+    #[test]
+    fn forward_progress_accepts_missing_old_or_new() {
+        assert!(IMDS::validate_u64_forward_progress(&None, &Some(5)));
+        assert!(IMDS::validate_u64_forward_progress(&Some(5), &None));
+        assert!(IMDS::validate_u64_forward_progress(&None, &None));
+    }
+
+    #[test]
+    fn forward_progress_accepts_equal_and_increase() {
+        assert!(IMDS::validate_u64_forward_progress(&Some(5), &Some(5)));
+        assert!(IMDS::validate_u64_forward_progress(&Some(5), &Some(6)));
+    }
+
+    #[test]
+    fn forward_progress_rejects_small_decrease() {
+        assert!(!IMDS::validate_u64_forward_progress(&Some(1000), &Some(999)));
+    }
+
+    #[test]
+    fn forward_progress_accepts_wrap_sized_decrease() {
+        // A drop of >= 2^31-1 is treated as a counter wrap, not a regression.
+        assert!(IMDS::validate_u64_forward_progress(&Some(5_000_000_000), &Some(100)));
+    }
+
+    #[test]
+    fn validate_counters_rejects_regression_and_counts_violation() {
+        let mut current = empty_interface("Ethernet1/1");
+        current.in_octets = Some(1000);
+        let mut report = empty_report(1);
+        report.in_octets = Some(999);
+        assert!(!IMDS::validate_counters(&mut current, &report));
+        assert_eq!(current.counter_violations, 1);
+        // Stored value is untouched on rejection (report_interfaces skips the update).
+        assert_eq!(current.in_octets, Some(1000));
+    }
+
+    #[test]
+    fn validate_counters_accepts_after_ten_violations() {
+        let mut current = empty_interface("Ethernet1/1");
+        current.in_octets = Some(1000);
+        current.counter_violations = 10;
+        let mut report = empty_report(1);
+        report.in_octets = Some(999);
+        // Persistent "violations" mean the counters really did reset (e.g.
+        // device reboot); accept and start over.
+        assert!(IMDS::validate_counters(&mut current, &report));
+        assert_eq!(current.counter_violations, 0);
+    }
+
+    #[test]
+    fn validate_counters_resets_violations_on_success() {
+        let mut current = empty_interface("Ethernet1/1");
+        current.in_octets = Some(1000);
+        current.counter_violations = 3;
+        let mut report = empty_report(1);
+        report.in_octets = Some(2000);
+        assert!(IMDS::validate_counters(&mut current, &report));
+        assert_eq!(current.counter_violations, 0);
+    }
+
+    // --- device/interface state ---
+
+    #[test]
+    fn refresh_device_creates_then_touches() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn);
+        {
+            let device = imds.get_device(&fqdn).unwrap();
+            assert_eq!(device.hostname, "sw1");
+            assert_eq!(device.fqdn, fqdn);
+            assert_eq!(device.up, None);
+            assert_eq!(device.last_report, 0);
+        }
+        imds.refresh_device(&fqdn);
+        assert!(imds.get_device(&fqdn).unwrap().last_report > 0);
+    }
+
+    #[test]
+    fn retain_devices_drops_missing() {
+        let mut imds = test_imds();
+        imds.refresh_device(&"keep.example.com".to_string());
+        imds.refresh_device(&"drop.example.com".to_string());
+        let keep: HashSet<String> = vec!["keep.example.com".to_string()].into_iter().collect();
+        imds.retain_devices(&keep);
+        assert!(imds.get_device("keep.example.com").is_some());
+        assert!(imds.get_device("drop.example.com").is_none());
+    }
+
+    #[test]
+    fn refresh_interface_creates_then_updates() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
+        {
+            let iface = &imds.get_device(&fqdn).unwrap().interfaces[&1];
+            assert_eq!(iface.name, "Eth1");
+            assert_eq!(iface.neighbors, false);
+            assert_eq!(iface.speed_override, None);
+        }
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Ethernet1/1".to_string(), true, Some(10000));
+        let device = imds.get_device(&fqdn).unwrap();
+        assert_eq!(device.interfaces.len(), 1);
+        let iface = &device.interfaces[&1];
+        assert_eq!(iface.name, "Ethernet1/1");
+        assert_eq!(iface.neighbors, true);
+        assert_eq!(iface.speed_override, Some(10000));
+    }
+
+    #[test]
+    fn refresh_interface_without_device_is_ignored() {
+        let mut imds = test_imds();
+        imds.refresh_interface(&"ghost.example.com".to_string(), 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
+        assert!(imds.get_device("ghost.example.com").is_none());
+    }
+
+    // --- metric rendering ---
+
+    #[test]
+    fn get_fast_metrics_encodes_device_and_interface_up() {
+        let mut imds = test_imds();
+        let up = "up.example.com".to_string();
+        let down = "down.example.com".to_string();
+        let unknown = "unknown.example.com".to_string();
+        for fqdn in [&up, &down, &unknown] {
+            imds.refresh_device(fqdn);
+        }
+        imds.metrics_storage.devices.get_mut(&up).unwrap().up = Some(true);
+        imds.metrics_storage.devices.get_mut(&down).unwrap().up = Some(false);
+
+        imds.refresh_interface(&up, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), true, None);
+        imds.interface_mut(&up, 1).up = Some(true);
+
+        let metrics = imds.get_fast_metrics();
+        let device_up = metrics_by_name(&metrics, "jaspy_device_up");
+        // Indeterminate (None) devices emit no up/down metric at all.
+        assert_eq!(device_up.len(), 2);
+        for metric in device_up {
+            let expected = if metric.labels["fqdn"] == up { 1 } else { 0 };
+            assert!(matches!(metric.value, MetricValue::Int64(v) if v == expected));
+        }
+
+        let iface_up = metrics_by_name(&metrics, "jaspy_interface_up");
+        assert_eq!(iface_up.len(), 1);
+        assert_eq!(iface_up[0].labels["fqdn"], up);
+        assert_eq!(iface_up[0].labels["name"], "Eth1");
+        assert_eq!(iface_up[0].labels["neighbors"], "yes");
+        assert!(matches!(iface_up[0].value, MetricValue::Int64(1)));
+    }
+
+    #[test]
+    fn get_metrics_speed_override_wins() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, Some(40000));
+        imds.interface_mut(&fqdn, 1).speed = Some(1000);
+
+        let metrics = imds.get_metrics();
+        let speed = metrics_by_name(&metrics, "jaspy_interface_speed");
+        assert_eq!(speed.len(), 1);
+        assert!(matches!(speed[0].value, MetricValue::Int64(40000)));
+    }
+
+    #[test]
+    fn get_metrics_uses_direction_labels() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
+        {
+            let iface = imds.interface_mut(&fqdn, 1);
+            iface.in_octets = Some(100);
+            iface.out_octets = Some(200);
+        }
+
+        let metrics = imds.get_metrics();
+        let octets = metrics_by_name(&metrics, "jaspy_interface_octets");
+        assert_eq!(octets.len(), 2);
+        for metric in octets {
+            match metric.labels["direction"].as_str() {
+                "rx" => assert!(matches!(metric.value, MetricValue::Uint64(100))),
+                "tx" => assert!(matches!(metric.value, MetricValue::Uint64(200))),
+                other => panic!("unexpected direction label {}", other),
+            }
+        }
+    }
+
+    #[test]
+    fn get_metrics_omits_unset_counters() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
+        // Everything None: no metrics at all for this interface.
+        assert!(imds.get_metrics().is_empty());
+    }
+
+    #[test]
+    fn get_metrics_neighbors_label_yes_no() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), true, None);
+        imds.refresh_interface(&fqdn, 2, &"ethernetCsmacd".to_string(), &"Eth2".to_string(), false, None);
+        imds.interface_mut(&fqdn, 1).in_errors = Some(1);
+        imds.interface_mut(&fqdn, 2).in_errors = Some(2);
+
+        let metrics = imds.get_metrics();
+        let errors = metrics_by_name(&metrics, "jaspy_interface_errors");
+        assert_eq!(errors.len(), 2);
+        for metric in errors {
+            let expected = if metric.labels["name"] == "Eth1" { "yes" } else { "no" };
+            assert_eq!(metric.labels["neighbors"], expected);
+        }
     }
 }

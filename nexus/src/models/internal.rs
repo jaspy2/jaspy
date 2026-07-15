@@ -31,3 +31,20 @@ impl RuntimeInfo {
         return state_id;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_id_scales_startup_time() {
+        let info = RuntimeInfo { startup_time: 1234.56789 };
+        assert_eq!(info.state_id(), 123456789);
+    }
+
+    #[test]
+    fn state_id_truncates_sub_resolution_digits() {
+        let info = RuntimeInfo { startup_time: 1.000009 };
+        assert_eq!(info.state_id(), 100000);
+    }
+}
