@@ -20,7 +20,7 @@ fn should_continue(running : &std::sync::atomic::AtomicBool) -> bool {
     return running.load(std::sync::atomic::Ordering::Relaxed);
 }
 
-fn refresh_imds_items(conn: &mut diesel::PgConnection, imds: &Arc<Mutex<utilities::imds::IMDS>>) {
+fn refresh_imds_items(conn: &mut db::AnyConnection, imds: &Arc<Mutex<utilities::imds::IMDS>>) {
     let mut refresh_devices : Vec<models::dbo::Device> = Vec::new();
     let mut refresh_interfaces : HashMap<String, Vec<models::dbo::Interface>> = HashMap::new();
     for device in models::dbo::Device::monitored(conn).iter() {
@@ -138,6 +138,11 @@ async fn server_main() {
         interval_secs: discovery_interval_secs.unwrap_or(3600),
     };
 
+    // Apply pending embedded migrations for the configured backend before any
+    // DB read (the discovery-config load below needs the settings table).
+    // Opt-out: JASPY_AUTO_MIGRATE=false.
+    db::auto_migrate();
+
     // A config persisted via PUT /dev/discovery/config (settings table) wins
     // over the env seed; env is only the first-boot default. Log which source
     // is used so an ignored env edit or an unreadable persisted config is
@@ -250,6 +255,7 @@ async fn server_main() {
         entitypoller_stp_enabled: !entitypoller_disable_stp,
         weathermap_dir: if weathermap_dir_present { Some(weathermap_dir.clone()) } else { None },
         db_url: db::redacted_db_url(&std::env::var("JASPY_DB_URL").unwrap_or_default()),
+        db_backend: db::backend_kind(&std::env::var("JASPY_DB_URL").unwrap_or_default()).as_str().to_string(),
     };
 
     let mut rocket_app = rocket::build()

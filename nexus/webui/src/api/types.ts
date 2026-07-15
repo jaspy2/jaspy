@@ -43,6 +43,9 @@ export interface SystemStatus {
   startupTime: number;
   snmpbotUrl: string;
   dbUrl: string;
+  dbBackend: string; // "postgresql" | "sqlite"
+  dbConnected: boolean;
+  dbMigrationsPending: boolean | null; // null = unknown (db unreachable)
   pollerEnabled: boolean;
   pollLoopMsecs: number;
   pingerEnabled: boolean;

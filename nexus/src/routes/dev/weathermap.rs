@@ -7,9 +7,9 @@ use std::sync::{Arc, Mutex};
 use crate::utilities;
 use rocket::State;
 use std::ops::DerefMut;
-use diesel::pg::PgConnection;
+use crate::db::AnyConnection;
 
-fn get_topology_data(connection: &mut PgConnection) -> models::json::WeathermapBase {
+fn get_topology_data(connection: &mut AnyConnection) -> models::json::WeathermapBase {
     let mut wmap: models::json::WeathermapBase = models::json::WeathermapBase {
         devices: HashMap::new(),
     };

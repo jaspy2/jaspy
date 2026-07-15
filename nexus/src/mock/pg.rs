@@ -3,13 +3,9 @@
 // embedded Diesel migrations. Adapted from the e2e PgHarness
 // (tests/common/mod.rs) — kept separate because integration tests cannot
 // reach bin-crate modules.
-use diesel::Connection;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::process::Command;
-
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 pub struct MockPg {
     // Held for its Drop (removes the directory) — after pg is stopped.
@@ -54,14 +50,6 @@ fn run_or_die(mut cmd: Command, what: &str) {
     }
 }
 
-pub fn run_migrations(db_url: &str) {
-    let mut connection = diesel::pg::PgConnection::establish(db_url)
-        .unwrap_or_else(|e| panic!("[mock] cannot connect to {} for migrations: {}", crate::db::redacted_db_url(db_url), e));
-    connection
-        .run_pending_migrations(MIGRATIONS)
-        .unwrap_or_else(|e| panic!("[mock] migrations failed: {}", e));
-}
-
 pub fn start() -> MockPg {
     let bindir = std::env::var("JASPY_PG_BINDIR")
         .or_else(|_| std::env::var("JASPY_TEST_PG_BINDIR"))
@@ -92,7 +80,7 @@ pub fn start() -> MockPg {
     run_or_die(createdb, "createdb");
 
     let db_url = format!("postgres://jaspy@127.0.0.1:{}/jaspy", port);
-    run_migrations(&db_url);
+    // Auto-migrate at startup (server_main) creates the schema; nothing to do here.
 
     println!("[mock] ephemeral postgres in {} (removed on clean shutdown)", data_dir.path().display());
     MockPg { data_dir, bindir, db_url }

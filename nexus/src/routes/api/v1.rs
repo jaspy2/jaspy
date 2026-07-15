@@ -27,7 +27,7 @@ fn imds_device_up(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, fqdn: &str) -
     imds_device_live(imds, fqdn).0
 }
 
-fn event_name(connection: &mut diesel::PgConnection) -> Option<String> {
+fn event_name(connection: &mut db::AnyConnection) -> Option<String> {
     models::dbo::Setting::get(connection, EVENT_SETTING)
         .and_then(|json| serde_json::from_str::<models::json::ApiEvent>(&json).ok())
         .and_then(|event| event.name)
@@ -75,7 +75,7 @@ pub fn summary(
     })
 }
 
-fn api_device(connection: &mut diesel::PgConnection, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, device: &models::dbo::Device) -> models::json::ApiDevice {
+fn api_device(connection: &mut db::AnyConnection, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, device: &models::dbo::Device) -> models::json::ApiDevice {
     let fqdn = format!("{}.{}", device.name, device.dns_domain);
     let (up, seconds_since_last_poll) = imds_device_live(imds, &fqdn);
     models::json::ApiDevice {
@@ -323,8 +323,17 @@ pub fn system_status(
     runtime_info: &State<Arc<Mutex<models::internal::RuntimeInfo>>>,
     msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>,
     discovery_control: &State<Arc<Mutex<crate::collectors::discovery::DiscoveryControl>>>,
+    pool: &State<db::Pool>,
 ) -> Json<models::json::ApiSystemStatus> {
     let startup_time = runtime_info.inner().lock().map(|r| r.startup_time).unwrap_or(0.0);
+    // Live database probe. get_timeout, never get(): the blocking variant can
+    // stall the handler for the pool's full 30s checkout timeout when the
+    // database is down.
+    let (db_connected, db_migrations_pending) =
+        match pool.get_timeout(std::time::Duration::from_millis(500)) {
+            Ok(mut conn) => (true, db::has_pending_migrations(&mut *conn).ok()),
+            Err(_) => (false, None),
+        };
     let (mqtt_broker, mqtt_connected) = match msgbus.inner().lock() {
         Ok(msgbus) => (msgbus.broker(), msgbus.connection_status()),
         Err(_) => (None, None),
@@ -341,6 +350,9 @@ pub fn system_status(
         startup_time: startup_time,
         snmpbot_url: system.snmpbot_url.clone(),
         db_url: system.db_url.clone(),
+        db_backend: system.db_backend.clone(),
+        db_connected: db_connected,
+        db_migrations_pending: db_migrations_pending,
         poller_enabled: system.poller_enabled,
         poll_loop_msecs: system.poll_loop_msecs,
         pinger_enabled: system.pinger_enabled,

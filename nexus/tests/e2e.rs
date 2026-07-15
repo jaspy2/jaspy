@@ -10,6 +10,25 @@ use serde_json::json;
 
 use common::*;
 
+// Every e2e test runs against both database backends: `e2e_both!(name)`
+// generates `name::pg` and `name::sqlite` #[test] wrappers around a
+// `fn name(db: DbHarness)` body. Filter one side with
+// `cargo test --test e2e -- ::sqlite` (or `::pg`).
+macro_rules! e2e_both {
+    ($name:ident) => {
+        mod $name {
+            #[test]
+            fn pg() {
+                super::$name(crate::common::DbHarness::start(crate::common::Backend::Pg));
+            }
+            #[test]
+            fn sqlite() {
+                super::$name(crate::common::DbHarness::start(crate::common::Backend::Sqlite));
+            }
+        }
+    };
+}
+
 const FQDN: &str = "sw1.test.example";
 const COMMUNITY: &str = "testcomm";
 
@@ -64,15 +83,14 @@ fn wait_until<F: Fn() -> bool>(timeout: Duration, f: F) -> bool {
 // ---------------------------------------------------------------------------
 // 1. Poller issues the right snmpbot queries and renders interface metrics
 // ---------------------------------------------------------------------------
-#[test]
-fn poller_queries_and_interface_metrics() {
-    let pg = PgHarness::start();
+e2e_both!(poller_queries_and_interface_metrics);
+fn poller_queries_and_interface_metrics(db: DbHarness) {
     let mock = SnmpbotMock::start();
     let iftable = mock.stub_table(FQDN, COMMUNITY, "IF-MIB::ifTable", &read_fixture("iftable.json"));
     let ifxtable = mock.stub_table(FQDN, COMMUNITY, "IF-MIB::ifXTable", &read_fixture("ifxtable.json"));
     let other = mock.stub_other_tables();
 
-    let nexus = Nexus::builder(&pg.db_url)
+    let nexus = Nexus::builder(db.db_url())
         .snmpbot(&mock.url())
         .poller(true)
         .poll_loop_msecs(300)
@@ -131,9 +149,8 @@ fn poller_queries_and_interface_metrics() {
 // ---------------------------------------------------------------------------
 // 1b. Entitypoller renders entity sensor + per-VLAN STP metrics
 // ---------------------------------------------------------------------------
-#[test]
-fn entitypoller_sensor_and_stp_metrics() {
-    let pg = PgHarness::start();
+e2e_both!(entitypoller_sensor_and_stp_metrics);
+fn entitypoller_sensor_and_stp_metrics(db: DbHarness) {
     let mock = SnmpbotMock::start();
 
     // entitypoller addresses snmpbot hosts inline as community@fqdn, and
@@ -149,7 +166,7 @@ fn entitypoller_sensor_and_stp_metrics() {
     mock.stub_host_table(&vlan_host, "BRIDGE-MIB::dot1dBasePortTable", &read_fixture("dot1dbaseporttable.json"));
     let stp = mock.stub_host_table(&vlan_host, "BRIDGE-MIB::dot1dStpPortTable", &read_fixture("dot1dstpporttable.json"));
 
-    let nexus = Nexus::builder(&pg.db_url)
+    let nexus = Nexus::builder(db.db_url())
         .snmpbot(&mock.url())
         .entitypoller(true)
         .entitypoller_interval_msecs(300)
@@ -316,7 +333,7 @@ struct PeerRow {
     peer_interface: String,
 }
 
-fn link_peer(conn: &mut diesel::pg::PgConnection, device: &str, interface: &str) -> Option<(String, String)> {
+fn link_peer(conn: &mut TestConn, device: &str, interface: &str) -> Option<(String, String)> {
     let rows: Vec<PeerRow> = query_rows(conn, &format!(
         "select d2.name as peer_device, i2.name as peer_interface \
          from interfaces i \
@@ -327,9 +344,8 @@ fn link_peer(conn: &mut diesel::pg::PgConnection, device: &str, interface: &str)
     rows.into_iter().next().map(|r| (r.peer_device, r.peer_interface))
 }
 
-#[test]
-fn discovery_engine_crawls_and_links() {
-    let pg = PgHarness::start();
+e2e_both!(discovery_engine_crawls_and_links);
+fn discovery_engine_crawls_and_links(db: DbHarness) {
     let mock = SnmpbotMock::start();
     let broker = MqttBroker::start();
 
@@ -338,7 +354,7 @@ fn discovery_engine_crawls_and_links() {
     stub_discovery_device(&mock, "sw1.test.example", "01", Some("sw2"), Some("sw2.test.example"));
     stub_discovery_device(&mock, "sw2.test.example", "02", Some("sw1"), None);
 
-    let nexus = Nexus::builder(&pg.db_url)
+    let nexus = Nexus::builder(db.db_url())
         .snmpbot(&mock.url())
         .mqtt(&broker.server())
         .start();
@@ -397,7 +413,7 @@ fn discovery_engine_crawls_and_links() {
     }
 
     // Devices + metadata landed in Postgres.
-    let mut conn = pg.conn();
+    let mut conn = db.conn();
     let devices: Vec<DiscDeviceRow> = query_rows(
         &mut conn,
         "select name, base_mac, os_info, device_type, software_version from devices order by name",
@@ -433,16 +449,15 @@ fn discovery_engine_crawls_and_links() {
     }
 }
 
-#[test]
-fn discovery_root_failure_sets_last_error() {
-    let pg = PgHarness::start();
+e2e_both!(discovery_root_failure_sets_last_error);
+fn discovery_root_failure_sets_last_error(db: DbHarness) {
     let mock = SnmpbotMock::start();
     let broker = MqttBroker::start();
 
     // No snmpbot stubs at all: every table fetch fails, so the root device
     // fails discovery and the run must surface that in lastError instead of
     // reporting a silent "finished, 0 devices".
-    let nexus = Nexus::builder(&pg.db_url)
+    let nexus = Nexus::builder(db.db_url())
         .snmpbot(&mock.url())
         .mqtt(&broker.server())
         .start();
@@ -473,15 +488,14 @@ fn discovery_root_failure_sets_last_error() {
     );
 }
 
-#[test]
-fn discovery_periodic_runs_and_config_disable() {
-    let pg = PgHarness::start();
+e2e_both!(discovery_periodic_runs_and_config_disable);
+fn discovery_periodic_runs_and_config_disable(db: DbHarness) {
     let mock = SnmpbotMock::start();
 
     // Single device with no neighbors; periodic every second.
     let ifxtable = stub_discovery_device(&mock, "sw1.test.example", "01", None, None);
 
-    let nexus = Nexus::builder(&pg.db_url)
+    let nexus = Nexus::builder(db.db_url())
         .snmpbot(&mock.url())
         .env("JASPY_DISCOVERY_ROOT_DEVICE", "sw1.test.example")
         .env("JASPY_DISCOVERY_COMMUNITY", COMMUNITY)
@@ -514,10 +528,9 @@ fn discovery_periodic_runs_and_config_disable() {
 // 1d. Web admin UI API (/api/v1) and embedded SPA serving
 // ---------------------------------------------------------------------------
 
-#[test]
-fn api_v1_summary_and_devices() {
-    let pg = PgHarness::start();
-    let nexus = Nexus::builder(&pg.db_url).start();
+e2e_both!(api_v1_summary_and_devices);
+fn api_v1_summary_and_devices(db: DbHarness) {
+    let nexus = Nexus::builder(db.db_url()).start();
 
     nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
 
@@ -530,10 +543,21 @@ fn api_v1_summary_and_devices() {
     assert_eq!(system["pingerEnabled"], json!(false), "system: {:?}", system);
     assert_eq!(system["deviceStatusSource"], json!("poller"), "system: {:?}", system);
     assert_eq!(system["mqttEnabled"], json!(false), "system: {:?}", system);
+
+    // Database status matches the backend this matrix variant runs on, and
+    // auto-migrate has left nothing pending.
+    let expected_backend = match &db {
+        DbHarness::Pg(_) => "postgresql",
+        DbHarness::Sqlite(_) => "sqlite",
+    };
+    assert_eq!(system["dbBackend"], json!(expected_backend), "system: {:?}", system);
+    assert_eq!(system["dbConnected"], json!(true), "system: {:?}", system);
+    assert_eq!(system["dbMigrationsPending"], json!(false), "system: {:?}", system);
     assert_eq!(system["mqttBroker"], json!(null), "system: {:?}", system);
-    assert!(
-        system["dbUrl"].as_str().unwrap_or_default().starts_with("postgres"),
-        "dbUrl should be present (redacted); system: {:?}", system
+    assert_eq!(
+        system["dbUrl"].as_str().unwrap_or_default(),
+        db.db_url(),
+        "dbUrl should match the harness (no password in either backend's test url); system: {:?}", system
     );
 
     let summary = nexus.get_json("/api/v1/summary");
@@ -580,10 +604,9 @@ fn api_v1_summary_and_devices() {
     nexus.put_json(&format!("/api/v1/devices/{}", FQDN), &update);
 }
 
-#[test]
-fn api_v1_event_and_reset() {
-    let pg = PgHarness::start();
-    let nexus = Nexus::builder(&pg.db_url).start();
+e2e_both!(api_v1_event_and_reset);
+fn api_v1_event_and_reset(db: DbHarness) {
+    let nexus = Nexus::builder(db.db_url()).start();
 
     // Event name round-trips and shows up in the summary.
     let resp = nexus.put_json("/api/v1/event", &json!({"name": "Test LAN 2026"}));
@@ -617,7 +640,7 @@ fn api_v1_event_and_reset() {
     let result: serde_json::Value = resp.json().unwrap();
     assert_eq!(result["devicesDeleted"], json!(3));
 
-    let mut conn = pg.conn();
+    let mut conn = db.conn();
     #[derive(QueryableByName)]
     struct CountRow {
         #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -643,12 +666,11 @@ fn api_v1_event_and_reset() {
     );
 }
 
-#[test]
-fn discovery_config_persists_across_restart() {
-    let pg = PgHarness::start();
+e2e_both!(discovery_config_persists_across_restart);
+fn discovery_config_persists_across_restart(db: DbHarness) {
 
     {
-        let nexus = Nexus::builder(&pg.db_url)
+        let nexus = Nexus::builder(db.db_url())
             .env("JASPY_DISCOVERY_ROOT_DEVICE", "from-env.test.example")
             .start();
         let mut config = nexus.get_json("/api/v1/discovery/config");
@@ -660,7 +682,7 @@ fn discovery_config_persists_across_restart() {
     } // nexus dropped (killed)
 
     // Same DB, same env seed: the persisted config must win over env.
-    let nexus = Nexus::builder(&pg.db_url)
+    let nexus = Nexus::builder(db.db_url())
         .env("JASPY_DISCOVERY_ROOT_DEVICE", "from-env.test.example")
         .start();
     let config = nexus.get_json("/api/v1/discovery/config");
@@ -668,10 +690,9 @@ fn discovery_config_persists_across_restart() {
     assert_eq!(config["community"], json!("uicomm"));
 }
 
-#[test]
-fn spa_and_fallback() {
-    let pg = PgHarness::start();
-    let nexus = Nexus::builder(&pg.db_url).start();
+e2e_both!(spa_and_fallback);
+fn spa_and_fallback(db: DbHarness) {
+    let nexus = Nexus::builder(db.db_url()).start();
 
     // Root serves the SPA shell (placeholder from build.rs is enough).
     let root = nexus.client.get(format!("{}/", nexus.base_url)).send().unwrap();
@@ -719,11 +740,10 @@ fn run_trap_handler(jaspy_url: &str, fixture: &str) {
     assert!(status.success(), "trap-handler should exit 0");
 }
 
-#[test]
-fn trap_handler_reports_link_state() {
-    let pg = PgHarness::start();
+e2e_both!(trap_handler_reports_link_state);
+fn trap_handler_reports_link_state(db: DbHarness) {
     let broker = MqttBroker::start();
-    let nexus = Nexus::builder(&pg.db_url).mqtt(&broker.server()).start();
+    let nexus = Nexus::builder(db.db_url()).mqtt(&broker.server()).start();
 
     nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
     // IMDS must know the device+interfaces before reports are accepted.
@@ -806,14 +826,13 @@ struct IfaceRow {
     name: String,
 }
 
-#[test]
-fn discovery_writes_to_postgres() {
-    let pg = PgHarness::start();
-    let nexus = Nexus::builder(&pg.db_url).start();
+e2e_both!(discovery_writes_to_postgres);
+fn discovery_writes_to_postgres(db: DbHarness) {
+    let nexus = Nexus::builder(db.db_url()).start();
 
     nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
 
-    let mut conn = pg.conn();
+    let mut conn = db.conn();
     let devs: Vec<NameRow> = query_rows(&mut conn, "select name, dns_domain from devices");
     assert_eq!(devs.len(), 1);
     assert_eq!(devs[0].name, "sw1");
@@ -840,10 +859,9 @@ struct ConnRow {
     connected_interface: Option<i32>,
 }
 
-#[test]
-fn links_and_weathermap() {
-    let pg = PgHarness::start();
-    let nexus = Nexus::builder(&pg.db_url).start();
+e2e_both!(links_and_weathermap);
+fn links_and_weathermap(db: DbHarness) {
+    let nexus = Nexus::builder(db.db_url()).start();
 
     nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
     nexus.put_json("/dev/discovery/device", &discovery_body("sw2", "test.example"));
@@ -859,7 +877,7 @@ fn links_and_weathermap() {
     assert!(resp.status().is_success());
 
     // Postgres: sw1's Gi0/1 now points at a peer interface.
-    let mut conn = pg.conn();
+    let mut conn = db.conn();
     let rows: Vec<ConnRow> = query_rows(
         &mut conn,
         "select i.connected_interface from interfaces i \
@@ -893,10 +911,9 @@ fn links_and_weathermap() {
 // ---------------------------------------------------------------------------
 // 4. Device up/down metric via the monitor ingest path (pinger's report path)
 // ---------------------------------------------------------------------------
-#[test]
-fn device_up_metric() {
-    let pg = PgHarness::start();
-    let nexus = Nexus::builder(&pg.db_url).start();
+e2e_both!(device_up_metric);
+fn device_up_metric(db: DbHarness) {
+    let nexus = Nexus::builder(db.db_url()).start();
 
     nexus.post_json("/dev/device", &device_body(true));
     // Wait for IMDS to learn the device (report_device drops unknown devices).
@@ -932,10 +949,9 @@ struct ClientLocRow {
     hw_address: String,
 }
 
-#[test]
-fn client_location_writes_to_postgres() {
-    let pg = PgHarness::start();
-    let nexus = Nexus::builder(&pg.db_url).start();
+e2e_both!(client_location_writes_to_postgres);
+fn client_location_writes_to_postgres(db: DbHarness) {
+    let nexus = Nexus::builder(db.db_url()).start();
 
     // Device whose base_mac matches the option-82 "002"-derived switch MAC.
     nexus.post_json(
@@ -956,7 +972,7 @@ fn client_location_writes_to_postgres() {
     let resp = nexus.put_json("/dev/clientlocation/", &payload);
     assert!(resp.status().is_success());
 
-    let mut conn = pg.conn();
+    let mut conn = db.conn();
     let rows: Vec<ClientLocRow> = query_rows(
         &mut conn,
         "select ip_address, port_info, hw_address from client_locations",
@@ -970,11 +986,10 @@ fn client_location_writes_to_postgres() {
 // ---------------------------------------------------------------------------
 // 6. MQTT events are published on device changes
 // ---------------------------------------------------------------------------
-#[test]
-fn mqtt_events_published() {
-    let pg = PgHarness::start();
+e2e_both!(mqtt_events_published);
+fn mqtt_events_published(db: DbHarness) {
     let broker = MqttBroker::start();
-    let nexus = Nexus::builder(&pg.db_url).mqtt(&broker.server()).start();
+    let nexus = Nexus::builder(db.db_url()).mqtt(&broker.server()).start();
 
     // Creating a device publishes jaspy/nexus/deviceCreated.
     nexus.post_json("/dev/device", &device_body(true));
@@ -1012,14 +1027,13 @@ fn mqtt_events_published() {
 // ---------------------------------------------------------------------------
 // 7. Counter rollback is rejected (IMDS::validate_counters)
 // ---------------------------------------------------------------------------
-#[test]
-fn counter_rollback_is_rejected() {
-    let pg = PgHarness::start();
+e2e_both!(counter_rollback_is_rejected);
+fn counter_rollback_is_rejected(db: DbHarness) {
     let mock = SnmpbotMock::start();
     mock.stub_table(FQDN, COMMUNITY, "IF-MIB::ifTable", &read_fixture("iftable.json"));
     let mut ifx = mock.stub_table(FQDN, COMMUNITY, "IF-MIB::ifXTable", &read_fixture("ifxtable.json"));
 
-    let nexus = Nexus::builder(&pg.db_url)
+    let nexus = Nexus::builder(db.db_url())
         .snmpbot(&mock.url())
         .poller(true)
         .poll_loop_msecs(300)
@@ -1051,14 +1065,13 @@ fn counter_rollback_is_rejected() {
 // ---------------------------------------------------------------------------
 // 6. Mock mode: `jaspy-nexus mock` serves a full fake network end to end
 // ---------------------------------------------------------------------------
-#[test]
-fn mock_mode_serves_network() {
-    let pg = PgHarness::start();
+e2e_both!(mock_mode_serves_network);
+fn mock_mode_serves_network(db: DbHarness) {
 
     // External-DB path (no nested ephemeral postgres): the builder provides
     // JASPY_DB_URL, so mock mode migrates and uses it. Real collectors on,
     // fast intervals; the fake snmpbot binds a per-test free port.
-    let nexus = Nexus::builder(&pg.db_url)
+    let nexus = Nexus::builder(db.db_url())
         .arg("mock")
         .poller(true)
         .poll_loop_msecs(300)
@@ -1131,4 +1144,39 @@ fn mock_mode_serves_network() {
     // Devices report up (poller answered by the fake snmpbot).
     let summary = nexus.get_json("/api/v1/summary");
     assert!(summary["devicesUp"].as_u64().unwrap_or(0) >= 7, "summary: {}", summary);
+}
+
+// ---------------------------------------------------------------------------
+// 7. Mock mode default database: sqlite temp file, zero prerequisites
+// ---------------------------------------------------------------------------
+#[test]
+fn mock_mode_defaults_to_sqlite() {
+    // No JASPY_DB_URL at all: mock mode must provision its own sqlite file.
+    let nexus = Nexus::builder("")
+        .no_db()
+        .arg("mock")
+        .poller(true)
+        .poll_loop_msecs(300)
+        .env("JASPY_MOCK_SNMPBOT_PORT", &free_port().to_string())
+        .env("JASPY_DISCOVERY_INTERVAL_SECS", "5")
+        .start();
+
+    assert!(
+        nexus.log().contains("[mock] sqlite database sqlite://"),
+        "mock should announce its sqlite temp file; log:\n{}",
+        nexus.log()
+    );
+
+    let system = nexus.get_json("/api/v1/system");
+    assert_eq!(system["dbBackend"], json!("sqlite"), "system: {:?}", system);
+    assert_eq!(system["dbConnected"], json!(true), "system: {:?}", system);
+
+    // The discovery crawl works against sqlite end to end.
+    assert!(
+        wait_until(Duration::from_secs(30), || {
+            nexus.get_json("/api/v1/devices").as_array().map(|d| d.len() == 8).unwrap_or(false)
+        }),
+        "mock devices should be ingested into sqlite; log:\n{}",
+        nexus.log()
+    );
 }

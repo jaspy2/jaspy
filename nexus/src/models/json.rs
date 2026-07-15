@@ -107,6 +107,10 @@ pub struct ApiSystemStatus {
     pub startup_time: f64,
     pub snmpbot_url: String,
     pub db_url: String,
+    pub db_backend: String, // "postgresql" | "sqlite"
+    pub db_connected: bool,
+    // None when the database is unreachable (state unknown).
+    pub db_migrations_pending: Option<bool>,
     pub poller_enabled: bool,
     pub poll_loop_msecs: u64,
     pub pinger_enabled: bool,

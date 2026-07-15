@@ -84,7 +84,20 @@ export default function Maintenance() {
               )}
             </span>
             <span>snmpbot</span><span className="wrap">{sys.snmpbotUrl}</span>
-            <span>Database</span><span className="wrap">{sys.dbUrl}</span>
+            <span>Database</span>
+            <span className="wrap">
+              {sys.dbConnected ? (
+                <span className="badge badge-ok">connected</span>
+              ) : (
+                <span className="badge badge-bad">unreachable</span>
+              )}
+              {sys.dbMigrationsPending === true && (
+                <>
+                  {' '}<span className="badge badge-warn">migrations pending</span>
+                </>
+              )}
+              {' '}{sys.dbBackend} · {sys.dbUrl}
+            </span>
             <span>Weathermap statics</span>
             <span className="wrap">
               {sys.weathermapDir ?? <span className="muted">directory not found — not served</span>}

@@ -9,10 +9,13 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use diesel::pg::PgConnection;
+use diesel::sqlite::SqliteConnection;
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+pub const MIGRATIONS_SQLITE: EmbeddedMigrations = embed_migrations!("migrations_sqlite");
 
 /// Grab an unused TCP port on localhost.
 pub fn free_port() -> u16 {
@@ -112,12 +115,91 @@ impl Drop for PgHarness {
     }
 }
 
-/// Run a SELECT and get typed rows, without access to the binary crate's schema.
-pub fn query_rows<T>(conn: &mut PgConnection, sql: &str) -> Vec<T>
+// ---------------------------------------------------------------------------
+// Ephemeral SQLite + the backend-agnostic harness used by the e2e matrix
+// ---------------------------------------------------------------------------
+
+pub struct SqliteHarness {
+    data_dir: tempfile::TempDir,
+    pub db_url: String,
+}
+
+impl SqliteHarness {
+    pub fn start() -> SqliteHarness {
+        let data_dir = tempfile::tempdir().unwrap();
+        let path = data_dir.path().join("jaspy.db");
+        let db_url = format!("sqlite://{}", path.display());
+        let mut conn = SqliteConnection::establish(path.to_str().unwrap())
+            .unwrap_or_else(|e| panic!("create test sqlite db: {}", e));
+        conn.batch_execute("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;").unwrap();
+        conn.run_pending_migrations(MIGRATIONS_SQLITE)
+            .unwrap_or_else(|e| panic!("run sqlite migrations: {}", e));
+        SqliteHarness { data_dir, db_url }
+    }
+
+    pub fn conn(&self) -> SqliteConnection {
+        let path = self.data_dir.path().join("jaspy.db");
+        let mut conn = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
+        // The nexus process writes concurrently; wait out its write locks.
+        conn.batch_execute("PRAGMA busy_timeout = 5000;").unwrap();
+        conn
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Backend {
+    Pg,
+    Sqlite,
+}
+
+// One harness per e2e test, parameterized by backend (see e2e_both! in
+// e2e.rs). The spawned nexus process detects the backend from the URL scheme.
+pub enum DbHarness {
+    Pg(PgHarness),
+    Sqlite(SqliteHarness),
+}
+
+impl DbHarness {
+    pub fn start(backend: Backend) -> DbHarness {
+        match backend {
+            Backend::Pg => DbHarness::Pg(PgHarness::start()),
+            Backend::Sqlite => DbHarness::Sqlite(SqliteHarness::start()),
+        }
+    }
+
+    pub fn db_url(&self) -> &str {
+        match self {
+            DbHarness::Pg(pg) => &pg.db_url,
+            DbHarness::Sqlite(sqlite) => &sqlite.db_url,
+        }
+    }
+
+    pub fn conn(&self) -> TestConn {
+        match self {
+            DbHarness::Pg(pg) => TestConn::Pg(pg.conn()),
+            DbHarness::Sqlite(sqlite) => TestConn::Sqlite(sqlite.conn()),
+        }
+    }
+}
+
+pub enum TestConn {
+    Pg(PgConnection),
+    Sqlite(SqliteConnection),
+}
+
+/// Run a SELECT and get typed rows, without access to the binary crate's
+/// schema. The #[derive(QueryableByName)] structs in e2e.rs are generic over
+/// the backend, so one bound set covers both.
+pub fn query_rows<T>(conn: &mut TestConn, sql: &str) -> Vec<T>
 where
-    T: diesel::deserialize::QueryableByName<diesel::pg::Pg> + 'static,
+    T: diesel::deserialize::QueryableByName<diesel::pg::Pg>
+        + diesel::deserialize::QueryableByName<diesel::sqlite::Sqlite>
+        + 'static,
 {
-    diesel::sql_query(sql).load::<T>(conn).unwrap()
+    match conn {
+        TestConn::Pg(conn) => diesel::sql_query(sql).load::<T>(conn).unwrap(),
+        TestConn::Sqlite(conn) => diesel::sql_query(sql).load::<T>(conn).unwrap(),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +316,7 @@ pub struct NexusBuilder {
     entitypoller_interval_msecs: u64,
     extra_env: Vec<(String, String)>,
     args: Vec<String>,
+    omit_db_url: bool,
 }
 
 pub struct Nexus {
@@ -278,6 +361,11 @@ impl NexusBuilder {
         self.args.push(arg.to_string());
         self
     }
+    /// Start nexus without JASPY_DB_URL (mock mode provisions its own db).
+    pub fn no_db(mut self) -> Self {
+        self.omit_db_url = true;
+        self
+    }
 
     pub fn start(self) -> Nexus {
         let port = free_port();
@@ -288,8 +376,12 @@ impl NexusBuilder {
         let log_err = log.try_clone().unwrap();
 
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_jaspy-nexus"));
-        cmd.env("JASPY_DB_URL", &self.db_url)
-            .env("ROCKET_ADDRESS", "127.0.0.1")
+        if self.omit_db_url {
+            cmd.env_remove("JASPY_DB_URL");
+        } else {
+            cmd.env("JASPY_DB_URL", &self.db_url);
+        }
+        cmd.env("ROCKET_ADDRESS", "127.0.0.1")
             .env("ROCKET_PORT", port.to_string())
             .env("JASPY_ENABLE_POLLER", self.enable_poller.to_string())
             .env("JASPY_ENABLE_PINGER", self.enable_pinger.to_string())
@@ -345,6 +437,7 @@ impl Nexus {
             entitypoller_interval_msecs: 300,
             extra_env: Vec::new(),
             args: Vec::new(),
+            omit_db_url: false,
         }
     }
 

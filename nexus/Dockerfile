@@ -28,6 +28,7 @@ COPY ./build.rs ./build.rs
 COPY ./src ./src
 COPY ./diesel.toml ./diesel.toml
 COPY ./migrations ./migrations
+COPY ./migrations_sqlite ./migrations_sqlite
 
 # The built web UI must be in place before cargo build: rust-embed compiles
 # webui/dist into the release binary.
@@ -39,4 +40,4 @@ RUN su -c 'pg_ctlcluster 15 main start && createuser root && createdb root -O ro
 RUN cat /usr/src/nexus/src/schema.rs
 RUN cargo build --release
 
-CMD cp -a target/release/jaspy-nexus /output/jaspy-nexus && cp -a /usr/local/cargo/bin/diesel /output/diesel && cp -a migrations /output/migrations
+CMD cp -a target/release/jaspy-nexus /output/jaspy-nexus && cp -a /usr/local/cargo/bin/diesel /output/diesel && cp -a migrations /output/migrations && cp -a migrations_sqlite /output/migrations_sqlite

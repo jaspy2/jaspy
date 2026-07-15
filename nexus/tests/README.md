@@ -6,8 +6,13 @@ There are two suites:
   `cargo test --bin jaspy-nexus`. No PostgreSQL, MQTT, or network needed;
   they finish in well under a second. This is where most coverage lives.
 - **End-to-end tests** — `tests/e2e.rs`, run with `cargo test --test e2e`.
-  Boots the real binary against ephemeral Postgres + mock snmpbot + embedded
-  MQTT (see below). Slow but exercises the full process.
+  Boots the real binary against an ephemeral database + mock snmpbot +
+  embedded MQTT (see below). Slow but exercises the full process.
+  **Every e2e test runs against both database backends** via the
+  `e2e_both!` macro: `foo::pg` uses an ephemeral PostgreSQL, `foo::sqlite` a
+  temp-file SQLite database. Filter one side with
+  `cargo test --test e2e -- ::sqlite` (needs no postgres binaries) or
+  `-- ::pg`.
 
 Plain `cargo test` runs both.
 

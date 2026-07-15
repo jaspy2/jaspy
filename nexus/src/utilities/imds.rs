@@ -2,7 +2,7 @@ use crate::models;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc,Mutex};
 use crate::utilities;
-use diesel::pg::PgConnection;
+use crate::db::AnyConnection;
 
 pub struct IMDS {
     metrics_storage : models::metrics::Metrics,
@@ -20,7 +20,7 @@ struct ConnectionPairRemoteInfo {
 }
 
 impl ConnectionPair {
-    fn load_by_fqdn_ifindex(connection: &mut PgConnection, fqdn: &String, ifindex: &i32) -> Option<ConnectionPair> {
+    fn load_by_fqdn_ifindex(connection: &mut AnyConnection, fqdn: &String, ifindex: &i32) -> Option<ConnectionPair> {
         if let Some(local_device) = models::dbo::Device::find_by_fqdn(connection, fqdn) {
             if let Some(local_interface) = local_device.interface_by_index(connection, ifindex) {
                 let connpair : ConnectionPair;
@@ -90,7 +90,7 @@ impl IMDS {
         self.metrics_storage.devices.insert(device_fqdn.clone(), dm);
     }
 
-    pub fn report_device(self: &mut IMDS, connection: &mut PgConnection, dmr: models::json::DeviceMonitorReport) {
+    pub fn report_device(self: &mut IMDS, connection: &mut AnyConnection, dmr: models::json::DeviceMonitorReport) {
         let device;
         match self.metrics_storage.devices.get_mut(&dmr.fqdn) {
             Some(value) => {
@@ -212,7 +212,7 @@ impl IMDS {
         }
     }
 
-    pub fn report_interfaces(self: &mut IMDS, connection: &mut PgConnection, imr: models::json::InterfaceMonitorReport) {
+    pub fn report_interfaces(self: &mut IMDS, connection: &mut AnyConnection, imr: models::json::InterfaceMonitorReport) {
         let device;
         let last_report = utilities::tools::get_time_msecs();
         match self.metrics_storage.devices.get_mut(&imr.device_fqdn) {

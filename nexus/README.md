@@ -9,6 +9,28 @@ Implementation of Jaspy2 API and related components
     - Debian(s): `apt install libpq-dev`
     - Gentoo: `emerge -av dev-libs/libpqxx`
     - Fedora: `dnf install libpq-devel`
+- SQLite is bundled (compiled into the binary) — no system library needed.
+
+## Database backends
+
+`JASPY_DB_URL` selects the backend at runtime:
+
+| URL form | Backend |
+|---|---|
+| `postgres://user:pass@host/db` (or `postgresql://`) | PostgreSQL |
+| `sqlite:///var/lib/jaspy/jaspy.db`, `sqlite:jaspy.db`, or a bare path | SQLite |
+
+Pending schema migrations for the active backend are applied automatically at
+startup; set `JASPY_AUTO_MIGRATE=false` if your deployment manages schema
+externally (e.g. with the diesel CLI). The Maintenance page shows the
+configured backend, live connectivity and whether migrations are pending.
+
+SQLite notes: intended for small deployments and local development. The
+database runs in WAL mode (expect `-wal`/`-shm` sidecar files next to the
+database file); writes are serialized by SQLite's single-writer lock, which is
+ample for small networks but makes PostgreSQL the right choice for large ones.
+SQLite schema lives in `migrations_sqlite/` — schema changes must be added
+pairwise with `migrations/`.
 
 ## Mock mode — local development against a fake network
 
@@ -24,11 +46,11 @@ any configuration:
 cargo run -- mock
 ```
 
-Prerequisites: PostgreSQL **binaries** (`initdb`/`pg_ctl`/`createdb`) on PATH —
-mock mode spawns a throwaway database in a temp dir and removes it on Ctrl-C.
-If they live elsewhere, set `JASPY_PG_BINDIR` (e.g. Homebrew:
-`/opt/homebrew/opt/postgresql@17/bin`). Alternatively point `JASPY_DB_URL` at
-any existing database; migrations run automatically.
+There are **no prerequisites**: mock mode uses a throwaway SQLite database in
+a temp dir (removed on Ctrl-C). To exercise the PostgreSQL path instead, set
+`JASPY_MOCK_PG=1` to spawn a throwaway postgres (needs `initdb`/`pg_ctl`/
+`createdb` on PATH or `JASPY_PG_BINDIR`), or point `JASPY_DB_URL` at any
+existing database of either backend; migrations run automatically.
 
 What you get: an in-process snmpbot-compatible server with 8 fake devices
 (core, 2 distribution, 3 access switches, a WLC and a firewall) crawled by the

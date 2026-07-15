@@ -6,7 +6,7 @@ use crate::models;
 use crate::utilities;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
-use diesel::pg::PgConnection;
+use crate::db::AnyConnection;
 
 // Ingest problems go to stdout AND the "discovery" live-log topic, like the
 // engine's own dlog! lines, so the web UI log shows why data went missing.
@@ -16,7 +16,7 @@ fn dlog(line: String) {
 }
 
 pub fn ingest_device(
-    connection: &mut PgConnection,
+    connection: &mut AnyConnection,
     msgbus: &Arc<Mutex<utilities::msgbus::MessageBus>>,
     cache_controller: &Arc<Mutex<utilities::cache::CacheController>>,
     discovered_device: &models::json::DiscoveredDevice,
@@ -155,7 +155,7 @@ pub fn ingest_device(
 }
 
 // TODO: this might be better placed in dbo logic?
-fn clear_connection(interface: &models::dbo::Interface, connection: &mut PgConnection) {
+fn clear_connection(interface: &models::dbo::Interface, connection: &mut AnyConnection) {
     if interface.connected_interface.is_none() { return; }
 
     let mut new_local_interface: models::dbo::Interface = interface.clone();
@@ -169,7 +169,7 @@ fn clear_connection(interface: &models::dbo::Interface, connection: &mut PgConne
 }
 
 pub fn ingest_links(
-    connection: &mut PgConnection,
+    connection: &mut AnyConnection,
     cache_controller: &Arc<Mutex<utilities::cache::CacheController>>,
     links: &models::json::LinkInfo,
 ) {

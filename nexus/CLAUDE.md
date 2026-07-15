@@ -1,6 +1,7 @@
 # jaspy-nexus
 
-Rust binary crate (Rocket + Diesel/Postgres) with an embedded React web UI
+Rust binary crate (Rocket + Diesel; PostgreSQL or SQLite selected at runtime
+by the `JASPY_DB_URL` scheme) with an embedded React web UI
 (`webui/`, built separately with Vite; `build.rs` writes a placeholder
 `webui/dist/index.html` so plain `cargo build`/`cargo test` works without npm).
 
@@ -9,13 +10,28 @@ Rust binary crate (Rocket + Diesel/Postgres) with an embedded React web UI
 ```sh
 cargo build                     # normal build
 cargo test --bin jaspy-nexus    # unit tests: fast, no external services
-cargo test --test e2e           # e2e: needs postgres binaries + libpq/liboping
+cargo test --test e2e           # e2e matrix: every test runs on pg AND sqlite
+cargo test --test e2e -- ::sqlite   # sqlite side only (no postgres binaries needed)
 cargo test                      # both
 ```
 
 On macOS (Homebrew), export the native-lib env first — see the "Running"
 section of `tests/README.md` for the exact `PKG_CONFIG_PATH` /
 `JASPY_TEST_PG_BINDIR` block.
+
+## Database layer
+
+`src/db.rs` owns the backend abstraction: `AnyConnection`
+(`#[derive(MultiConnection)]`, Sqlite variant last), a kind-matched r2d2
+manager, sqlite WAL/busy_timeout pragmas, embedded migrations for both
+backends (`migrations/` pg, `migrations_sqlite/` — schema changes go in
+BOTH, pairwise), and startup auto-migration. Model queries take
+`&mut db::AnyConnection`; upserts and INSERT..RETURNING are not expressible
+through the enum — wrap those in the `with_backend!` macro (see
+`Setting::set`). dbo unit tests run real CRUD against in-memory sqlite
+(`AnyConnection::Sqlite(SqliteConnection::establish(":memory:")?)` + one
+direct connection, never a pool) and double as the sqlite-migration drift
+guard.
 
 ## Mock mode
 

@@ -8,7 +8,6 @@
 // dot1dBaseBridgeAddress), then inserts deterministic client rows.
 use crate::mock::topology;
 use crate::models;
-use diesel::Connection;
 
 struct SeedClient {
     ip: &'static str,
@@ -89,9 +88,9 @@ fn run(db_url: &str) {
     println!("[mock] seeder timed out waiting for discovery to ingest devices");
 }
 
-fn connect_with_retry(db_url: &str, attempts: u32) -> Option<diesel::pg::PgConnection> {
+fn connect_with_retry(db_url: &str, attempts: u32) -> Option<crate::db::AnyConnection> {
     for _ in 0..attempts {
-        if let Ok(connection) = diesel::pg::PgConnection::establish(db_url) {
+        if let Ok(connection) = crate::db::establish(db_url) {
             return Some(connection);
         }
         std::thread::sleep(std::time::Duration::from_secs(1));

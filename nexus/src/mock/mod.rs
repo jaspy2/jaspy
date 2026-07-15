@@ -16,9 +16,16 @@ pub mod topology;
 
 use std::sync::Arc;
 
+// Dropped when server_main returns (ctrl-c): stops the ephemeral postgres /
+// removes the sqlite temp dir.
+enum MockDb {
+    Pg(#[allow(dead_code)] pg::MockPg),
+    SqliteTmp(#[allow(dead_code)] tempfile::TempDir),
+    External,
+}
+
 pub struct MockGuard {
-    // Dropped when server_main returns (ctrl-c): stops the ephemeral postgres.
-    _pg: Option<pg::MockPg>,
+    _db: MockDb,
 }
 
 fn default_env(key: &str, value: &str) {
@@ -30,19 +37,41 @@ fn default_env(key: &str, value: &str) {
 pub fn prepare() -> MockGuard {
     println!("[mock] starting jaspy-nexus in mock mode: fake network, real collectors");
 
-    // Postgres: developer-provided DB wins; otherwise spawn a throwaway one.
-    let ephemeral_pg = match std::env::var("JASPY_DB_URL") {
+    // Database: developer-provided JASPY_DB_URL wins (either backend);
+    // JASPY_MOCK_PG=1 spawns a throwaway postgres; the default is a sqlite
+    // temp file — zero prerequisites.
+    let mock_db = match std::env::var("JASPY_DB_URL") {
         Ok(db_url) => {
-            println!("[mock] using external database {} (running migrations)", crate::db::redacted_db_url(&db_url));
-            pg::run_migrations(&db_url);
-            None
+            println!("[mock] using external database {}", crate::db::redacted_db_url(&db_url));
+            MockDb::External
         }
         Err(_) => {
-            let mock_pg = pg::start();
-            std::env::set_var("JASPY_DB_URL", &mock_pg.db_url);
-            Some(mock_pg)
+            if std::env::var("JASPY_MOCK_PG").map(|v| v == "1" || v == "true").unwrap_or(false) {
+                let mock_pg = pg::start();
+                std::env::set_var("JASPY_DB_URL", &mock_pg.db_url);
+                MockDb::Pg(mock_pg)
+            } else {
+                let dir = tempfile::Builder::new()
+                    .prefix("jaspy-mock-sqlite-")
+                    .tempdir()
+                    .expect("create temp dir for mock sqlite");
+                let db_url = format!("sqlite://{}", dir.path().join("jaspy.db").display());
+                println!("[mock] sqlite database {} (removed on clean shutdown)", db_url);
+                std::env::set_var("JASPY_DB_URL", &db_url);
+                MockDb::SqliteTmp(dir)
+            }
         }
     };
+    // Migrate now, before the seed thread spawns: the seeder writes the event
+    // setting as soon as it can connect. server_main's auto_migrate becomes a
+    // no-op afterwards.
+    {
+        let db_url = std::env::var("JASPY_DB_URL").unwrap();
+        let mut connection = crate::db::establish(&db_url)
+            .unwrap_or_else(|e| panic!("[mock] cannot connect to {}: {}", crate::db::redacted_db_url(&db_url), e));
+        crate::db::run_migrations(&mut connection)
+            .unwrap_or_else(|e| panic!("[mock] migrations failed: {}", e));
+    }
 
     // Fake snmpbot; must listen before the collectors' first cycle.
     let snmpbot_port: u16 = std::env::var("JASPY_MOCK_SNMPBOT_PORT")
@@ -77,5 +106,5 @@ pub fn prepare() -> MockGuard {
     println!("[mock] web UI + API:  http://127.0.0.1:{}/  (API under /api/v1, metrics at /dev/metrics)", ui_port);
     println!("[mock] the {} uplink flaps every {}s for live events", "access-hall-a-02", topology::FLAP_HALF_PERIOD_SECS);
 
-    MockGuard { _pg: ephemeral_pg }
+    MockGuard { _db: mock_db }
 }

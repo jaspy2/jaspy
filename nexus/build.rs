@@ -17,4 +17,7 @@ fn main() {
         .expect("write webui/dist placeholder");
     }
     println!("cargo:rerun-if-changed=webui/dist");
+    // embed_migrations! does not track directory changes by itself.
+    println!("cargo:rerun-if-changed=migrations");
+    println!("cargo:rerun-if-changed=migrations_sqlite");
 }

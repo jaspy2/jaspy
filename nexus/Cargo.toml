@@ -13,7 +13,9 @@ rocket = { version = "0.5.1", features = ["json"] }
 rocket_ws = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-diesel = { version = "2.2", features = ["postgres", "r2d2"] }
+diesel = { version = "2.2", features = ["postgres", "sqlite", "returning_clauses_for_sqlite_3_35", "r2d2"] }
+# Bundled SQLite (>=3.35: RETURNING + upsert) so no system libsqlite3 is needed.
+libsqlite3-sys = { version = "0.35", features = ["bundled"] }
 # MQTT: rumqttc (tokio 1.x) replaces the abandoned rumq-client alpha.
 # default-features off: we connect plaintext on 1883, so no TLS backend is needed.
 rumqttc = { version = "0.24", default-features = false }
