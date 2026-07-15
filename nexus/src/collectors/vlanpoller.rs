@@ -38,8 +38,16 @@ pub struct InterfaceVlans {
     pub tagged_vlans: Vec<i64>,
 }
 
+// One device's poll result: per-ifIndex membership plus the device's VLAN
+// id -> name map (vtpVlanName / dot1qVlanStaticName).
+#[derive(Clone, Default)]
+pub struct DeviceVlans {
+    pub interfaces: HashMap<i64, InterfaceVlans>, // keyed by ifIndex
+    pub names: HashMap<i64, String>,              // keyed by VLAN id
+}
+
 pub struct VlanStore {
-    devices: HashMap<String, HashMap<i64, InterfaceVlans>>, // fqdn -> ifIndex -> vlans
+    devices: HashMap<String, DeviceVlans>, // keyed by fqdn
 }
 
 impl VlanStore {
@@ -47,8 +55,8 @@ impl VlanStore {
         VlanStore { devices: HashMap::new() }
     }
 
-    fn replace_device(&mut self, fqdn: String, interfaces: HashMap<i64, InterfaceVlans>) {
-        self.devices.insert(fqdn, interfaces);
+    fn replace_device(&mut self, fqdn: String, vlans: DeviceVlans) {
+        self.devices.insert(fqdn, vlans);
     }
 
     fn retain(&mut self, keep: &HashSet<String>) {
@@ -56,7 +64,7 @@ impl VlanStore {
     }
 
     // Snapshot for the API route; unknown fqdn and not-yet-polled both empty.
-    pub fn device_vlans(&self, fqdn: &str) -> HashMap<i64, InterfaceVlans> {
+    pub fn device_vlans(&self, fqdn: &str) -> DeviceVlans {
         self.devices.get(fqdn).cloned().unwrap_or_default()
     }
 }
@@ -135,6 +143,44 @@ fn active_vlans(vtp_vlans: &SNMPBotResponse) -> HashSet<i64> {
         }
     }
     active
+}
+
+// VLAN id -> name from vtpVlanTable ethernet rows (any state, so an access
+// port parked on a suspended VLAN still resolves its name).
+pub(crate) fn cisco_vlan_names(vtp_vlans: &SNMPBotResponse) -> HashMap<i64, String> {
+    let mut names = HashMap::new();
+    for entry in vtp_vlans.entries.iter() {
+        let vlan = match entry.index.get("CISCO-VTP-MIB::vtpVlanIndex") {
+            Some(v) => *v,
+            None => continue,
+        };
+        if obj_str(&entry.objects, "CISCO-VTP-MIB::vtpVlanType").as_deref() != Some("ethernet") {
+            continue;
+        }
+        if let Some(name) = obj_str(&entry.objects, "CISCO-VTP-MIB::vtpVlanName") {
+            if !name.is_empty() {
+                names.insert(vlan, name);
+            }
+        }
+    }
+    names
+}
+
+// VLAN id -> name from dot1qVlanStaticTable (the Current table has no name).
+pub(crate) fn qbridge_vlan_names(vlan_static: &SNMPBotResponse) -> HashMap<i64, String> {
+    let mut names = HashMap::new();
+    for entry in vlan_static.entries.iter() {
+        let vlan = match entry.index.get("Q-BRIDGE-MIB::dot1qVlanIndex") {
+            Some(v) => *v,
+            None => continue,
+        };
+        if let Some(name) = obj_str(&entry.objects, "Q-BRIDGE-MIB::dot1qVlanStaticName") {
+            if !name.is_empty() {
+                names.insert(vlan, name);
+            }
+        }
+    }
+    names
 }
 
 pub(crate) fn decode_cisco(
@@ -272,7 +318,7 @@ pub(crate) fn decode_qbridge(
 // Per-device poll
 // ---------------------------------------------------------------------------
 
-fn poll_device(snmpbot_url: &String, fqdn: &String, community: &String) -> Option<HashMap<i64, InterfaceVlans>> {
+fn poll_device(snmpbot_url: &String, fqdn: &String, community: &String) -> Option<DeviceVlans> {
     let host = format!("{}@{}", community, fqdn);
 
     // Cisco first: the trunk table exists (with rows) on every Cisco switch.
@@ -290,7 +336,10 @@ fn poll_device(snmpbot_url: &String, fqdn: &String, community: &String) -> Optio
             let membership = fetch_table(snmpbot_url, &host, "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable");
             let decoded = decode_cisco(&trunk, vtp_vlans.as_ref(), membership.as_ref());
             if !decoded.is_empty() {
-                return Some(decoded);
+                return Some(DeviceVlans {
+                    interfaces: decoded,
+                    names: vtp_vlans.as_ref().map(cisco_vlan_names).unwrap_or_default(),
+                });
             }
         }
     }
@@ -299,12 +348,22 @@ fn poll_device(snmpbot_url: &String, fqdn: &String, community: &String) -> Optio
     // which never reach this point because the trunk table decoded above).
     let base_ports = fetch_table(snmpbot_url, &host, "BRIDGE-MIB::dot1dBasePortTable")?;
     let pvid = fetch_table(snmpbot_url, &host, "Q-BRIDGE-MIB::dot1qPortVlanTable");
+    // The Static table is fetched regardless: it is both the port-membership
+    // fallback and the only source of VLAN names in Q-BRIDGE-MIB.
+    let vlan_static = fetch_table(snmpbot_url, &host, "Q-BRIDGE-MIB::dot1qVlanStaticTable");
     let vlan_ports = match fetch_table(snmpbot_url, &host, "Q-BRIDGE-MIB::dot1qVlanCurrentTable") {
         Some(current) if !current.entries.is_empty() => Some(current),
-        _ => fetch_table(snmpbot_url, &host, "Q-BRIDGE-MIB::dot1qVlanStaticTable"),
+        _ => vlan_static.clone(),
     };
     let decoded = decode_qbridge(pvid.as_ref(), vlan_ports.as_ref(), &base_ports);
-    if decoded.is_empty() { None } else { Some(decoded) }
+    if decoded.is_empty() {
+        None
+    } else {
+        Some(DeviceVlans {
+            interfaces: decoded,
+            names: vlan_static.as_ref().map(qbridge_vlan_names).unwrap_or_default(),
+        })
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -339,9 +398,9 @@ fn poll_batch(snmpbot_url: &String, devices: Vec<(String, String)>, store: &Arc<
             }
             // Only replace on success so a transient poll failure does not
             // blank previously known VLAN data.
-            if let Some(interfaces) = poll_device(&snmpbot_url, &fqdn, &community) {
+            if let Some(vlans) = poll_device(&snmpbot_url, &fqdn, &community) {
                 if let Ok(mut store) = store.lock() {
-                    store.replace_device(fqdn, interfaces);
+                    store.replace_device(fqdn, vlans);
                 }
             }
         }));
@@ -570,12 +629,46 @@ mod tests {
         assert!(port.tagged_vlans.is_empty());
     }
 
+    // --- VLAN names ---
+
+    #[test]
+    fn cisco_names_come_from_ethernet_rows_of_any_state() {
+        let names = cisco_vlan_names(&parse(VTP_VLANS));
+        assert_eq!(names.get(&1).map(String::as_str), Some("default"));
+        assert_eq!(names.get(&300).map(String::as_str), Some("Mgmt"));
+        assert_eq!(names.get(&311).map(String::as_str), Some("Org"));
+        // Suspended ethernet VLANs keep their name; fddi rows are excluded.
+        assert_eq!(names.get(&400).map(String::as_str), Some("parked"));
+        assert!(!names.contains_key(&1002));
+    }
+
+    #[test]
+    fn qbridge_names_come_from_the_static_table() {
+        let vlan_static = r#"{
+            "ID": "Q-BRIDGE-MIB::dot1qVlanStaticTable",
+            "IndexKeys": ["Q-BRIDGE-MIB::dot1qVlanIndex"],
+            "ObjectKeys": ["Q-BRIDGE-MIB::dot1qVlanStaticName"],
+            "Entries": [
+                {"HostID": "sw1.test.example", "Index": {"Q-BRIDGE-MIB::dot1qVlanIndex": 10},
+                 "Objects": {"Q-BRIDGE-MIB::dot1qVlanStaticName": "users"}},
+                {"HostID": "sw1.test.example", "Index": {"Q-BRIDGE-MIB::dot1qVlanIndex": 20},
+                 "Objects": {"Q-BRIDGE-MIB::dot1qVlanStaticName": ""}}
+            ]
+        }"#;
+        let names = qbridge_vlan_names(&parse(vlan_static));
+        assert_eq!(names.get(&10).map(String::as_str), Some("users"));
+        // Empty names are omitted, not stored as "".
+        assert!(!names.contains_key(&20));
+    }
+
     // --- VlanStore ---
 
-    fn vlans(native: Option<i64>, tagged: &[i64]) -> HashMap<i64, InterfaceVlans> {
-        let mut m = HashMap::new();
-        m.insert(10101, InterfaceVlans { native_vlan: native, tagged_vlans: tagged.to_vec() });
-        m
+    fn vlans(native: Option<i64>, tagged: &[i64]) -> DeviceVlans {
+        let mut interfaces = HashMap::new();
+        interfaces.insert(10101, InterfaceVlans { native_vlan: native, tagged_vlans: tagged.to_vec() });
+        let mut names = HashMap::new();
+        names.insert(300, "Mgmt".to_string());
+        DeviceVlans { interfaces, names }
     }
 
     #[test]
@@ -583,16 +676,19 @@ mod tests {
         let mut store = VlanStore::new();
         store.replace_device("sw1.example.com".to_string(), vlans(Some(300), &[1, 311]));
         let snapshot = store.device_vlans("sw1.example.com");
-        assert_eq!(snapshot[&10101].native_vlan, Some(300));
-        assert_eq!(snapshot[&10101].tagged_vlans, vec![1, 311]);
+        assert_eq!(snapshot.interfaces[&10101].native_vlan, Some(300));
+        assert_eq!(snapshot.interfaces[&10101].tagged_vlans, vec![1, 311]);
+        assert_eq!(snapshot.names.get(&300).map(String::as_str), Some("Mgmt"));
 
         store.replace_device("sw1.example.com".to_string(), vlans(Some(1), &[]));
-        assert_eq!(store.device_vlans("sw1.example.com")[&10101].native_vlan, Some(1));
+        assert_eq!(store.device_vlans("sw1.example.com").interfaces[&10101].native_vlan, Some(1));
     }
 
     #[test]
     fn store_unknown_fqdn_is_empty() {
-        assert!(VlanStore::new().device_vlans("ghost.example.com").is_empty());
+        let snapshot = VlanStore::new().device_vlans("ghost.example.com");
+        assert!(snapshot.interfaces.is_empty());
+        assert!(snapshot.names.is_empty());
     }
 
     #[test]
@@ -602,7 +698,7 @@ mod tests {
         store.replace_device("drop.example.com".to_string(), vlans(Some(2), &[]));
         let keep: HashSet<String> = vec!["keep.example.com".to_string()].into_iter().collect();
         store.retain(&keep);
-        assert!(!store.device_vlans("keep.example.com").is_empty());
-        assert!(store.device_vlans("drop.example.com").is_empty());
+        assert!(!store.device_vlans("keep.example.com").interfaces.is_empty());
+        assert!(store.device_vlans("drop.example.com").interfaces.is_empty());
     }
 }

@@ -289,6 +289,11 @@ fn vlanpoller_vlans_in_device_detail(db: DbHarness) {
     assert_eq!(access_if["nativeVlan"], 311);
     assert_eq!(access_if["taggedVlans"], json!([]));
 
+    // The device-level VLAN catalog resolves ids to vtpVlanName values.
+    let vlans = detail["vlans"].as_array().unwrap();
+    assert!(vlans.contains(&json!({"id": 300, "name": "Mgmt"})), "vlans: {:?}", vlans);
+    assert!(vlans.contains(&json!({"id": 311, "name": "Org"})), "vlans: {:?}", vlans);
+
     // Poll-now: known device queues (202), unknown device 404.
     let accepted = nexus.post_json(&format!("/api/v1/devices/{}/vlans/poll", FQDN), &json!({}));
     assert_eq!(accepted.status().as_u16(), 202);

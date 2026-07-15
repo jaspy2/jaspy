@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Device, DeviceUpdate, LiveEvent } from '../api/types';
+import type { Device, DeviceUpdate, Interface, LiveEvent } from '../api/types';
 import { PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import useLiveSocket from '../hooks/useLiveSocket';
 
@@ -40,6 +40,26 @@ export function formatVlanRanges(vlans: number[]): string {
   return parts.join(', ');
 }
 
+// Expanded view of one interface's VLANs: native first, then every tagged
+// VLAN, each with its id and (when the device reports one) its name.
+function InterfaceVlanList({ iface, names }: { iface: Interface; names: Map<number, string | null> }) {
+  const rows: { id: number; kind: 'native' | 'tagged' }[] = [];
+  if (iface.nativeVlan !== null) rows.push({ id: iface.nativeVlan, kind: 'native' });
+  for (const id of iface.taggedVlans ?? []) rows.push({ id, kind: 'tagged' });
+  if (rows.length === 0) return <span className="muted">No VLAN data.</span>;
+  return (
+    <div className="vlan-list">
+      {rows.map((row) => (
+        <Fragment key={`${row.kind}-${row.id}`}>
+          <span className={`badge ${row.kind === 'native' ? 'badge-ok' : 'badge-muted'}`}>{row.kind}</span>
+          <span>{row.id}</span>
+          <span className="muted">{names.get(row.id) ?? '—'}</span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
 // "· updated Ns ago" heading suffix from the newest row timestamp (msecs).
 function UpdatedAgo({ timestamps }: { timestamps: number[] }) {
   if (timestamps.length === 0) return null;
@@ -66,6 +86,15 @@ export default function DeviceDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Interface ids whose VLAN list is expanded (desktop row and mobile card).
+  const [expandedVlans, setExpandedVlans] = useState<Set<number>>(new Set());
+  const toggleVlans = (id: number) =>
+    setExpandedVlans((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const detail = useQuery({
     queryKey: ['device', fqdn],
@@ -140,6 +169,7 @@ export default function DeviceDetail() {
   if (detail.isError || !detail.data) return <p className="error">Failed to load {fqdn}: {String(detail.error)}</p>;
 
   const { device, interfaces } = detail.data;
+  const vlanNames = new Map((detail.data.vlans ?? []).map((v) => [v.id, v.name]));
   const sensors = entity.data?.sensors ?? [];
   const stp = entity.data?.stp ?? [];
   const entitypollerEnabled = system.data?.entitypollerEnabled === true;
@@ -197,13 +227,17 @@ export default function DeviceDetail() {
             <span className="item-sub">
               {iface.speed !== null && <span>{iface.speed} Mb/s</span>}
               {iface.nativeVlan !== null && (
-                <span>
+                <button className="vlan-toggle" onClick={() => toggleVlans(iface.id)} aria-expanded={expandedVlans.has(iface.id)}>
                   VLAN {iface.nativeVlan}
                   {(iface.taggedVlans?.length ?? 0) > 0 && ` (+${iface.taggedVlans!.length} tagged)`}
-                </span>
+                  {expandedVlans.has(iface.id) ? ' ▾' : ' ▸'}
+                </button>
               )}
               {iface.alias && <span>{iface.alias}</span>}
             </span>
+            {expandedVlans.has(iface.id) && (
+              <InterfaceVlanList iface={iface} names={vlanNames} />
+            )}
             {iface.connectedTo && (
               <span className="item-sub">
                 <span>
@@ -234,29 +268,47 @@ export default function DeviceDetail() {
           </thead>
           <tbody>
             {interfaces.map((iface) => (
-              <tr key={iface.id}>
-                <td>{iface.displayName ?? iface.name}</td>
-                <td><UpBadge up={iface.up} /></td>
-                <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
-                <td>{iface.nativeVlan ?? '—'}</td>
-                <td className="wrap" title={iface.taggedVlans?.join(', ')}>
-                  {(iface.taggedVlans?.length ?? 0) > 0 ? formatVlanRanges(iface.taggedVlans!) : '—'}
-                </td>
-                <td>{iface.alias ?? '—'}</td>
-                <td>{iface.interfaceType}</td>
-                <td>
-                  {iface.connectedTo ? (
-                    <>
-                      <Link to={`/devices/${encodeURIComponent(iface.connectedTo.fqdn)}`}>
-                        {iface.connectedTo.fqdn}
-                      </Link>
-                      :{iface.connectedTo.interface}
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-              </tr>
+              <Fragment key={iface.id}>
+                <tr>
+                  <td>{iface.displayName ?? iface.name}</td>
+                  <td><UpBadge up={iface.up} /></td>
+                  <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
+                  <td>
+                    {iface.nativeVlan !== null || iface.taggedVlans !== null ? (
+                      <button className="vlan-toggle" onClick={() => toggleVlans(iface.id)} aria-expanded={expandedVlans.has(iface.id)}>
+                        {iface.nativeVlan ?? '—'}
+                        {expandedVlans.has(iface.id) ? ' ▾' : ' ▸'}
+                      </button>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td className="wrap" title={iface.taggedVlans?.join(', ')}>
+                    {(iface.taggedVlans?.length ?? 0) > 0 ? formatVlanRanges(iface.taggedVlans!) : '—'}
+                  </td>
+                  <td>{iface.alias ?? '—'}</td>
+                  <td>{iface.interfaceType}</td>
+                  <td>
+                    {iface.connectedTo ? (
+                      <>
+                        <Link to={`/devices/${encodeURIComponent(iface.connectedTo.fqdn)}`}>
+                          {iface.connectedTo.fqdn}
+                        </Link>
+                        :{iface.connectedTo.interface}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+                {expandedVlans.has(iface.id) && (
+                  <tr className="vlan-detail-row">
+                    <td colSpan={8}>
+                      <InterfaceVlanList iface={iface} names={vlanNames} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

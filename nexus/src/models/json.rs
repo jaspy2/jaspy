@@ -194,11 +194,24 @@ pub struct ApiInterfaceConnection {
     pub interface: String,
 }
 
+// A VLAN known on the device (vtpVlanTable / dot1qVlanStaticTable), for
+// resolving the ids in ApiInterface::{native,tagged}_vlans to names.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiVlan {
+    pub id: i64,
+    pub name: Option<String>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiDeviceDetail {
     pub device: ApiDevice,
     pub interfaces: Vec<ApiInterface>,
+    // Sorted by id; empty until the first successful VLAN poll. Additive:
+    // default-deserialized for older payloads.
+    #[serde(default)]
+    pub vlans: Vec<ApiVlan>,
 }
 
 // GET /api/v1/devices/<fqdn>/entity: latest entitypoller results for one

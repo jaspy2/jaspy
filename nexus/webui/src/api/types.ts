@@ -116,9 +116,16 @@ export interface Interface {
   taggedVlans: number[] | null;
 }
 
+// A VLAN known on the device, for resolving interface VLAN ids to names.
+export interface Vlan {
+  id: number;
+  name: string | null;
+}
+
 export interface DeviceDetail {
   device: Device;
   interfaces: Interface[];
+  vlans: Vlan[];
 }
 
 // GET /api/v1/devices/<fqdn>/entity — latest entitypoller results. Empty

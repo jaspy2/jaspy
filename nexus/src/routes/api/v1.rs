@@ -123,10 +123,11 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
     }
 
     // VLAN membership from the in-memory vlanpoller store, keyed by ifIndex.
-    let vlans = match vlan_store.inner().lock() {
+    let device_vlans = match vlan_store.inner().lock() {
         Ok(store) => store.device_vlans(&device_fqdn),
-        Err(_) => std::collections::HashMap::new(),
+        Err(_) => crate::collectors::vlanpoller::DeviceVlans::default(),
     };
+    let vlans = &device_vlans.interfaces;
 
     // Links are stored one-directionally (interfaces.connected_interface), and
     // discovery does not always resolve both ends. Union the reverse direction
@@ -180,8 +181,20 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
     }
     interfaces.sort_by_key(|i| i.index);
 
+    // The device's VLAN id -> name catalog: every named VLAN, plus any id
+    // referenced by an interface that has no name row (name stays null).
+    let mut vlan_ids: std::collections::BTreeSet<i64> = device_vlans.names.keys().cloned().collect();
+    for interface_vlans in device_vlans.interfaces.values() {
+        vlan_ids.extend(interface_vlans.native_vlan.iter());
+        vlan_ids.extend(interface_vlans.tagged_vlans.iter());
+    }
+    let vlans: Vec<models::json::ApiVlan> = vlan_ids.into_iter().map(|id| models::json::ApiVlan {
+        id: id,
+        name: device_vlans.names.get(&id).cloned(),
+    }).collect();
+
     let device = api_device(&mut connection, imds, &device);
-    Some(Json(models::json::ApiDeviceDetail { device: device, interfaces: interfaces }))
+    Some(Json(models::json::ApiDeviceDetail { device: device, interfaces: interfaces, vlans: vlans }))
 }
 
 // Latest entitypoller results (entity sensors + per-VLAN STP) for one device,

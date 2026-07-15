@@ -591,12 +591,16 @@ impl Topology {
                 }).collect();
                 Some(response(table_id, entries))
             }
-            "Q-BRIDGE-MIB::dot1qVlanCurrentTable" => {
+            "Q-BRIDGE-MIB::dot1qVlanCurrentTable" | "Q-BRIDGE-MIB::dot1qVlanStaticTable" => {
                 if dev.vlan_style != VlanStyle::QBridge {
                     return None;
                 }
+                let is_static = table_id.contains("Static");
                 // Per VLAN: trunks carry every VLAN (untagged only on their
                 // native), access ports appear untagged on their own VLAN.
+                // The Static variant carries the same membership plus the
+                // VLAN name (its only source in Q-BRIDGE-MIB) and has no
+                // TimeMark in its index.
                 let entries = dev.vlans.iter().map(|vlan| {
                     let mut egress: Vec<i64> = Vec::new();
                     let mut untagged: Vec<i64> = Vec::new();
@@ -612,13 +616,24 @@ impl Topology {
                         }
                     }
                     let len = (dev.interfaces.len() + 7) / 8;
-                    entry(
-                        json!({"Q-BRIDGE-MIB::dot1qVlanTimeMark": 0, "Q-BRIDGE-MIB::dot1qVlanIndex": vlan}),
-                        json!({
-                            "Q-BRIDGE-MIB::dot1qVlanCurrentEgressPorts": hex_bitmap(&egress, 1, len),
-                            "Q-BRIDGE-MIB::dot1qVlanCurrentUntaggedPorts": hex_bitmap(&untagged, 1, len),
-                        }),
-                    )
+                    if is_static {
+                        entry(
+                            json!({"Q-BRIDGE-MIB::dot1qVlanIndex": vlan}),
+                            json!({
+                                "Q-BRIDGE-MIB::dot1qVlanStaticName": format!("mock-vlan-{}", vlan),
+                                "Q-BRIDGE-MIB::dot1qVlanStaticEgressPorts": hex_bitmap(&egress, 1, len),
+                                "Q-BRIDGE-MIB::dot1qVlanStaticUntaggedPorts": hex_bitmap(&untagged, 1, len),
+                            }),
+                        )
+                    } else {
+                        entry(
+                            json!({"Q-BRIDGE-MIB::dot1qVlanTimeMark": 0, "Q-BRIDGE-MIB::dot1qVlanIndex": vlan}),
+                            json!({
+                                "Q-BRIDGE-MIB::dot1qVlanCurrentEgressPorts": hex_bitmap(&egress, 1, len),
+                                "Q-BRIDGE-MIB::dot1qVlanCurrentUntaggedPorts": hex_bitmap(&untagged, 1, len),
+                            }),
+                        )
+                    }
                 }).collect();
                 Some(response(table_id, entries))
             }
@@ -696,7 +711,7 @@ mod tests {
     use super::*;
     use crate::collectors::poller::SNMPBotResultEntryObjectValue;
 
-    const ALL_TABLES: [&str; 14] = [
+    const ALL_TABLES: [&str; 15] = [
         "IF-MIB::ifTable",
         "IF-MIB::ifXTable",
         "ENTITY-MIB::entPhysicalTable",
@@ -711,6 +726,7 @@ mod tests {
         "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable",
         "Q-BRIDGE-MIB::dot1qPortVlanTable",
         "Q-BRIDGE-MIB::dot1qVlanCurrentTable",
+        "Q-BRIDGE-MIB::dot1qVlanStaticTable",
     ];
 
     #[test]
@@ -865,7 +881,7 @@ mod tests {
         let qbridge = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::QBridge).unwrap();
         let none = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::None).unwrap();
         let cisco_tables = ["CISCO-VTP-MIB::jaspyVlanTrunkPortTable", "CISCO-VTP-MIB::vtpVlanTable", "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable"];
-        let qbridge_tables = ["Q-BRIDGE-MIB::dot1qPortVlanTable", "Q-BRIDGE-MIB::dot1qVlanCurrentTable"];
+        let qbridge_tables = ["Q-BRIDGE-MIB::dot1qPortVlanTable", "Q-BRIDGE-MIB::dot1qVlanCurrentTable", "Q-BRIDGE-MIB::dot1qVlanStaticTable"];
         for table in cisco_tables {
             assert!(topo.table(&cisco.fqdn(), None, table, 0.0).is_some(), "{} must answer on cisco", table);
             assert!(topo.table(&qbridge.fqdn(), None, table, 0.0).is_none(), "{} must 404 on qbridge", table);
@@ -888,6 +904,24 @@ mod tests {
     // The generated tables must decode through the real vlanpoller logic:
     // trunks native 1 + tagged = device vlans minus 1, access ports on their
     // access_vlan. Guards the mock and the decoder against drifting apart.
+    #[test]
+    fn vlan_names_resolve_via_vlanpoller() {
+        use crate::collectors::vlanpoller::{cisco_vlan_names, qbridge_vlan_names};
+        let topo = build();
+        let cisco = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::Cisco).unwrap();
+        let vtp = topo.table(&cisco.fqdn(), None, "CISCO-VTP-MIB::vtpVlanTable", 0.0).unwrap();
+        let names = cisco_vlan_names(&vtp);
+        for vlan in cisco.vlans.iter() {
+            assert_eq!(names.get(vlan).map(String::as_str), Some(format!("mock-vlan-{}", vlan).as_str()));
+        }
+        let qbridge = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::QBridge).unwrap();
+        let vlan_static = topo.table(&qbridge.fqdn(), None, "Q-BRIDGE-MIB::dot1qVlanStaticTable", 0.0).unwrap();
+        let names = qbridge_vlan_names(&vlan_static);
+        for vlan in qbridge.vlans.iter() {
+            assert_eq!(names.get(vlan).map(String::as_str), Some(format!("mock-vlan-{}", vlan).as_str()));
+        }
+    }
+
     #[test]
     fn vlan_tables_decode_via_vlanpoller() {
         use crate::collectors::vlanpoller::{decode_cisco, decode_qbridge};
