@@ -74,21 +74,7 @@ struct RunParams {
 // snmpbot access (tables reuse the poller structs; objects endpoint is new)
 // ---------------------------------------------------------------------------
 
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-struct SNMPBotObjectInstance {
-    #[serde(default)]
-    value: Option<SNMPBotResultEntryObjectValue>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-struct SNMPBotObjectResponse {
-    #[allow(dead_code)]
-    i_d: String,
-    #[serde(default, deserialize_with = "crate::collectors::poller::null_to_default")]
-    instances: Vec<SNMPBotObjectInstance>,
-}
+use crate::collectors::poller::SNMPBotObjectResponse;
 
 fn snmpbot_url_for(snmpbot_url: &str, fqdn: &str, community: &str, kind: &str, id: &str) -> Option<reqwest::Url> {
     let source = format!("{}/api/hosts/{}/{}/{}", snmpbot_url, fqdn, kind, id);

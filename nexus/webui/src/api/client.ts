@@ -8,6 +8,8 @@ import type {
   DiscoveryStatus,
   EventInfo,
   ResetResult,
+  StpTree,
+  StpVlanSummary,
   Summary,
   SystemStatus,
   VlanSummary,
@@ -64,6 +66,8 @@ export const api = {
   pollVlans: (fqdn: string) =>
     request<void>(`/api/v1/devices/${encodeURIComponent(fqdn)}/vlans/poll`, { method: 'POST' }),
   vlans: () => request<VlanSummary[]>('/api/v1/vlans'),
+  stp: () => request<StpVlanSummary[]>('/api/v1/stp'),
+  stpTree: (vlan: number) => request<StpTree>(`/api/v1/stp/${vlan}`),
 };
 
 // WebSocket endpoint for live log tailing (backlog replay + push). Relative to

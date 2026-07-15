@@ -12,7 +12,7 @@
 extern crate reqwest;
 extern crate serde_json;
 
-use crate::collectors::poller::{SNMPBotResponse, SNMPBotResultEntryObjectValue};
+use crate::collectors::poller::{SNMPBotObjectResponse, SNMPBotResponse, SNMPBotResultEntryObjectValue};
 use crate::db;
 use crate::models::metrics::{LabeledMetric, MetricValue};
 use crate::utilities::tools;
@@ -58,27 +58,62 @@ impl EntityMetricsStore {
     // Latest results for one device as structured JSON DTOs for /api/v1.
     // Unknown fqdn and not-yet-polled both yield empty vectors.
     pub fn device_entity(&self, fqdn: &str) -> crate::models::json::ApiDeviceEntity {
-        use crate::models::json::{ApiDeviceEntity, ApiEntitySensor, ApiStpPort};
+        match self.devices.get(fqdn) {
+            Some(metrics) => decode_entity(metrics),
+            None => crate::models::json::ApiDeviceEntity {
+                sensors: Vec::new(),
+                stp: Vec::new(),
+                stp_bridges: Vec::new(),
+            },
+        }
+    }
 
-        let label = |metric: &LabeledMetric, key: &str| -> String {
-            metric.labels.get(key).cloned().unwrap_or_default()
-        };
-        // "" (sensors) / "UNKNOWN" (STP) mean the poller could not associate
-        // the row with an interface; "0" likewise for interface ids.
-        let opt_name = |name: String| -> Option<String> {
-            if name.is_empty() || name == "UNKNOWN" { None } else { Some(name) }
-        };
-        let opt_id = |id: &str| -> Option<i64> {
-            match id.parse::<i64>() {
-                Ok(0) | Err(_) => None,
-                Ok(v) => Some(v),
+    // Every device's STP data at once, for the network-wide tree computation
+    // (GET /api/v1/stp*). Devices without STP rows are omitted from the maps.
+    pub fn network_stp(&self) -> (
+        HashMap<String, Vec<crate::models::json::ApiStpPort>>,
+        HashMap<String, Vec<crate::models::json::ApiStpBridge>>,
+    ) {
+        let mut ports = HashMap::new();
+        let mut bridges = HashMap::new();
+        for (fqdn, metrics) in self.devices.iter() {
+            let entity = decode_entity(metrics);
+            if !entity.stp.is_empty() {
+                ports.insert(fqdn.clone(), entity.stp);
             }
-        };
+            if !entity.stp_bridges.is_empty() {
+                bridges.insert(fqdn.clone(), entity.stp_bridges);
+            }
+        }
+        (ports, bridges)
+    }
+}
 
-        let mut sensors: Vec<ApiEntitySensor> = Vec::new();
-        let mut stp: std::collections::BTreeMap<(i64, i64), ApiStpPort> = std::collections::BTreeMap::new();
+// Store rows -> structured DTOs; shared by device_entity and network_stp.
+fn decode_entity(metrics: &[LabeledMetric]) -> crate::models::json::ApiDeviceEntity {
+    use crate::models::json::{ApiDeviceEntity, ApiEntitySensor, ApiStpBridge, ApiStpPort};
 
-        for metric in self.devices.get(fqdn).map(|m| m.iter()).into_iter().flatten() {
+    let label = |metric: &LabeledMetric, key: &str| -> String {
+        metric.labels.get(key).cloned().unwrap_or_default()
+    };
+    // "" (sensors) / "UNKNOWN" (STP) mean the poller could not associate
+    // the row with an interface; "0" likewise for interface ids.
+    let opt_name = |name: String| -> Option<String> {
+        if name.is_empty() || name == "UNKNOWN" { None } else { Some(name) }
+    };
+    let opt_id = |id: &str| -> Option<i64> {
+        match id.parse::<i64>() {
+            Ok(0) | Err(_) => None,
+            Ok(v) => Some(v),
+        }
+    };
+
+    let mut sensors: Vec<ApiEntitySensor> = Vec::new();
+    let mut stp: std::collections::BTreeMap<(i64, i64), ApiStpPort> = std::collections::BTreeMap::new();
+    let mut bridges: std::collections::BTreeMap<i64, ApiStpBridge> = std::collections::BTreeMap::new();
+
+    {
+        for metric in metrics.iter() {
             if metric.name == "jaspy_sensors" {
                 sensors.push(ApiEntitySensor {
                     sensor_id: label(metric, "sensor_id").parse().unwrap_or(0),
@@ -90,6 +125,39 @@ impl EntityMetricsStore {
                     interface_id: opt_id(&label(metric, "interface_id")),
                     timestamp: metric.timestamp,
                 });
+            } else if let Some(key) = metric.name.strip_prefix("jaspy_stp_bridge_") {
+                // Must match before the jaspy_stp_ port branch (same prefix).
+                let vlan: i64 = match label(metric, "vlan").parse() {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+                let bridge = bridges.entry(vlan).or_insert_with(|| ApiStpBridge {
+                    vlan: vlan,
+                    root_priority: None,
+                    root_mac: None,
+                    root_cost: None,
+                    root_port: None,
+                    root_port_interface_name: None,
+                    topology_changes: None,
+                    time_since_topology_change_secs: None,
+                    timestamp: 0,
+                });
+                let value = metric.value.as_i64();
+                match key {
+                    "root_priority" => {
+                        bridge.root_priority = Some(value);
+                        let mac = label(metric, "root_mac");
+                        if !mac.is_empty() {
+                            bridge.root_mac = Some(mac);
+                        }
+                    }
+                    "root_cost" => bridge.root_cost = Some(value),
+                    "root_port" => bridge.root_port = Some(value),
+                    "topology_changes" => bridge.topology_changes = Some(value),
+                    "time_since_topology_change" => bridge.time_since_topology_change_secs = Some(value),
+                    _ => {}
+                }
+                bridge.timestamp = std::cmp::max(bridge.timestamp, metric.timestamp);
             } else if let Some(key) = metric.name.strip_prefix("jaspy_stp_") {
                 let vlan: i64 = match label(metric, "vlan").parse() {
                     Ok(v) => v,
@@ -127,17 +195,29 @@ impl EntityMetricsStore {
                 port.timestamp = std::cmp::max(port.timestamp, metric.timestamp);
             }
         }
-
-        sensors.sort_by(|a, b| a.name.cmp(&b.name).then(a.sensor_id.cmp(&b.sensor_id)));
-        let mut stp: Vec<ApiStpPort> = stp.into_values().collect();
-        stp.sort_by(|a, b| {
-            a.vlan.cmp(&b.vlan)
-                .then_with(|| a.interface_name.cmp(&b.interface_name))
-                .then_with(|| a.stp_port_id.cmp(&b.stp_port_id))
-        });
-
-        ApiDeviceEntity { sensors: sensors, stp: stp }
     }
+
+    sensors.sort_by(|a, b| a.name.cmp(&b.name).then(a.sensor_id.cmp(&b.sensor_id)));
+    let mut stp: Vec<ApiStpPort> = stp.into_values().collect();
+    stp.sort_by(|a, b| {
+        a.vlan.cmp(&b.vlan)
+            .then_with(|| a.interface_name.cmp(&b.interface_name))
+            .then_with(|| a.stp_port_id.cmp(&b.stp_port_id))
+    });
+
+    // Resolve each vlan's reported root port (a bridge port number) to the
+    // interface name via that vlan's port rows.
+    let mut stp_bridges: Vec<ApiStpBridge> = bridges.into_values().collect();
+    for bridge in stp_bridges.iter_mut() {
+        if let Some(root_port) = bridge.root_port {
+            bridge.root_port_interface_name = stp
+                .iter()
+                .find(|p| p.vlan == bridge.vlan && p.stp_port_id == root_port)
+                .and_then(|p| p.interface_name.clone());
+        }
+    }
+
+    ApiDeviceEntity { sensors: sensors, stp: stp, stp_bridges: stp_bridges }
 }
 
 #[cfg(test)]
@@ -404,6 +484,79 @@ mod tests {
         store.replace_device("other.example.com".to_string(), vec![sensor_metric("S", 1.0, "", "0", 1)]);
         assert!(store.device_entity(DEV).sensors.is_empty());
     }
+
+    // --- bridge scalar metrics -> ApiStpBridge ---
+
+    fn bridge_metric(key: &str, value: i64, vlan: &str, extra: &[(&str, &str)], ts: u64) -> LabeledMetric {
+        let mut labels: Vec<(&str, &str)> = vec![("hostname", "sw1"), ("fqdn", DEV), ("vlan", vlan)];
+        labels.extend_from_slice(extra);
+        LabeledMetric::from_parts(&format!("jaspy_stp_bridge_{}", key), MetricValue::Int64(value), &labels, ts)
+    }
+
+    #[test]
+    fn device_entity_decodes_bridge_scalars() {
+        let mut store = EntityMetricsStore::new();
+        let mut metrics = vec![
+            bridge_metric("root_priority", 33068, "100", &[("root_mac", "70:10:6f:63:f2:70")], 10),
+            bridge_metric("root_cost", 20000, "100", &[], 11),
+            bridge_metric("root_port", 5, "100", &[], 12),
+            bridge_metric("topology_changes", 9, "100", &[], 13),
+            bridge_metric("time_since_topology_change", 22979, "100", &[], 14),
+        ];
+        // A port row on the same vlan whose stp_port_id matches root_port, so
+        // rootPortInterfaceName resolves.
+        metrics.extend(full_stp_port("100", "5", 1));
+        store.replace_device(DEV.to_string(), metrics);
+
+        let entity = store.device_entity(DEV);
+        assert_eq!(entity.stp_bridges.len(), 1);
+        let bridge = &entity.stp_bridges[0];
+        assert_eq!(bridge.vlan, 100);
+        assert_eq!(bridge.root_priority, Some(33068));
+        assert_eq!(bridge.root_mac.as_deref(), Some("70:10:6f:63:f2:70"));
+        assert_eq!(bridge.root_cost, Some(20000));
+        assert_eq!(bridge.root_port, Some(5));
+        assert_eq!(bridge.root_port_interface_name.as_deref(), Some("GigabitEthernet0/1"));
+        assert_eq!(bridge.topology_changes, Some(9));
+        assert_eq!(bridge.time_since_topology_change_secs, Some(22979));
+        assert_eq!(bridge.timestamp, 14);
+        // The port rows are unaffected by the bridge branch.
+        assert_eq!(entity.stp.len(), 1);
+    }
+
+    #[test]
+    fn device_entity_partial_bridge_scalars_stay_none() {
+        let mut store = EntityMetricsStore::new();
+        store.replace_device(DEV.to_string(), vec![bridge_metric("root_cost", 4, "100", &[], 1)]);
+        let bridge = &store.device_entity(DEV).stp_bridges[0];
+        assert_eq!(bridge.root_cost, Some(4));
+        assert_eq!(bridge.root_priority, None);
+        assert_eq!(bridge.root_mac, None);
+        assert_eq!(bridge.root_port_interface_name, None);
+    }
+
+    #[test]
+    fn network_stp_returns_every_device() {
+        let mut store = EntityMetricsStore::new();
+        let mut metrics = full_stp_port("100", "5", 1);
+        metrics.push(bridge_metric("root_cost", 4, "100", &[], 1));
+        store.replace_device(DEV.to_string(), metrics);
+        store.replace_device("other.example.com".to_string(), vec![sensor_metric("S", 1.0, "", "0", 1)]);
+
+        let (ports, bridges) = store.network_stp();
+        assert_eq!(ports.len(), 1, "sensor-only device contributes no STP");
+        assert_eq!(ports[DEV].len(), 1);
+        assert_eq!(bridges[DEV][0].root_cost, Some(4));
+    }
+
+    #[test]
+    fn bridge_metric_renders_exact_text() {
+        let metric = bridge_metric("root_priority", 33068, "100", &[("root_mac", "aa:bb:cc:dd:ee:ff")], 7);
+        assert_eq!(
+            metric.as_text(),
+            "jaspy_stp_bridge_root_priority{fqdn=\"sw1.example.com\",hostname=\"sw1\",root_mac=\"aa:bb:cc:dd:ee:ff\",vlan=\"100\"} 33068 7"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -481,6 +634,29 @@ pub(crate) fn fetch_table(snmpbot_url: &String, host: &String, table: &str) -> O
             None
         }
     }
+}
+
+// Single-object query in the same inline host form (community@vlan@fqdn) as
+// fetch_table. Returns the raw value so callers can distinguish numbers from
+// octet-string renderings.
+pub(crate) fn fetch_object(snmpbot_url: &String, host: &String, object: &str) -> Option<SNMPBotResultEntryObjectValue> {
+    let url = format!("{}/api/hosts/{}/objects/{}", snmpbot_url, host, object);
+    let response = reqwest::blocking::get(&url).ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let parsed: SNMPBotObjectResponse = match response.json() {
+        Ok(p) => p,
+        Err(e) => {
+            println!("[{}] error decoding object {}: {}", host, object, e);
+            return None;
+        }
+    };
+    if parsed.instances.len() > 1 {
+        println!("[{}] expected <= 1 results for {}, got {}", host, object, parsed.instances.len());
+        return None;
+    }
+    parsed.instances.into_iter().next()?.value
 }
 
 fn obj_f64(objects: &HashMap<String, SNMPBotResultEntryObjectValue>, key: &str) -> Option<f64> {
@@ -816,7 +992,62 @@ fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMet
             push_stp_metric(out, device, port, *vlan, bridge_port, "port_role", rstp_port_role_numeric(&port.role), timestamp);
             push_stp_metric(out, device, port, *vlan, bridge_port, "port_state", stp_port_state_numeric(&state), timestamp);
         }
+
+        // Bridge-level scalars for this vlan (BRIDGE-MIB dot1dStp group): the
+        // reported root identity for cross-checking the computed tree, plus
+        // topology-change churn. Five extra object GETs per vlan per cycle.
+        get_stp_bridge(snmpbot_url, device, &per_vlan_host, *vlan, timestamp, out);
     }
+}
+
+fn value_i64(value: &SNMPBotResultEntryObjectValue) -> Option<i64> {
+    match value {
+        SNMPBotResultEntryObjectValue::Uint64(v) => Some(*v as i64),
+        SNMPBotResultEntryObjectValue::Float64(v) => Some(*v as i64),
+        _ => None,
+    }
+}
+
+fn get_stp_bridge(snmpbot_url: &String, device: &EntityDevice, per_vlan_host: &String, vlan: i64, timestamp: u64, out: &mut Vec<LabeledMetric>) {
+    use crate::utilities::stp::{parse_bridge_id, timeticks_secs};
+
+    let fetch = |object: &str| fetch_object(snmpbot_url, per_vlan_host, object);
+
+    if let Some(SNMPBotResultEntryObjectValue::Str(raw)) = fetch("BRIDGE-MIB::dot1dStpDesignatedRoot") {
+        if let Some((priority, mac)) = parse_bridge_id(&raw) {
+            push_stp_bridge_metric(out, device, vlan, "root_priority", priority, &[("root_mac", &mac)], timestamp);
+        } else {
+            println!("[{}] unparseable dot1dStpDesignatedRoot: {:.40}", per_vlan_host, raw);
+        }
+    }
+    if let Some(cost) = fetch("BRIDGE-MIB::dot1dStpRootCost").as_ref().and_then(value_i64) {
+        push_stp_bridge_metric(out, device, vlan, "root_cost", cost, &[], timestamp);
+    }
+    if let Some(port) = fetch("BRIDGE-MIB::dot1dStpRootPort").as_ref().and_then(value_i64) {
+        push_stp_bridge_metric(out, device, vlan, "root_port", port, &[], timestamp);
+    }
+    if let Some(changes) = fetch("BRIDGE-MIB::dot1dStpTopChanges").as_ref().and_then(value_i64) {
+        push_stp_bridge_metric(out, device, vlan, "topology_changes", changes, &[], timestamp);
+    }
+    if let Some(secs) = fetch("BRIDGE-MIB::dot1dStpTimeSinceTopologyChange").as_ref().and_then(timeticks_secs) {
+        push_stp_bridge_metric(out, device, vlan, "time_since_topology_change", secs, &[], timestamp);
+    }
+}
+
+fn push_stp_bridge_metric(out: &mut Vec<LabeledMetric>, device: &EntityDevice, vlan: i64, key: &str, value: i64, extra_labels: &[(&str, &str)], timestamp: u64) {
+    let mut labels: HashMap<String, String> = HashMap::new();
+    labels.insert("hostname".to_string(), device.hostname.clone());
+    labels.insert("fqdn".to_string(), device.fqdn.clone());
+    labels.insert("vlan".to_string(), vlan.to_string());
+    for (label_key, label_value) in extra_labels {
+        labels.insert(label_key.to_string(), label_value.to_string());
+    }
+    out.push(LabeledMetric::new(
+        &format!("jaspy_stp_bridge_{}", key),
+        MetricValue::Int64(value),
+        &labels,
+        timestamp,
+    ));
 }
 
 fn push_stp_metric(out: &mut Vec<LabeledMetric>, device: &EntityDevice, port: &StpPortInfo, vlan: i64, bridge_port: i64, key: &str, value: i64, timestamp: u64) {

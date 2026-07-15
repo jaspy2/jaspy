@@ -53,11 +53,11 @@ fn get_topology_data(connection: &mut AnyConnection) -> models::json::Weathermap
     return wmap;
 }
 
-// TODO: GH#9 Move everything to v1 API
-#[get("/")]
-pub fn full_topology_data(mut connection: db::JaspyDB, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>) -> Json<models::json::WeathermapBase> {
+// TTL-cached topology read, shared by the weathermap endpoint and the STP
+// tree API (routes/api/v1.rs).
+pub(crate) fn cached_topology_data(connection: &mut AnyConnection, cache_controller: &Arc<Mutex<utilities::cache::CacheController>>) -> models::json::WeathermapBase {
     let cached_weathermap_topology_arc: Arc<Mutex<Option<utilities::cache::CachedWeathermapTopology>>>;
-    if let Ok(cache_controller) = cache_controller.inner().lock() {
+    if let Ok(cache_controller) = cache_controller.lock() {
         cached_weathermap_topology_arc = cache_controller.cached_weathermap_topology.clone();
     } else {
         // TODO: log, this means cache is somehow VERY broken
@@ -77,18 +77,24 @@ pub fn full_topology_data(mut connection: db::JaspyDB, cache_controller: &State<
                 ret = cached_weathermap_topology_data.weathermap_topology.clone();
                 cache_refresh = false;
             } else {
-                ret = get_topology_data(&mut connection);
+                ret = get_topology_data(connection);
                 cache_refresh = true;
             }
         } else {
-            ret = get_topology_data(&mut connection);
+            ret = get_topology_data(connection);
             cache_refresh = true;
         }
         if cache_refresh {
             *cached_weathermap_topology_option = Some(utilities::cache::CachedWeathermapTopology::new(ret.clone()));
         }
     }
-    return Json(ret);
+    return ret;
+}
+
+// TODO: GH#9 Move everything to v1 API
+#[get("/")]
+pub fn full_topology_data(mut connection: db::JaspyDB, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>) -> Json<models::json::WeathermapBase> {
+    Json(cached_topology_data(&mut connection, cache_controller.inner()))
 }
 
 #[get("/state")]

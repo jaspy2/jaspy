@@ -171,9 +171,65 @@ export interface StpPort {
   timestamp: number; // msecs
 }
 
+// Per-VLAN bridge-level STP scalars reported by one device.
+export interface StpBridge {
+  vlan: number;
+  rootPriority: number | null;
+  rootMac: string | null;
+  rootCost: number | null;
+  rootPort: number | null;
+  rootPortInterfaceName: string | null;
+  topologyChanges: number | null;
+  timeSinceTopologyChangeSecs: number | null;
+  timestamp: number; // msecs
+}
+
 export interface DeviceEntity {
   sensors: EntitySensor[];
   stp: StpPort[];
+  stpBridges: StpBridge[];
+}
+
+// GET /api/v1/stp — VLANs with STP data.
+export interface StpVlanSummary {
+  vlan: number;
+  rootFqdn: string | null;
+  nodeCount: number;
+  blockedPortCount: number;
+  topologyChanges: number | null;
+  timeSinceTopologyChangeSecs: number | null;
+}
+
+// GET /api/v1/stp/<vlan> — the computed active spanning tree. Nodes are in
+// DFS order so the indented tree renders by linear iteration on depth.
+export interface StpNode {
+  fqdn: string;
+  depth: number;
+  parent: string | null;
+  parentInterface: string | null;
+  rootPortInterfaceName: string | null;
+  rootPortState: string | null;
+  pathCost: number | null;
+  reported: StpBridge | null;
+  rootMismatch: boolean;
+  orphan: boolean;
+}
+
+export interface StpBlockedLink {
+  fqdn: string;
+  interfaceName: string | null;
+  role: string; // "alternate" | "backUp"
+  state: string;
+  pathCost: number;
+  connectedTo: InterfaceConnection | null;
+}
+
+export interface StpTree {
+  vlan: number;
+  roots: string[];
+  nodes: StpNode[];
+  blockedLinks: StpBlockedLink[];
+  flags: string[];
 }
 
 // PUT/POST body for device create/update (nexus NewDevice).

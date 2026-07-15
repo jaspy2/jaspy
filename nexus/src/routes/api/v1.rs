@@ -204,9 +204,104 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
 pub fn device_entity(device_fqdn: &str, entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>) -> Json<models::json::ApiDeviceEntity> {
     let entity = match entity_metrics.inner().lock() {
         Ok(store) => store.device_entity(device_fqdn),
-        Err(_) => models::json::ApiDeviceEntity { sensors: Vec::new(), stp: Vec::new() },
+        Err(_) => models::json::ApiDeviceEntity { sensors: Vec::new(), stp: Vec::new(), stp_bridges: Vec::new() },
     };
     Json(entity)
+}
+
+fn device_base_macs(connection: &mut db::AnyConnection) -> std::collections::HashMap<String, Option<String>> {
+    models::dbo::Device::all(connection)
+        .into_iter()
+        .map(|device| (format!("{}.{}", device.name, device.dns_domain), device.base_mac))
+        .collect()
+}
+
+// Which VLANs have STP data, for the STP page's selector. Root resolution is
+// cheap: the device with STP ports on the vlan but no root-role port; when
+// that is ambiguous, fall back to matching the devices' reported root bridge
+// MAC against discovery's base_mac records.
+#[get("/stp")]
+pub fn stp_summary(
+    mut connection: db::JaspyDB,
+    entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
+) -> Json<Vec<models::json::ApiStpVlanSummary>> {
+    use crate::utilities::stp::normalize_mac;
+
+    let (ports, bridges) = match entity_metrics.inner().lock() {
+        Ok(store) => store.network_stp(),
+        Err(_) => Default::default(),
+    };
+    let base_macs = device_base_macs(&mut connection);
+    let fqdn_by_mac: std::collections::HashMap<String, String> = base_macs
+        .iter()
+        .filter_map(|(fqdn, mac)| mac.as_ref().map(|m| (normalize_mac(m), fqdn.clone())))
+        .collect();
+
+    let vlans: std::collections::BTreeSet<i64> = ports.values().flatten().map(|p| p.vlan).collect();
+    let summaries = vlans.into_iter().map(|vlan| {
+        let mut node_count = 0;
+        let mut blocked_port_count = 0;
+        let mut root_candidates: Vec<&String> = Vec::new();
+        for (fqdn, device_ports) in ports.iter() {
+            let on_vlan: Vec<_> = device_ports.iter().filter(|p| p.vlan == vlan).collect();
+            if on_vlan.is_empty() {
+                continue;
+            }
+            node_count += 1;
+            blocked_port_count += on_vlan.iter().filter(|p| p.role == "alternate" || p.role == "backUp").count() as i64;
+            if !on_vlan.iter().any(|p| p.role == "root") {
+                root_candidates.push(fqdn);
+            }
+        }
+        let root_fqdn = match root_candidates.as_slice() {
+            [single] => Some((*single).clone()),
+            _ => {
+                // Majority vote over the reported root MACs, mapped to a
+                // monitored device when possible.
+                let mut votes: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+                for bridge in bridges.values().flatten().filter(|b| b.vlan == vlan) {
+                    if let Some(mac) = bridge.root_mac.as_ref() {
+                        *votes.entry(normalize_mac(mac)).or_default() += 1;
+                    }
+                }
+                votes.into_iter().max_by_key(|(_, count)| *count).and_then(|(mac, _)| fqdn_by_mac.get(&mac).cloned())
+            }
+        };
+        let vlan_bridges: Vec<_> = bridges.values().flatten().filter(|b| b.vlan == vlan).collect();
+        models::json::ApiStpVlanSummary {
+            vlan: vlan,
+            root_fqdn: root_fqdn,
+            node_count: node_count,
+            blocked_port_count: blocked_port_count,
+            topology_changes: vlan_bridges.iter().filter_map(|b| b.topology_changes).max(),
+            time_since_topology_change_secs: vlan_bridges.iter().filter_map(|b| b.time_since_topology_change_secs).min(),
+        }
+    }).collect();
+    Json(summaries)
+}
+
+// The computed active spanning tree for one VLAN: entitypoller STP data
+// joined with the DB link topology (see utilities/stp.rs).
+#[get("/stp/<vlan>")]
+pub fn stp_tree(
+    mut connection: db::JaspyDB,
+    vlan: i64,
+    entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+) -> Json<models::json::ApiStpTree> {
+    let (ports, bridges) = match entity_metrics.inner().lock() {
+        Ok(store) => store.network_stp(),
+        Err(_) => Default::default(),
+    };
+    let topology = crate::routes::dev::weathermap::cached_topology_data(&mut connection, cache_controller.inner());
+    let base_macs = device_base_macs(&mut connection);
+    let inputs = crate::utilities::stp::StpInputs {
+        ports: &ports,
+        bridges: &bridges,
+        base_macs: &base_macs,
+        topology: &topology,
+    };
+    Json(crate::utilities::stp::build_stp_tree(&inputs, vlan))
 }
 
 // Network-wide VLAN inventory (id, per-device names, port usage), straight

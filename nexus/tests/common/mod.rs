@@ -289,6 +289,30 @@ impl SnmpbotMock {
         })
     }
 
+    /// Stub one snmpbot single-object query addressed by the inline host form
+    /// (`community@fqdn` or `community@vlan@fqdn`), as issued by the
+    /// entitypoller's bridge-scalar polling. `value` is raw JSON so numbers
+    /// and strings both work.
+    pub fn stub_host_object<'a>(
+        &'a self,
+        host: &str,
+        object_id: &str,
+        value: serde_json::Value,
+    ) -> httpmock::Mock<'a> {
+        let path = format!("/api/hosts/{}/objects/{}", host, object_id);
+        let body = serde_json::json!({
+            "ID": object_id,
+            "Instances": [{"HostID": host, "Value": value}]
+        })
+        .to_string();
+        self.server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path(path);
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(body);
+        })
+    }
+
     /// Catch-all for any other snmpbot table query (returns 404). Assert its
     /// hit count is 0 to prove nexus queried only the expected tables.
     pub fn stub_other_tables<'a>(&'a self) -> httpmock::Mock<'a> {

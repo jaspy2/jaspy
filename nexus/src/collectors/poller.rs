@@ -54,6 +54,24 @@ pub struct SNMPBotResultEntry {
     pub objects: HashMap<String, SNMPBotResultEntryObjectValue>,
 }
 
+// Single-object query response (`GET /api/hosts/{host}/objects/{id}`), shared
+// by the discovery engine and the entitypoller's bridge-scalar polling.
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SNMPBotObjectInstance {
+    #[serde(default)]
+    pub value: Option<SNMPBotResultEntryObjectValue>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SNMPBotObjectResponse {
+    #[allow(dead_code)]
+    pub i_d: String,
+    #[serde(default, deserialize_with = "null_to_default")]
+    pub instances: Vec<SNMPBotObjectInstance>,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct SNMPBotResponse {

@@ -102,7 +102,7 @@ fn handle(topology: &Topology, mut stream: TcpStream) {
         Kind::Table => topology
             .table(&request.fqdn, request.vlan, &request.id, elapsed)
             .map(|resp| serde_json::to_string(&resp).unwrap()),
-        Kind::Object => topology.object(&request.fqdn, &request.id).map(|value| {
+        Kind::Object => topology.object(&request.fqdn, request.vlan, &request.id, elapsed).map(|value| {
             serde_json::json!({
                 "ID": request.id,
                 "Instances": [{"HostID": request.fqdn, "Value": value}],
@@ -188,7 +188,7 @@ mod tests {
             .text()
             .unwrap();
         let parsed: crate::collectors::poller::SNMPBotResponse = serde_json::from_str(&body).unwrap();
-        assert_eq!(parsed.entries.len(), 3); // core1 has 3 uplinks
+        assert_eq!(parsed.entries.len(), 4); // core1: 3 downlinks/uplinks + a-02 backup link
 
         let object = reqwest::blocking::get(format!("{}/api/hosts/core1.mock.jaspy/objects/SNMPv2-MIB::sysDescr", base))
             .unwrap()
@@ -206,5 +206,15 @@ mod tests {
             .unwrap();
         let parsed: crate::collectors::poller::SNMPBotResponse = serde_json::from_str(&stp).unwrap();
         assert!(!parsed.entries.is_empty());
+
+        // Per-vlan scalar object: the vlan must reach Topology::object (it is
+        // dropped for plain community@fqdn addressing).
+        let scalar = reqwest::blocking::get(format!("{}/api/hosts/mock@10@core1.mock.jaspy/objects/BRIDGE-MIB::dot1dStpRootCost", base))
+            .unwrap()
+            .json::<serde_json::Value>()
+            .unwrap();
+        assert_eq!(scalar["Instances"][0]["Value"], 0, "core1 is the root");
+        let unscoped = reqwest::blocking::get(format!("{}/api/hosts/mock@core1.mock.jaspy/objects/BRIDGE-MIB::dot1dStpRootCost", base)).unwrap();
+        assert_eq!(unscoped.status().as_u16(), 404, "scalars require the per-vlan host form");
     }
 }

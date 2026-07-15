@@ -203,6 +203,79 @@ pub struct ApiVlan {
     pub name: Option<String>,
 }
 
+// Per-VLAN bridge-level STP scalars (BRIDGE-MIB dot1dStp group) reported by
+// one device: who it believes the root is and how the topology has churned.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpBridge {
+    pub vlan: i64,
+    pub root_priority: Option<i64>,
+    pub root_mac: Option<String>, // lowercase colon form
+    pub root_cost: Option<i64>,
+    pub root_port: Option<i64>, // bridge port number
+    pub root_port_interface_name: Option<String>,
+    pub topology_changes: Option<i64>,
+    pub time_since_topology_change_secs: Option<i64>,
+    pub timestamp: u64,
+}
+
+// GET /api/v1/stp/<vlan>: the computed active spanning tree. Nodes are in
+// DFS order (children sorted by fqdn) so a UI renders the indented tree by
+// iterating linearly on depth.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpNode {
+    pub fqdn: String,
+    pub depth: i64,
+    // Parent in the tree (None for roots and orphans) and the two link ends.
+    pub parent: Option<String>,
+    pub parent_interface: Option<String>,
+    pub root_port_interface_name: Option<String>,
+    pub root_port_state: Option<String>,
+    pub path_cost: Option<i64>,
+    pub reported: Option<ApiStpBridge>,
+    // This device's reported root disagrees with the computed root's bridge MAC.
+    pub root_mismatch: bool,
+    // Has a root port but its upstream could not be resolved (missing
+    // adjacency, unmonitored parent, or a cycle) — rendered as its own tree.
+    pub orphan: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpBlockedLink {
+    pub fqdn: String,
+    pub interface_name: Option<String>,
+    pub role: String, // "alternate" | "backUp"
+    pub state: String,
+    pub path_cost: i64,
+    pub connected_to: Option<ApiInterfaceConnection>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpTree {
+    pub vlan: i64,
+    pub roots: Vec<String>,
+    pub nodes: Vec<ApiStpNode>,
+    pub blocked_links: Vec<ApiStpBlockedLink>,
+    // Structural anomalies: "no-root", "multiple-roots", "cycle",
+    // "multiple-root-ports:<fqdn>".
+    pub flags: Vec<String>,
+}
+
+// GET /api/v1/stp: which VLANs have STP data, for the page's VLAN selector.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpVlanSummary {
+    pub vlan: i64,
+    pub root_fqdn: Option<String>,
+    pub node_count: i64,
+    pub blocked_port_count: i64,
+    pub topology_changes: Option<i64>,
+    pub time_since_topology_change_secs: Option<i64>,
+}
+
 // GET /api/v1/vlans: network-wide VLAN inventory aggregated across every
 // polled device, straight from the in-memory vlanpoller store.
 #[derive(Serialize, Deserialize)]
@@ -244,6 +317,9 @@ pub struct ApiDeviceDetail {
 pub struct ApiDeviceEntity {
     pub sensors: Vec<ApiEntitySensor>,
     pub stp: Vec<ApiStpPort>,
+    // Per-VLAN bridge scalars. Additive: default-deserialized for older payloads.
+    #[serde(default)]
+    pub stp_bridges: Vec<ApiStpBridge>,
 }
 
 #[derive(Serialize, Deserialize)]

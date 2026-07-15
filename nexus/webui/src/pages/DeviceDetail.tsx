@@ -369,7 +369,7 @@ export default function DeviceDetail() {
               <tbody>
                 {stp.map((port) => (
                   <tr key={`${port.vlan}-${port.stpPortId}`}>
-                    <td>{port.vlan}</td>
+                    <td><Link to={`/stp?vlan=${port.vlan}`} title="Open the STP tree for this VLAN">{port.vlan}</Link></td>
                     <td className="wrap-mobile">{port.interfaceName ?? `port ${port.stpPortId}`}</td>
                     <td>{port.role}</td>
                     <td><StpStateBadge state={port.state} /></td>

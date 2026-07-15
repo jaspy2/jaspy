@@ -98,6 +98,9 @@ export default function Vlans() {
                 {expanded.has(vlan.id) && (
                   <tr className="vlan-detail-row">
                     <td colSpan={5}>
+                      <p style={{ margin: '4px 0 8px' }}>
+                        <Link to={`/stp?vlan=${vlan.id}`}>STP tree for VLAN {vlan.id} →</Link>
+                      </p>
                       <div className="vlan-list">
                         {vlan.devices.map((device) => (
                           <Fragment key={device.fqdn}>

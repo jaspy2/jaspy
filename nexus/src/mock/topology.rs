@@ -97,6 +97,9 @@ pub fn build() -> Topology {
                 uplink(10101, "Te1/0/1", "TenGigabitEthernet1/0/1", "downlink dist1", 10000, ("dist1", "Te1/1/1")),
                 uplink(10102, "Te1/0/2", "TenGigabitEthernet1/0/2", "downlink dist2", 10000, ("dist2", "Te1/1/1")),
                 uplink(10103, "Te1/0/3", "TenGigabitEthernet1/0/3", "firewall uplink", 10000, ("fw1", "port1")),
+                // Redundant direct link to a-02: STP blocks it on a-02's end
+                // (its backup uplink), giving trees a realistic blocked link.
+                uplink(10104, "Te1/0/4", "TenGigabitEthernet1/0/4", "backup downlink hall a 02", 10000, ("access-hall-a-02", "Te1/1/2")),
             ],
         },
         MockDevice {
@@ -138,11 +141,17 @@ pub fn build() -> Topology {
                 uplink(10104, "Te1/1/4", "TenGigabitEthernet1/1/4", "wlc uplink", 10000, ("wlc1", "Te0/0/1")),
             ],
         },
-        access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco),
-        access_switch("access-hall-a-02", ("dist1", "Te1/1/3"), true, VlanStyle::Cisco),
+        access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco, &[10]),
+        {
+            // a-02 gets a second, redundant uplink straight to core1; STP
+            // keeps the dist1 path and blocks this one (see stp_role).
+            let mut a02 = access_switch("access-hall-a-02", ("dist1", "Te1/1/3"), true, VlanStyle::Cisco, &[10]);
+            a02.interfaces.insert(1, uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "backup uplink core1", 10000, ("core1", "Te1/0/4")));
+            a02
+        },
         // hall b answers only the standards-based Q-BRIDGE tables so the mock
         // exercises the vlanpoller's fallback path.
-        access_switch("access-hall-b-01", ("dist2", "Te1/1/2"), false, VlanStyle::QBridge),
+        access_switch("access-hall-b-01", ("dist2", "Te1/1/2"), false, VlanStyle::QBridge, &[20]),
         MockDevice {
             name: "wlc1",
             model: "AIR-CT5520-K9",
@@ -173,7 +182,7 @@ pub fn build() -> Topology {
     Topology { devices, started: crate::utilities::tools::get_time() }
 }
 
-fn access_switch(name: &'static str, upstream: (&'static str, &'static str), uplink_flaps: bool, vlan_style: VlanStyle) -> MockDevice {
+fn access_switch(name: &'static str, upstream: (&'static str, &'static str), uplink_flaps: bool, vlan_style: VlanStyle, stp_vlans: &'static [i64]) -> MockDevice {
     let mut interfaces = vec![MockInterface {
         ifindex: 10101,
         name: "Te1/1/1",
@@ -204,7 +213,7 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
         sys_descr: "Cisco IOS-XE Software (mock), Catalyst 9300 Switch",
         sw_rev: "17.6.5",
         sensor_style: SensorStyle::Standard,
-        stp_vlans: &[],
+        stp_vlans,
         vlan_style,
         vlans: &[1, 10, 20],
         interfaces,
@@ -247,6 +256,30 @@ pub fn hex_bitmap(values: &[i64], base: i64, len: usize) -> String {
         }
     }
     octets.iter().map(|o| format!("{:02x}", o)).collect::<Vec<String>>().join(" ")
+}
+
+// STP role of a peered interface: core1 is the root bridge (all designated);
+// every primary uplink (access "uplink", dist "uplink core1") is the root
+// port toward it — including a-02's flapping uplink, which stays a forwarding
+// root port (mock STP is static). a-02's redundant "backup uplink core1" is
+// the blocked alternate, so trees always show one physically consistent
+// blocked link (blocked on a-02's end, designated on core1's).
+pub fn stp_role(dev: &MockDevice, iface: &MockInterface) -> &'static str {
+    if dev.name == "core1" {
+        "designated"
+    } else if iface.alias.starts_with("backup uplink") {
+        "alternate"
+    } else if iface.alias.starts_with("uplink") {
+        "root"
+    } else {
+        "designated"
+    }
+}
+
+// BRIDGE-MIB BridgeId in snmpbot's rendering: 2 priority bytes + the device's
+// base MAC, space-separated lowercase hex.
+pub fn bridge_id_spaced(priority: i64, dev_idx: usize) -> String {
+    format!("{:02x} {:02x} {}", (priority >> 8) & 0xff, priority & 0xff, base_mac_spaced(dev_idx))
 }
 
 pub fn iface_up(iface: &MockInterface, elapsed: f64) -> bool {
@@ -474,18 +507,7 @@ impl Topology {
                 let mut entries = Vec::new();
                 for vlan in dev.stp_vlans.iter() {
                     for (bridge_port, iface) in Self::stp_ports(dev) {
-                        // The core is the root bridge: everything designated.
-                        // Distribution: uplink to core is the root port; one
-                        // downlink plays alternate for variety.
-                        let role = if dev.name == "core1" {
-                            "designated"
-                        } else if iface.alias.contains("uplink core1") {
-                            "root"
-                        } else if iface.flaps {
-                            "alternate"
-                        } else {
-                            "designated"
-                        };
+                        let role = stp_role(dev, iface);
                         entries.push(entry(
                             json!({
                                 "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleInstanceIndex": vlan,
@@ -647,17 +669,16 @@ impl Topology {
                     return None;
                 }
                 let entries = Self::stp_ports(dev).into_iter().map(|(bridge_port, iface)| {
-                    let root_port = iface.alias.contains("uplink core1");
-                    let alternate = iface.flaps;
+                    let role = stp_role(dev, iface);
                     entry(
                         json!({"BRIDGE-MIB::dot1dStpPort": bridge_port}),
                         json!({
                             "BRIDGE-MIB::dot1dStpPortDesignatedCost": if dev.name == "core1" { 0 } else { 4 },
-                            "BRIDGE-MIB::dot1dStpPortPathCost": if root_port { 4 } else { 19 },
+                            "BRIDGE-MIB::dot1dStpPortPathCost": if role == "root" { 4 } else { 19 },
                             "BRIDGE-MIB::dot1dStpPortPriority": 128,
                             "BRIDGE-MIB::dot1dStpPortForwardTransitions": 1,
                             "BRIDGE-MIB::dot1dStpPortEnable": "enabled",
-                            "BRIDGE-MIB::dot1dStpPortState": if alternate { "blocking" } else { "forwarding" },
+                            "BRIDGE-MIB::dot1dStpPortState": if role == "alternate" { "blocking" } else { "forwarding" },
                         }),
                     )
                 }).collect();
@@ -699,8 +720,31 @@ impl Topology {
         }
     }
 
-    pub fn object(&self, fqdn: &str, object_id: &str) -> Option<serde_json::Value> {
+    pub fn object(&self, fqdn: &str, vlan: Option<i64>, object_id: &str, elapsed: f64) -> Option<serde_json::Value> {
         let (dev_idx, dev) = self.device_by_fqdn(fqdn)?;
+        // Per-VLAN bridge scalars (community@vlan@fqdn form), answered only
+        // for VLANs the device runs STP on. core1 is always the root.
+        if let Some(vlan) = vlan.filter(|v| dev.stp_vlans.contains(v)) {
+            // Tier by name: core 0, dist 4, access 8 — matches the per-port
+            // path costs the STP tables report.
+            let root_cost = if dev.name == "core1" { 0 } else if dev.name.starts_with("dist") { 4 } else { 8 };
+            return match object_id {
+                "BRIDGE-MIB::dot1dStpDesignatedRoot" => Some(json!(bridge_id_spaced(24576 + vlan, 0))),
+                "BRIDGE-MIB::dot1dStpRootCost" => Some(json!(root_cost)),
+                "BRIDGE-MIB::dot1dStpRootPort" => {
+                    let root_port = Self::stp_ports(dev)
+                        .into_iter()
+                        .find(|(_, iface)| stp_role(dev, iface) == "root")
+                        .map(|(bridge_port, _)| bridge_port)
+                        .unwrap_or(0);
+                    Some(json!(root_port))
+                }
+                "BRIDGE-MIB::dot1dStpTopChanges" => Some(json!(dev_idx as i64 * 3 + vlan)),
+                // TimeTicks: centiseconds, like real snmpbot (verified live).
+                "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange" => Some(json!((elapsed.max(0.0) * 100.0) as u64 + 360_000)),
+                _ => None,
+            };
+        }
         match object_id {
             "SNMPv2-MIB::sysDescr" => Some(json!(dev.sys_descr)),
             "BRIDGE-MIB::dot1dBaseBridgeAddress" => Some(json!(base_mac_spaced(dev_idx))),
@@ -981,6 +1025,73 @@ mod tests {
     }
 
     #[test]
+    fn stp_role_matrix() {
+        let topo = build();
+        let core1 = topo.devices.iter().find(|d| d.name == "core1").unwrap();
+        for iface in core1.interfaces.iter() {
+            assert_eq!(stp_role(core1, iface), "designated", "root bridge has no root ports");
+        }
+        // Every primary uplink is a root port, including a-02's flapping one.
+        let a02 = topo.devices.iter().find(|d| d.name == "access-hall-a-02").unwrap();
+        let a02_uplink = a02.interfaces.iter().find(|i| i.alias == "uplink").unwrap();
+        assert!(a02_uplink.flaps);
+        assert_eq!(stp_role(a02, a02_uplink), "root");
+        // a-02's redundant backup uplink to core1 is the blocked alternate;
+        // core1's end of that same link is designated (physically consistent).
+        let a02_backup = a02.interfaces.iter().find(|i| i.alias.starts_with("backup uplink")).unwrap();
+        assert_eq!(stp_role(a02, a02_backup), "alternate");
+        let core1 = topo.devices.iter().find(|d| d.name == "core1").unwrap();
+        let core1_backup_end = core1.interfaces.iter().find(|i| i.alias.starts_with("backup downlink")).unwrap();
+        assert_eq!(stp_role(core1, core1_backup_end), "designated");
+        // Downlinks stay designated — even dist1's flapping one, which is the
+        // far end of a-02's *root* port and must not be blocked.
+        let dist1 = topo.devices.iter().find(|d| d.name == "dist1").unwrap();
+        let flapping_downlink = dist1.interfaces.iter().find(|i| i.flaps).unwrap();
+        assert_eq!(stp_role(dist1, flapping_downlink), "designated");
+        let downlink = dist1.interfaces.iter().find(|i| i.alias.contains("hall a 01")).unwrap();
+        assert_eq!(stp_role(dist1, downlink), "designated");
+    }
+
+    #[test]
+    fn stp_scalar_objects_gated_on_vlan_membership() {
+        let topo = build();
+        let dist1 = topo.devices.iter().find(|d| d.name == "dist1").unwrap();
+        let scalars = [
+            "BRIDGE-MIB::dot1dStpDesignatedRoot",
+            "BRIDGE-MIB::dot1dStpRootCost",
+            "BRIDGE-MIB::dot1dStpRootPort",
+            "BRIDGE-MIB::dot1dStpTopChanges",
+            "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange",
+        ];
+        for object in scalars {
+            assert!(topo.object(&dist1.fqdn(), Some(10), object, 30.0).is_some(), "{} on member vlan", object);
+            assert!(topo.object(&dist1.fqdn(), Some(999), object, 30.0).is_none(), "{} on non-member vlan", object);
+            assert!(topo.object(&dist1.fqdn(), None, object, 30.0).is_none(), "{} without vlan", object);
+        }
+        // Non-STP devices answer nothing per-vlan.
+        let wlc = topo.devices.iter().find(|d| d.name == "wlc1").unwrap();
+        assert!(topo.object(&wlc.fqdn(), Some(10), "BRIDGE-MIB::dot1dStpRootCost", 0.0).is_none());
+    }
+
+    #[test]
+    fn stp_designated_root_is_core1_bridge_id() {
+        let topo = build();
+        // Every STP device on vlan 10 reports core1 (devices[0]) as the root,
+        // with priority 24576 + vlan.
+        for name in ["core1", "dist1", "access-hall-a-01", "access-hall-a-02"] {
+            let dev = topo.devices.iter().find(|d| d.name == name).unwrap();
+            let root = topo.object(&dev.fqdn(), Some(10), "BRIDGE-MIB::dot1dStpDesignatedRoot", 0.0).unwrap();
+            assert_eq!(root.as_str().unwrap(), format!("60 0a {}", base_mac_spaced(0)), "{}", name);
+        }
+        // Root port: core1 has none (0); dist1's is its uplink bridge port.
+        assert_eq!(topo.object("core1.mock.jaspy", Some(10), "BRIDGE-MIB::dot1dStpRootPort", 0.0).unwrap(), 0);
+        let dist1 = topo.devices.iter().find(|d| d.name == "dist1").unwrap();
+        let uplink_port = Topology::stp_ports(dist1).into_iter()
+            .find(|(_, i)| i.alias.starts_with("uplink")).map(|(p, _)| p).unwrap();
+        assert_eq!(topo.object(&dist1.fqdn(), Some(10), "BRIDGE-MIB::dot1dStpRootPort", 0.0).unwrap(), uplink_port);
+    }
+
+    #[test]
     fn stp_bridge_ports_all_resolve_via_base_port_table() {
         let topo = build();
         for dev in topo.devices.iter().filter(|d| !d.stp_vlans.is_empty()) {
@@ -1003,13 +1114,13 @@ mod tests {
     fn objects_answer_for_every_device() {
         let topo = build();
         for (idx, dev) in topo.devices.iter().enumerate() {
-            let mac = topo.object(&dev.fqdn(), "BRIDGE-MIB::dot1dBaseBridgeAddress").unwrap();
+            let mac = topo.object(&dev.fqdn(), None, "BRIDGE-MIB::dot1dBaseBridgeAddress", 0.0).unwrap();
             assert_eq!(mac.as_str().unwrap(), base_mac_spaced(idx));
-            assert!(topo.object(&dev.fqdn(), "SNMPv2-MIB::sysDescr").is_some());
-            assert!(topo.object(&dev.fqdn(), "LLDP-MIB::lldpLocChassisId").is_some());
-            assert!(topo.object(&dev.fqdn(), "NO-SUCH-MIB::thing").is_none());
+            assert!(topo.object(&dev.fqdn(), None, "SNMPv2-MIB::sysDescr", 0.0).is_some());
+            assert!(topo.object(&dev.fqdn(), None, "LLDP-MIB::lldpLocChassisId", 0.0).is_some());
+            assert!(topo.object(&dev.fqdn(), None, "NO-SUCH-MIB::thing", 0.0).is_none());
         }
-        assert!(topo.object("ghost.mock.jaspy", "SNMPv2-MIB::sysDescr").is_none());
+        assert!(topo.object("ghost.mock.jaspy", None, "SNMPv2-MIB::sysDescr", 0.0).is_none());
     }
 
     #[test]

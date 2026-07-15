@@ -166,6 +166,14 @@ fn entitypoller_sensor_and_stp_metrics(db: DbHarness) {
     mock.stub_host_table(&vlan_host, "BRIDGE-MIB::dot1dBasePortTable", &read_fixture("dot1dbaseporttable.json"));
     let stp = mock.stub_host_table(&vlan_host, "BRIDGE-MIB::dot1dStpPortTable", &read_fixture("dot1dstpporttable.json"));
 
+    // Bridge-level scalars, polled per-vlan as single objects (values in the
+    // shapes real snmpbot emits: spaced hex bridge id, numeric TimeTicks).
+    let root = mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpDesignatedRoot", json!("81 2c 70 10 6f 63 f2 70"));
+    mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpRootCost", json!(20000));
+    mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpRootPort", json!(5));
+    mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpTopChanges", json!(9));
+    mock.stub_host_object(&vlan_host, "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange", json!(2297973));
+
     let nexus = Nexus::builder(db.db_url())
         .snmpbot(&mock.url())
         .entitypoller(true)
@@ -237,6 +245,33 @@ fn entitypoller_sensor_and_stp_metrics(db: DbHarness) {
     let empty = nexus.get_json("/api/v1/devices/ghost.test.example/entity");
     assert_eq!(empty["sensors"].as_array().unwrap().len(), 0);
     assert_eq!(empty["stp"].as_array().unwrap().len(), 0);
+
+    // (d) bridge scalars: raw metrics, the per-device entity DTO, and the
+    // network-wide STP endpoints built from the same store.
+    assert!(root.hits() >= 1, "dot1dStpDesignatedRoot should have been queried");
+    assert_eq!(metric_value(&body, "jaspy_stp_bridge_root_cost", &["vlan=\"100\""]), Some(20000));
+    assert_eq!(metric_value(&body, "jaspy_stp_bridge_root_priority", &["root_mac=\"70:10:6f:63:f2:70\""]), Some(33068));
+    assert_eq!(metric_value(&body, "jaspy_stp_bridge_time_since_topology_change", &["vlan=\"100\""]), Some(22979));
+
+    let bridge = &entity["stpBridges"][0];
+    assert_eq!(bridge["vlan"], 100);
+    assert_eq!(bridge["rootMac"], "70:10:6f:63:f2:70");
+    assert_eq!(bridge["rootCost"], 20000);
+    assert_eq!(bridge["rootPort"], 5);
+    assert_eq!(bridge["rootPortInterfaceName"], "GigabitEthernet0/1");
+    assert_eq!(bridge["topologyChanges"], 9);
+
+    let summary = nexus.get_json("/api/v1/stp");
+    let vlan100 = summary.as_array().unwrap().iter().find(|s| s["vlan"] == 100).expect("vlan 100 in /api/v1/stp");
+    assert_eq!(vlan100["nodeCount"], 1);
+
+    let tree = nexus.get_json("/api/v1/stp/100");
+    assert_eq!(tree["nodes"].as_array().unwrap().len(), 1);
+    let node = &tree["nodes"][0];
+    assert_eq!(node["fqdn"], FQDN);
+    assert_eq!(node["reported"]["rootMac"], "70:10:6f:63:f2:70");
+    // The single node has a designated-only port set -> it is the root.
+    assert_eq!(tree["roots"][0], FQDN);
 }
 
 // ---------------------------------------------------------------------------
@@ -1212,6 +1247,41 @@ fn mock_mode_serves_network(db: DbHarness) {
         }),
         "dist2 sensors should appear in the entity API"
     );
+
+    // STP tree endpoints: vlan 10 is core1 -> dist1 -> {a-01, a-02} (4 nodes,
+    // max depth 2); a-02's redundant backup uplink to core1 is the one
+    // blocked link.
+    assert!(
+        wait_until(Duration::from_secs(30), || {
+            let tree = nexus.get_json("/api/v1/stp/10");
+            tree["nodes"].as_array().map(|n| n.len() == 4).unwrap_or(false)
+                && tree["nodes"].as_array().unwrap().iter().all(|n| n["parent"].is_string() || n["depth"] == 0)
+        }),
+        "vlan 10 stp tree should converge to 4 linked nodes; log:\n{}",
+        nexus.log()
+    );
+    let tree = nexus.get_json("/api/v1/stp/10");
+    assert_eq!(tree["roots"], json!(["core1.mock.jaspy"]), "tree: {}", tree);
+    let max_depth = tree["nodes"].as_array().unwrap().iter().map(|n| n["depth"].as_i64().unwrap()).max();
+    assert_eq!(max_depth, Some(2));
+    assert_eq!(tree["blockedLinks"].as_array().unwrap().len(), 1, "tree: {}", tree);
+    assert_eq!(tree["blockedLinks"][0]["fqdn"], "access-hall-a-02.mock.jaspy");
+    assert_eq!(tree["blockedLinks"][0]["connectedTo"]["fqdn"], "core1.mock.jaspy");
+    assert_eq!(tree["flags"], json!([]), "healthy mock tree has no flags");
+    // Reported root scalars agree with the computed root.
+    assert!(tree["nodes"].as_array().unwrap().iter().all(|n| n["rootMismatch"] == false), "tree: {}", tree);
+
+    // vlan 20: core1 -> dist2 -> b-01 chain.
+    let tree20 = nexus.get_json("/api/v1/stp/20");
+    let b01 = tree20["nodes"].as_array().unwrap().iter().find(|n| n["fqdn"] == "access-hall-b-01.mock.jaspy").expect("b-01 in vlan 20 tree");
+    assert_eq!(b01["depth"], 2);
+    assert_eq!(b01["parent"], "dist2.mock.jaspy");
+
+    // The summary lists both vlans with core1 as root.
+    let stp_summary = nexus.get_json("/api/v1/stp");
+    let vlans: Vec<i64> = stp_summary.as_array().unwrap().iter().map(|s| s["vlan"].as_i64().unwrap()).collect();
+    assert_eq!(vlans, vec![10, 20]);
+    assert!(stp_summary.as_array().unwrap().iter().all(|s| s["rootFqdn"] == "core1.mock.jaspy"), "summary: {}", stp_summary);
 
     // Seeder: client locations attached to the access switches + event name.
     assert!(
