@@ -118,6 +118,12 @@ async fn server_main() {
     let entitypoller_disable_sensors = c.get_bool("entitypoller_disable_sensors").unwrap_or(false);
     let entitypoller_disable_stp = c.get_bool("entitypoller_disable_stp").unwrap_or(false);
 
+    // vlanpoller collector: per-interface VLAN membership (native + tagged)
+    // into an in-memory store, default poll interval 5 minutes. Also pollable
+    // on demand per device via POST /api/v1/devices/<fqdn>/vlans/poll.
+    let enable_vlanpoller = c.get_bool("enable_vlanpoller").unwrap_or(true);
+    let vlanpoller_interval_msecs = c.get_int("vlanpoller_interval_msecs").unwrap_or(300000) as u64;
+
     // Discovery engine (formerly the standalone Python `discover` tool). The
     // in-memory config is seeded from JASPY_DISCOVERY_* env vars and mutable
     // via PUT /dev/discovery/config; setting an interval enables periodic runs.
@@ -175,6 +181,10 @@ async fn server_main() {
     let msgbus : Arc<Mutex<utilities::msgbus::MessageBus>> = Arc::new(Mutex::new(utilities::msgbus::MessageBus::new()));
     let imds : Arc<Mutex<utilities::imds::IMDS>> = Arc::new(Mutex::new(utilities::imds::IMDS::new(msgbus.clone())));
     let entity_metrics : Arc<Mutex<collectors::entitypoller::EntityMetricsStore>> = Arc::new(Mutex::new(collectors::entitypoller::EntityMetricsStore::new()));
+    // Managed unconditionally (like entity_metrics) so the /api/v1 routes work
+    // even when the collector thread is disabled — they just serve empty data.
+    let vlan_store : Arc<Mutex<collectors::vlanpoller::VlanStore>> = Arc::new(Mutex::new(collectors::vlanpoller::VlanStore::new()));
+    let vlan_control : Arc<Mutex<collectors::vlanpoller::VlanPollerControl>> = Arc::new(Mutex::new(collectors::vlanpoller::VlanPollerControl::new()));
     let cache_controller : Arc<Mutex<utilities::cache::CacheController>> = Arc::new(Mutex::new(utilities::cache::CacheController::new()));
 
     let imds_worker_imds = imds.clone();
@@ -223,6 +233,19 @@ async fn server_main() {
         None
     };
 
+    let vlanpoller_thread = if enable_vlanpoller {
+        let store_collector = vlan_store.clone();
+        let control_collector = vlan_control.clone();
+        let running_collector = running.clone();
+        let snmpbot_url_collector = snmpbot_url.clone();
+        Some(std::thread::spawn(move || {
+            collectors::vlanpoller::run(snmpbot_url_collector, vlanpoller_interval_msecs, control_collector, store_collector, running_collector);
+        }))
+    } else {
+        println!("[vlanpoller] disabled via JASPY_ENABLE_VLANPOLLER");
+        None
+    };
+
     let discovery_control: Arc<Mutex<collectors::discovery::DiscoveryControl>> =
         Arc::new(Mutex::new(collectors::discovery::DiscoveryControl::new(discovery_config)));
     let discovery_thread = {
@@ -253,6 +276,8 @@ async fn server_main() {
         entitypoller_interval_msecs: entitypoller_interval_msecs,
         entitypoller_sensors_enabled: !entitypoller_disable_sensors,
         entitypoller_stp_enabled: !entitypoller_disable_stp,
+        vlanpoller_enabled: enable_vlanpoller,
+        vlanpoller_interval_msecs: vlanpoller_interval_msecs,
         weathermap_dir: if weathermap_dir_present { Some(weathermap_dir.clone()) } else { None },
         db_url: db::redacted_db_url(&std::env::var("JASPY_DB_URL").unwrap_or_default()),
         db_backend: db::backend_kind(&std::env::var("JASPY_DB_URL").unwrap_or_default()).as_str().to_string(),
@@ -324,6 +349,7 @@ async fn server_main() {
                 routes::api::v1::devices,
                 routes::api::v1::device_detail,
                 routes::api::v1::device_entity,
+                routes::api::v1::device_vlan_poll,
                 routes::api::v1::device_create,
                 routes::api::v1::device_update,
                 routes::api::v1::device_delete,
@@ -350,6 +376,8 @@ async fn server_main() {
         .manage(pool.clone())
         .manage(imds.clone())
         .manage(entity_metrics.clone())
+        .manage(vlan_store.clone())
+        .manage(vlan_control.clone())
         .manage(discovery_control.clone())
         .manage(cache_controller.clone())
         .manage(runtime_info.clone())
@@ -373,5 +401,6 @@ async fn server_main() {
     if let Some(poller_thread) = poller_thread { let _ = poller_thread.join(); }
     if let Some(pinger_thread) = pinger_thread { let _ = pinger_thread.join(); }
     if let Some(entitypoller_thread) = entitypoller_thread { let _ = entitypoller_thread.join(); }
+    if let Some(vlanpoller_thread) = vlanpoller_thread { let _ = vlanpoller_thread.join(); }
     let _ = discovery_thread.join();
 }

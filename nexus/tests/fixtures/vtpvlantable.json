@@ -1,0 +1,74 @@
+{
+  "ID": "CISCO-VTP-MIB::vtpVlanTable",
+  "IndexKeys": [
+    "CISCO-VTP-MIB::managementDomainIndex",
+    "CISCO-VTP-MIB::vtpVlanIndex"
+  ],
+  "ObjectKeys": [
+    "CISCO-VTP-MIB::vtpVlanState",
+    "CISCO-VTP-MIB::vtpVlanType",
+    "CISCO-VTP-MIB::vtpVlanName"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "CISCO-VTP-MIB::managementDomainIndex": 1,
+        "CISCO-VTP-MIB::vtpVlanIndex": 1
+      },
+      "Objects": {
+        "CISCO-VTP-MIB::vtpVlanState": "operational",
+        "CISCO-VTP-MIB::vtpVlanType": "ethernet",
+        "CISCO-VTP-MIB::vtpVlanName": "default"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "CISCO-VTP-MIB::managementDomainIndex": 1,
+        "CISCO-VTP-MIB::vtpVlanIndex": 300
+      },
+      "Objects": {
+        "CISCO-VTP-MIB::vtpVlanState": "operational",
+        "CISCO-VTP-MIB::vtpVlanType": "ethernet",
+        "CISCO-VTP-MIB::vtpVlanName": "Mgmt"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "CISCO-VTP-MIB::managementDomainIndex": 1,
+        "CISCO-VTP-MIB::vtpVlanIndex": 311
+      },
+      "Objects": {
+        "CISCO-VTP-MIB::vtpVlanState": "operational",
+        "CISCO-VTP-MIB::vtpVlanType": "ethernet",
+        "CISCO-VTP-MIB::vtpVlanName": "Org"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "CISCO-VTP-MIB::managementDomainIndex": 1,
+        "CISCO-VTP-MIB::vtpVlanIndex": 400
+      },
+      "Objects": {
+        "CISCO-VTP-MIB::vtpVlanState": "suspended",
+        "CISCO-VTP-MIB::vtpVlanType": "ethernet",
+        "CISCO-VTP-MIB::vtpVlanName": "parked"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "CISCO-VTP-MIB::managementDomainIndex": 1,
+        "CISCO-VTP-MIB::vtpVlanIndex": 1002
+      },
+      "Objects": {
+        "CISCO-VTP-MIB::vtpVlanState": "operational",
+        "CISCO-VTP-MIB::vtpVlanType": "fddi",
+        "CISCO-VTP-MIB::vtpVlanName": "fddi-default"
+      }
+    }
+  ]
+}

@@ -105,7 +105,7 @@ pub fn devices(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::im
 }
 
 #[get("/devices/<device_fqdn>")]
-pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
+pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
     let device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
     // Live interface state (up/speed) from IMDS, keyed by ifIndex.
@@ -121,6 +121,12 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             }
         }
     }
+
+    // VLAN membership from the in-memory vlanpoller store, keyed by ifIndex.
+    let vlans = match vlan_store.inner().lock() {
+        Ok(store) => store.device_vlans(&device_fqdn),
+        Err(_) => std::collections::HashMap::new(),
+    };
 
     // Links are stored one-directionally (interfaces.connected_interface), and
     // discovery does not always resolve both ends. Union the reverse direction
@@ -154,6 +160,7 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             }
         }).or_else(|| reverse_links.get(&interface.id).cloned());
         let (up, speed) = live.get(&interface.index).cloned().unwrap_or((None, None));
+        let interface_vlans = vlans.get(&(interface.index as i64));
         interfaces.push(models::json::ApiInterface {
             id: interface.id,
             index: interface.index,
@@ -167,6 +174,8 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             connected_to: connected_to,
             up: up,
             speed: speed,
+            native_vlan: interface_vlans.and_then(|v| v.native_vlan),
+            tagged_vlans: interface_vlans.map(|v| v.tagged_vlans.clone()),
         });
     }
     interfaces.sort_by_key(|i| i.index);
@@ -185,6 +194,44 @@ pub fn device_entity(device_fqdn: &str, entity_metrics: &State<Arc<Mutex<crate::
         Err(_) => models::json::ApiDeviceEntity { sensors: Vec::new(), stp: Vec::new() },
     };
     Json(entity)
+}
+
+// Queue an immediate VLAN membership poll for one device. The vlanpoller
+// supervisor drains the queue on its next 1s tick, so fresh data lands in
+// GET /devices/<fqdn> within a couple of seconds instead of the regular
+// (multi-minute) interval. 202 = queued; 409 = already queued/running or the
+// vlanpoller is disabled; 404 = unknown device or no SNMP community.
+#[post("/devices/<device_fqdn>/vlans/poll")]
+pub fn device_vlan_poll(
+    mut connection: db::JaspyDB,
+    device_fqdn: &str,
+    system: &State<models::internal::SystemInfo>,
+    control: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanPollerControl>>>,
+) -> Result<rocket::http::Status, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let not_found = |error: String| (rocket::http::Status::NotFound, Json(models::json::ApiError { error }));
+    let device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)
+        .ok_or_else(|| not_found(format!("device not found: {}", device_fqdn)))?;
+    if device.snmp_community.is_none() {
+        return Err(not_found(format!("device has no SNMP community: {}", device_fqdn)));
+    }
+    if !system.vlanpoller_enabled {
+        return Err((rocket::http::Status::Conflict, Json(models::json::ApiError {
+            error: "the vlanpoller is disabled (JASPY_ENABLE_VLANPOLLER)".to_string(),
+        })));
+    }
+    match control.inner().lock() {
+        Ok(mut control) => {
+            if !control.pending.insert(device_fqdn.to_string()) {
+                return Err((rocket::http::Status::Conflict, Json(models::json::ApiError {
+                    error: "a VLAN poll for this device is already in progress".to_string(),
+                })));
+            }
+            Ok(rocket::http::Status::Accepted)
+        }
+        Err(_) => Err((rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+            error: "internal error: vlanpoller control unavailable".to_string(),
+        }))),
+    }
 }
 
 // Create/update/delete mirror the /dev/device handlers (device.rs) including
@@ -361,6 +408,8 @@ pub fn system_status(
         entitypoller_interval_msecs: system.entitypoller_interval_msecs,
         entitypoller_sensors_enabled: system.entitypoller_sensors_enabled,
         entitypoller_stp_enabled: system.entitypoller_stp_enabled,
+        vlanpoller_enabled: system.vlanpoller_enabled,
+        vlanpoller_interval_msecs: system.vlanpoller_interval_msecs,
         mqtt_enabled: mqtt_broker.is_some(),
         mqtt_broker: mqtt_broker,
         mqtt_connected: mqtt_connected,

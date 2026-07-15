@@ -11,3 +11,6 @@ pub mod entitypoller;
 // discovery is the topology crawler (formerly the Python `discover` tool); it
 // runs on manual trigger (POST /dev/discovery/run) or a periodic interval.
 pub mod discovery;
+// vlanpoller collects per-interface VLAN membership (native + tagged) into an
+// in-memory store served by /api/v1 only — no DB, no Prometheus.
+pub mod vlanpoller;

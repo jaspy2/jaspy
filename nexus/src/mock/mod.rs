@@ -88,6 +88,7 @@ pub fn prepare() -> MockGuard {
     default_env("JASPY_ENABLE_PINGER", "false"); // fake fqdns are unpingable; poller reports up/down
     default_env("JASPY_POLL_LOOP_MSECS", "5000");
     default_env("JASPY_ENTITYPOLLER_INTERVAL_MSECS", "10000");
+    default_env("JASPY_VLANPOLLER_INTERVAL_MSECS", "10000");
     default_env("JASPY_IMDS_REFRESH_SECS", "2");
     default_env("JASPY_DISCOVERY_ROOT_DEVICE", topology::ROOT_DEVICE);
     default_env("JASPY_DISCOVERY_COMMUNITY", topology::COMMUNITY);

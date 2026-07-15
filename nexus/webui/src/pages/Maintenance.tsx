@@ -65,6 +65,11 @@ export default function Maintenance() {
               {sys.entitypollerEnabled &&
                 ` every ${sys.entitypollerIntervalMsecs / 1000}s (sensors ${sys.entitypollerSensorsEnabled ? 'on' : 'off'}, STP ${sys.entitypollerStpEnabled ? 'on' : 'off'})`}
             </span>
+            <span>VLAN poller</span>
+            <span>
+              <EnabledBadge enabled={sys.vlanpollerEnabled} />
+              {sys.vlanpollerEnabled && ` every ${sys.vlanpollerIntervalMsecs / 1000}s`}
+            </span>
             <span>Periodic discovery</span>
             <span>
               <EnabledBadge enabled={sys.discoveryPeriodicEnabled} />

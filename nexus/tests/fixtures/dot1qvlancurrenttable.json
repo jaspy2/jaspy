@@ -1,0 +1,46 @@
+{
+  "ID": "Q-BRIDGE-MIB::dot1qVlanCurrentTable",
+  "IndexKeys": [
+    "Q-BRIDGE-MIB::dot1qVlanTimeMark",
+    "Q-BRIDGE-MIB::dot1qVlanIndex"
+  ],
+  "ObjectKeys": [
+    "Q-BRIDGE-MIB::dot1qVlanCurrentEgressPorts",
+    "Q-BRIDGE-MIB::dot1qVlanCurrentUntaggedPorts"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "Q-BRIDGE-MIB::dot1qVlanTimeMark": 0,
+        "Q-BRIDGE-MIB::dot1qVlanIndex": 10
+      },
+      "Objects": {
+        "Q-BRIDGE-MIB::dot1qVlanCurrentEgressPorts": "0c 00 00 00",
+        "Q-BRIDGE-MIB::dot1qVlanCurrentUntaggedPorts": "08 00 00 00"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "Q-BRIDGE-MIB::dot1qVlanTimeMark": 100,
+        "Q-BRIDGE-MIB::dot1qVlanIndex": 10
+      },
+      "Objects": {
+        "Q-BRIDGE-MIB::dot1qVlanCurrentEgressPorts": "0c 00 00 00",
+        "Q-BRIDGE-MIB::dot1qVlanCurrentUntaggedPorts": "08 00 00 00"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "Q-BRIDGE-MIB::dot1qVlanTimeMark": 0,
+        "Q-BRIDGE-MIB::dot1qVlanIndex": 20
+      },
+      "Objects": {
+        "Q-BRIDGE-MIB::dot1qVlanCurrentEgressPorts": "08 00 00 00",
+        "Q-BRIDGE-MIB::dot1qVlanCurrentUntaggedPorts": "00 00 00 00"
+      }
+    }
+  ]
+}

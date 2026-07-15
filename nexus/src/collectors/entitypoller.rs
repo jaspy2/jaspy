@@ -457,7 +457,7 @@ fn load_devices(pool: &db::Pool) -> Vec<EntityDevice> {
 // entitypoller addresses hosts inline (community@fqdn), unlike the poller's
 // `?snmp=community@fqdn` query form; snmpbot supports both. Preserved for a
 // drop-in match against production snmpbot.
-fn fetch_table(snmpbot_url: &String, host: &String, table: &str) -> Option<SNMPBotResponse> {
+pub(crate) fn fetch_table(snmpbot_url: &String, host: &String, table: &str) -> Option<SNMPBotResponse> {
     let url = format!("{}/api/hosts/{}/tables/{}", snmpbot_url, host, table);
     let response = match reqwest::blocking::get(&url) {
         Ok(r) => r,
@@ -491,7 +491,7 @@ fn obj_f64(objects: &HashMap<String, SNMPBotResultEntryObjectValue>, key: &str) 
     }
 }
 
-fn obj_i64(objects: &HashMap<String, SNMPBotResultEntryObjectValue>, key: &str) -> Option<i64> {
+pub(crate) fn obj_i64(objects: &HashMap<String, SNMPBotResultEntryObjectValue>, key: &str) -> Option<i64> {
     match objects.get(key) {
         Some(SNMPBotResultEntryObjectValue::Uint64(v)) => Some(*v as i64),
         Some(SNMPBotResultEntryObjectValue::Float64(v)) => Some(*v as i64),
@@ -499,7 +499,7 @@ fn obj_i64(objects: &HashMap<String, SNMPBotResultEntryObjectValue>, key: &str) 
     }
 }
 
-fn obj_str(objects: &HashMap<String, SNMPBotResultEntryObjectValue>, key: &str) -> Option<String> {
+pub(crate) fn obj_str(objects: &HashMap<String, SNMPBotResultEntryObjectValue>, key: &str) -> Option<String> {
     match objects.get(key) {
         Some(SNMPBotResultEntryObjectValue::Str(v)) => Some(v.clone()),
         _ => None,
@@ -839,7 +839,7 @@ fn push_stp_metric(out: &mut Vec<LabeledMetric>, device: &EntityDevice, port: &S
 // Supervisor
 // ---------------------------------------------------------------------------
 
-fn interruptible_sleep(msecs: u64, running: &Arc<atomic::AtomicBool>) {
+pub(crate) fn interruptible_sleep(msecs: u64, running: &Arc<atomic::AtomicBool>) {
     let mut slept = 0;
     while slept < msecs && running.load(atomic::Ordering::Relaxed) {
         let chunk = std::cmp::min(250, msecs - slept);

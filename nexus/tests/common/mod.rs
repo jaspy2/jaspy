@@ -312,8 +312,10 @@ pub struct NexusBuilder {
     enable_poller: bool,
     enable_pinger: bool,
     enable_entitypoller: bool,
+    enable_vlanpoller: bool,
     poll_loop_msecs: u64,
     entitypoller_interval_msecs: u64,
+    vlanpoller_interval_msecs: u64,
     extra_env: Vec<(String, String)>,
     args: Vec<String>,
     omit_db_url: bool,
@@ -351,6 +353,15 @@ impl NexusBuilder {
         self.entitypoller_interval_msecs = ms;
         self
     }
+    pub fn vlanpoller(mut self, on: bool) -> Self {
+        self.enable_vlanpoller = on;
+        self
+    }
+    #[allow(dead_code)]
+    pub fn vlanpoller_interval_msecs(mut self, ms: u64) -> Self {
+        self.vlanpoller_interval_msecs = ms;
+        self
+    }
     /// Pass an arbitrary env var to the nexus process (e.g. JASPY_DISCOVERY_*).
     pub fn env(mut self, key: &str, value: &str) -> Self {
         self.extra_env.push((key.to_string(), value.to_string()));
@@ -386,8 +397,10 @@ impl NexusBuilder {
             .env("JASPY_ENABLE_POLLER", self.enable_poller.to_string())
             .env("JASPY_ENABLE_PINGER", self.enable_pinger.to_string())
             .env("JASPY_ENABLE_ENTITYPOLLER", self.enable_entitypoller.to_string())
+            .env("JASPY_ENABLE_VLANPOLLER", self.enable_vlanpoller.to_string())
             .env("JASPY_POLL_LOOP_MSECS", self.poll_loop_msecs.to_string())
             .env("JASPY_ENTITYPOLLER_INTERVAL_MSECS", self.entitypoller_interval_msecs.to_string())
+            .env("JASPY_VLANPOLLER_INTERVAL_MSECS", self.vlanpoller_interval_msecs.to_string())
             .env("JASPY_IMDS_REFRESH_SECS", "1")
             .env("JASPY_POLLER_NO_JITTER", "1")
             // Discovery fixtures use non-resolvable FQDNs.
@@ -433,8 +446,10 @@ impl Nexus {
             enable_poller: false,
             enable_pinger: false,
             enable_entitypoller: false,
+            enable_vlanpoller: false,
             poll_loop_msecs: 300,
             entitypoller_interval_msecs: 300,
+            vlanpoller_interval_msecs: 300,
             extra_env: Vec::new(),
             args: Vec::new(),
             omit_db_url: false,

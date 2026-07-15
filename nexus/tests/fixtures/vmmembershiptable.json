@@ -1,0 +1,24 @@
+{
+  "ID": "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable",
+  "IndexKeys": [
+    "IF-MIB::ifIndex"
+  ],
+  "ObjectKeys": [
+    "CISCO-VLAN-MEMBERSHIP-MIB::vmVlanType",
+    "CISCO-VLAN-MEMBERSHIP-MIB::vmVlan",
+    "CISCO-VLAN-MEMBERSHIP-MIB::vmPortStatus"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "IF-MIB::ifIndex": 10102
+      },
+      "Objects": {
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmVlanType": "static",
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmVlan": 311,
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmPortStatus": "active"
+      }
+    }
+  ]
+}

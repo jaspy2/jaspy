@@ -60,6 +60,8 @@ export const api = {
     }),
   runDiscovery: () =>
     request<DiscoveryStatus>('/api/v1/discovery/run', { method: 'POST', body: '{}' }),
+  pollVlans: (fqdn: string) =>
+    request<void>(`/api/v1/devices/${encodeURIComponent(fqdn)}/vlans/poll`, { method: 'POST' }),
 };
 
 // WebSocket endpoint for live log tailing (backlog replay + push). Relative to

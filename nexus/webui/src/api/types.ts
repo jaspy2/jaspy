@@ -54,6 +54,8 @@ export interface SystemStatus {
   entitypollerIntervalMsecs: number;
   entitypollerSensorsEnabled: boolean;
   entitypollerStpEnabled: boolean;
+  vlanpollerEnabled: boolean;
+  vlanpollerIntervalMsecs: number;
   mqttEnabled: boolean;
   mqttBroker: string | null;
   mqttConnected: boolean | null;
@@ -108,6 +110,10 @@ export interface Interface {
   connectedTo: InterfaceConnection | null;
   up: boolean | null;
   speed: number | null;
+  // From the in-memory vlanpoller; null until the first successful VLAN poll
+  // (or when the device does not expose the VLAN MIBs).
+  nativeVlan: number | null;
+  taggedVlans: number[] | null;
 }
 
 export interface DeviceDetail {

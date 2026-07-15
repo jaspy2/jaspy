@@ -1,0 +1,29 @@
+{
+  "ID": "Q-BRIDGE-MIB::dot1qPortVlanTable",
+  "IndexKeys": [
+    "BRIDGE-MIB::dot1dBasePort"
+  ],
+  "ObjectKeys": [
+    "Q-BRIDGE-MIB::dot1qPvid"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "BRIDGE-MIB::dot1dBasePort": 5
+      },
+      "Objects": {
+        "Q-BRIDGE-MIB::dot1qPvid": 10
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "BRIDGE-MIB::dot1dBasePort": 6
+      },
+      "Objects": {
+        "Q-BRIDGE-MIB::dot1qPvid": 20
+      }
+    }
+  ]
+}

@@ -240,6 +240,63 @@ fn entitypoller_sensor_and_stp_metrics(db: DbHarness) {
 }
 
 // ---------------------------------------------------------------------------
+// 1b². Vlanpoller: per-interface VLAN membership in the device detail API
+// ---------------------------------------------------------------------------
+e2e_both!(vlanpoller_vlans_in_device_detail);
+fn vlanpoller_vlans_in_device_detail(db: DbHarness) {
+    let mock = SnmpbotMock::start();
+
+    // vlanpoller addresses snmpbot hosts inline as community@fqdn.
+    let host = format!("{}@{}", COMMUNITY, FQDN);
+    // jaspyVlanTrunkPortTable is the slim 6-column view of vlanTrunkPortTable
+    // defined in snmpbot/mibs/CISCO-VTP-MIB.json (full-entry walks truncate on
+    // slow switches).
+    let trunk = mock.stub_host_table(&host, "CISCO-VTP-MIB::jaspyVlanTrunkPortTable", &read_fixture("vlantrunkporttable.json"));
+    let vtp = mock.stub_host_table(&host, "CISCO-VTP-MIB::vtpVlanTable", &read_fixture("vtpvlantable.json"));
+    mock.stub_host_table(&host, "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable", &read_fixture("vmmembershiptable.json"));
+
+    let nexus = Nexus::builder(db.db_url())
+        .snmpbot(&mock.url())
+        .vlanpoller(true)
+        .start();
+
+    nexus.post_json("/dev/device", &device_body(true));
+    nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
+
+    // The device detail response grows nativeVlan/taggedVlans once the poll
+    // cycle has decoded the fixtures (interfaces are sorted by ifIndex:
+    // [0] = 10101 trunk, [1] = 10102 access port).
+    let ok = wait_until(Duration::from_secs(20), || {
+        let detail = nexus.get_json(&format!("/api/v1/devices/{}", FQDN));
+        detail["interfaces"][0]["nativeVlan"] == 300
+    });
+    let detail = nexus.get_json(&format!("/api/v1/devices/{}", FQDN));
+    assert!(ok, "nativeVlan never appeared in device detail: {}", detail);
+
+    assert!(trunk.hits() >= 1, "vlanTrunkPortTable should have been queried");
+    assert!(vtp.hits() >= 1, "vtpVlanTable should have been queried");
+
+    // Trunk port: native 300, tagged = active VLANs {1, 311} — the all-0xFF
+    // allowed bitmap intersected with vtpVlanTable, minus the native VLAN.
+    let trunk_if = &detail["interfaces"][0];
+    assert_eq!(trunk_if["index"], 10101);
+    assert_eq!(trunk_if["nativeVlan"], 300);
+    assert_eq!(trunk_if["taggedVlans"], json!([1, 311]));
+
+    // Access port: vmVlan 311, no tagged VLANs.
+    let access_if = &detail["interfaces"][1];
+    assert_eq!(access_if["index"], 10102);
+    assert_eq!(access_if["nativeVlan"], 311);
+    assert_eq!(access_if["taggedVlans"], json!([]));
+
+    // Poll-now: known device queues (202), unknown device 404.
+    let accepted = nexus.post_json(&format!("/api/v1/devices/{}/vlans/poll", FQDN), &json!({}));
+    assert_eq!(accepted.status().as_u16(), 202);
+    let missing = nexus.post_json("/api/v1/devices/ghost.test.example/vlans/poll", &json!({}));
+    assert_eq!(missing.status().as_u16(), 404);
+}
+
+// ---------------------------------------------------------------------------
 // 1c. In-process discovery engine: crawl, device metadata, links, periodic
 // ---------------------------------------------------------------------------
 
@@ -1107,6 +1164,16 @@ fn mock_mode_serves_network(db: DbHarness) {
         nexus.log()
     );
 
+    // Devices are ingested while the crawl is still running; devicesFound /
+    // linksFound are only published when the run finishes, so wait for that.
+    assert!(
+        wait_until(Duration::from_secs(30), || {
+            let status = nexus.get_json("/dev/discovery/status");
+            status["running"] == false && status["lastFinished"].is_f64()
+        }),
+        "discovery run should finish; status: {}",
+        nexus.get_json("/dev/discovery/status")
+    );
     let status = nexus.get_json("/dev/discovery/status");
     assert_eq!(status["devicesFound"], 8, "status: {}", status);
     assert!(status["linksFound"].as_u64().unwrap_or(0) >= 6, "status: {}", status);

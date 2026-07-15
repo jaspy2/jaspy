@@ -120,6 +120,8 @@ pub struct ApiSystemStatus {
     pub entitypoller_interval_msecs: u64,
     pub entitypoller_sensors_enabled: bool,
     pub entitypoller_stp_enabled: bool,
+    pub vlanpoller_enabled: bool,
+    pub vlanpoller_interval_msecs: u64,
     pub mqtt_enabled: bool,
     pub mqtt_broker: Option<String>,
     pub mqtt_connected: Option<bool>,
@@ -175,6 +177,13 @@ pub struct ApiInterface {
     pub connected_to: Option<ApiInterfaceConnection>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
+    // VLAN membership from the in-memory vlanpoller store; null until the
+    // first successful VLAN poll (or when the device does not expose the VLAN
+    // MIBs). Additive fields: default-deserialized for older payloads.
+    #[serde(default)]
+    pub native_vlan: Option<i64>,
+    #[serde(default)]
+    pub tagged_vlans: Option<Vec<i64>>,
 }
 
 // Link peer of an interface; structured so the UI can link to the device.

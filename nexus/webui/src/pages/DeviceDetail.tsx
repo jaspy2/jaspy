@@ -28,6 +28,18 @@ function formatSensorValue(value: number, valueType: string): string {
   return unit ? `${rounded} ${unit}` : `${rounded}`;
 }
 
+// Collapse a sorted VLAN list into ranges: [1, 10, 11, 12, 20] -> "1, 10-12, 20".
+export function formatVlanRanges(vlans: number[]): string {
+  const parts: string[] = [];
+  for (let i = 0; i < vlans.length; ) {
+    let j = i;
+    while (j + 1 < vlans.length && vlans[j + 1] === vlans[j] + 1) j += 1;
+    parts.push(j > i ? `${vlans[i]}-${vlans[j]}` : `${vlans[i]}`);
+    i = j + 1;
+  }
+  return parts.join(', ');
+}
+
 // "· updated Ns ago" heading suffix from the newest row timestamp (msecs).
 function UpdatedAgo({ timestamps }: { timestamps: number[] }) {
   if (timestamps.length === 0) return null;
@@ -115,6 +127,15 @@ export default function DeviceDetail() {
     },
   });
 
+  // 202 means "queued": the vlanpoller picks the device up on its next 1s
+  // tick, so refetch shortly after instead of waiting out the poll interval.
+  const pollVlans = useMutation({
+    mutationFn: () => api.pollVlans(fqdn),
+    onSuccess: () => {
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['device', fqdn] }), 3000);
+    },
+  });
+
   if (detail.isLoading) return <p>Loading…</p>;
   if (detail.isError || !detail.data) return <p className="error">Failed to load {fqdn}: {String(detail.error)}</p>;
 
@@ -122,6 +143,7 @@ export default function DeviceDetail() {
   const sensors = entity.data?.sensors ?? [];
   const stp = entity.data?.stp ?? [];
   const entitypollerEnabled = system.data?.entitypollerEnabled === true;
+  const vlanpollerEnabled = system.data?.vlanpollerEnabled === true;
 
   return (
     <>
@@ -141,6 +163,11 @@ export default function DeviceDetail() {
           <button onClick={() => togglePolling.mutate(device)} disabled={togglePolling.isPending}>
             {device.pollingEnabled === false ? 'Enable polling' : 'Disable polling'}
           </button>
+          {vlanpollerEnabled && (
+            <button onClick={() => pollVlans.mutate()} disabled={pollVlans.isPending}>
+              Poll VLANs now
+            </button>
+          )}
           {!confirmDelete ? (
             <button className="danger" onClick={() => setConfirmDelete(true)}>
               Delete device…
@@ -153,8 +180,8 @@ export default function DeviceDetail() {
               <button onClick={() => setConfirmDelete(false)}>Cancel</button>
             </>
           )}
-          {(togglePolling.isError || deleteDevice.isError) && (
-            <span className="error">{String(togglePolling.error ?? deleteDevice.error)}</span>
+          {(togglePolling.isError || deleteDevice.isError || pollVlans.isError) && (
+            <span className="error">{String(togglePolling.error ?? deleteDevice.error ?? pollVlans.error)}</span>
           )}
         </div>
       </div>
@@ -169,6 +196,12 @@ export default function DeviceDetail() {
             </span>
             <span className="item-sub">
               {iface.speed !== null && <span>{iface.speed} Mb/s</span>}
+              {iface.nativeVlan !== null && (
+                <span>
+                  VLAN {iface.nativeVlan}
+                  {(iface.taggedVlans?.length ?? 0) > 0 && ` (+${iface.taggedVlans!.length} tagged)`}
+                </span>
+              )}
               {iface.alias && <span>{iface.alias}</span>}
             </span>
             {iface.connectedTo && (
@@ -192,6 +225,8 @@ export default function DeviceDetail() {
               <th>Name</th>
               <th>State</th>
               <th>Speed</th>
+              <th>VLAN</th>
+              <th>Tagged VLANs</th>
               <th>Alias</th>
               <th>Type</th>
               <th>Connected to</th>
@@ -203,6 +238,10 @@ export default function DeviceDetail() {
                 <td>{iface.displayName ?? iface.name}</td>
                 <td><UpBadge up={iface.up} /></td>
                 <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
+                <td>{iface.nativeVlan ?? '—'}</td>
+                <td className="wrap" title={iface.taggedVlans?.join(', ')}>
+                  {(iface.taggedVlans?.length ?? 0) > 0 ? formatVlanRanges(iface.taggedVlans!) : '—'}
+                </td>
                 <td>{iface.alias ?? '—'}</td>
                 <td>{iface.interfaceType}</td>
                 <td>

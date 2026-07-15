@@ -1,0 +1,75 @@
+{
+  "Name": "CISCO-VLAN-MEMBERSHIP-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.68",
+  "Objects": [
+    {
+      "Name": "vmVlanType",
+      "OID": ".1.3.6.1.4.1.9.9.68.1.2.2.1.1",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {"Name": "static", "Value": 1},
+        {"Name": "dynamic", "Value": 2},
+        {"Name": "multiVlan", "Value": 3}
+      ]
+    },
+    {
+      "Name": "vmVlan",
+      "OID": ".1.3.6.1.4.1.9.9.68.1.2.2.1.2",
+      "Syntax": "Integer32",
+      "SyntaxOptions": {"Min": 0, "Max": 4095}
+    },
+    {
+      "Name": "vmPortStatus",
+      "OID": ".1.3.6.1.4.1.9.9.68.1.2.2.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {"Name": "inactive", "Value": 1},
+        {"Name": "active", "Value": 2},
+        {"Name": "shutdown", "Value": 3}
+      ]
+    },
+    {
+      "Name": "vmVlans",
+      "OID": ".1.3.6.1.4.1.9.9.68.1.2.2.1.4",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {"Min": 0, "Max": 128}
+    },
+    {
+      "Name": "vmVlans2k",
+      "OID": ".1.3.6.1.4.1.9.9.68.1.2.2.1.5",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {"Min": 0, "Max": 128}
+    },
+    {
+      "Name": "vmVlans3k",
+      "OID": ".1.3.6.1.4.1.9.9.68.1.2.2.1.6",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {"Min": 0, "Max": 128}
+    },
+    {
+      "Name": "vmVlans4k",
+      "OID": ".1.3.6.1.4.1.9.9.68.1.2.2.1.7",
+      "Syntax": "OCTET STRING",
+      "SyntaxOptions": {"Min": 0, "Max": 128}
+    }
+  ],
+  "Tables": [
+    {
+      "Name": "vmMembershipTable",
+      "OID": ".1.3.6.1.4.1.9.9.68.1.2.2",
+      "EntryName": "vmMembershipEntry",
+      "IndexObjects": [
+        "IF-MIB::ifIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmVlanType",
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmVlan",
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmPortStatus",
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmVlans",
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmVlans2k",
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmVlans3k",
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmVlans4k"
+      ]
+    }
+  ]
+}

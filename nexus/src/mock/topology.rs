@@ -23,6 +23,15 @@ pub enum SensorStyle {
     None,     // sensor tables answer 404
 }
 
+// Which VLAN membership MIBs the device answers (vlanpoller tries Cisco first,
+// then falls back to Q-BRIDGE).
+#[derive(Clone, Copy, PartialEq)]
+pub enum VlanStyle {
+    Cisco,   // CISCO-VTP-MIB + CISCO-VLAN-MEMBERSHIP-MIB
+    QBridge, // Q-BRIDGE-MIB + un-vlan-indexed BRIDGE-MIB::dot1dBasePortTable
+    None,    // VLAN tables answer 404
+}
+
 pub struct MockInterface {
     pub ifindex: i64,
     pub name: &'static str,  // short form, becomes ifName ("Te1/0/1")
@@ -44,6 +53,11 @@ pub struct MockDevice {
     pub sw_rev: &'static str,
     pub sensor_style: SensorStyle,
     pub stp_vlans: &'static [i64],
+    pub vlan_style: VlanStyle,
+    // VLANs that exist on the device (vtpVlanTable / dot1qVlanCurrentTable).
+    // Peered interfaces are trunks: native TRUNK_NATIVE_VLAN, tagged = the
+    // rest. Unpeered ports are access ports on access_vlan(ifindex).
+    pub vlans: &'static [i64],
     pub interfaces: Vec<MockInterface>,
 }
 
@@ -77,6 +91,8 @@ pub fn build() -> Topology {
             sw_rev: "17.9.4a",
             sensor_style: SensorStyle::Cisco,
             stp_vlans: &[10, 20],
+            vlan_style: VlanStyle::Cisco,
+            vlans: &[1, 10, 20],
             interfaces: vec![
                 uplink(10101, "Te1/0/1", "TenGigabitEthernet1/0/1", "downlink dist1", 10000, ("dist1", "Te1/1/1")),
                 uplink(10102, "Te1/0/2", "TenGigabitEthernet1/0/2", "downlink dist2", 10000, ("dist2", "Te1/1/1")),
@@ -90,6 +106,8 @@ pub fn build() -> Topology {
             sw_rev: "17.9.4a",
             sensor_style: SensorStyle::Cisco,
             stp_vlans: &[10],
+            vlan_style: VlanStyle::Cisco,
+            vlans: &[1, 10],
             interfaces: vec![
                 uplink(10101, "Te1/1/1", "TenGigabitEthernet1/1/1", "uplink core1", 10000, ("core1", "Te1/0/1")),
                 uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "downlink hall a 01", 10000, ("access-hall-a-01", "Te1/1/1")),
@@ -112,15 +130,19 @@ pub fn build() -> Topology {
             sw_rev: "17.6.5",
             sensor_style: SensorStyle::Standard,
             stp_vlans: &[20],
+            vlan_style: VlanStyle::Cisco,
+            vlans: &[1, 20],
             interfaces: vec![
                 uplink(10101, "Te1/1/1", "TenGigabitEthernet1/1/1", "uplink core1", 10000, ("core1", "Te1/0/2")),
                 uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "downlink hall b 01", 10000, ("access-hall-b-01", "Te1/1/1")),
                 uplink(10104, "Te1/1/4", "TenGigabitEthernet1/1/4", "wlc uplink", 10000, ("wlc1", "Te0/0/1")),
             ],
         },
-        access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false),
-        access_switch("access-hall-a-02", ("dist1", "Te1/1/3"), true),
-        access_switch("access-hall-b-01", ("dist2", "Te1/1/2"), false),
+        access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco),
+        access_switch("access-hall-a-02", ("dist1", "Te1/1/3"), true, VlanStyle::Cisco),
+        // hall b answers only the standards-based Q-BRIDGE tables so the mock
+        // exercises the vlanpoller's fallback path.
+        access_switch("access-hall-b-01", ("dist2", "Te1/1/2"), false, VlanStyle::QBridge),
         MockDevice {
             name: "wlc1",
             model: "AIR-CT5520-K9",
@@ -128,6 +150,8 @@ pub fn build() -> Topology {
             sw_rev: "8.10.185.0",
             sensor_style: SensorStyle::None,
             stp_vlans: &[],
+            vlan_style: VlanStyle::None,
+            vlans: &[],
             interfaces: vec![
                 uplink(1, "Te0/0/1", "TenGigE0/0/1", "uplink dist2", 10000, ("dist2", "Te1/1/4")),
             ],
@@ -139,6 +163,8 @@ pub fn build() -> Topology {
             sw_rev: "7.2.8",
             sensor_style: SensorStyle::None,
             stp_vlans: &[],
+            vlan_style: VlanStyle::None,
+            vlans: &[],
             interfaces: vec![
                 uplink(1, "port1", "port1", "uplink core1", 10000, ("core1", "Te1/0/3")),
             ],
@@ -147,7 +173,7 @@ pub fn build() -> Topology {
     Topology { devices, started: crate::utilities::tools::get_time() }
 }
 
-fn access_switch(name: &'static str, upstream: (&'static str, &'static str), uplink_flaps: bool) -> MockDevice {
+fn access_switch(name: &'static str, upstream: (&'static str, &'static str), uplink_flaps: bool, vlan_style: VlanStyle) -> MockDevice {
     let mut interfaces = vec![MockInterface {
         ifindex: 10101,
         name: "Te1/1/1",
@@ -179,6 +205,8 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
         sw_rev: "17.6.5",
         sensor_style: SensorStyle::Standard,
         stp_vlans: &[],
+        vlan_style,
+        vlans: &[1, 10, 20],
         interfaces,
     }
 }
@@ -197,6 +225,28 @@ fn base_mac_spaced(dev_idx: usize) -> String {
 
 fn iface_mac(dev_idx: usize, ifindex: i64) -> String {
     format!("02:00:00:{:02x}:{:02x}:{:02x}", 0x10 + dev_idx, (ifindex / 100) as u8, (ifindex % 100) as u8)
+}
+
+// Trunks (peered interfaces) use native VLAN 1; access ports alternate
+// between VLANs 10 and 20 by ifindex.
+pub const TRUNK_NATIVE_VLAN: i64 = 1;
+
+pub fn access_vlan(iface: &MockInterface) -> i64 {
+    10 + (iface.ifindex % 2) * 10
+}
+
+// Inverse of collectors::vlanpoller::bitmap_values, in snmpbot's OCTET STRING
+// rendering (lowercase space-separated hex): bit j of octet i (MSB first)
+// represents base + i*8 + j.
+pub fn hex_bitmap(values: &[i64], base: i64, len: usize) -> String {
+    let mut octets = vec![0u8; len];
+    for value in values.iter() {
+        let offset = value - base;
+        if offset >= 0 && (offset as usize) < len * 8 {
+            octets[(offset / 8) as usize] |= 0x80u8 >> (offset % 8);
+        }
+    }
+    octets.iter().map(|o| format!("{:02x}", o)).collect::<Vec<String>>().join(" ")
 }
 
 pub fn iface_up(iface: &MockInterface, elapsed: f64) -> bool {
@@ -291,6 +341,16 @@ impl Topology {
         dev.interfaces
             .iter()
             .filter(|i| i.peer.is_some())
+            .enumerate()
+            .map(|(pos, iface)| (pos as i64 + 1, iface))
+            .collect()
+    }
+
+    // Q-BRIDGE bridge ports: every interface, numbered by position. Distinct
+    // from stp_ports (peered only) — VLAN membership covers access ports too.
+    fn bridge_ports(dev: &MockDevice) -> Vec<(i64, &MockInterface)> {
+        dev.interfaces
+            .iter()
             .enumerate()
             .map(|(pos, iface)| (pos as i64 + 1, iface))
             .collect()
@@ -438,14 +498,126 @@ impl Topology {
                 Some(response(table_id, entries))
             }
             "BRIDGE-MIB::dot1dBasePortTable" => {
-                let vlan = vlan?;
-                if !dev.stp_vlans.contains(&vlan) {
-                    return None;
-                }
-                let entries = Self::stp_ports(dev).into_iter().map(|(bridge_port, iface)| {
+                // Per-VLAN community form (entitypoller STP): STP member ports
+                // only. Base community form (vlanpoller Q-BRIDGE fallback):
+                // every bridge port, answered only by QBridge-style devices.
+                let ports = match vlan {
+                    Some(vlan) => {
+                        if !dev.stp_vlans.contains(&vlan) {
+                            return None;
+                        }
+                        Self::stp_ports(dev)
+                    }
+                    None => {
+                        if dev.vlan_style != VlanStyle::QBridge {
+                            return None;
+                        }
+                        Self::bridge_ports(dev)
+                    }
+                };
+                let entries = ports.into_iter().map(|(bridge_port, iface)| {
                     entry(
                         json!({"BRIDGE-MIB::dot1dBasePort": bridge_port}),
                         json!({"BRIDGE-MIB::dot1dBasePortIfIndex": iface.ifindex}),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "CISCO-VTP-MIB::jaspyVlanTrunkPortTable" => {
+                if dev.vlan_style != VlanStyle::Cisco {
+                    return None;
+                }
+                // Like real Cisco gear with the default "allowed vlan all"
+                // config: the enabled bitmaps report every VLAN, and the
+                // collector must intersect with vtpVlanTable to get the truth.
+                let all_1k = hex_bitmap(&(1..1024).collect::<Vec<i64>>(), 0, 128);
+                let all_2k: String = hex_bitmap(&(1024..2048).collect::<Vec<i64>>(), 1024, 128);
+                let entries = dev.interfaces.iter().map(|iface| {
+                    let trunking = if iface.peer.is_some() { "trunking" } else { "notTrunking" };
+                    entry(
+                        json!({"CISCO-VTP-MIB::vlanTrunkPortIfIndex": iface.ifindex}),
+                        json!({
+                            "CISCO-VTP-MIB::vlanTrunkPortDynamicStatus": trunking,
+                            "CISCO-VTP-MIB::vlanTrunkPortNativeVlan": TRUNK_NATIVE_VLAN,
+                            "CISCO-VTP-MIB::vlanTrunkPortVlansEnabled": all_1k,
+                            "CISCO-VTP-MIB::vlanTrunkPortVlansEnabled2k": all_2k,
+                        }),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "CISCO-VTP-MIB::vtpVlanTable" => {
+                if dev.vlan_style != VlanStyle::Cisco {
+                    return None;
+                }
+                let entries = dev.vlans.iter().map(|vlan| {
+                    entry(
+                        json!({"CISCO-VTP-MIB::managementDomainIndex": 1, "CISCO-VTP-MIB::vtpVlanIndex": vlan}),
+                        json!({
+                            "CISCO-VTP-MIB::vtpVlanState": "operational",
+                            "CISCO-VTP-MIB::vtpVlanType": "ethernet",
+                            "CISCO-VTP-MIB::vtpVlanName": format!("mock-vlan-{}", vlan),
+                        }),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable" => {
+                if dev.vlan_style != VlanStyle::Cisco {
+                    return None;
+                }
+                let entries = dev.interfaces.iter().filter(|i| i.peer.is_none()).map(|iface| {
+                    entry(
+                        json!({"IF-MIB::ifIndex": iface.ifindex}),
+                        json!({
+                            "CISCO-VLAN-MEMBERSHIP-MIB::vmVlanType": "static",
+                            "CISCO-VLAN-MEMBERSHIP-MIB::vmVlan": access_vlan(iface),
+                            "CISCO-VLAN-MEMBERSHIP-MIB::vmPortStatus": "active",
+                        }),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "Q-BRIDGE-MIB::dot1qPortVlanTable" => {
+                if dev.vlan_style != VlanStyle::QBridge {
+                    return None;
+                }
+                let entries = Self::bridge_ports(dev).into_iter().map(|(bridge_port, iface)| {
+                    let pvid = if iface.peer.is_some() { TRUNK_NATIVE_VLAN } else { access_vlan(iface) };
+                    entry(
+                        json!({"BRIDGE-MIB::dot1dBasePort": bridge_port}),
+                        json!({"Q-BRIDGE-MIB::dot1qPvid": pvid}),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "Q-BRIDGE-MIB::dot1qVlanCurrentTable" => {
+                if dev.vlan_style != VlanStyle::QBridge {
+                    return None;
+                }
+                // Per VLAN: trunks carry every VLAN (untagged only on their
+                // native), access ports appear untagged on their own VLAN.
+                let entries = dev.vlans.iter().map(|vlan| {
+                    let mut egress: Vec<i64> = Vec::new();
+                    let mut untagged: Vec<i64> = Vec::new();
+                    for (bridge_port, iface) in Self::bridge_ports(dev) {
+                        if iface.peer.is_some() {
+                            egress.push(bridge_port);
+                            if *vlan == TRUNK_NATIVE_VLAN {
+                                untagged.push(bridge_port);
+                            }
+                        } else if access_vlan(iface) == *vlan {
+                            egress.push(bridge_port);
+                            untagged.push(bridge_port);
+                        }
+                    }
+                    let len = (dev.interfaces.len() + 7) / 8;
+                    entry(
+                        json!({"Q-BRIDGE-MIB::dot1qVlanTimeMark": 0, "Q-BRIDGE-MIB::dot1qVlanIndex": vlan}),
+                        json!({
+                            "Q-BRIDGE-MIB::dot1qVlanCurrentEgressPorts": hex_bitmap(&egress, 1, len),
+                            "Q-BRIDGE-MIB::dot1qVlanCurrentUntaggedPorts": hex_bitmap(&untagged, 1, len),
+                        }),
                     )
                 }).collect();
                 Some(response(table_id, entries))
@@ -524,7 +696,7 @@ mod tests {
     use super::*;
     use crate::collectors::poller::SNMPBotResultEntryObjectValue;
 
-    const ALL_TABLES: [&str; 10] = [
+    const ALL_TABLES: [&str; 14] = [
         "IF-MIB::ifTable",
         "IF-MIB::ifXTable",
         "ENTITY-MIB::entPhysicalTable",
@@ -534,7 +706,11 @@ mod tests {
         "LLDP-MIB::lldpLocPortTable",
         "LLDP-MIB::lldpRemTable",
         "CISCO-CDP-MIB::cdpCacheTable",
-        "IF-MIB::ifTable",
+        "CISCO-VTP-MIB::jaspyVlanTrunkPortTable",
+        "CISCO-VTP-MIB::vtpVlanTable",
+        "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable",
+        "Q-BRIDGE-MIB::dot1qPortVlanTable",
+        "Q-BRIDGE-MIB::dot1qVlanCurrentTable",
     ];
 
     #[test]
@@ -680,6 +856,88 @@ mod tests {
         assert!(topo.table(&standard.fqdn(), None, cisco_t, 0.0).is_none());
         assert!(topo.table(&none.fqdn(), None, phy, 0.0).is_none());
         assert!(topo.table(&none.fqdn(), None, cisco_t, 0.0).is_none());
+    }
+
+    #[test]
+    fn vlan_style_gates_the_vlan_tables() {
+        let topo = build();
+        let cisco = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::Cisco).unwrap();
+        let qbridge = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::QBridge).unwrap();
+        let none = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::None).unwrap();
+        let cisco_tables = ["CISCO-VTP-MIB::jaspyVlanTrunkPortTable", "CISCO-VTP-MIB::vtpVlanTable", "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable"];
+        let qbridge_tables = ["Q-BRIDGE-MIB::dot1qPortVlanTable", "Q-BRIDGE-MIB::dot1qVlanCurrentTable"];
+        for table in cisco_tables {
+            assert!(topo.table(&cisco.fqdn(), None, table, 0.0).is_some(), "{} must answer on cisco", table);
+            assert!(topo.table(&qbridge.fqdn(), None, table, 0.0).is_none(), "{} must 404 on qbridge", table);
+            assert!(topo.table(&none.fqdn(), None, table, 0.0).is_none(), "{} must 404 on none", table);
+        }
+        for table in qbridge_tables {
+            assert!(topo.table(&qbridge.fqdn(), None, table, 0.0).is_some(), "{} must answer on qbridge", table);
+            assert!(topo.table(&cisco.fqdn(), None, table, 0.0).is_none(), "{} must 404 on cisco", table);
+            assert!(topo.table(&none.fqdn(), None, table, 0.0).is_none(), "{} must 404 on none", table);
+        }
+        // The base-community dot1dBasePortTable form (no vlan) is the
+        // Q-BRIDGE translation table and only answers for QBridge devices;
+        // the per-vlan STP form keeps working for everyone with stp_vlans.
+        assert!(topo.table(&qbridge.fqdn(), None, "BRIDGE-MIB::dot1dBasePortTable", 0.0).is_some());
+        assert!(topo.table(&cisco.fqdn(), None, "BRIDGE-MIB::dot1dBasePortTable", 0.0).is_none());
+        let stp_dev = topo.devices.iter().find(|d| !d.stp_vlans.is_empty()).unwrap();
+        assert!(topo.table(&stp_dev.fqdn(), Some(stp_dev.stp_vlans[0]), "BRIDGE-MIB::dot1dBasePortTable", 0.0).is_some());
+    }
+
+    // The generated tables must decode through the real vlanpoller logic:
+    // trunks native 1 + tagged = device vlans minus 1, access ports on their
+    // access_vlan. Guards the mock and the decoder against drifting apart.
+    #[test]
+    fn vlan_tables_decode_via_vlanpoller() {
+        use crate::collectors::vlanpoller::{decode_cisco, decode_qbridge};
+        let topo = build();
+
+        let cisco = topo.devices.iter().find(|d| d.name == "access-hall-a-01").unwrap();
+        let trunk = topo.table(&cisco.fqdn(), None, "CISCO-VTP-MIB::jaspyVlanTrunkPortTable", 0.0).unwrap();
+        let vtp = topo.table(&cisco.fqdn(), None, "CISCO-VTP-MIB::vtpVlanTable", 0.0).unwrap();
+        let membership = topo.table(&cisco.fqdn(), None, "CISCO-VLAN-MEMBERSHIP-MIB::vmMembershipTable", 0.0).unwrap();
+        let decoded = decode_cisco(&trunk, Some(&vtp), Some(&membership));
+        for iface in cisco.interfaces.iter() {
+            let port = &decoded[&iface.ifindex];
+            if iface.peer.is_some() {
+                assert_eq!(port.native_vlan, Some(TRUNK_NATIVE_VLAN), "{} trunk native", iface.name);
+                assert_eq!(port.tagged_vlans, vec![10, 20], "{} trunk tagged", iface.name);
+            } else {
+                assert_eq!(port.native_vlan, Some(access_vlan(iface)), "{} access vlan", iface.name);
+                assert!(port.tagged_vlans.is_empty(), "{} access tagged", iface.name);
+            }
+        }
+
+        let qbridge = topo.devices.iter().find(|d| d.vlan_style == VlanStyle::QBridge).unwrap();
+        let pvid = topo.table(&qbridge.fqdn(), None, "Q-BRIDGE-MIB::dot1qPortVlanTable", 0.0).unwrap();
+        let current = topo.table(&qbridge.fqdn(), None, "Q-BRIDGE-MIB::dot1qVlanCurrentTable", 0.0).unwrap();
+        let base = topo.table(&qbridge.fqdn(), None, "BRIDGE-MIB::dot1dBasePortTable", 0.0).unwrap();
+        let decoded = decode_qbridge(Some(&pvid), Some(&current), &base);
+        for iface in qbridge.interfaces.iter() {
+            let port = &decoded[&iface.ifindex];
+            if iface.peer.is_some() {
+                assert_eq!(port.native_vlan, Some(TRUNK_NATIVE_VLAN), "{} trunk native", iface.name);
+                assert_eq!(port.tagged_vlans, vec![10, 20], "{} trunk tagged", iface.name);
+            } else {
+                assert_eq!(port.native_vlan, Some(access_vlan(iface)), "{} access vlan", iface.name);
+                assert!(port.tagged_vlans.is_empty(), "{} access tagged", iface.name);
+            }
+        }
+    }
+
+    #[test]
+    fn hex_bitmap_roundtrips_through_vlanpoller_decoder() {
+        use crate::collectors::vlanpoller::{bitmap_values, parse_hex_octets};
+        for (values, base, len) in [
+            (vec![1i64, 10, 20], 0i64, 128usize),
+            (vec![1, 5, 6], 1, 4),
+            (vec![1024, 1100], 1024, 128),
+            (Vec::new(), 0, 8),
+        ] {
+            let encoded = hex_bitmap(&values, base, len);
+            assert_eq!(bitmap_values(&parse_hex_octets(&encoded), base), values, "roundtrip {:?}", values);
+        }
     }
 
     #[test]
