@@ -1,0 +1,52 @@
+{
+  "ID": "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanCostTable",
+  "IndexKeys": [
+    "HP-ICF-RPVST-MIB::hpicfRpvstVlanId",
+    "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex"
+  ],
+  "ObjectKeys": [
+    "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanPathCost"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 100,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 5
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanPathCost": 20000
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 100,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 6
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanPathCost": 20000
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 100,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 7
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanPathCost": 200000
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 200,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 5
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanPathCost": 0
+      }
+    }
+  ]
+}

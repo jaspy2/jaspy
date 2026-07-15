@@ -32,6 +32,15 @@ pub enum VlanStyle {
     None,    // VLAN tables answer 404
 }
 
+// Which spanning-tree MIBs the device answers (the entitypoller tries the
+// Cisco stpx tables first, then falls back to HP-ICF-RPVST-MIB).
+#[derive(Clone, Copy, PartialEq)]
+pub enum StpStyle {
+    Cisco, // CISCO-STP-EXTENSIONS-MIB + per-vlan BRIDGE-MIB (+ scalars)
+    Rpvst, // HP-ICF-RPVST-MIB single-column views on the base community
+    None,  // STP tables answer 404
+}
+
 pub struct MockInterface {
     pub ifindex: i64,
     pub name: &'static str,  // short form, becomes ifName ("Te1/0/1")
@@ -53,6 +62,7 @@ pub struct MockDevice {
     pub sw_rev: &'static str,
     pub sensor_style: SensorStyle,
     pub stp_vlans: &'static [i64],
+    pub stp_style: StpStyle,
     pub vlan_style: VlanStyle,
     // VLANs that exist on the device (vtpVlanTable / dot1qVlanCurrentTable).
     // Peered interfaces are trunks: native TRUNK_NATIVE_VLAN, tagged = the
@@ -91,6 +101,7 @@ pub fn build() -> Topology {
             sw_rev: "17.9.4a",
             sensor_style: SensorStyle::Cisco,
             stp_vlans: &[10, 20],
+            stp_style: StpStyle::Cisco,
             vlan_style: VlanStyle::Cisco,
             vlans: &[1, 10, 20],
             interfaces: vec![
@@ -109,6 +120,7 @@ pub fn build() -> Topology {
             sw_rev: "17.9.4a",
             sensor_style: SensorStyle::Cisco,
             stp_vlans: &[10],
+            stp_style: StpStyle::Cisco,
             vlan_style: VlanStyle::Cisco,
             vlans: &[1, 10],
             interfaces: vec![
@@ -133,6 +145,7 @@ pub fn build() -> Topology {
             sw_rev: "17.6.5",
             sensor_style: SensorStyle::Standard,
             stp_vlans: &[20],
+            stp_style: StpStyle::Cisco,
             vlan_style: VlanStyle::Cisco,
             vlans: &[1, 20],
             interfaces: vec![
@@ -141,17 +154,19 @@ pub fn build() -> Topology {
                 uplink(10104, "Te1/1/4", "TenGigabitEthernet1/1/4", "wlc uplink", 10000, ("wlc1", "Te0/0/1")),
             ],
         },
-        access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco, &[10]),
+        access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco, &[10], StpStyle::Cisco),
         {
             // a-02 gets a second, redundant uplink straight to core1; STP
             // keeps the dist1 path and blocks this one (see stp_role).
-            let mut a02 = access_switch("access-hall-a-02", ("dist1", "Te1/1/3"), true, VlanStyle::Cisco, &[10]);
+            let mut a02 = access_switch("access-hall-a-02", ("dist1", "Te1/1/3"), true, VlanStyle::Cisco, &[10], StpStyle::Cisco);
             a02.interfaces.insert(1, uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "backup uplink core1", 10000, ("core1", "Te1/0/4")));
             a02
         },
         // hall b answers only the standards-based Q-BRIDGE tables so the mock
         // exercises the vlanpoller's fallback path.
-        access_switch("access-hall-b-01", ("dist2", "Te1/1/2"), false, VlanStyle::QBridge, &[20]),
+        // hall b speaks HP RPVST+ (like a ProCurve) so the mock exercises the
+        // entitypoller's STP fallback path too.
+        access_switch("access-hall-b-01", ("dist2", "Te1/1/2"), false, VlanStyle::QBridge, &[20], StpStyle::Rpvst),
         MockDevice {
             name: "wlc1",
             model: "AIR-CT5520-K9",
@@ -159,6 +174,7 @@ pub fn build() -> Topology {
             sw_rev: "8.10.185.0",
             sensor_style: SensorStyle::None,
             stp_vlans: &[],
+            stp_style: StpStyle::None,
             vlan_style: VlanStyle::None,
             vlans: &[],
             interfaces: vec![
@@ -172,6 +188,7 @@ pub fn build() -> Topology {
             sw_rev: "7.2.8",
             sensor_style: SensorStyle::None,
             stp_vlans: &[],
+            stp_style: StpStyle::None,
             vlan_style: VlanStyle::None,
             vlans: &[],
             interfaces: vec![
@@ -182,7 +199,7 @@ pub fn build() -> Topology {
     Topology { devices, started: crate::utilities::tools::get_time() }
 }
 
-fn access_switch(name: &'static str, upstream: (&'static str, &'static str), uplink_flaps: bool, vlan_style: VlanStyle, stp_vlans: &'static [i64]) -> MockDevice {
+fn access_switch(name: &'static str, upstream: (&'static str, &'static str), uplink_flaps: bool, vlan_style: VlanStyle, stp_vlans: &'static [i64], stp_style: StpStyle) -> MockDevice {
     let mut interfaces = vec![MockInterface {
         ifindex: 10101,
         name: "Te1/1/1",
@@ -214,6 +231,7 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
         sw_rev: "17.6.5",
         sensor_style: SensorStyle::Standard,
         stp_vlans,
+        stp_style,
         vlan_style,
         vlans: &[1, 10, 20],
         interfaces,
@@ -501,7 +519,7 @@ impl Topology {
                 Some(response(table_id, entries))
             }
             "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable" => {
-                if dev.stp_vlans.is_empty() {
+                if dev.stp_style != StpStyle::Cisco || dev.stp_vlans.is_empty() {
                     return None;
                 }
                 let mut entries = Vec::new();
@@ -525,7 +543,7 @@ impl Topology {
                 // every bridge port, answered only by QBridge-style devices.
                 let ports = match vlan {
                     Some(vlan) => {
-                        if !dev.stp_vlans.contains(&vlan) {
+                        if dev.stp_style != StpStyle::Cisco || !dev.stp_vlans.contains(&vlan) {
                             return None;
                         }
                         Self::stp_ports(dev)
@@ -665,7 +683,7 @@ impl Topology {
             }
             "BRIDGE-MIB::dot1dStpPortTable" => {
                 let vlan = vlan?;
-                if !dev.stp_vlans.contains(&vlan) {
+                if dev.stp_style != StpStyle::Cisco || !dev.stp_vlans.contains(&vlan) {
                     return None;
                 }
                 let entries = Self::stp_ports(dev).into_iter().map(|(bridge_port, iface)| {
@@ -679,6 +697,61 @@ impl Topology {
                             "BRIDGE-MIB::dot1dStpPortForwardTransitions": 1,
                             "BRIDGE-MIB::dot1dStpPortEnable": "enabled",
                             "BRIDGE-MIB::dot1dStpPortState": if role == "alternate" { "blocking" } else { "forwarding" },
+                        }),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable"
+            | "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanStateTable"
+            | "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanCostTable" => {
+                // HP RPVST+ single-column views on the base community (no
+                // vlan host indexing); port index == ifIndex like ProCurve.
+                if dev.stp_style != StpStyle::Rpvst {
+                    return None;
+                }
+                let mut entries = Vec::new();
+                for vlan in dev.stp_vlans.iter() {
+                    for (_, iface) in Self::stp_ports(dev) {
+                        let role = stp_role(dev, iface);
+                        let index = json!({
+                            "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": vlan,
+                            "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": iface.ifindex,
+                        });
+                        let objects = match table_id {
+                            "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable" =>
+                                json!({"HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole": role}),
+                            "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanStateTable" =>
+                                json!({"HP-ICF-RPVST-MIB::hpicfRpvstPortVlanState": if role == "alternate" { "blocking" } else { "forwarding" }}),
+                            _ =>
+                                json!({"HP-ICF-RPVST-MIB::hpicfRpvstPortVlanPathCost": if role == "root" { 4 } else { 19 }}),
+                        };
+                        entries.push(entry(index, objects));
+                    }
+                }
+                Some(response(table_id, entries))
+            }
+            "HP-ICF-RPVST-MIB::hpicfRpvstVlanTable" => {
+                if dev.stp_style != StpStyle::Rpvst {
+                    return None;
+                }
+                let root_port = Self::stp_ports(dev)
+                    .into_iter()
+                    .find(|(_, iface)| stp_role(dev, iface) == "root")
+                    .map(|(_, iface)| iface.ifindex)
+                    .unwrap_or(0);
+                let entries = dev.stp_vlans.iter().map(|vlan| {
+                    entry(
+                        json!({"HP-ICF-RPVST-MIB::hpicfRpvstVlanId": vlan}),
+                        json!({
+                            "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPriority": 32768,
+                            "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPort": root_port,
+                            "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPathCost": 8,
+                            // The Cisco core is the root here too.
+                            "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootMacAddress": base_mac_spaced(0),
+                            // TimeTicks: seconds, like real snmpbot.
+                            "HP-ICF-RPVST-MIB::hpicfRpvstVlanTimeSinceLastTopoChange": elapsed.max(0.0) as u64 + 3600,
+                            "HP-ICF-RPVST-MIB::hpicfVlanTopoChangeCount": dev.stp_vlans.len() as i64 + vlan,
                         }),
                     )
                 }).collect();
@@ -724,7 +797,7 @@ impl Topology {
         let (dev_idx, dev) = self.device_by_fqdn(fqdn)?;
         // Per-VLAN bridge scalars (community@vlan@fqdn form), answered only
         // for VLANs the device runs STP on. core1 is always the root.
-        if let Some(vlan) = vlan.filter(|v| dev.stp_vlans.contains(v)) {
+        if let Some(vlan) = vlan.filter(|v| dev.stp_style == StpStyle::Cisco && dev.stp_vlans.contains(v)) {
             // Tier by name: core 0, dist 4, access 8 — matches the per-port
             // path costs the STP tables report.
             let root_cost = if dev.name == "core1" { 0 } else if dev.name.starts_with("dist") { 4 } else { 8 };
@@ -740,8 +813,8 @@ impl Topology {
                     Some(json!(root_port))
                 }
                 "BRIDGE-MIB::dot1dStpTopChanges" => Some(json!(dev_idx as i64 * 3 + vlan)),
-                // TimeTicks: centiseconds, like real snmpbot (verified live).
-                "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange" => Some(json!((elapsed.max(0.0) * 100.0) as u64 + 360_000)),
+                // TimeTicks: snmpbot renders them as seconds (verified live).
+                "BRIDGE-MIB::dot1dStpTimeSinceTopologyChange" => Some(json!(elapsed.max(0.0) as u64 + 3600)),
                 _ => None,
             };
         }
@@ -759,7 +832,7 @@ mod tests {
     use super::*;
     use crate::collectors::poller::SNMPBotResultEntryObjectValue;
 
-    const ALL_TABLES: [&str; 15] = [
+    const ALL_TABLES: [&str; 19] = [
         "IF-MIB::ifTable",
         "IF-MIB::ifXTable",
         "ENTITY-MIB::entPhysicalTable",
@@ -775,6 +848,10 @@ mod tests {
         "Q-BRIDGE-MIB::dot1qPortVlanTable",
         "Q-BRIDGE-MIB::dot1qVlanCurrentTable",
         "Q-BRIDGE-MIB::dot1qVlanStaticTable",
+        "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable",
+        "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanStateTable",
+        "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanCostTable",
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanTable",
     ];
 
     #[test]
@@ -1092,9 +1169,41 @@ mod tests {
     }
 
     #[test]
+    fn stp_style_gates_the_stp_tables() {
+        let topo = build();
+        let cisco = topo.devices.iter().find(|d| d.stp_style == StpStyle::Cisco).unwrap();
+        let rpvst = topo.devices.iter().find(|d| d.stp_style == StpStyle::Rpvst).unwrap();
+        let rpvst_vlan = rpvst.stp_vlans[0];
+
+        // The Cisco tables 404 on the RPVST device and vice versa.
+        assert!(topo.table(&rpvst.fqdn(), None, "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable", 0.0).is_none());
+        assert!(topo.table(&rpvst.fqdn(), Some(rpvst_vlan), "BRIDGE-MIB::dot1dStpPortTable", 0.0).is_none());
+        assert!(topo.object(&rpvst.fqdn(), Some(rpvst_vlan), "BRIDGE-MIB::dot1dStpRootCost", 0.0).is_none());
+        assert!(topo.table(&cisco.fqdn(), None, "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable", 0.0).is_none());
+        assert!(topo.table(&cisco.fqdn(), None, "HP-ICF-RPVST-MIB::hpicfRpvstVlanTable", 0.0).is_none());
+
+        // The RPVST device serves the HP views on the base community: its
+        // uplink is the root port toward core1, port index == ifIndex.
+        let roles = topo.table(&rpvst.fqdn(), None, "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable", 0.0).unwrap();
+        let uplink = rpvst.interfaces.iter().find(|i| i.alias == "uplink").unwrap();
+        let root_rows: Vec<_> = roles.entries.iter().filter(|e| {
+            matches!(e.objects.get("HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole"), Some(SNMPBotResultEntryObjectValue::Str(s)) if s == "root")
+        }).collect();
+        assert_eq!(root_rows.len(), 1);
+        assert_eq!(root_rows[0].index["HP-ICF-RPVST-MIB::hpicfRpvstPortIndex"], uplink.ifindex);
+
+        let vlan_table = topo.table(&rpvst.fqdn(), None, "HP-ICF-RPVST-MIB::hpicfRpvstVlanTable", 30.0).unwrap();
+        assert_eq!(vlan_table.entries.len(), rpvst.stp_vlans.len());
+        match vlan_table.entries[0].objects.get("HP-ICF-RPVST-MIB::hpicfRpvstVlanRootMacAddress") {
+            Some(SNMPBotResultEntryObjectValue::Str(mac)) => assert_eq!(*mac, base_mac_spaced(0), "core1 is the root"),
+            other => panic!("root mac must be a string, got {:?}", other.is_some()),
+        }
+    }
+
+    #[test]
     fn stp_bridge_ports_all_resolve_via_base_port_table() {
         let topo = build();
-        for dev in topo.devices.iter().filter(|d| !d.stp_vlans.is_empty()) {
+        for dev in topo.devices.iter().filter(|d| d.stp_style == StpStyle::Cisco && !d.stp_vlans.is_empty()) {
             for vlan in dev.stp_vlans.iter() {
                 let roles = topo.table(&dev.fqdn(), None, "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable", 0.0).unwrap();
                 let base = topo.table(&dev.fqdn(), Some(*vlan), "BRIDGE-MIB::dot1dBasePortTable", 0.0).unwrap();

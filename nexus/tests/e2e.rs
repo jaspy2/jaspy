@@ -251,7 +251,8 @@ fn entitypoller_sensor_and_stp_metrics(db: DbHarness) {
     assert!(root.hits() >= 1, "dot1dStpDesignatedRoot should have been queried");
     assert_eq!(metric_value(&body, "jaspy_stp_bridge_root_cost", &["vlan=\"100\""]), Some(20000));
     assert_eq!(metric_value(&body, "jaspy_stp_bridge_root_priority", &["root_mac=\"70:10:6f:63:f2:70\""]), Some(33068));
-    assert_eq!(metric_value(&body, "jaspy_stp_bridge_time_since_topology_change", &["vlan=\"100\""]), Some(22979));
+    // snmpbot TimeTicks are seconds (2297973 s ≈ 26.6 days on the live rig).
+    assert_eq!(metric_value(&body, "jaspy_stp_bridge_time_since_topology_change", &["vlan=\"100\""]), Some(2297973));
 
     let bridge = &entity["stpBridges"][0];
     assert_eq!(bridge["vlan"], 100);

@@ -42,14 +42,15 @@ pub fn parse_bridge_id(value: &str) -> Option<(i64, String)> {
     Some((priority, mac))
 }
 
-// dot1dStpTimeSinceTopologyChange is TimeTicks (centiseconds). snmpbot
-// serializes it as a plain JSON number (verified live: 2297973 ≈ 6.4h), but
-// accept float-seconds and numeric strings defensively.
+// snmpbot renders TimeTicks as SECONDS (a Go float64 — integral values
+// marshal without a decimal point and land in the Uint64 variant). Verified
+// live twice: a C2960CX scalar of 2297973 and an HP RPVST table value of
+// 18158911.66 both matched their devices' day-scale topology-change ages.
 pub fn timeticks_secs(value: &SNMPBotResultEntryObjectValue) -> Option<i64> {
     match value {
-        SNMPBotResultEntryObjectValue::Uint64(v) => Some((*v / 100) as i64),
+        SNMPBotResultEntryObjectValue::Uint64(v) => Some(*v as i64),
         SNMPBotResultEntryObjectValue::Float64(v) => Some(*v as i64),
-        SNMPBotResultEntryObjectValue::Str(s) => s.trim().parse::<u64>().ok().map(|v| (v / 100) as i64),
+        SNMPBotResultEntryObjectValue::Str(s) => s.trim().parse::<f64>().ok().map(|v| v as i64),
         _ => None,
     }
 }
@@ -503,10 +504,13 @@ mod tests {
     }
 
     #[test]
-    fn timeticks_accepts_number_float_and_string() {
-        assert_eq!(timeticks_secs(&SNMPBotResultEntryObjectValue::Uint64(2297973)), Some(22979));
-        assert_eq!(timeticks_secs(&SNMPBotResultEntryObjectValue::Float64(42.0)), Some(42));
-        assert_eq!(timeticks_secs(&SNMPBotResultEntryObjectValue::Str("500".to_string())), Some(5));
+    fn timeticks_are_snmpbot_seconds() {
+        // Live C2960CX scalar: 2297973 s ≈ 26.6 days (integral floats lose
+        // their decimal point in Go's JSON and parse as Uint64).
+        assert_eq!(timeticks_secs(&SNMPBotResultEntryObjectValue::Uint64(2297973)), Some(2297973));
+        // Live HP RPVST table value: 18158911.66 s ≈ 210 days.
+        assert_eq!(timeticks_secs(&SNMPBotResultEntryObjectValue::Float64(18158911.66)), Some(18158911));
+        assert_eq!(timeticks_secs(&SNMPBotResultEntryObjectValue::Str("500.5".to_string())), Some(500));
         assert_eq!(timeticks_secs(&SNMPBotResultEntryObjectValue::Str("1h2m".to_string())), None);
         assert_eq!(timeticks_secs(&SNMPBotResultEntryObjectValue::Empty), None);
     }

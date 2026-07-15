@@ -1,0 +1,62 @@
+{
+  "ID": "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable",
+  "IndexKeys": [
+    "HP-ICF-RPVST-MIB::hpicfRpvstVlanId",
+    "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex"
+  ],
+  "ObjectKeys": [
+    "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 100,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 5
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole": "root"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 100,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 6
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole": "designated"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 100,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 7
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole": "alternate"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 100,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 8
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole": 0
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 200,
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortIndex": 5
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole": "designated"
+      }
+    }
+  ]
+}

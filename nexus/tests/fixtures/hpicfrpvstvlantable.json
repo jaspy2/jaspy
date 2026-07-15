@@ -1,0 +1,44 @@
+{
+  "ID": "HP-ICF-RPVST-MIB::hpicfRpvstVlanTable",
+  "IndexKeys": [
+    "HP-ICF-RPVST-MIB::hpicfRpvstVlanId"
+  ],
+  "ObjectKeys": [
+    "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPriority",
+    "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPort",
+    "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPathCost",
+    "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootMacAddress",
+    "HP-ICF-RPVST-MIB::hpicfRpvstVlanTimeSinceLastTopoChange",
+    "HP-ICF-RPVST-MIB::hpicfVlanTopoChangeCount"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 100
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPriority": 32768,
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPort": 5,
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPathCost": 20000,
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootMacAddress": "70 10 6f 63 f2 70",
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanTimeSinceLastTopoChange": 18158911.66,
+        "HP-ICF-RPVST-MIB::hpicfVlanTopoChangeCount": 3
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanId": 200
+      },
+      "Objects": {
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPriority": 32768,
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPort": 0,
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPathCost": 0,
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootMacAddress": "aa bb cc dd ee 01",
+        "HP-ICF-RPVST-MIB::hpicfRpvstVlanTimeSinceLastTopoChange": 2297973,
+        "HP-ICF-RPVST-MIB::hpicfVlanTopoChangeCount": 9
+      }
+    }
+  ]
+}

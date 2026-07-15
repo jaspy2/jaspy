@@ -549,6 +549,81 @@ mod tests {
         assert_eq!(bridges[DEV][0].root_cost, Some(4));
     }
 
+    // --- HP RPVST+ fallback decode ---
+
+    const RPVST_ROLES: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/hpicfrpvstroletable.json"));
+    const RPVST_STATES: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/hpicfrpvststatetable.json"));
+    const RPVST_COSTS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/hpicfrpvstcosttable.json"));
+    const RPVST_VLANS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/hpicfrpvstvlantable.json"));
+
+    fn rpvst_fixture_metrics() -> Vec<LabeledMetric> {
+        let parse = |s: &str| -> SNMPBotResponse { serde_json::from_str(s).unwrap() };
+        let device = EntityDevice {
+            hostname: "sw1".to_string(),
+            fqdn: DEV.to_string(),
+            community: "testcomm".to_string(),
+            interfaces: HashMap::new(),
+        };
+        let mut interfaces = HashMap::new();
+        for port in [5i64, 6, 7, 8] {
+            interfaces.insert(port, format!("{}", port));
+        }
+        rpvst_metrics(
+            &device,
+            &interfaces,
+            &parse(RPVST_ROLES),
+            Some(&parse(RPVST_STATES)),
+            Some(&parse(RPVST_COSTS)),
+            Some(&parse(RPVST_VLANS)),
+            77,
+        )
+    }
+
+    #[test]
+    fn rpvst_ports_decode_through_device_entity() {
+        let mut store = EntityMetricsStore::new();
+        store.replace_device(DEV.to_string(), rpvst_fixture_metrics());
+        let entity = store.device_entity(DEV);
+
+        // Port 8 (out-of-enum numeric role) is skipped: 4 rows on vlan 100
+        // minus 1 skipped, plus 1 on vlan 200.
+        assert_eq!(entity.stp.len(), 4);
+        let root = entity.stp.iter().find(|p| p.vlan == 100 && p.stp_port_id == 5).unwrap();
+        assert_eq!(root.role, "root");
+        assert_eq!(root.state, "forwarding");
+        assert_eq!(root.path_cost, 20000);
+        assert_eq!(root.interface_id, Some(5));
+        assert_eq!(root.interface_name.as_deref(), Some("5"));
+        let blocked = entity.stp.iter().find(|p| p.vlan == 100 && p.stp_port_id == 7).unwrap();
+        assert_eq!(blocked.role, "alternate");
+        assert_eq!(blocked.state, "blocking");
+        assert!(!entity.stp.iter().any(|p| p.stp_port_id == 8), "numeric role rows skipped");
+    }
+
+    #[test]
+    fn rpvst_bridge_scalars_decode() {
+        let mut store = EntityMetricsStore::new();
+        store.replace_device(DEV.to_string(), rpvst_fixture_metrics());
+        let entity = store.device_entity(DEV);
+
+        assert_eq!(entity.stp_bridges.len(), 2);
+        let v100 = entity.stp_bridges.iter().find(|b| b.vlan == 100).unwrap();
+        assert_eq!(v100.root_priority, Some(32768));
+        assert_eq!(v100.root_mac.as_deref(), Some("70:10:6f:63:f2:70"));
+        assert_eq!(v100.root_cost, Some(20000));
+        assert_eq!(v100.root_port, Some(5));
+        assert_eq!(v100.root_port_interface_name.as_deref(), Some("5"));
+        // Fractional TimeTicks (Float64) truncate to whole seconds.
+        assert_eq!(v100.time_since_topology_change_secs, Some(18158911));
+        assert_eq!(v100.topology_changes, Some(3));
+        // The root-itself vlan: port 0 resolves no interface name.
+        let v200 = entity.stp_bridges.iter().find(|b| b.vlan == 200).unwrap();
+        assert_eq!(v200.root_cost, Some(0));
+        assert_eq!(v200.root_mac.as_deref(), Some("aa:bb:cc:dd:ee:01"));
+        assert_eq!(v200.root_port_interface_name, None);
+        assert_eq!(v200.time_since_topology_change_secs, Some(2297973));
+    }
+
     #[test]
     fn bridge_metric_renders_exact_text() {
         let metric = bridge_metric("root_priority", 33068, "100", &[("root_mac", "aa:bb:cc:dd:ee:ff")], 7);
@@ -690,7 +765,8 @@ fn rstp_port_role_numeric(role: &str) -> i64 {
         "root" => 2,
         "designated" => 3,
         "alternate" => 4,
-        "backUp" => 5,
+        // Cisco stpx spells it "backUp"; HP-ICF-TC StpPortRole "backup".
+        "backUp" | "backup" => 5,
         "boundary" => 6,
         "master" => 7,
         _ => 0,
@@ -893,9 +969,14 @@ struct StpPortInfo {
 
 fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMetric>) {
     let host = format!("{}@{}", device.community, device.fqdn);
+    // Cisco first; switches that don't speak CISCO-STP-EXTENSIONS-MIB (e.g.
+    // HP ProCurve running RPVST+) fall back to HP-ICF-RPVST-MIB.
     let role_table = match fetch_table(snmpbot_url, &host, "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable") {
-        Some(t) => t,
-        None => return,
+        Some(t) if !t.entries.is_empty() => t,
+        _ => {
+            get_stp_rpvst(snmpbot_url, device, &host, out);
+            return;
+        }
     };
 
     // vlan -> bridge port -> StpPortInfo
@@ -998,6 +1079,120 @@ fn get_stp(snmpbot_url: &String, device: &EntityDevice, out: &mut Vec<LabeledMet
         // topology-change churn. Five extra object GETs per vlan per cycle.
         get_stp_bridge(snmpbot_url, device, &per_vlan_host, *vlan, timestamp, out);
     }
+}
+
+// ---------------------------------------------------------------------------
+// HP RPVST+ fallback (HP-ICF-RPVST-MIB). ProCurve switches expose per-VLAN
+// spanning tree only here: neither classic BRIDGE-MIB dot1dStp nor the Cisco
+// stpx tables answer (verified on 2530-8G, YA.15.16). The port-vlan data is
+// fetched through jaspy-specific single-column table views (see
+// snmpbot/mibs/HP-ICF-RPVST-MIB.json) because snmpbot's lockstep multi-column
+// walk misaligns on this sparse table. Port index == ifIndex on ProCurve.
+// ---------------------------------------------------------------------------
+
+fn get_stp_rpvst(snmpbot_url: &String, device: &EntityDevice, host: &String, out: &mut Vec<LabeledMetric>) {
+    let roles = match fetch_table(snmpbot_url, host, "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanRoleTable") {
+        Some(t) if !t.entries.is_empty() => t,
+        _ => return, // no RPVST either — the device just has no STP data
+    };
+    let states = fetch_table(snmpbot_url, host, "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanStateTable");
+    let costs = fetch_table(snmpbot_url, host, "HP-ICF-RPVST-MIB::jaspyRpvstPortVlanCostTable");
+    let vlans = fetch_table(snmpbot_url, host, "HP-ICF-RPVST-MIB::hpicfRpvstVlanTable");
+
+    // Real ifIndex -> ifDescr names (port index == ifIndex on ProCurve).
+    let mut interfaces: HashMap<i64, String> = HashMap::new();
+    if let Some(iftable) = fetch_table(snmpbot_url, host, "IF-MIB::ifTable") {
+        for entry in iftable.entries.iter() {
+            if let (Some(ifidx), Some(descr)) = (entry.index.get("IF-MIB::ifIndex"), obj_str(&entry.objects, "IF-MIB::ifDescr")) {
+                interfaces.insert(*ifidx, descr);
+            }
+        }
+    }
+
+    let timestamp = tools::get_time_msecs();
+    out.extend(rpvst_metrics(device, &interfaces, &roles, states.as_ref(), costs.as_ref(), vlans.as_ref(), timestamp));
+}
+
+// (vlan, port) index of an RPVST port-vlan row.
+fn rpvst_row_key(entry: &crate::collectors::poller::SNMPBotResultEntry) -> Option<(i64, i64)> {
+    let vlan = entry.index.get("HP-ICF-RPVST-MIB::hpicfRpvstVlanId")?;
+    let port = entry.index.get("HP-ICF-RPVST-MIB::hpicfRpvstPortIndex")?;
+    Some((*vlan, *port))
+}
+
+fn rpvst_metrics(
+    device: &EntityDevice,
+    interfaces: &HashMap<i64, String>,
+    roles: &SNMPBotResponse,
+    states: Option<&SNMPBotResponse>,
+    costs: Option<&SNMPBotResponse>,
+    vlans: Option<&SNMPBotResponse>,
+    timestamp: u64,
+) -> Vec<LabeledMetric> {
+    let mut out: Vec<LabeledMetric> = Vec::new();
+
+    let mut state_by_key: HashMap<(i64, i64), String> = HashMap::new();
+    for entry in states.map(|t| t.entries.iter()).into_iter().flatten() {
+        if let (Some(key), Some(state)) = (rpvst_row_key(entry), obj_str(&entry.objects, "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanState")) {
+            state_by_key.insert(key, state);
+        }
+    }
+    let mut cost_by_key: HashMap<(i64, i64), i64> = HashMap::new();
+    for entry in costs.map(|t| t.entries.iter()).into_iter().flatten() {
+        if let (Some(key), Some(cost)) = (rpvst_row_key(entry), obj_i64(&entry.objects, "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanPathCost")) {
+            cost_by_key.insert(key, cost);
+        }
+    }
+
+    for entry in roles.entries.iter() {
+        let (vlan, port) = match rpvst_row_key(entry) {
+            Some(key) => key,
+            None => continue,
+        };
+        // Out-of-enum raw values (observed: 0) arrive as numbers, not enum
+        // strings — skip those rows.
+        let role = match obj_str(&entry.objects, "HP-ICF-RPVST-MIB::hpicfRpvstPortVlanRole") {
+            Some(role) => role,
+            None => continue,
+        };
+        let info = StpPortInfo {
+            role: role,
+            interface_id: port.to_string(),
+            interface_name: interfaces.get(&port).cloned().unwrap_or_else(|| "UNKNOWN".to_string()),
+        };
+        let state = state_by_key.get(&(vlan, port)).cloned().unwrap_or_default();
+        let cost = cost_by_key.get(&(vlan, port)).cloned().unwrap_or(0);
+        push_stp_metric(&mut out, device, &info, vlan, port, "port_path_cost", cost, timestamp);
+        push_stp_metric(&mut out, device, &info, vlan, port, "port_role", rstp_port_role_numeric(&info.role), timestamp);
+        push_stp_metric(&mut out, device, &info, vlan, port, "port_state", stp_port_state_numeric(&state), timestamp);
+    }
+
+    for entry in vlans.map(|t| t.entries.iter()).into_iter().flatten() {
+        let vlan = match entry.index.get("HP-ICF-RPVST-MIB::hpicfRpvstVlanId") {
+            Some(v) => *v,
+            None => continue,
+        };
+        if let Some(priority) = obj_i64(&entry.objects, "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPriority") {
+            let mac = obj_str(&entry.objects, "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootMacAddress")
+                .map(|m| crate::utilities::stp::normalize_mac(&m))
+                .unwrap_or_default();
+            push_stp_bridge_metric(&mut out, device, vlan, "root_priority", priority, &[("root_mac", &mac)], timestamp);
+        }
+        if let Some(cost) = obj_i64(&entry.objects, "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPathCost") {
+            push_stp_bridge_metric(&mut out, device, vlan, "root_cost", cost, &[], timestamp);
+        }
+        if let Some(port) = obj_i64(&entry.objects, "HP-ICF-RPVST-MIB::hpicfRpvstVlanRootPort") {
+            push_stp_bridge_metric(&mut out, device, vlan, "root_port", port, &[], timestamp);
+        }
+        if let Some(changes) = obj_i64(&entry.objects, "HP-ICF-RPVST-MIB::hpicfVlanTopoChangeCount") {
+            push_stp_bridge_metric(&mut out, device, vlan, "topology_changes", changes, &[], timestamp);
+        }
+        if let Some(secs) = entry.objects.get("HP-ICF-RPVST-MIB::hpicfRpvstVlanTimeSinceLastTopoChange").and_then(crate::utilities::stp::timeticks_secs) {
+            push_stp_bridge_metric(&mut out, device, vlan, "time_since_topology_change", secs, &[], timestamp);
+        }
+    }
+
+    out
 }
 
 fn value_i64(value: &SNMPBotResultEntryObjectValue) -> Option<i64> {

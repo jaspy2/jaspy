@@ -1,0 +1,47 @@
+{
+  "ID": "IF-MIB::ifTable",
+  "IndexKeys": [
+    "IF-MIB::ifIndex"
+  ],
+  "ObjectKeys": [
+    "IF-MIB::ifDescr"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "IF-MIB::ifIndex": 5
+      },
+      "Objects": {
+        "IF-MIB::ifDescr": "5"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "IF-MIB::ifIndex": 6
+      },
+      "Objects": {
+        "IF-MIB::ifDescr": "6"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "IF-MIB::ifIndex": 7
+      },
+      "Objects": {
+        "IF-MIB::ifDescr": "7"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "IF-MIB::ifIndex": 8
+      },
+      "Objects": {
+        "IF-MIB::ifDescr": "8"
+      }
+    }
+  ]
+}
