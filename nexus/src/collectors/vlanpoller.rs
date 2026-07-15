@@ -24,11 +24,8 @@ use crate::collectors::poller::SNMPBotResponse;
 use crate::collectors::vendor::{self, Vendor};
 use crate::db;
 use crate::utilities::tools;
-use rand::prelude::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::{atomic, Arc, Mutex};
-use std::thread;
-use std::time;
 
 // ---------------------------------------------------------------------------
 // Shared store: latest VLAN membership per device, replaced on each successful
@@ -475,6 +472,10 @@ fn load_devices(pool: &db::Pool) -> Vec<VlanDevice> {
     devices
 }
 
+// Cap on simultaneous per-device poll threads (each holds a blocking HTTP
+// connection to snmpbot for its device's whole table sequence).
+const MAX_POLL_WORKERS: usize = 16;
+
 fn poll_batch(
     snmpbot_url: &String,
     devices: Vec<VlanDevice>,
@@ -482,28 +483,15 @@ fn poll_batch(
     sources_cache: &Arc<vendor::SourceCache>,
     jitter_msecs: u64,
 ) {
-    let mut handles = Vec::new();
-    for device in devices.into_iter() {
-        let snmpbot_url = snmpbot_url.clone();
-        let store = store.clone();
-        let sources_cache = sources_cache.clone();
-        handles.push(thread::spawn(move || {
-            if jitter_msecs > 0 {
-                let sleep = thread_rng().gen_range(0.0, jitter_msecs as f64);
-                thread::sleep(time::Duration::from_millis(sleep as u64));
+    crate::collectors::pool::run_bounded(devices, MAX_POLL_WORKERS, jitter_msecs, |device| {
+        // Only replace on success so a transient poll failure does not
+        // blank previously known VLAN data.
+        if let Some(vlans) = poll_device(snmpbot_url, &device.fqdn, &device.community, device.vendor, sources_cache) {
+            if let Ok(mut store) = store.lock() {
+                store.replace_device(device.fqdn, vlans);
             }
-            // Only replace on success so a transient poll failure does not
-            // blank previously known VLAN data.
-            if let Some(vlans) = poll_device(&snmpbot_url, &device.fqdn, &device.community, device.vendor, &sources_cache) {
-                if let Ok(mut store) = store.lock() {
-                    store.replace_device(device.fqdn, vlans);
-                }
-            }
-        }));
-    }
-    for handle in handles {
-        let _ = handle.join();
-    }
+        }
+    });
 }
 
 pub fn run(

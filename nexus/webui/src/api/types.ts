@@ -217,6 +217,8 @@ export interface StpNode {
 
 export interface StpBlockedLink {
   fqdn: string;
+  // Bridge port number: unique per (fqdn, vlan) even when interfaceName is null.
+  stpPortId: number;
   interfaceName: string | null;
   role: string; // "alternate" | "backUp"
   state: string;

@@ -17,7 +17,6 @@ use crate::collectors::vendor::{self, Vendor};
 use crate::db;
 use crate::models::metrics::{LabeledMetric, MetricValue};
 use crate::utilities::tools;
-use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::{atomic, Arc, Mutex};
 use std::thread;
@@ -27,8 +26,17 @@ use std::time;
 // Shared metrics store: latest rendered samples per device, replaced each poll.
 // ---------------------------------------------------------------------------
 
+// One device's poll result: the raw Prometheus samples plus the structured
+// DTO decoded from them once at write time — the /api/v1 endpoints (polled
+// every 30s by the UI, for every device at once) then only clone under the
+// store lock instead of re-decoding per request.
+struct DeviceEntity {
+    metrics: Vec<LabeledMetric>,
+    entity: crate::models::json::ApiDeviceEntity,
+}
+
 pub struct EntityMetricsStore {
-    devices: HashMap<String, Vec<LabeledMetric>>,
+    devices: HashMap<String, DeviceEntity>,
 }
 
 impl EntityMetricsStore {
@@ -37,7 +45,8 @@ impl EntityMetricsStore {
     }
 
     fn replace_device(&mut self, fqdn: String, metrics: Vec<LabeledMetric>) {
-        self.devices.insert(fqdn, metrics);
+        let entity = decode_entity(&metrics);
+        self.devices.insert(fqdn, DeviceEntity { metrics: metrics, entity: entity });
     }
 
     // Drop metrics for devices no longer monitored (the Go version leaked these).
@@ -48,8 +57,8 @@ impl EntityMetricsStore {
     // Prometheus text for every stored device, one metric per line.
     pub fn render(&self) -> String {
         let mut ret = String::new();
-        for metrics in self.devices.values() {
-            for metric in metrics.iter() {
+        for device in self.devices.values() {
+            for metric in device.metrics.iter() {
                 ret.push_str(&format!("{}\n", metric.as_text()));
             }
         }
@@ -60,7 +69,7 @@ impl EntityMetricsStore {
     // Unknown fqdn and not-yet-polled both yield empty vectors.
     pub fn device_entity(&self, fqdn: &str) -> crate::models::json::ApiDeviceEntity {
         match self.devices.get(fqdn) {
-            Some(metrics) => decode_entity(metrics),
+            Some(device) => device.entity.clone(),
             None => crate::models::json::ApiDeviceEntity {
                 sensors: Vec::new(),
                 stp: Vec::new(),
@@ -77,13 +86,12 @@ impl EntityMetricsStore {
     ) {
         let mut ports = HashMap::new();
         let mut bridges = HashMap::new();
-        for (fqdn, metrics) in self.devices.iter() {
-            let entity = decode_entity(metrics);
-            if !entity.stp.is_empty() {
-                ports.insert(fqdn.clone(), entity.stp);
+        for (fqdn, device) in self.devices.iter() {
+            if !device.entity.stp.is_empty() {
+                ports.insert(fqdn.clone(), device.entity.stp.clone());
             }
-            if !entity.stp_bridges.is_empty() {
-                bridges.insert(fqdn.clone(), entity.stp_bridges);
+            if !device.entity.stp_bridges.is_empty() {
+                bridges.insert(fqdn.clone(), device.entity.stp_bridges.clone());
             }
         }
         (ports, bridges)
@@ -1373,6 +1381,10 @@ fn push_stp_metric(out: &mut Vec<LabeledMetric>, device: &EntityDevice, port: &S
 // Supervisor
 // ---------------------------------------------------------------------------
 
+// Cap on simultaneous per-device poll threads (each holds a blocking HTTP
+// connection to snmpbot for its device's whole sensor+STP sequence).
+const MAX_POLL_WORKERS: usize = 16;
+
 pub(crate) fn interruptible_sleep(msecs: u64, running: &Arc<atomic::AtomicBool>) {
     let mut slept = 0;
     while slept < msecs && running.load(atomic::Ordering::Relaxed) {
@@ -1400,32 +1412,21 @@ pub fn run(snmpbot_url: String, interval_msecs: u64, disable_sensors: bool, disa
         }
         stp_sources.retain(&keep);
 
-        // One worker thread per device, joined at a barrier (Go runOnce+WaitGroup).
-        let mut handles = Vec::new();
-        for device in devices.into_iter() {
-            let snmpbot_url = snmpbot_url.clone();
-            let store = store.clone();
-            let stp_sources = stp_sources.clone();
-            handles.push(thread::spawn(move || {
-                if !no_jitter {
-                    let sleep = thread_rng().gen_range(0.0, (interval_msecs / 2) as f64);
-                    thread::sleep(time::Duration::from_millis(sleep as u64));
-                }
-                let mut metrics: Vec<LabeledMetric> = Vec::new();
-                if !disable_sensors {
-                    get_entities(&snmpbot_url, &device, &mut metrics);
-                }
-                if !disable_stp {
-                    get_stp(&snmpbot_url, &device, &stp_sources, &mut metrics);
-                }
-                if let Ok(mut store) = store.lock() {
-                    store.replace_device(device.fqdn.clone(), metrics);
-                }
-            }));
-        }
-        for handle in handles {
-            let _ = handle.join();
-        }
+        // Bounded per-device fan-out, joined at a barrier (the Go original
+        // spawned one goroutine per device via runOnce+WaitGroup).
+        let jitter = if no_jitter { 0 } else { interval_msecs / 2 };
+        crate::collectors::pool::run_bounded(devices, MAX_POLL_WORKERS, jitter, |device| {
+            let mut metrics: Vec<LabeledMetric> = Vec::new();
+            if !disable_sensors {
+                get_entities(&snmpbot_url, &device, &mut metrics);
+            }
+            if !disable_stp {
+                get_stp(&snmpbot_url, &device, &stp_sources, &mut metrics);
+            }
+            if let Ok(mut store) = store.lock() {
+                store.replace_device(device.fqdn.clone(), metrics);
+            }
+        });
 
         let elapsed = tools::get_time_msecs() - cycle_start;
         if elapsed < interval_msecs {

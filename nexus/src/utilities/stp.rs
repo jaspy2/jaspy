@@ -132,26 +132,34 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
         _ => flags.push("multiple-roots".to_string()),
     }
 
-    // Cycle guard: a node whose parent chain never reaches a root or orphan
-    // is part of a cycle; demote every node on that chain to orphan.
+    // Cycle guard: a node whose parent chain loops back on itself is part of
+    // a cycle; demote the cycle members (and only them) to orphan. Nodes
+    // whose chain merely leads *into* a cycle keep their parent — after the
+    // demotion their chain ends at an orphan like any other subtree.
     let mut cycle_nodes: HashSet<String> = HashSet::new();
     for start in info.keys().cloned().collect::<Vec<&str>>() {
-        let mut seen: HashSet<&str> = HashSet::new();
+        let mut path: Vec<&str> = Vec::new();
         let mut current = start;
         loop {
-            if cycle_nodes.contains(current) || !seen.insert(current) {
+            if cycle_nodes.contains(current) {
+                break; // leads into an already-detected cycle
+            }
+            if let Some(position) = path.iter().position(|node| *node == current) {
+                // Revisit within this walk: the cycle is path[position..];
+                // the prefix only leads into it.
                 if !flags.contains(&"cycle".to_string()) {
                     flags.push("cycle".to_string());
                 }
-                cycle_nodes.extend(seen.iter().map(|s| s.to_string()));
+                cycle_nodes.extend(path[position..].iter().map(|s| s.to_string()));
                 break;
             }
+            path.push(current);
             match info.get(current).and_then(|i| i.parent.as_ref()) {
-                Some(parent) => current = info.keys().find(|k| **k == parent.fqdn.as_str()).cloned().unwrap_or(start),
+                Some(parent) => match info.keys().find(|k| **k == parent.fqdn.as_str()) {
+                    Some(parent_key) => current = parent_key,
+                    None => break,
+                },
                 None => break,
-            }
-            if current == start && seen.len() > 1 {
-                continue; // handled by the seen-set on the next iteration
             }
         }
     }
@@ -226,6 +234,7 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
         for port in ports.iter().filter(|p| p.role == "alternate" || p.role == "backUp") {
             blocked_links.push(ApiStpBlockedLink {
                 fqdn: fqdn.to_string(),
+                stp_port_id: port.stp_port_id,
                 interface_name: port.interface_name.clone(),
                 role: port.role.clone(),
                 state: port.state.clone(),
@@ -440,6 +449,13 @@ mod tests {
         let core = tree.nodes.iter().find(|n| n.fqdn == "core.x").unwrap();
         let dist = tree.nodes.iter().find(|n| n.fqdn == "dist.x").unwrap();
         assert!(core.orphan && dist.orphan);
+        // The leaves only lead *into* the cycle: they keep their parent and
+        // hang off the demoted dist rather than being orphaned themselves.
+        for leaf in ["leaf-a.x", "leaf-b.x"] {
+            let node = tree.nodes.iter().find(|n| n.fqdn == leaf).unwrap();
+            assert!(!node.orphan, "{} should not be demoted", leaf);
+            assert_eq!(node.parent.as_deref(), Some("dist.x"));
+        }
         // Every node still appears exactly once.
         assert_eq!(tree.nodes.len(), 4);
     }

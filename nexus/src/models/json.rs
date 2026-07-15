@@ -245,6 +245,10 @@ pub struct ApiStpNode {
 #[serde(rename_all = "camelCase")]
 pub struct ApiStpBlockedLink {
     pub fqdn: String,
+    // Bridge port number: unique per (fqdn, vlan) even when the interface
+    // name failed to resolve. Additive: default-deserialized for older payloads.
+    #[serde(default)]
+    pub stp_port_id: i64,
     pub interface_name: Option<String>,
     pub role: String, // "alternate" | "backUp"
     pub state: String,
@@ -312,7 +316,7 @@ pub struct ApiDeviceDetail {
 // GET /api/v1/devices/<fqdn>/entity: latest entitypoller results for one
 // device, converted from the in-memory EntityMetricsStore. Empty vectors mean
 // "no data (yet)" — the store only fills after the first poll cycle.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiDeviceEntity {
     pub sensors: Vec<ApiEntitySensor>,
@@ -322,7 +326,7 @@ pub struct ApiDeviceEntity {
     pub stp_bridges: Vec<ApiStpBridge>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiEntitySensor {
     pub sensor_id: i64,
@@ -337,7 +341,7 @@ pub struct ApiEntitySensor {
     pub timestamp: u64, // msecs
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiStpPort {
     pub vlan: i64,

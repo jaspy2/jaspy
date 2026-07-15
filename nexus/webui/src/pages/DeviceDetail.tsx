@@ -226,9 +226,9 @@ export default function DeviceDetail() {
             </span>
             <span className="item-sub">
               {iface.speed !== null && <span>{iface.speed} Mb/s</span>}
-              {iface.nativeVlan !== null && (
+              {(iface.nativeVlan !== null || iface.taggedVlans !== null) && (
                 <button className="vlan-toggle" onClick={() => toggleVlans(iface.id)} aria-expanded={expandedVlans.has(iface.id)}>
-                  VLAN {iface.nativeVlan}
+                  VLAN {iface.nativeVlan ?? '—'}
                   {(iface.taggedVlans?.length ?? 0) > 0 && ` (+${iface.taggedVlans!.length} tagged)`}
                   {expandedVlans.has(iface.id) ? ' ▾' : ' ▸'}
                 </button>

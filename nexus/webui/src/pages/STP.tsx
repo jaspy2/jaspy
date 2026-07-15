@@ -227,7 +227,7 @@ export default function STP() {
                   </thead>
                   <tbody>
                     {blocked.map((link) => (
-                      <tr key={`${link.fqdn}-${link.interfaceName}`}>
+                      <tr key={`${link.fqdn}-${link.stpPortId}`}>
                         <td className="wrap-mobile"><DeviceLink fqdn={link.fqdn} /></td>
                         <td>{link.interfaceName ?? '—'}</td>
                         <td>{link.role}</td>
