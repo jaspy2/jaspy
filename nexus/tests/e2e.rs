@@ -1246,6 +1246,9 @@ fn mock_mode_serves_network(db: DbHarness) {
         .poll_loop_msecs(300)
         .entitypoller(true)
         .entitypoller_interval_msecs(500)
+        // The mock's core-dist links are port-channels, so STP root-port parent
+        // resolution needs LagStore populated by the lagpoller.
+        .lagpoller(true)
         .env("JASPY_MOCK_SNMPBOT_PORT", &free_port().to_string())
         .env("JASPY_DISCOVERY_INTERVAL_SECS", "5")
         .start();
