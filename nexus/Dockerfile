@@ -40,4 +40,24 @@ RUN su -c 'pg_ctlcluster 15 main start && createuser root && createdb root -O ro
 RUN cat /usr/src/nexus/src/schema.rs
 RUN cargo build --release
 
+# The Debian packaging flow (build/build-debian.sh) builds --target builder and
+# runs this CMD to extract the artifacts; it never reaches the runtime stage.
 CMD cp -a target/release/jaspy-nexus /output/jaspy-nexus && cp -a /usr/local/cargo/bin/diesel /output/diesel && cp -a migrations /output/migrations && cp -a migrations_sqlite /output/migrations_sqlite
+
+# Stage 3: slim runtime image (default build target; used for container
+# deployments). Migrations are embedded in the binary and run at startup,
+# so only the shared libraries are needed (same set the deb depends on).
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update \
+  && apt-get -y install --no-install-recommends liboping0 libpq5 ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/src/nexus/target/release/jaspy-nexus /usr/local/bin/jaspy-nexus
+
+ENV ROCKET_ADDRESS=0.0.0.0 ROCKET_PORT=8000
+EXPOSE 8000
+
+# The in-process pinger needs raw ICMP sockets: run with CAP_NET_RAW
+# (docker run --cap-add=NET_RAW / k8s securityContext capabilities.add).
+CMD ["jaspy-nexus"]
