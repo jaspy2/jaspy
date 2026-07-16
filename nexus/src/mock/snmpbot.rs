@@ -188,7 +188,7 @@ mod tests {
             .text()
             .unwrap();
         let parsed: crate::collectors::poller::SNMPBotResponse = serde_json::from_str(&body).unwrap();
-        assert_eq!(parsed.entries.len(), 4); // core1: 3 downlinks/uplinks + a-02 backup link
+        assert_eq!(parsed.entries.len(), 8); // core1: 5 downlinks/uplinks + a-02 backup link + Po1/Po2
 
         let object = reqwest::blocking::get(format!("{}/api/hosts/core1.mock.jaspy/objects/SNMPv2-MIB::sysDescr", base))
             .unwrap()

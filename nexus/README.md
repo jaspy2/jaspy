@@ -57,7 +57,11 @@ What you get: an in-process snmpbot-compatible server with 8 fake devices
 **real** discovery engine and polled by the **real** collectors — so the data
 took the same code paths it takes in production. The network is alive:
 counters grow, sensor temperatures drift, and the `access-hall-a-02` uplink
-flaps every 60 s, producing live interface up/down events.
+flaps every 60 s, producing live interface up/down events. LACP port-channels
+are represented too: healthy 2×10G bundles between the core and each dist
+switch (both ends monitored, exercising the far-end cross-checks), a healthy
+server bundle on `access-hall-a-01`, and a deliberately misconfigured bundle
+on `access-hall-a-02` that trips the port-channel warnings.
 
 | What | Where |
 |---|---|

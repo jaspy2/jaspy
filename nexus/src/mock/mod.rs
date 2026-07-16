@@ -101,6 +101,17 @@ pub fn prepare() -> MockGuard {
     default_env("ROCKET_ADDRESS", "127.0.0.1");
     // ROCKET_PORT stays at rocket's default 8000 — the webui dev proxy target.
 
+    // The fake fqdns have no DNS: give the device detail page deterministic
+    // management addresses instead of an empty resolver answer.
+    crate::routes::api::v1::install_ip_overrides(
+        topology::build()
+            .devices
+            .iter()
+            .enumerate()
+            .map(|(idx, dev)| (dev.fqdn(), vec![topology::management_ip(idx)]))
+            .collect(),
+    );
+
     seed::spawn(std::env::var("JASPY_DB_URL").unwrap());
 
     let ui_port = std::env::var("ROCKET_PORT").unwrap_or_else(|_| "8000".to_string());

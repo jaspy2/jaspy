@@ -1,8 +1,10 @@
 // The fake network served by `jaspy-nexus mock`: a small campus (core, two
 // distribution switches, three access switches, a WLC and a firewall) with
-// LLDP adjacency, sensors and per-VLAN STP. Every value is a pure function of
-// elapsed time since startup — counters grow, sensors drift, one uplink flaps
-// — so there is no mutation thread and no locking.
+// LLDP adjacency, sensors, per-VLAN STP and LACP port-channels (2×10G
+// core↔dist bundles, plus one healthy and one misconfigured bundle on the
+// access layer). Every value is a pure function of elapsed time since
+// startup — counters grow, sensors drift, one uplink flaps — so there is no
+// mutation thread and no locking.
 //
 // The generated tables mirror the snmpbot response shapes in tests/fixtures/
 // exactly; they serialize through the same SNMPBotResponse structs the
@@ -78,16 +80,15 @@ pub struct MockDevice {
     pub stp_style: StpStyle,
     pub vlan_style: VlanStyle,
     // VLANs that exist on the device (vtpVlanTable / dot1qVlanCurrentTable).
-    // Peered interfaces are trunks: native TRUNK_NATIVE_VLAN, tagged = the
-    // rest. Unpeered ports are access ports on access_vlan(ifindex).
+    // Trunks (see is_trunk: peered interfaces + bundles over them) carry
+    // native TRUNK_NATIVE_VLAN, tagged = the rest. The other ports are
+    // access ports on access_vlan(ifindex).
     pub vlans: &'static [i64],
     pub interfaces: Vec<MockInterface>,
     pub lags: Vec<MockLag>,
 }
 
 impl MockDevice {
-    // Used by the mock unit tests; the runtime paths key off bare names.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub fn fqdn(&self) -> String {
         format!("{}.{}", self.name, DOMAIN)
     }
@@ -106,6 +107,12 @@ fn access_port(ifindex: i64, name: &'static str, descr: &'static str, up: bool) 
     MockInterface { ifindex, name, descr, alias: "", speed_mbps: 1000, peer: None, flaps: false, up }
 }
 
+// Aggregate (Po) interface: no LLDP peer of its own (LLDP runs on the
+// members), speed = the bundle total.
+fn port_channel(ifindex: i64, name: &'static str, descr: &'static str, alias: &'static str, speed: u64) -> MockInterface {
+    MockInterface { ifindex, name, descr, alias, speed_mbps: speed, peer: None, flaps: false, up: true }
+}
+
 pub fn build() -> Topology {
     let devices = vec![
         MockDevice {
@@ -119,14 +126,23 @@ pub fn build() -> Topology {
             vlan_style: VlanStyle::Cisco,
             vlans: &[1, 10, 20],
             interfaces: vec![
+                // The dist downlinks are 2×10G LACP bundles (Po1/Po2 below);
+                // both ends are monitored, so the far-end cross-checks run.
                 uplink(10101, "Te1/0/1", "TenGigabitEthernet1/0/1", "downlink dist1", 10000, ("dist1", "Te1/1/1")),
                 uplink(10102, "Te1/0/2", "TenGigabitEthernet1/0/2", "downlink dist2", 10000, ("dist2", "Te1/1/1")),
                 uplink(10103, "Te1/0/3", "TenGigabitEthernet1/0/3", "firewall uplink", 10000, ("fw1", "port1")),
                 // Redundant direct link to a-02: STP blocks it on a-02's end
                 // (its backup uplink), giving trees a realistic blocked link.
                 uplink(10104, "Te1/0/4", "TenGigabitEthernet1/0/4", "backup downlink hall a 02", 10000, ("access-hall-a-02", "Te1/1/2")),
+                uplink(10105, "Te1/0/5", "TenGigabitEthernet1/0/5", "downlink dist1 (2)", 10000, ("dist1", "Te1/1/5")),
+                uplink(10106, "Te1/0/6", "TenGigabitEthernet1/0/6", "downlink dist2 (2)", 10000, ("dist2", "Te1/1/5")),
+                port_channel(5001, "Po1", "Port-channel1", "port-channel dist1", 20000),
+                port_channel(5002, "Po2", "Port-channel2", "port-channel dist2", 20000),
             ],
-            lags: Vec::new(),
+            lags: vec![
+                MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] },
+                MockLag { ifindex: 5002, members: &[10102, 10106], partner_mac: "", defaulted_members: &[] },
+            ],
         },
         MockDevice {
             name: "dist1",
@@ -151,8 +167,11 @@ pub fn build() -> Topology {
                     flaps: true,
                     up: true,
                 },
+                uplink(10105, "Te1/1/5", "TenGigabitEthernet1/1/5", "uplink core1 (2)", 10000, ("core1", "Te1/0/5")),
+                // "uplink ..." alias so stp_role makes the bundle the root port.
+                port_channel(5001, "Po1", "Port-channel1", "uplink core1 port-channel", 20000),
             ],
-            lags: Vec::new(),
+            lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] }],
         },
         MockDevice {
             name: "dist2",
@@ -168,14 +187,16 @@ pub fn build() -> Topology {
                 uplink(10101, "Te1/1/1", "TenGigabitEthernet1/1/1", "uplink core1", 10000, ("core1", "Te1/0/2")),
                 uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "downlink hall b 01", 10000, ("access-hall-b-01", "Te1/1/1")),
                 uplink(10104, "Te1/1/4", "TenGigabitEthernet1/1/4", "wlc uplink", 10000, ("wlc1", "Te0/0/1")),
+                uplink(10105, "Te1/1/5", "TenGigabitEthernet1/1/5", "uplink core1 (2)", 10000, ("core1", "Te1/0/6")),
+                port_channel(5001, "Po1", "Port-channel1", "uplink core1 port-channel", 20000),
             ],
-            lags: Vec::new(),
+            lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] }],
         },
         {
             // a-01 carries a healthy 2-member LACP bundle to an unmonitored
             // server (all members bundled, no warnings).
             let mut a01 = access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco, &[10], StpStyle::Cisco);
-            a01.interfaces.push(access_port(5001, "Po1", "Port-channel1", true));
+            a01.interfaces.push(port_channel(5001, "Po1", "Port-channel1", "server bundle", 2000));
             a01.lags = vec![MockLag {
                 ifindex: 5001,
                 members: &[10201, 10202],
@@ -192,7 +213,9 @@ pub fn build() -> Topology {
             // Misconfigured bundle over the two uplinks: they land on
             // different devices, and the core1 side is not running LACP —
             // demo data for the port-channel warnings.
-            a02.interfaces.push(access_port(5001, "Po1", "Port-channel1", true));
+            // "uplink ..." alias: the bundle takes the root-port role that its
+            // bundled member (the primary uplink) folds into.
+            a02.interfaces.push(port_channel(5001, "Po1", "Port-channel1", "uplink port-channel", 20000));
             a02.lags = vec![MockLag {
                 ifindex: 5001,
                 members: &[10101, 10102],
@@ -288,6 +311,12 @@ pub fn base_mac(dev_idx: usize) -> String {
     format!("02:00:00:00:{:02x}:01", 0x10 + dev_idx)
 }
 
+// Fake management address (TEST-NET-2), shown on the device detail page via
+// the mock's resolver override.
+pub fn management_ip(dev_idx: usize) -> String {
+    format!("198.51.100.{}", 10 + dev_idx)
+}
+
 fn base_mac_spaced(dev_idx: usize) -> String {
     base_mac(dev_idx).replace(":", " ")
 }
@@ -302,6 +331,19 @@ pub const TRUNK_NATIVE_VLAN: i64 = 1;
 
 pub fn access_vlan(iface: &MockInterface) -> i64 {
     10 + (iface.ifindex % 2) * 10
+}
+
+// Trunk-ness for the VLAN tables: discovered links are trunks, and a Po
+// interface inherits it from its members (a bundle over switch-to-switch
+// links trunks; a-01's server bundle stays an access port).
+pub fn is_trunk(dev: &MockDevice, iface: &MockInterface) -> bool {
+    if iface.peer.is_some() {
+        return true;
+    }
+    dev.lags.iter().any(|lag| {
+        lag.ifindex == iface.ifindex
+            && lag.members.iter().any(|m| dev.interfaces.iter().any(|i| i.ifindex == *m && i.peer.is_some()))
+    })
 }
 
 // Inverse of collectors::vlanpoller::bitmap_values, in snmpbot's OCTET STRING
@@ -429,11 +471,21 @@ impl Topology {
         out
     }
 
-    // STP member ports of a vlan: every peered interface of the device.
+    // STP member ports of a vlan: every peered interface of the device —
+    // except that LACP-bundled members are represented by their port-channel,
+    // like real switches running STP on the aggregate. Members with defaulted
+    // LACP stay individual STP ports (their bundle never formed), which keeps
+    // a-02's blocked backup uplink visible in the trees.
     fn stp_ports(dev: &MockDevice) -> Vec<(i64, &MockInterface)> {
+        let bundled = |ifindex: i64| {
+            dev.lags.iter().any(|lag| lag.members.contains(&ifindex) && !lag.defaulted_members.contains(&ifindex))
+        };
+        let formed_lag = |ifindex: i64| {
+            dev.lags.iter().any(|lag| lag.ifindex == ifindex && lag.members.iter().any(|m| !lag.defaulted_members.contains(m)))
+        };
         dev.interfaces
             .iter()
-            .filter(|i| i.peer.is_some())
+            .filter(|i| (i.peer.is_some() && !bundled(i.ifindex)) || formed_lag(i.ifindex))
             .enumerate()
             .map(|(pos, iface)| (pos as i64 + 1, iface))
             .collect()
@@ -459,7 +511,7 @@ impl Topology {
                         json!({
                             "IF-MIB::ifIndex": iface.ifindex,
                             "IF-MIB::ifDescr": iface.descr,
-                            "IF-MIB::ifType": "ethernetCsmacd",
+                            "IF-MIB::ifType": if dev.lags.iter().any(|l| l.ifindex == iface.ifindex) { "ieee8023adLag" } else { "ethernetCsmacd" },
                             "IF-MIB::ifPhysAddress": iface_mac(dev_idx, iface.ifindex),
                             "IF-MIB::ifOperStatus": if iface_up(iface, elapsed) { "up" } else { "down" },
                             "IF-MIB::ifInErrors": error_counter(dev_idx, iface.ifindex, 1, elapsed),
@@ -615,7 +667,7 @@ impl Topology {
                 let all_1k = hex_bitmap(&(1..1024).collect::<Vec<i64>>(), 0, 128);
                 let all_2k: String = hex_bitmap(&(1024..2048).collect::<Vec<i64>>(), 1024, 128);
                 let entries = dev.interfaces.iter().map(|iface| {
-                    let trunking = if iface.peer.is_some() { "trunking" } else { "notTrunking" };
+                    let trunking = if is_trunk(dev, iface) { "trunking" } else { "notTrunking" };
                     entry(
                         json!({"CISCO-VTP-MIB::vlanTrunkPortIfIndex": iface.ifindex}),
                         json!({
@@ -648,7 +700,7 @@ impl Topology {
                 if dev.vlan_style != VlanStyle::Cisco {
                     return None;
                 }
-                let entries = dev.interfaces.iter().filter(|i| i.peer.is_none()).map(|iface| {
+                let entries = dev.interfaces.iter().filter(|i| !is_trunk(dev, i)).map(|iface| {
                     entry(
                         json!({"IF-MIB::ifIndex": iface.ifindex}),
                         json!({
@@ -665,7 +717,7 @@ impl Topology {
                     return None;
                 }
                 let entries = Self::bridge_ports(dev).into_iter().map(|(bridge_port, iface)| {
-                    let pvid = if iface.peer.is_some() { TRUNK_NATIVE_VLAN } else { access_vlan(iface) };
+                    let pvid = if is_trunk(dev, iface) { TRUNK_NATIVE_VLAN } else { access_vlan(iface) };
                     entry(
                         json!({"BRIDGE-MIB::dot1dBasePort": bridge_port}),
                         json!({"Q-BRIDGE-MIB::dot1qPvid": pvid}),
@@ -687,7 +739,7 @@ impl Topology {
                     let mut egress: Vec<i64> = Vec::new();
                     let mut untagged: Vec<i64> = Vec::new();
                     for (bridge_port, iface) in Self::bridge_ports(dev) {
-                        if iface.peer.is_some() {
+                        if is_trunk(dev, iface) {
                             egress.push(bridge_port);
                             if *vlan == TRUNK_NATIVE_VLAN {
                                 untagged.push(bridge_port);
@@ -1044,9 +1096,41 @@ mod tests {
         assert!(group.members[&10102].actor_state.iter().any(|s| s == "defaulted"));
         assert!(lagpoller::lacp_bundled(&group.members[&10101].actor_state));
 
-        // Devices without bundles decode to zero groups (but the pagp table
-        // still answers, so the Cisco source claims them).
-        assert!(decode("core1.mock.jaspy").groups.is_empty());
+        // core1 carries a healthy 2×10G bundle to each dist switch; both ends
+        // are monitored, so the far-end cross-check must come back clean.
+        let core1 = decode("core1.mock.jaspy");
+        assert_eq!(core1.groups.len(), 2);
+        let dist1_lags = decode("dist1.mock.jaspy");
+        assert_eq!(dist1_lags.groups.len(), 1);
+
+        let topo_ref = &topo;
+        let meta_for = |name: &str, group: &lagpoller::LagGroup| -> std::collections::HashMap<i64, lagpoller::MemberMeta> {
+            let dev = topo_ref.devices.iter().find(|d| d.name == name).unwrap();
+            group.members.keys().map(|ifindex| {
+                let iface = dev.interfaces.iter().find(|i| i.ifindex == *ifindex).unwrap();
+                (*ifindex, lagpoller::MemberMeta {
+                    name: iface.name.to_string(),
+                    connected_to_fqdn: iface.peer.map(|(peer, _)| format!("{}.{}", peer, DOMAIN)),
+                })
+            }).collect()
+        };
+        let mut peer_lags = std::collections::HashMap::new();
+        peer_lags.insert("dist1.mock.jaspy".to_string(), dist1_lags.clone());
+        peer_lags.insert("core1.mock.jaspy".to_string(), core1.clone());
+
+        let group = &core1.groups[&5001];
+        assert!(group.members.values().all(|m| lagpoller::lacp_bundled(&m.actor_state)));
+        assert_eq!(
+            lagpoller::port_channel_warnings(group, &meta_for("core1", group), &peer_lags),
+            Vec::<String>::new(),
+            "core1 Po1 to dist1 must warn nothing"
+        );
+        let group = &dist1_lags.groups[&5001];
+        assert_eq!(
+            lagpoller::port_channel_warnings(group, &meta_for("dist1", group), &peer_lags),
+            Vec::<String>::new(),
+            "dist1 Po1 to core1 must warn nothing"
+        );
     }
 
     #[test]
@@ -1302,6 +1386,28 @@ mod tests {
         assert_eq!(stp_role(dist1, flapping_downlink), "designated");
         let downlink = dist1.interfaces.iter().find(|i| i.alias.contains("hall a 01")).unwrap();
         assert_eq!(stp_role(dist1, downlink), "designated");
+    }
+
+    #[test]
+    fn stp_ports_fold_bundled_members_into_the_port_channel() {
+        let topo = build();
+        // dist1: members 10101/10105 are LACP-bundled — only Po1 represents
+        // them in the STP tables, and it takes the root-port role.
+        let dist1 = topo.devices.iter().find(|d| d.name == "dist1").unwrap();
+        let ports = Topology::stp_ports(dist1);
+        assert!(ports.iter().all(|(_, i)| i.ifindex != 10101 && i.ifindex != 10105));
+        let (_, po) = ports.iter().find(|(_, i)| i.ifindex == 5001).unwrap();
+        assert_eq!(stp_role(dist1, po), "root");
+        // a-02: the bundled member folds into Po1 (root), but the defaulted
+        // backup member never formed a bundle and stays the individual
+        // blocked port — the trees keep their alternate link.
+        let a02 = topo.devices.iter().find(|d| d.name == "access-hall-a-02").unwrap();
+        let ports = Topology::stp_ports(a02);
+        assert!(ports.iter().all(|(_, i)| i.ifindex != 10101), "bundled member folds into Po1");
+        let (_, backup) = ports.iter().find(|(_, i)| i.ifindex == 10102).unwrap();
+        assert_eq!(stp_role(a02, backup), "alternate");
+        let (_, po) = ports.iter().find(|(_, i)| i.ifindex == 5001).unwrap();
+        assert_eq!(stp_role(a02, po), "root");
     }
 
     #[test]

@@ -1,6 +1,8 @@
 // Seeds the parts of the mock network that don't flow from the discovery
 // crawl: client locations (DHCP option-82 data normally pushed by external
-// integrations) and the event name shown in the UI header.
+// integrations), the event name shown in the UI header, and weathermap
+// positions (normally dragged into place by hand) so the map renders laid
+// out on first load.
 //
 // Devices and links land in the DB via the real discovery engine crawling the
 // fake snmpbot, so this thread first waits for the crawl to ingest the access
@@ -14,6 +16,22 @@ struct SeedClient {
     mac: &'static str,
     device: &'static str, // bare mock device name
     port_info: &'static str,
+}
+
+// Hand-laid weathermap layout: firewall on top, then core, dist, access rows.
+// Only seeded where no position exists yet (a persisted JASPY_DB_URL keeps
+// whatever the developer dragged).
+fn seed_positions() -> Vec<(&'static str, f64, f64)> {
+    vec![
+        ("fw1", 400.0, 60.0),
+        ("core1", 400.0, 180.0),
+        ("dist1", 250.0, 300.0),
+        ("dist2", 550.0, 300.0),
+        ("access-hall-a-01", 120.0, 430.0),
+        ("access-hall-a-02", 320.0, 430.0),
+        ("access-hall-b-01", 520.0, 430.0),
+        ("wlc1", 700.0, 430.0),
+    ]
 }
 
 fn seed_clients() -> Vec<SeedClient> {
@@ -54,8 +72,9 @@ fn run(db_url: &str) {
     let _ = models::dbo::Setting::set(&mut connection, "event", &event_json);
 
     // Wait for the discovery crawl to ingest devices, then insert each client
-    // once. Bounded wait: ~5 minutes.
+    // and device position once. Bounded wait: ~5 minutes.
     let mut pending = seed_clients();
+    let mut pending_positions = seed_positions();
     for _ in 0..300 {
         pending.retain(|client| {
             let mac = match device_mac(client.device) {
@@ -79,8 +98,31 @@ fn run(db_url: &str) {
             }
             false
         });
-        if pending.is_empty() {
-            println!("[mock] seeded client locations and event name");
+        pending_positions.retain(|(name, x, y)| {
+            let mac = match device_mac(name) {
+                Some(mac) => mac,
+                None => return false, // topology mismatch: drop, tested against build()
+            };
+            let device = match models::dbo::Device::by_base_mac(&mac, &mut connection) {
+                Some(device) => device,
+                None => return true, // not ingested yet, retry
+            };
+            if device.weathermap_info(&mut connection).is_none() {
+                let _ = models::dbo::WeathermapDeviceInfo::create(
+                    &models::dbo::NewWeathermapDeviceInfo {
+                        x: *x,
+                        y: *y,
+                        super_node: false,
+                        expanded_by_default: true,
+                        device_id: device.id,
+                    },
+                    &mut connection,
+                );
+            }
+            false
+        });
+        if pending.is_empty() && pending_positions.is_empty() {
+            println!("[mock] seeded client locations, weathermap positions and event name");
             return;
         }
         std::thread::sleep(std::time::Duration::from_secs(1));
@@ -113,6 +155,18 @@ mod tests {
                 client.device
             );
         }
+    }
+
+    #[test]
+    fn seed_positions_cover_every_device_exactly_once() {
+        let topo = topology::build();
+        let positions = seed_positions();
+        let names: std::collections::HashSet<&str> = positions.iter().map(|(name, _, _)| *name).collect();
+        assert_eq!(names.len(), positions.len(), "duplicate position seed");
+        for dev in topo.devices.iter() {
+            assert!(names.contains(dev.name), "device {} has no seeded position", dev.name);
+        }
+        assert_eq!(positions.len(), topo.devices.len(), "position seed references unknown devices");
     }
 
     #[test]

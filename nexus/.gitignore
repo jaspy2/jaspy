@@ -3,3 +3,5 @@
 *.log
 *.stackdump
 /src/schema.rs
+# staged by CI (and local runtime-image builds) for the docker build context
+/weathermap

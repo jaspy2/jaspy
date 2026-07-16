@@ -55,7 +55,13 @@ RUN apt-get update \
 
 COPY --from=builder /usr/src/nexus/target/release/jaspy-nexus /usr/local/bin/jaspy-nexus
 
-ENV ROCKET_ADDRESS=0.0.0.0 ROCKET_PORT=8000
+# The weathermap static app lives at the repo root (outside this build
+# context); the CI workflow stages it to nexus/weathermap before building.
+# Local runtime-image builds need the same: cp -r ../weathermap ./weathermap
+COPY weathermap /usr/share/jaspy/weathermap
+
+ENV ROCKET_ADDRESS=0.0.0.0 ROCKET_PORT=8000 \
+    JASPY_WEATHERMAP_DIR=/usr/share/jaspy/weathermap
 EXPOSE 8000
 
 # The in-process pinger needs raw ICMP sockets: run with CAP_NET_RAW

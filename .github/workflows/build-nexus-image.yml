@@ -21,6 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The runtime image serves the weathermap; it lives at the repo root,
+      # outside the nexus/ build context, so stage it in.
+      - name: Stage weathermap into the build context
+        run: cp -r weathermap nexus/weathermap
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3

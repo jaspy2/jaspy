@@ -85,6 +85,17 @@ impl LagStore {
     pub fn device_lags(&self, fqdn: &str) -> Option<DeviceLags> {
         self.devices.get(fqdn).cloned()
     }
+
+    // fqdn -> aggregate ifIndex -> member ifIndexes, for joins that only need
+    // membership (the STP tree resolves aggregate ports via their members).
+    pub fn lag_members(&self) -> HashMap<String, HashMap<i64, Vec<i64>>> {
+        self.devices.iter().map(|(fqdn, lags)| {
+            (
+                fqdn.clone(),
+                lags.groups.iter().map(|(agg, group)| (*agg, group.members.keys().copied().collect())).collect(),
+            )
+        }).collect()
+    }
 }
 
 // ---------------------------------------------------------------------------

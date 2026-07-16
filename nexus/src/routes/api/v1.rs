@@ -76,8 +76,19 @@ fn resolve_device_ips(fqdn: &str) -> Vec<String> {
     ips
 }
 
+// Mock mode installs a static fqdn -> addresses map at startup (the fake
+// devices have no DNS); anything not in the map resolves normally.
+static IP_OVERRIDES: std::sync::OnceLock<std::collections::HashMap<String, Vec<String>>> = std::sync::OnceLock::new();
+
+pub fn install_ip_overrides(overrides: std::collections::HashMap<String, Vec<String>>) {
+    let _ = IP_OVERRIDES.set(overrides);
+}
+
 fn resolve_ips_uncached(fqdn: &str) -> Vec<String> {
     use std::net::ToSocketAddrs;
+    if let Some(ips) = IP_OVERRIDES.get().and_then(|overrides| overrides.get(fqdn)) {
+        return ips.clone();
+    }
     match (fqdn, 0u16).to_socket_addrs() {
         Ok(addrs) => order_device_ips(addrs.map(|a| a.ip())),
         Err(_) => Vec::new(),
@@ -435,6 +446,7 @@ pub fn stp_tree(
     vlan: i64,
     entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
     cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+    lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
 ) -> Json<models::json::ApiStpTree> {
     let (ports, bridges) = match entity_metrics.inner().lock() {
         Ok(store) => store.network_stp(),
@@ -442,11 +454,14 @@ pub fn stp_tree(
     };
     let topology = crate::routes::dev::weathermap::cached_topology_data(&mut connection, cache_controller.inner());
     let base_macs = device_base_macs(&mut connection);
+    // Aggregate STP ports (port-channels) resolve adjacency via their members.
+    let lag_members = lag_store.inner().lock().map(|store| store.lag_members()).unwrap_or_default();
     let inputs = crate::utilities::stp::StpInputs {
         ports: &ports,
         bridges: &bridges,
         base_macs: &base_macs,
         topology: &topology,
+        lag_members: &lag_members,
     };
     Json(crate::utilities::stp::build_stp_tree(&inputs, vlan))
 }

@@ -67,6 +67,10 @@ pub struct StpInputs<'a> {
     // fqdn -> dot1dBaseBridgeAddress from discovery (devices.base_mac).
     pub base_macs: &'a HashMap<String, Option<String>>,
     pub topology: &'a WeathermapBase,
+    // fqdn -> aggregate ifIndex -> member ifIndexes (LagStore::lag_members).
+    // Real switches run STP on the port-channel, which has no LLDP link of
+    // its own — adjacency lives on the members.
+    pub lag_members: &'a HashMap<String, HashMap<i64, Vec<i64>>>,
 }
 
 // The far end of `fqdn`'s interface with SNMP ifIndex `ifindex`, per the DB
@@ -77,6 +81,16 @@ fn connected_to(topology: &WeathermapBase, fqdn: &str, ifindex: Option<i64>) -> 
     let interface = device.interfaces.values().find(|i| i.if_index as i64 == ifindex)?;
     let connection = interface.connected_to.as_ref()?;
     Some(ApiInterfaceConnection { fqdn: connection.fqdn.clone(), interface: connection.interface.clone() })
+}
+
+// The far end of an STP port: its own discovered link, or — when the port is
+// a LACP aggregate — the first member with one.
+fn stp_port_connected_to(inputs: &StpInputs, fqdn: &str, ifindex: Option<i64>) -> Option<ApiInterfaceConnection> {
+    if let Some(connection) = connected_to(inputs.topology, fqdn, ifindex) {
+        return Some(connection);
+    }
+    let members = inputs.lag_members.get(fqdn)?.get(&ifindex?)?;
+    members.iter().find_map(|member| connected_to(inputs.topology, fqdn, Some(*member)))
 }
 
 pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
@@ -109,7 +123,7 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
         let (parent, orphan) = match root_port {
             None => (None, false), // root candidate
             Some(port) => {
-                let upstream = connected_to(inputs.topology, fqdn, port.interface_id);
+                let upstream = stp_port_connected_to(inputs, fqdn, port.interface_id);
                 match upstream {
                     Some(connection) if node_fqdns.contains(connection.fqdn.as_str()) => (Some(connection), false),
                     // Missing adjacency or upstream device not in the tree.
@@ -239,7 +253,7 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
                 role: port.role.clone(),
                 state: port.state.clone(),
                 path_cost: port.path_cost,
-                connected_to: connected_to(inputs.topology, fqdn, port.interface_id),
+                connected_to: stp_port_connected_to(inputs, fqdn, port.interface_id),
             });
         }
     }
@@ -350,9 +364,50 @@ mod tests {
     }
 
     #[test]
+    fn aggregate_root_port_resolves_parent_via_lag_members() {
+        // dist's root port is Po1 (ifindex 5001): no link of its own, but its
+        // members 201/205 are the discovered links to core. Without lag data
+        // the node orphans; with it the parent resolves through a member.
+        let mut ports = HashMap::new();
+        ports.insert("core.x".to_string(), vec![port(10, "designated", "forwarding", 5001, "Po1", 0)]);
+        ports.insert("dist.x".to_string(), vec![port(10, "root", "forwarding", 5001, "Po1", 3)]);
+        let mut bridges = HashMap::new();
+        for fqdn in ["core.x", "dist.x"] {
+            bridges.insert(fqdn.to_string(), vec![bridge(10, "02:00:00:00:10:01", 0)]);
+        }
+        let mut base_macs = HashMap::new();
+        base_macs.insert("core.x".to_string(), Some("02:00:00:00:10:01".to_string()));
+        base_macs.insert("dist.x".to_string(), Some("02:00:00:00:10:02".to_string()));
+        let mut devices = HashMap::new();
+        for (fqdn, device) in [
+            topo_device("core.x", &[(101, "c1", Some(("dist.x", "d-up"))), (105, "c5", Some(("dist.x", "d-up2")))]),
+            topo_device("dist.x", &[
+                (201, "d-up", Some(("core.x", "c1"))),
+                (205, "d-up2", Some(("core.x", "c5"))),
+            ]),
+        ] {
+            devices.insert(fqdn, device);
+        }
+        let topology = WeathermapBase { devices };
+
+        let orphaned = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
+        let dist = orphaned.nodes.iter().find(|n| n.fqdn == "dist.x").unwrap();
+        assert!(dist.orphan, "without lag membership the Po root port cannot resolve");
+
+        let mut lag_members = HashMap::new();
+        lag_members.insert("dist.x".to_string(), HashMap::from([(5001i64, vec![201i64, 205])]));
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &lag_members }, 10);
+        let dist = tree.nodes.iter().find(|n| n.fqdn == "dist.x").unwrap();
+        assert!(!dist.orphan);
+        assert_eq!(dist.parent.as_deref(), Some("core.x"));
+        assert_eq!(dist.depth, 1);
+        assert_eq!(dist.root_port_interface_name.as_deref(), Some("Po1"));
+    }
+
+    #[test]
     fn three_level_tree_dfs_order_depths_and_links() {
         let (ports, bridges, base_macs, topology) = three_level_inputs();
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 10);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
 
         assert_eq!(tree.roots, vec!["core.x"]);
         assert!(tree.flags.is_empty(), "flags: {:?}", tree.flags);
@@ -377,7 +432,7 @@ mod tests {
     #[test]
     fn blocked_links_resolve_far_end() {
         let (ports, bridges, base_macs, topology) = three_level_inputs();
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 10);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
         assert_eq!(tree.blocked_links.len(), 1);
         let blocked = &tree.blocked_links[0];
         assert_eq!(blocked.fqdn, "leaf-b.x");
@@ -401,7 +456,7 @@ mod tests {
             connected_to: Some(WeathermapDeviceInterfaceConnectedTo { fqdn: "leaf-a2.x".to_string(), interface: "a2-up".to_string() }),
         });
 
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 10);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
         let leaf_a = tree.nodes.iter().find(|n| n.fqdn == "leaf-a.x").unwrap();
         assert!(leaf_a.orphan);
         assert_eq!(leaf_a.parent, None);
@@ -419,7 +474,7 @@ mod tests {
         // Remove the core from the STP data (e.g. unmonitored root device):
         // dist's root port now points at a non-node.
         ports.remove("core.x");
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 10);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
         let dist = tree.nodes.iter().find(|n| n.fqdn == "dist.x").unwrap();
         assert!(dist.orphan);
         // Every remaining node has a root port, so no root candidate exists.
@@ -432,7 +487,7 @@ mod tests {
         let (mut ports, bridges, base_macs, topology) = three_level_inputs();
         // leaf-b claims rootness too (no root port).
         ports.insert("leaf-b.x".to_string(), vec![port(10, "designated", "forwarding", 401, "b-up", 0)]);
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 10);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
         assert_eq!(tree.roots, vec!["core.x", "leaf-b.x"]);
         assert!(tree.flags.contains(&"multiple-roots".to_string()));
     }
@@ -444,7 +499,7 @@ mod tests {
         ports.insert("core.x".to_string(), vec![port(10, "root", "forwarding", 101, "c1", 4)]);
         topology.devices.get_mut("core.x").unwrap().interfaces.get_mut("c1").unwrap().connected_to =
             Some(WeathermapDeviceInterfaceConnectedTo { fqdn: "dist.x".to_string(), interface: "d-up".to_string() });
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 10);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
         assert!(tree.flags.contains(&"cycle".to_string()), "flags: {:?}", tree.flags);
         let core = tree.nodes.iter().find(|n| n.fqdn == "core.x").unwrap();
         let dist = tree.nodes.iter().find(|n| n.fqdn == "dist.x").unwrap();
@@ -467,7 +522,7 @@ mod tests {
         bridges.insert("leaf-b.x".to_string(), vec![bridge(10, "02 00 00 00 99 99", 8)]);
         // leaf-a agrees with the computed root, spaced-uppercase form.
         bridges.insert("leaf-a.x".to_string(), vec![bridge(10, "02 00 00 00 10 01", 8)]);
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 10);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
         assert!(tree.nodes.iter().find(|n| n.fqdn == "leaf-b.x").unwrap().root_mismatch);
         assert!(!tree.nodes.iter().find(|n| n.fqdn == "leaf-a.x").unwrap().root_mismatch);
     }
@@ -479,7 +534,7 @@ mod tests {
             port(10, "root", "forwarding", 401, "b-up", 8),
             port(10, "root", "forwarding", 402, "b-alt", 19),
         ]);
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 10);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
         let leaf_b = tree.nodes.iter().find(|n| n.fqdn == "leaf-b.x").unwrap();
         assert_eq!(leaf_b.root_port_interface_name.as_deref(), Some("b-up"));
         assert!(tree.flags.contains(&"multiple-root-ports:leaf-b.x".to_string()));
@@ -488,7 +543,7 @@ mod tests {
     #[test]
     fn vlan_filtering_excludes_other_vlans() {
         let (ports, bridges, base_macs, topology) = three_level_inputs();
-        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology }, 20);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 20);
         assert!(tree.nodes.is_empty());
         assert!(tree.roots.is_empty());
         assert!(tree.flags.is_empty(), "empty vlan is not an anomaly");
