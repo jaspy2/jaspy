@@ -389,6 +389,66 @@ export default function DeviceDetail() {
         </div>
       </div>
 
+      {portChannels.length > 0 && (
+        <>
+          <h2>Port-channels ({portChannels.length})</h2>
+          {portChannels.map((po) => (
+            <div key={po.ifindex} className="panel">
+              <span className="item-title">
+                <span>{po.name ?? `ifIndex ${po.ifindex}`}</span>
+                <UpBadge up={po.up} />
+                <span className={`badge ${po.protocol === 'lacp' ? 'badge-ok' : 'badge-warn'}`}>{po.protocol}</span>
+                {po.partnerSystemId && <span className="muted">partner {po.partnerSystemId}</span>}
+              </span>
+              {po.warnings.length > 0 && (
+                <ul className="po-warnings">
+                  {po.warnings.map((code) => (
+                    <li key={code} className="warn-text">
+                      ⚠ {portChannelWarningText(code)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Member</th>
+                      <th>Status</th>
+                      <th>Connected to</th>
+                      <th className="hide-mobile">Partner port</th>
+                      <th className="hide-mobile">LACP state</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {po.members.map((member) => (
+                      <tr key={member.ifindex}>
+                        <td className="wrap-mobile">{member.name ?? `ifIndex ${member.ifindex}`}</td>
+                        <td><MemberStateBadge member={member} /></td>
+                        <td className="wrap-mobile">
+                          {member.connectedTo ? (
+                            <>
+                              <Link to={`/devices/${encodeURIComponent(member.connectedTo.fqdn)}`}>
+                                {member.connectedTo.fqdn.split('.')[0]}
+                              </Link>
+                              :{member.connectedTo.interface}
+                            </>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="hide-mobile">{member.partnerPort ?? '—'}</td>
+                        <td className="hide-mobile muted">{member.actorState.length > 0 ? member.actorState.join(', ') : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
       <h2>Interfaces ({interfaces.length})</h2>
       <div className="item-list mobile-only">
         {interfaces.map((iface) => (
@@ -490,66 +550,6 @@ export default function DeviceDetail() {
           </tbody>
         </table>
       </div>
-
-      {portChannels.length > 0 && (
-        <>
-          <h2>Port-channels ({portChannels.length})</h2>
-          {portChannels.map((po) => (
-            <div key={po.ifindex} className="panel">
-              <span className="item-title">
-                <span>{po.name ?? `ifIndex ${po.ifindex}`}</span>
-                <UpBadge up={po.up} />
-                <span className={`badge ${po.protocol === 'lacp' ? 'badge-ok' : 'badge-warn'}`}>{po.protocol}</span>
-                {po.partnerSystemId && <span className="muted">partner {po.partnerSystemId}</span>}
-              </span>
-              {po.warnings.length > 0 && (
-                <ul className="po-warnings">
-                  {po.warnings.map((code) => (
-                    <li key={code} className="warn-text">
-                      ⚠ {portChannelWarningText(code)}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Member</th>
-                      <th>Status</th>
-                      <th>Connected to</th>
-                      <th className="hide-mobile">Partner port</th>
-                      <th className="hide-mobile">LACP state</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {po.members.map((member) => (
-                      <tr key={member.ifindex}>
-                        <td className="wrap-mobile">{member.name ?? `ifIndex ${member.ifindex}`}</td>
-                        <td><MemberStateBadge member={member} /></td>
-                        <td className="wrap-mobile">
-                          {member.connectedTo ? (
-                            <>
-                              <Link to={`/devices/${encodeURIComponent(member.connectedTo.fqdn)}`}>
-                                {member.connectedTo.fqdn.split('.')[0]}
-                              </Link>
-                              :{member.connectedTo.interface}
-                            </>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                        <td className="hide-mobile">{member.partnerPort ?? '—'}</td>
-                        <td className="hide-mobile muted">{member.actorState.length > 0 ? member.actorState.join(', ') : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-        </>
-      )}
 
       {sensors.length > 0 && (
         <>
