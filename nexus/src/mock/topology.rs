@@ -17,6 +17,9 @@ pub const COMMUNITY: &str = "mock";
 pub const ROOT_DEVICE: &str = "core1.mock.jaspy";
 // Flapping uplink: up for FLAP_HALF_PERIOD_SECS, down for the same, repeat.
 pub const FLAP_HALF_PERIOD_SECS: u64 = 60;
+// Renegotiating port: full speed for this long, then 1/10th, repeat — so the
+// per-interface health "speed renegotiation" signal has something to show.
+pub const RENEG_HALF_PERIOD_SECS: u64 = 45;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum SensorStyle {
@@ -55,6 +58,13 @@ pub struct MockInterface {
     pub flaps: bool,
     // Static state for access ports without a peer (a realistic mix).
     pub up: bool,
+    // Simulated fault knobs for the per-interface health signals. All default
+    // to clean (0/false); a few ports set them (see build()) so the demo/e2e
+    // exercises discards, errors, high utilization and speed renegotiation.
+    pub discard_rate: u64, // ifOutDiscards per second
+    pub error_rate: u64,   // ifInErrors per second
+    pub saturated: bool,   // octet rate ≈ 95% of speed → high utilization
+    pub renegotiates: bool, // ifHighSpeed toggles full↔1/10th
 }
 
 // A declared link aggregate for the LAG tables (pagpPortTable + dot3ad).
@@ -100,17 +110,20 @@ pub struct Topology {
 }
 
 fn uplink(ifindex: i64, name: &'static str, descr: &'static str, alias: &'static str, speed: u64, peer: (&'static str, &'static str)) -> MockInterface {
-    MockInterface { ifindex, name, descr, alias, speed_mbps: speed, peer: Some(peer), flaps: false, up: true }
+    MockInterface { ifindex, name, descr, alias, speed_mbps: speed, peer: Some(peer), flaps: false, up: true,
+        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false }
 }
 
 fn access_port(ifindex: i64, name: &'static str, descr: &'static str, up: bool) -> MockInterface {
-    MockInterface { ifindex, name, descr, alias: "", speed_mbps: 1000, peer: None, flaps: false, up }
+    MockInterface { ifindex, name, descr, alias: "", speed_mbps: 1000, peer: None, flaps: false, up,
+        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false }
 }
 
 // Aggregate (Po) interface: no LLDP peer of its own (LLDP runs on the
 // members), speed = the bundle total.
 fn port_channel(ifindex: i64, name: &'static str, descr: &'static str, alias: &'static str, speed: u64) -> MockInterface {
-    MockInterface { ifindex, name, descr, alias, speed_mbps: speed, peer: None, flaps: false, up: true }
+    MockInterface { ifindex, name, descr, alias, speed_mbps: speed, peer: None, flaps: false, up: true,
+        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false }
 }
 
 pub fn build() -> Topology {
@@ -166,6 +179,7 @@ pub fn build() -> Topology {
                     peer: Some(("access-hall-a-02", "Te1/1/1")),
                     flaps: true,
                     up: true,
+                    discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false,
                 },
                 uplink(10105, "Te1/1/5", "TenGigabitEthernet1/1/5", "uplink core1 (2)", 10000, ("core1", "Te1/0/5")),
                 // "uplink ..." alias so stp_role makes the bundle the root port.
@@ -203,6 +217,10 @@ pub fn build() -> Topology {
                 partner_mac: "02:00:00:00:99:01",
                 defaulted_members: &[],
             }];
+            // Simulated faults (non-LAG, up ports): a congested port dropping
+            // ~200 discards/s and a flaky-cable port taking ~5 input errors/s.
+            set_iface(&mut a01, 10204, |i| i.discard_rate = 200);
+            set_iface(&mut a01, 10205, |i| i.error_rate = 5);
             a01
         },
         {
@@ -228,7 +246,14 @@ pub fn build() -> Topology {
         // exercises the vlanpoller's fallback path.
         // hall b speaks HP RPVST+ (like a ProCurve) so the mock exercises the
         // entitypoller's STP fallback path too.
-        access_switch("access-hall-b-01", ("dist2", "Te1/1/2"), false, VlanStyle::QBridge, &[20], StpStyle::Rpvst),
+        {
+            let mut b01 = access_switch("access-hall-b-01", ("dist2", "Te1/1/2"), false, VlanStyle::QBridge, &[20], StpStyle::Rpvst);
+            // Simulated faults: a saturated port (~95% util) and a port whose
+            // link keeps renegotiating its speed (failing SFP/duplex).
+            set_iface(&mut b01, 10201, |i| i.saturated = true);
+            set_iface(&mut b01, 10202, |i| i.renegotiates = true);
+            b01
+        },
         MockDevice {
             name: "wlc1",
             model: "AIR-CT5520-K9",
@@ -263,6 +288,14 @@ pub fn build() -> Topology {
     Topology { devices, started: crate::utilities::tools::get_time() }
 }
 
+// Mutate one interface (by ifindex) in place — used in build() to paint the
+// simulated-fault ports onto the otherwise-clean access switches.
+fn set_iface<F: FnOnce(&mut MockInterface)>(dev: &mut MockDevice, ifindex: i64, f: F) {
+    if let Some(iface) = dev.interfaces.iter_mut().find(|i| i.ifindex == ifindex) {
+        f(iface);
+    }
+}
+
 fn access_switch(name: &'static str, upstream: (&'static str, &'static str), uplink_flaps: bool, vlan_style: VlanStyle, stp_vlans: &'static [i64], stp_style: StpStyle) -> MockDevice {
     let mut interfaces = vec![MockInterface {
         ifindex: 10101,
@@ -273,6 +306,7 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
         peer: Some(upstream),
         flaps: uplink_flaps,
         up: true,
+        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false,
     }];
     // Eight access ports; a deterministic mix of up/down.
     const PORTS: [(&str, &str); 8] = [
@@ -410,6 +444,30 @@ fn error_counter(dev_idx: usize, ifindex: i64, kind: u64, elapsed: f64) -> u64 {
     }
 }
 
+// Simulated-fault counter: rate/sec accumulated over elapsed (monotonic, so
+// the poller's validate_counters accepts it). 0 when the port is clean.
+fn fault_counter(rate: u64, elapsed: f64) -> u64 {
+    (rate as f64 * elapsed.max(0.0)) as u64
+}
+
+// Octets for a saturated port: ~95% of line rate. bytes/s = speed_mbps*1e6/8.
+// The +kind offset keeps rx/tx distinct and gives a non-zero base.
+fn saturated_octets(speed_mbps: u64, kind: u64, elapsed: f64) -> u64 {
+    let bytes_per_sec = (speed_mbps as f64 * 1_000_000.0 / 8.0) * 0.95;
+    kind * 1_000 + (bytes_per_sec * elapsed.max(0.0)) as u64
+}
+
+// ifHighSpeed for a renegotiating port: full rate, then 1/10th, repeating —
+// so the health store records speed-change events. Clean ports return their
+// static speed.
+fn reported_speed(iface: &MockInterface, elapsed: f64) -> u64 {
+    if iface.renegotiates && (elapsed.max(0.0) as u64 / RENEG_HALF_PERIOD_SECS) % 2 == 1 {
+        (iface.speed_mbps / 10).max(10)
+    } else {
+        iface.speed_mbps
+    }
+}
+
 // Milli-celsius, bounded to roughly 39..45 °C.
 pub fn sensor_value_milli(dev_idx: usize, sensor_idx: i64, elapsed: f64) -> u64 {
     let phase = dev_idx as f64 * 1.3 + sensor_idx as f64 * 0.7;
@@ -514,9 +572,9 @@ impl Topology {
                             "IF-MIB::ifType": if dev.lags.iter().any(|l| l.ifindex == iface.ifindex) { "ieee8023adLag" } else { "ethernetCsmacd" },
                             "IF-MIB::ifPhysAddress": iface_mac(dev_idx, iface.ifindex),
                             "IF-MIB::ifOperStatus": if iface_up(iface, elapsed) { "up" } else { "down" },
-                            "IF-MIB::ifInErrors": error_counter(dev_idx, iface.ifindex, 1, elapsed),
+                            "IF-MIB::ifInErrors": error_counter(dev_idx, iface.ifindex, 1, elapsed) + fault_counter(iface.error_rate, elapsed),
                             "IF-MIB::ifOutErrors": error_counter(dev_idx, iface.ifindex, 2, elapsed),
-                            "IF-MIB::ifOutDiscards": error_counter(dev_idx, iface.ifindex, 3, elapsed),
+                            "IF-MIB::ifOutDiscards": error_counter(dev_idx, iface.ifindex, 3, elapsed) + fault_counter(iface.discard_rate, elapsed),
                         }),
                     )
                 }).collect();
@@ -525,14 +583,17 @@ impl Topology {
             "IF-MIB::ifXTable" => {
                 let entries = dev.interfaces.iter().map(|iface| {
                     let c = |kind: u64| counter(dev_idx, iface.ifindex, kind, elapsed);
+                    // Saturated ports drive octets at ~95% of line rate so the
+                    // health store's utilization signal trips; others stay quiet.
+                    let octets = |kind: u64| if iface.saturated { saturated_octets(iface.speed_mbps, kind, elapsed) } else { c(kind) };
                     entry(
                         json!({"IF-MIB::ifIndex": iface.ifindex}),
                         json!({
                             "IF-MIB::ifName": iface.name,
                             "IF-MIB::ifAlias": iface.alias,
-                            "IF-MIB::ifHighSpeed": iface.speed_mbps,
-                            "IF-MIB::ifHCInOctets": c(10),
-                            "IF-MIB::ifHCOutOctets": c(11),
+                            "IF-MIB::ifHighSpeed": reported_speed(iface, elapsed),
+                            "IF-MIB::ifHCInOctets": octets(10),
+                            "IF-MIB::ifHCOutOctets": octets(11),
                             "IF-MIB::ifHCInUcastPkts": c(12),
                             "IF-MIB::ifHCInMulticastPkts": c(13),
                             "IF-MIB::ifHCInBroadcastPkts": c(14),
@@ -1065,6 +1126,40 @@ mod tests {
                 }
             }
         }
+    }
+
+    // Pull a numeric object for one ifIndex out of a table response by
+    // navigating the serialized JSON (avoids depending on the entry structs).
+    fn obj_u64(resp: &SNMPBotResponse, ifindex: i64, key: &str) -> u64 {
+        let value = serde_json::to_value(resp).unwrap();
+        for e in value["Entries"].as_array().unwrap() {
+            if e["Index"]["IF-MIB::ifIndex"].as_i64() == Some(ifindex) {
+                return e["Objects"][key].as_u64().expect("numeric object");
+            }
+        }
+        panic!("ifindex {} not found", ifindex);
+    }
+
+    #[test]
+    fn simulated_faults_emit_elevated_signals() {
+        let topo = build();
+        let elapsed = 300.0; // 5 minutes in
+
+        // a-01: 10204 drops ~200 discards/s, 10205 takes ~5 input errors/s.
+        let a01 = topo.table("access-hall-a-01.mock.jaspy", None, "IF-MIB::ifTable", elapsed).unwrap();
+        assert!(obj_u64(&a01, 10204, "IF-MIB::ifOutDiscards") >= 200 * 300, "discard fault should accumulate");
+        assert!(obj_u64(&a01, 10205, "IF-MIB::ifInErrors") >= 5 * 300, "error fault should accumulate");
+        // A clean neighbour stays near zero (only the slow baseline).
+        assert!(obj_u64(&a01, 10206, "IF-MIB::ifOutDiscards") < 1000, "clean port should stay quiet");
+
+        // b-01: 10201 saturated (~95% of 1G), 10202 renegotiates speed.
+        let b01_x = |el: f64| topo.table("access-hall-b-01.mock.jaspy", None, "IF-MIB::ifXTable", el).unwrap();
+        let octets = obj_u64(&b01_x(10.0), 10201, "IF-MIB::ifHCInOctets");
+        let full_line = (1_000_000_000.0 / 8.0 * 10.0) as u64; // bytes at line rate over 10s
+        assert!(octets > full_line / 2, "saturated port octets too low: {} vs {}", octets, full_line);
+        let speed_full = obj_u64(&b01_x(0.0), 10202, "IF-MIB::ifHighSpeed");
+        let speed_reneg = obj_u64(&b01_x(RENEG_HALF_PERIOD_SECS as f64), 10202, "IF-MIB::ifHighSpeed");
+        assert_ne!(speed_full, speed_reneg, "renegotiating port should change speed over time");
     }
 
     #[test]

@@ -2,8 +2,8 @@ import { Fragment, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Device, DeviceUpdate, Interface, LiveEvent, PortChannelMember } from '../api/types';
-import { PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
+import type { Device, DeviceUpdate, Interface, InterfaceHealth, LiveEvent, PortChannelMember } from '../api/types';
+import { HealthBadge, PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import useLiveSocket from '../hooks/useLiveSocket';
 
 // ENTITY-SENSOR-MIB value types -> display units. Unknown types fall back to
@@ -56,6 +56,141 @@ function InterfaceVlanList({ iface, names }: { iface: Interface; names: Map<numb
           <span className="muted">{names.get(row.id) ?? '—'}</span>
         </Fragment>
       ))}
+    </div>
+  );
+}
+
+// "8 minutes" / "45 seconds" — short human duration for health phrasing.
+function humanDuration(secs: number): string {
+  if (secs < 90) return `${secs} second${secs === 1 ? '' : 's'}`;
+  const mins = Math.round(secs / 60);
+  return `${mins} minute${mins === 1 ? '' : 's'}`;
+}
+
+// Turn the structured health summary into the field-debugging phrasing, e.g.
+// "5,512 discards in last 5 minutes" / "3 flaps in last 10 minutes, last 8
+// minutes ago". Order: most-actionable first.
+// Group digits with commas regardless of browser locale (toLocaleString()
+// uses a space separator in many European locales, which reads as two numbers).
+function groupThousands(x: number): string {
+  return Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// Data volume in bytes → IEC binary units (KiB/MiB/GiB/TiB, base 1024).
+function formatBytes(bytes: number): string {
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
+  let v = bytes;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i += 1; }
+  return `${i === 0 ? v : v.toFixed(2)} ${units[i]}`;
+}
+
+// Throughput in bits/sec → decimal units (kbps/Mbps/Gbps, base 1000).
+function formatBitrate(bps: number): string {
+  const units = ['bps', 'kbps', 'Mbps', 'Gbps', 'Tbps'];
+  let v = bps;
+  let i = 0;
+  while (v >= 1000 && i < units.length - 1) { v /= 1000; i += 1; }
+  return `${i === 0 ? Math.round(v) : v.toFixed(2)} ${units[i]}`;
+}
+
+function healthLines(h: InterfaceHealth): string[] {
+  const lines: string[] = [];
+  const n = groupThousands;
+  if (h.stale) {
+    lines.push('no recent SNMP data — the device may have stopped responding (stale)');
+  }
+  if (h.flapCount > 0) {
+    const ago = h.lastFlapSecsAgo !== null ? `, last ${humanDuration(h.lastFlapSecsAgo)} ago` : '';
+    lines.push(`${h.flapCount} link flap${h.flapCount === 1 ? '' : 's'} in last ${humanDuration(h.flapWindowSecs)}${ago}`);
+  }
+  if (h.discards > 0) {
+    lines.push(`${n(h.discards)} discard${h.discards === 1 ? '' : 's'} in last ${humanDuration(h.counterWindowSecs)}`);
+  }
+  if (h.inErrors + h.outErrors > 0) {
+    lines.push(`${n(h.inErrors)} input / ${n(h.outErrors)} output errors in last ${humanDuration(h.counterWindowSecs)}`);
+  }
+  if (h.speedChangeCount > 0 && h.lastSpeedChange) {
+    const [from, to] = h.lastSpeedChange;
+    lines.push(`speed renegotiated ${h.speedChangeCount}× in last ${humanDuration(h.flapWindowSecs)} (${from ?? '—'}→${to} Mb/s)`);
+  }
+  if (h.highUtilization && h.peakUtilizationPct !== null) {
+    lines.push(`peak utilization ${Math.round(h.peakUtilizationPct)}% in last ${humanDuration(h.utilWindowSecs)}`);
+  }
+  return lines;
+}
+
+// Full expanded view for a flagged interface: the ⚠ summary lines on top, then
+// everything we know about the interface below — every health metric (including
+// the ones that are perfectly fine) plus its descriptive facts. `names` maps
+// VLAN ids to names, like the VLAN list.
+function InterfaceDetail({ iface, names }: { iface: Interface; names: Map<number, string | null> }) {
+  const h = iface.health;
+  const summary = h ? healthLines(h) : [];
+  const n = groupThousands;
+  const rows: { label: string; value: string; cls?: string }[] = [];
+
+  if (h) {
+    const cw = humanDuration(h.counterWindowSecs);
+    const fw = humanDuration(h.flapWindowSecs);
+    const uw = humanDuration(h.utilWindowSecs);
+    const flapVal = h.flapCount > 0 && h.lastFlapSecsAgo !== null
+      ? `${h.flapCount} (last ${humanDuration(h.lastFlapSecsAgo)} ago)`
+      : String(h.flapCount);
+    const speedVal = h.speedChangeCount > 0 && h.lastSpeedChange
+      ? `${h.speedChangeCount} (${h.lastSpeedChange[0] ?? '—'}→${h.lastSpeedChange[1]} Mb/s)`
+      : String(h.speedChangeCount);
+    // "<cumulative total> (<delta in window>)" when the raw counter is known,
+    // else just the windowed delta.
+    const counterVal = (total: number | null, delta: number) =>
+      total !== null ? `${n(total)} (${n(delta)} in last ${cw})` : `${n(delta)} in last ${cw}`;
+    rows.push({ label: 'Discards', value: counterVal(iface.outDiscards, h.discards), cls: h.discards > 0 ? 'warn-text' : undefined });
+    rows.push({ label: 'Input errors', value: counterVal(iface.inErrors, h.inErrors), cls: h.inErrors > 0 ? 'warn-text' : undefined });
+    rows.push({ label: 'Output errors', value: counterVal(iface.outErrors, h.outErrors), cls: h.outErrors > 0 ? 'warn-text' : undefined });
+    rows.push({ label: `Link flaps (last ${fw})`, value: flapVal, cls: h.flapCount > 0 ? 'bad-text' : undefined });
+    rows.push({ label: `Speed changes (last ${fw})`, value: speedVal, cls: h.speedChangeCount > 0 ? 'warn-text' : undefined });
+    rows.push({ label: `Peak utilization (last ${uw})`, value: h.peakUtilizationPct !== null ? `${Math.round(h.peakUtilizationPct)}%` : '—', cls: h.highUtilization ? 'warn-text' : undefined });
+    const tw = humanDuration(h.throughputWindowSecs);
+    rows.push({ label: `Throughput in (${tw} avg)`, value: h.rxBpsAvg !== null ? formatBitrate(h.rxBpsAvg) : '—' });
+    rows.push({ label: `Throughput out (${tw} avg)`, value: h.txBpsAvg !== null ? formatBitrate(h.txBpsAvg) : '—' });
+    rows.push({ label: 'SNMP data', value: h.stale ? 'stale — device not responding' : 'current', cls: h.stale ? 'bad-text' : undefined });
+  }
+
+  // Descriptive facts (everything else the API knows about the interface).
+  rows.push({ label: 'ifIndex', value: String(iface.index) });
+  rows.push({ label: 'Oper status', value: iface.up === true ? 'up' : iface.up === false ? 'down' : 'unknown' });
+  rows.push({ label: 'Type', value: iface.interfaceType });
+  rows.push({ label: 'Speed', value: iface.speed !== null ? `${iface.speed} Mb/s` : '—' });
+  if (iface.speedOverride !== null) rows.push({ label: 'Speed override', value: `${iface.speedOverride} Mb/s` });
+  if (iface.inOctets !== null) rows.push({ label: 'Received (total)', value: formatBytes(iface.inOctets) });
+  if (iface.outOctets !== null) rows.push({ label: 'Transmitted (total)', value: formatBytes(iface.outOctets) });
+  if (iface.portChannel) rows.push({ label: 'Port-channel', value: iface.portChannel });
+  if (iface.alias) rows.push({ label: 'Alias', value: iface.alias });
+  if (iface.description) rows.push({ label: 'Description', value: iface.description });
+  if (iface.connectedTo) rows.push({ label: 'Connected to', value: `${iface.connectedTo.fqdn}:${iface.connectedTo.interface}` });
+  rows.push({ label: 'Polling', value: iface.pollingEnabled === false ? 'disabled' : 'enabled' });
+
+  return (
+    <div className="iface-detail-panel">
+      {summary.length > 0 && (
+        <ul className="health-detail">
+          {summary.map((line, i) => <li key={i} className="warn-text">⚠ {line}</li>)}
+        </ul>
+      )}
+      <dl className="iface-detail">
+        {rows.map((r, i) => (
+          <Fragment key={i}>
+            <dt>{r.label}</dt>
+            <dd className={r.cls}>{r.value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+      {(iface.nativeVlan !== null || (iface.taggedVlans?.length ?? 0) > 0) && (
+        <>
+          <div className="iface-detail-heading">VLAN membership</div>
+          <InterfaceVlanList iface={iface} names={names} />
+        </>
+      )}
     </div>
   );
 }
@@ -122,9 +257,10 @@ export default function DeviceDetail() {
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Interface ids whose VLAN list is expanded (desktop row and mobile card).
-  const [expandedVlans, setExpandedVlans] = useState<Set<number>>(new Set());
-  const toggleVlans = (id: number) =>
-    setExpandedVlans((prev) => {
+  // Every interface row expands into the full InterfaceDetail view.
+  const [expandedDetail, setExpandedDetail] = useState<Set<number>>(new Set());
+  const toggleDetail = (id: number) =>
+    setExpandedDetail((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -258,24 +394,24 @@ export default function DeviceDetail() {
         {interfaces.map((iface) => (
           <div key={iface.id} className="item-card">
             <span className="item-title">
-              <span>{iface.displayName ?? iface.name}</span>
+              <button className="detail-toggle" onClick={() => toggleDetail(iface.id)} aria-expanded={expandedDetail.has(iface.id)}>
+                {iface.displayName ?? iface.name}
+                {expandedDetail.has(iface.id) ? ' ▾' : ' ▸'}
+              </button>
               {iface.portChannel && <span className="badge badge-muted">{iface.portChannel}</span>}
               <UpBadge up={iface.up} />
+              {iface.health?.severity && <HealthBadge severity={iface.health.severity} />}
             </span>
             <span className="item-sub">
               {iface.speed !== null && <span>{iface.speed} Mb/s</span>}
-              {(iface.nativeVlan !== null || iface.taggedVlans !== null) && (
-                <button className="vlan-toggle" onClick={() => toggleVlans(iface.id)} aria-expanded={expandedVlans.has(iface.id)}>
+              {(iface.nativeVlan !== null || (iface.taggedVlans?.length ?? 0) > 0) && (
+                <span>
                   VLAN {iface.nativeVlan ?? '—'}
                   {(iface.taggedVlans?.length ?? 0) > 0 && ` (+${iface.taggedVlans!.length} tagged)`}
-                  {expandedVlans.has(iface.id) ? ' ▾' : ' ▸'}
-                </button>
+                </span>
               )}
               {iface.alias && <span>{iface.alias}</span>}
             </span>
-            {expandedVlans.has(iface.id) && (
-              <InterfaceVlanList iface={iface} names={vlanNames} />
-            )}
             {iface.connectedTo && (
               <span className="item-sub">
                 <span>
@@ -286,6 +422,9 @@ export default function DeviceDetail() {
                   :{iface.connectedTo.interface}
                 </span>
               </span>
+            )}
+            {expandedDetail.has(iface.id) && (
+              <InterfaceDetail iface={iface} names={vlanNames} />
             )}
           </div>
         ))}
@@ -309,21 +448,18 @@ export default function DeviceDetail() {
               <Fragment key={iface.id}>
                 <tr>
                   <td>
-                    {iface.displayName ?? iface.name}
+                    <button className="detail-toggle" onClick={() => toggleDetail(iface.id)} aria-expanded={expandedDetail.has(iface.id)}>
+                      {iface.displayName ?? iface.name}
+                      {expandedDetail.has(iface.id) ? ' ▾' : ' ▸'}
+                    </button>
                     {iface.portChannel && <> <span className="badge badge-muted">{iface.portChannel}</span></>}
                   </td>
-                  <td><UpBadge up={iface.up} /></td>
-                  <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
                   <td>
-                    {iface.nativeVlan !== null || iface.taggedVlans !== null ? (
-                      <button className="vlan-toggle" onClick={() => toggleVlans(iface.id)} aria-expanded={expandedVlans.has(iface.id)}>
-                        {iface.nativeVlan ?? '—'}
-                        {expandedVlans.has(iface.id) ? ' ▾' : ' ▸'}
-                      </button>
-                    ) : (
-                      '—'
-                    )}
+                    <UpBadge up={iface.up} />
+                    {iface.health?.severity && <> <HealthBadge severity={iface.health.severity} /></>}
                   </td>
+                  <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
+                  <td>{iface.nativeVlan ?? '—'}</td>
                   <td className="wrap" title={iface.taggedVlans?.join(', ')}>
                     {(iface.taggedVlans?.length ?? 0) > 0 ? formatVlanRanges(iface.taggedVlans!) : '—'}
                   </td>
@@ -342,10 +478,10 @@ export default function DeviceDetail() {
                     )}
                   </td>
                 </tr>
-                {expandedVlans.has(iface.id) && (
+                {expandedDetail.has(iface.id) && (
                   <tr className="vlan-detail-row">
                     <td colSpan={8}>
-                      <InterfaceVlanList iface={iface} names={vlanNames} />
+                      <InterfaceDetail iface={iface} names={vlanNames} />
                     </td>
                   </tr>
                 )}

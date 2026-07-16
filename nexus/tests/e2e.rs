@@ -1302,6 +1302,26 @@ fn mock_mode_serves_network(db: DbHarness) {
         body
     );
 
+    // Per-interface health: the mock paints simulated-fault access ports on
+    // access-hall-a-01 (a congested port dropping discards, a flaky-cable port
+    // taking input errors). These surface via the health store once the poller
+    // has two samples to diff — the counter signals trip within a poll or two.
+    assert!(
+        wait_until(Duration::from_secs(20), || {
+            let detail = nexus.get_json("/api/v1/devices/access-hall-a-01.mock.jaspy");
+            detail["interfaces"].as_array().map(|ifaces| {
+                ifaces.iter().any(|i| i["health"]["discards"].as_u64().unwrap_or(0) > 0)
+            }).unwrap_or(false)
+        }),
+        "access-hall-a-01 should report interface discards via the health field; log:\n{}",
+        nexus.log()
+    );
+    // The device-list rollup flags the same device as having a problem.
+    let devices = nexus.get_json("/api/v1/devices");
+    let a01 = devices.as_array().unwrap().iter()
+        .find(|d| d["fqdn"] == "access-hall-a-01.mock.jaspy").unwrap();
+    assert!(a01["interfaceHealth"].is_string(), "device list should carry a health rollup: {}", a01);
+
     // Entitypoller sensors from the fake snmpbot (both MIB styles feed the
     // same metric) and the structured per-device API.
     nexus.wait_for_metric("jaspy_sensors", Duration::from_secs(20));

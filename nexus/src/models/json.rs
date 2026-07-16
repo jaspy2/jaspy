@@ -175,6 +175,10 @@ pub struct ApiDevice {
     pub up: Option<bool>,
     pub seconds_since_last_poll: Option<u64>,
     pub interface_count: u64,
+    // Worst per-interface health severity ("warn"/"bad") across this device, so
+    // the device list can flag problem devices; null when all healthy. Additive.
+    #[serde(default)]
+    pub interface_health: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -192,6 +196,19 @@ pub struct ApiInterface {
     pub connected_to: Option<ApiInterfaceConnection>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
+    // Cumulative counters since the device's last counter reset (octets =
+    // ifHCIn/OutOctets, errors/discards = ifInErrors/ifOutErrors/ifOutDiscards),
+    // from IMDS. Additive: default-deserialized for older payloads.
+    #[serde(default)]
+    pub in_octets: Option<u64>,
+    #[serde(default)]
+    pub out_octets: Option<u64>,
+    #[serde(default)]
+    pub in_errors: Option<u64>,
+    #[serde(default)]
+    pub out_errors: Option<u64>,
+    #[serde(default)]
+    pub out_discards: Option<u64>,
     // VLAN membership from the in-memory vlanpoller store; null until the
     // first successful VLAN poll (or when the device does not expose the VLAN
     // MIBs). Additive fields: default-deserialized for older payloads.
@@ -203,6 +220,36 @@ pub struct ApiInterface {
     // store); null for non-members. Additive: default-deserialized.
     #[serde(default)]
     pub port_channel: Option<String>,
+    // Recent-history health signals (utilities::health); null when the
+    // interface is healthy, so the UI shows nothing. Additive.
+    #[serde(default)]
+    pub health: Option<ApiInterfaceHealth>,
+}
+
+// Per-interface health summary surfaced only when a signal trips. The UI turns
+// these numbers into human phrasing ("5,512 discards in last 5 minutes").
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInterfaceHealth {
+    pub severity: Option<String>, // "warn" | "bad"; null = healthy (no badge)
+    pub flap_count: u32,
+    pub last_flap_secs_ago: Option<u64>,
+    pub in_errors: u64,
+    pub out_errors: u64,
+    pub discards: u64,
+    pub speed_change_count: u32,
+    // [from, to] Mbps of the most recent speed change (from may be null).
+    pub last_speed_change: Option<(Option<i32>, i32)>,
+    pub peak_utilization_pct: Option<f64>,
+    pub high_utilization: bool,
+    // Average throughput over the throughput window (bits/sec), rx/tx.
+    pub rx_bps_avg: Option<f64>,
+    pub tx_bps_avg: Option<f64>,
+    pub stale: bool,
+    pub counter_window_secs: u64,
+    pub flap_window_secs: u64,
+    pub util_window_secs: u64,
+    pub throughput_window_secs: u64,
 }
 
 // Link peer of an interface; structured so the UI can link to the device.

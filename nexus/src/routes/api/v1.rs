@@ -158,9 +158,37 @@ pub fn summary(
     })
 }
 
+// Convert a health-store summary into its API DTO.
+fn api_interface_health(summary: crate::utilities::health::InterfaceHealthSummary) -> models::json::ApiInterfaceHealth {
+    models::json::ApiInterfaceHealth {
+        severity: summary.severity.map(|s| s.as_str().to_string()),
+        flap_count: summary.flap_count,
+        last_flap_secs_ago: summary.last_flap_secs_ago,
+        in_errors: summary.in_errors,
+        out_errors: summary.out_errors,
+        discards: summary.discards,
+        speed_change_count: summary.speed_change_count,
+        last_speed_change: summary.last_speed_change,
+        peak_utilization_pct: summary.peak_utilization_pct,
+        high_utilization: summary.high_utilization,
+        rx_bps_avg: summary.rx_bps_avg,
+        tx_bps_avg: summary.tx_bps_avg,
+        stale: summary.stale,
+        counter_window_secs: summary.counter_window_secs,
+        flap_window_secs: summary.flap_window_secs,
+        util_window_secs: summary.util_window_secs,
+        throughput_window_secs: summary.throughput_window_secs,
+    }
+}
+
 fn api_device(connection: &mut db::AnyConnection, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, device: &models::dbo::Device) -> models::json::ApiDevice {
     let fqdn = format!("{}.{}", device.name, device.dns_domain);
     let (up, seconds_since_last_poll) = imds_device_live(imds, &fqdn);
+    // Worst per-interface health severity, for the device-list problem badge.
+    let interface_health = match imds.inner().lock() {
+        Ok(imds) => imds.device_health(&fqdn, utilities::tools::get_time_msecs()).map(|s| s.as_str().to_string()),
+        Err(_) => None,
+    };
     models::json::ApiDevice {
         id: device.id,
         fqdn: fqdn.clone(),
@@ -175,6 +203,7 @@ fn api_device(connection: &mut db::AnyConnection, imds: &State<Arc<Mutex<utiliti
         up: up,
         seconds_since_last_poll: seconds_since_last_poll,
         interface_count: device.interfaces(connection).len() as u64,
+        interface_health: interface_health,
     }
 }
 
@@ -191,8 +220,13 @@ pub fn devices(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::im
 pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>, lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
     let device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
-    // Live interface state (up/speed) from IMDS, keyed by ifIndex.
+    // Live interface state (up/speed) plus recent-history health from IMDS,
+    // keyed by ifIndex.
     let mut live: std::collections::HashMap<i32, (Option<bool>, Option<i32>)> = std::collections::HashMap::new();
+    // Cumulative raw counters since the device's last counter reset:
+    // (in_octets, out_octets, in_errors, out_errors, out_discards).
+    let mut octets: std::collections::HashMap<i32, (Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>)> = std::collections::HashMap::new();
+    let mut health: std::collections::HashMap<i32, models::json::ApiInterfaceHealth> = std::collections::HashMap::new();
     if let Ok(ref mut imds) = imds.inner().lock() {
         if let Some(device_metric) = imds.get_device(&device_fqdn) {
             for (ifindex, interface_metric) in device_metric.interfaces.iter() {
@@ -201,6 +235,19 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
                     None => interface_metric.speed,
                 };
                 live.insert(*ifindex, (interface_metric.up, reported_speed));
+                octets.insert(*ifindex, (
+                    interface_metric.in_octets,
+                    interface_metric.out_octets,
+                    interface_metric.in_errors,
+                    interface_metric.out_errors,
+                    interface_metric.out_discards,
+                ));
+            }
+        }
+        let now = utilities::tools::get_time_msecs();
+        for ifindex in live.keys().copied().collect::<Vec<i32>>() {
+            if let Some(summary) = imds.interface_health(&device_fqdn, ifindex, now) {
+                health.insert(ifindex, api_interface_health(summary));
             }
         }
     }
@@ -257,6 +304,8 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             }
         }).or_else(|| reverse_links.get(&interface.id).cloned());
         let (up, speed) = live.get(&interface.index).cloned().unwrap_or((None, None));
+        let (in_octets, out_octets, in_errors, out_errors, out_discards) =
+            octets.get(&interface.index).cloned().unwrap_or((None, None, None, None, None));
         let interface_vlans = vlans.get(&(interface.index as i64));
         let port_channel = member_groups
             .get(&(interface.index as i64))
@@ -274,9 +323,15 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             connected_to: connected_to,
             up: up,
             speed: speed,
+            in_octets: in_octets,
+            out_octets: out_octets,
+            in_errors: in_errors,
+            out_errors: out_errors,
+            out_discards: out_discards,
             native_vlan: interface_vlans.and_then(|v| v.native_vlan),
             tagged_vlans: interface_vlans.map(|v| v.tagged_vlans.clone()),
             port_channel: port_channel,
+            health: health.remove(&interface.index),
         });
     }
     interfaces.sort_by_key(|i| i.index);

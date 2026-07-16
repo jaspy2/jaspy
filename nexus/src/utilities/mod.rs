@@ -1,3 +1,4 @@
+pub mod health;
 pub mod imds;
 pub mod livelog;
 pub mod msgbus;

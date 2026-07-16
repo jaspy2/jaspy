@@ -251,6 +251,52 @@ tr.vlan-detail-row td { white-space: normal; background: var(--muted-bg); }
 .po-warnings { list-style: none; padding: 6px 0 0; margin: 0; }
 .po-warnings li { padding: 2px 0; }
 
+/* Interface health drill-down: a badge-as-button (the whole chip toggles the
+   detail row) plus the readable list of tripped signals. */
+button.health-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  color: inherit;
+}
+button.health-toggle:hover:not(:disabled) { text-decoration: underline; }
+.health-detail { list-style: none; padding: 6px 0 0; margin: 0; }
+.health-detail li { padding: 2px 0; }
+.bad-text { color: var(--bad); }
+
+/* Expanded interface detail: ⚠ summary lines (health-detail) above a full
+   label/value grid of every metric + fact. */
+.iface-detail {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 16px;
+  margin: 8px 0 0;
+}
+.iface-detail dt { color: var(--muted); white-space: nowrap; }
+.iface-detail dd { margin: 0; word-break: break-word; }
+.iface-detail-heading {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 10px 0 4px;
+}
+
+/* Interface name as a disclosure control (every row expands into the detail). */
+button.detail-toggle {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button.detail-toggle:hover:not(:disabled) { text-decoration: underline; }
+
 /* Live log tail (WebSocket) */
 .livelog-lines {
   background: var(--bg);

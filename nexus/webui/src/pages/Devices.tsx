@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { Device } from '../api/types';
-import { PollingBadge, UpBadge } from '../components/StatusBadge';
+import { HealthBadge, PollingBadge, UpBadge } from '../components/StatusBadge';
 
 type SortKey = 'fqdn' | 'deviceType' | 'up' | 'interfaceCount' | 'lastPoll';
 
@@ -100,6 +100,7 @@ export default function Devices() {
             <span className="item-title">
               <span>{d.fqdn}</span>
               <UpBadge up={d.up} />
+              {d.interfaceHealth && <HealthBadge severity={d.interfaceHealth} label="⚠ interfaces" />}
             </span>
             <span className="item-sub">
               <span>{d.deviceType ?? 'unknown type'}</span>
@@ -134,7 +135,10 @@ export default function Devices() {
             {rows.map((d) => (
               <tr key={d.id} className="clickable" onClick={() => navigate(`/devices/${encodeURIComponent(d.fqdn)}`)}>
                 <td>{d.fqdn}</td>
-                <td><UpBadge up={d.up} /></td>
+                <td>
+                  <UpBadge up={d.up} />
+                  {d.interfaceHealth && <> <HealthBadge severity={d.interfaceHealth} label="⚠ interfaces" /></>}
+                </td>
                 <td>{d.deviceType ?? '—'}</td>
                 <td>{d.softwareVersion ?? '—'}</td>
                 <td><PollingBadge enabled={d.pollingEnabled} /></td>

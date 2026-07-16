@@ -2,11 +2,25 @@ use crate::models;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc,Mutex};
 use crate::utilities;
+use crate::utilities::health::{HealthStore, HealthConfig, SampleInput};
 use crate::db::AnyConnection;
 
 pub struct IMDS {
     metrics_storage : models::metrics::Metrics,
-    msgbus: Arc<Mutex<utilities::msgbus::MessageBus>>
+    msgbus: Arc<Mutex<utilities::msgbus::MessageBus>>,
+    // Recent per-interface health signals (flapping, discards, errors, speed
+    // renegotiation, utilization). Fed from report_interfaces below and read by
+    // the /api/v1 device routes; see utilities::health.
+    health: HealthStore,
+}
+
+// new - old for a monotonic counter pair; 0 when either side is absent or the
+// counter went backwards (a reset — validate_counters already guards these).
+fn counter_delta(old: &Option<u64>, new: &Option<u64>) -> u64 {
+    match (old, new) {
+        (Some(old), Some(new)) => new.saturating_sub(*old),
+        _ => 0,
+    }
 }
 
 struct ConnectionPair {
@@ -48,12 +62,13 @@ impl ConnectionPair {
 }
 
 impl IMDS {
-    pub fn new(msgbus: Arc<Mutex<utilities::msgbus::MessageBus>>) -> IMDS {
+    pub fn new(msgbus: Arc<Mutex<utilities::msgbus::MessageBus>>, health_cfg: HealthConfig) -> IMDS {
         let imds = IMDS {
             metrics_storage: models::metrics::Metrics {
                 devices: HashMap::new()
             },
-            msgbus: msgbus
+            msgbus: msgbus,
+            health: HealthStore::new(health_cfg),
         };
 
         return imds;
@@ -67,6 +82,30 @@ impl IMDS {
     // or a state reset); without this their metrics would be exported forever.
     pub fn retain_devices(self: &mut IMDS, monitored_fqdns: &HashSet<String>) {
         self.metrics_storage.devices.retain(|fqdn, _| monitored_fqdns.contains(fqdn));
+        self.health.retain_devices(monitored_fqdns);
+    }
+
+    // Health summary for one interface (None when healthy). The interface's
+    // last-poll timestamp drives the stale check.
+    pub fn interface_health(self: &IMDS, fqdn: &str, ifindex: i32, now: u64) -> Option<crate::utilities::health::InterfaceHealthSummary> {
+        let last_report = self.metrics_storage.devices.get(fqdn)?.interfaces.get(&ifindex)?.last_report;
+        self.health.summary(fqdn, ifindex, now, last_report)
+    }
+
+    // Worst interface health severity for a device, for the /devices list badge.
+    pub fn device_health(self: &IMDS, fqdn: &str, now: u64) -> Option<crate::utilities::health::Severity> {
+        let device = self.metrics_storage.devices.get(fqdn)?;
+        let last_reports: HashMap<i32, u64> = device.interfaces.iter().map(|(ifindex, iface)| (*ifindex, iface.last_report)).collect();
+        self.health.device_rollup(fqdn, now, &last_reports)
+    }
+
+    // Optional disk persistence of the health store (see main.rs).
+    pub fn health_to_json(self: &IMDS) -> Result<String, serde_json::Error> {
+        self.health.to_json()
+    }
+
+    pub fn load_health_json(self: &mut IMDS, json: &str) -> Result<(), serde_json::Error> {
+        self.health.load_json(json)
     }
 
     pub fn refresh_device(self: &mut IMDS, device_fqdn: &String) {
@@ -246,6 +285,17 @@ impl IMDS {
                 continue;
             }
 
+            // Capture pre-update values for the health store: the counters
+            // below are overwritten in place, so deltas must be computed first.
+            let prev_last_report = interface.last_report;
+            let health_interval_ms = if prev_last_report > 0 { last_report.saturating_sub(prev_last_report) } else { 0 };
+            let d_in_errors = counter_delta(&interface.in_errors, &interface_report.in_errors);
+            let d_out_errors = counter_delta(&interface.out_errors, &interface_report.out_errors);
+            let d_out_discards = counter_delta(&interface.out_discards, &interface_report.out_discards);
+            let d_in_octets = counter_delta(&interface.in_octets, &interface_report.in_octets);
+            let d_out_octets = counter_delta(&interface.out_octets, &interface_report.out_octets);
+            let mut up_transition: Option<bool> = None;
+            let mut speed_change: Option<(Option<i32>, i32)> = None;
 
             interface.last_report = last_report;
             // TODO: statechanges should be emitted for errors?
@@ -265,6 +315,7 @@ impl IMDS {
                 if let Some(old_state) = interface.up {
                     if let Some(new_state) = interface_report.up {
                         if old_state != new_state {
+                            up_transition = Some(new_state);
                             let mut neighbor : Option<String> = None;
                             let mut neighbor_interface_name : Option<String> = None;
                             let mut link_interfaces : Vec<models::dbo::Interface> = Vec::new();
@@ -316,6 +367,7 @@ impl IMDS {
                 if let Some(old_state) = interface.speed {
                     if let Some(new_state) = interface_report.speed {
                         if old_state != new_state {
+                            speed_change = Some((Some(old_state), new_state));
                             let mut neighbor : Option<String> = None;
                             let mut neighbor_interface_name : Option<String> = None;
                             if let Some(connpair) = ConnectionPair::load_by_fqdn_ifindex(connection, &imr.device_fqdn, &interface_report.if_index) {
@@ -333,6 +385,26 @@ impl IMDS {
                 }
                 interface.speed = interface_report.speed;
             }
+
+            // Feed the recent-history health store. Effective speed prefers the
+            // manual override (matches get_metrics and the API's reported speed).
+            let effective_speed = interface.speed_override.or(interface.speed);
+            self.health.ingest(
+                &imr.device_fqdn,
+                interface_report.if_index,
+                SampleInput {
+                    in_errors: d_in_errors,
+                    out_errors: d_out_errors,
+                    out_discards: d_out_discards,
+                    in_octets: d_in_octets,
+                    out_octets: d_out_octets,
+                    interval_ms: health_interval_ms,
+                    up_transition,
+                    speed_change,
+                    speed_mbps: effective_speed,
+                },
+                last_report,
+            );
         }
     }
 
@@ -525,7 +597,7 @@ mod tests {
     use crate::models::metrics::{InterfaceMetrics, LabeledMetric, MetricValue};
 
     fn test_imds() -> IMDS {
-        IMDS::new(Arc::new(Mutex::new(utilities::msgbus::MessageBus::disconnected())))
+        IMDS::new(Arc::new(Mutex::new(utilities::msgbus::MessageBus::disconnected())), HealthConfig::default())
     }
 
     fn empty_report(if_index: i32) -> InterfaceMonitorInterfaceReport {
@@ -793,5 +865,47 @@ mod tests {
             let expected = if metric.labels["name"] == "Eth1" { "yes" } else { "no" };
             assert_eq!(metric.labels["neighbors"], expected);
         }
+    }
+
+    // --- health wiring through the report_interfaces choke point ---
+
+    #[test]
+    fn report_interfaces_feeds_flap_and_discard_history() {
+        use crate::models::json::InterfaceMonitorReport;
+        use diesel::Connection;
+        // A migrated in-memory sqlite: the up-change path does a peer lookup;
+        // with an empty (but existing) devices table it resolves to no peer.
+        let mut conn = AnyConnection::Sqlite(
+            diesel::sqlite::SqliteConnection::establish(":memory:").unwrap(),
+        );
+        crate::db::run_migrations(&mut conn).unwrap();
+
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
+
+        let report = |up: Option<bool>, discards: Option<u64>| {
+            let mut r = empty_report(1);
+            r.up = up;
+            r.out_discards = discards;
+            InterfaceMonitorReport { device_fqdn: fqdn.clone(), interfaces: vec![r] }
+        };
+
+        // First report seeds baseline (up + counter). Sleeps keep last_report
+        // strictly increasing (report_interfaces reads the real clock and skips
+        // same-millisecond reports).
+        imds.report_interfaces(&mut conn, report(Some(true), Some(1000)));
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        // Flip oper status (1 flap) and grow discards by 5000.
+        imds.report_interfaces(&mut conn, report(Some(false), Some(6000)));
+
+        let now = utilities::tools::get_time_msecs();
+        let summary = imds.interface_health(&fqdn, 1, now).expect("interface should be unhealthy");
+        assert_eq!(summary.flap_count, 1);
+        assert_eq!(summary.discards, 5000);
+        assert_eq!(summary.severity, Some(crate::utilities::health::Severity::Bad)); // flapping
+        // Device rollup reflects the same worst severity.
+        assert_eq!(imds.device_health(&fqdn, now), Some(crate::utilities::health::Severity::Bad));
     }
 }

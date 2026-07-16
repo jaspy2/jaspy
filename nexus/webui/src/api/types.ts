@@ -90,6 +90,34 @@ export interface Device {
   up: boolean | null;
   secondsSinceLastPoll: number | null;
   interfaceCount: number;
+  // Worst per-interface health severity across the device ("warn"/"bad");
+  // null when every interface is healthy.
+  interfaceHealth: 'warn' | 'bad' | null;
+}
+
+// Per-interface health signals (utilities/health.rs), present only when a
+// signal has tripped. The UI turns these numbers into human phrasing.
+export interface InterfaceHealth {
+  // null = healthy (no badge); the metric fields are always populated so the
+  // expanded detail view can show the full picture for any interface.
+  severity: 'warn' | 'bad' | null;
+  flapCount: number;
+  lastFlapSecsAgo: number | null;
+  inErrors: number;
+  outErrors: number;
+  discards: number;
+  speedChangeCount: number;
+  lastSpeedChange: [number | null, number] | null; // [from, to] Mbps
+  peakUtilizationPct: number | null;
+  highUtilization: boolean;
+  // Average throughput over throughputWindowSecs, in bits/sec (rx/tx).
+  rxBpsAvg: number | null;
+  txBpsAvg: number | null;
+  stale: boolean;
+  counterWindowSecs: number;
+  flapWindowSecs: number;
+  utilWindowSecs: number;
+  throughputWindowSecs: number;
 }
 
 export interface InterfaceConnection {
@@ -110,6 +138,13 @@ export interface Interface {
   connectedTo: InterfaceConnection | null;
   up: boolean | null;
   speed: number | null;
+  // Cumulative counters since the device's last counter reset: octets (bytes)
+  // and error/discard packet counts.
+  inOctets: number | null;
+  outOctets: number | null;
+  inErrors: number | null;
+  outErrors: number | null;
+  outDiscards: number | null;
   // From the in-memory vlanpoller; null until the first successful VLAN poll
   // (or when the device does not expose the VLAN MIBs).
   nativeVlan: number | null;
@@ -117,6 +152,10 @@ export interface Interface {
   // Name of the port-channel this interface is a member of (lagpoller);
   // null for non-members.
   portChannel: string | null;
+  // Recent-history health signals + metrics; present for every polled
+  // interface (health.severity is null when nothing is wrong), null only
+  // before the first poll.
+  health: InterfaceHealth | null;
 }
 
 // A VLAN known on the device, for resolving interface VLAN ids to names.

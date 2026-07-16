@@ -74,6 +74,41 @@ fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS
     }
 }
 
+// Serialize the health store and write it atomically (temp file + rename) so a
+// crash mid-write can't leave a truncated state file.
+//
+// Note: serialization happens under the IMDS lock. For the network sizes jaspy
+// targets and a 60s cadence this is a negligible pause; if it ever matters,
+// snapshot the store under the lock and serialize the clone outside it.
+fn dump_health(imds: &Arc<Mutex<utilities::imds::IMDS>>, path: &str) {
+    let json = match imds.lock() {
+        Ok(imds) => match imds.health_to_json() {
+            Ok(json) => json,
+            Err(e) => { println!("[health] serialize failed: {}", e); return; }
+        },
+        Err(_) => return,
+    };
+    let tmp = format!("{}.tmp", path);
+    if let Err(e) = std::fs::write(&tmp, json.as_bytes()) {
+        println!("[health] write {} failed: {}", tmp, e);
+        return;
+    }
+    if let Err(e) = std::fs::rename(&tmp, path) {
+        println!("[health] rename to {} failed: {}", path, e);
+    }
+}
+
+// Dump the health store to disk every 60s (plus once on shutdown, in main).
+fn health_persist_worker(running: Arc<AtomicBool>, imds: Arc<Mutex<utilities::imds::IMDS>>, path: String) {
+    println!("[health] persisting interface health state to {} every 60s", path);
+    let mut counter = 0u64;
+    loop {
+        if !should_continue(&running) { break; }
+        if counter >= 60 { dump_health(&imds, &path); counter = 0; } else { counter += 1; }
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+    }
+}
+
 fn main() {
     // `jaspy-nexus trap-handler` (snmptrapd traphandle, formerly the
     // standalone jaspy-snmptrapd-reader binary) must run outside the tokio
@@ -229,9 +264,41 @@ async fn server_main() {
         }
     };
 
+    // Per-interface health signal store (utilities::health): windows and
+    // thresholds for the discards/errors/flapping/speed/utilization badges.
+    // Defaults match utilities::health::HealthConfig::default().
+    let mut health_cfg = utilities::health::HealthConfig::default();
+    if let Ok(v) = c.get_int("health_counter_window_secs") { health_cfg.counter_window_ms = (v as u64) * 1000; }
+    if let Ok(v) = c.get_int("health_flap_window_secs") { health_cfg.flap_window_ms = (v as u64) * 1000; }
+    if let Ok(v) = c.get_int("health_util_window_secs") { health_cfg.util_window_ms = (v as u64) * 1000; }
+    if let Ok(v) = c.get_int("health_throughput_window_secs") { health_cfg.throughput_window_ms = (v as u64) * 1000; }
+    if let Ok(v) = c.get_float("health_util_threshold_pct") { health_cfg.util_threshold_pct = v; }
+    if let Ok(v) = c.get_int("health_stale_secs") { health_cfg.stale_ms = (v as u64) * 1000; }
+    if let Ok(v) = c.get_int("health_error_threshold") { health_cfg.error_show_threshold = v as u64; }
+    if let Ok(v) = c.get_int("health_discard_threshold") { health_cfg.discard_show_threshold = v as u64; }
+    if let Ok(v) = c.get_int("health_flap_threshold") { health_cfg.flap_show_threshold = v as u32; }
+    // Optional disk persistence: unset = disabled (no filesystem side effects).
+    let health_state_path = c.get_string("health_state_path").ok().filter(|p| !p.is_empty());
+
     let running = Arc::new(AtomicBool::new(true));
     let msgbus : Arc<Mutex<utilities::msgbus::MessageBus>> = Arc::new(Mutex::new(utilities::msgbus::MessageBus::new()));
-    let imds : Arc<Mutex<utilities::imds::IMDS>> = Arc::new(Mutex::new(utilities::imds::IMDS::new(msgbus.clone())));
+    let imds : Arc<Mutex<utilities::imds::IMDS>> = Arc::new(Mutex::new(utilities::imds::IMDS::new(msgbus.clone(), health_cfg)));
+    // Reload persisted health state before collectors start writing.
+    if let Some(path) = health_state_path.as_ref() {
+        match std::fs::read_to_string(path) {
+            Ok(json) => match imds.lock() {
+                Ok(mut imds) => match imds.load_health_json(&json) {
+                    Ok(()) => println!("[health] reloaded interface health state from {}", path),
+                    Err(e) => println!("[health] failed to parse state file {}: {}", path, e),
+                },
+                Err(e) => println!("[health] could not lock IMDS to reload state: {}", e),
+            },
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                println!("[health] no state file at {} yet (first run)", path);
+            }
+            Err(e) => println!("[health] could not read state file {}: {}", path, e),
+        }
+    }
     let entity_metrics : Arc<Mutex<collectors::entitypoller::EntityMetricsStore>> = Arc::new(Mutex::new(collectors::entitypoller::EntityMetricsStore::new()));
     // Managed unconditionally (like entity_metrics) so the /api/v1 routes work
     // even when the collector thread is disabled — they just serve empty data.
@@ -334,6 +401,13 @@ async fn server_main() {
     } else {
         None
     };
+
+    let health_persist_thread = health_state_path.as_ref().map(|path| {
+        let imds_collector = imds.clone();
+        let running_collector = running.clone();
+        let path = path.clone();
+        std::thread::spawn(move || health_persist_worker(running_collector, imds_collector, path))
+    });
 
     let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
 
@@ -492,4 +566,7 @@ async fn server_main() {
     if let Some(lagpoller_thread) = lagpoller_thread { let _ = lagpoller_thread.join(); }
     if let Some(trap_receiver_thread) = trap_receiver_thread { let _ = trap_receiver_thread.join(); }
     let _ = discovery_thread.join();
+    if let Some(health_persist_thread) = health_persist_thread { let _ = health_persist_thread.join(); }
+    // Final dump so a graceful shutdown never loses the last minute of state.
+    if let Some(path) = health_state_path.as_ref() { dump_health(&imds, path); }
 }

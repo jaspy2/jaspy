@@ -19,3 +19,10 @@ export function StpStateBadge({ state }: { state: string }) {
     : 'badge-muted';
   return <span className={`badge ${cls}`}>{state}</span>;
 }
+
+// Interface health severity ("warn"/"bad"); label is optional so it can be a
+// short chip in a row or a longer word in a device list.
+export function HealthBadge({ severity, label }: { severity: 'warn' | 'bad'; label?: string }) {
+  const cls = severity === 'bad' ? 'badge-bad' : 'badge-warn';
+  return <span className={`badge ${cls}`}>{label ?? (severity === 'bad' ? '⚠ issues' : '⚠')}</span>;
+}
