@@ -851,9 +851,10 @@ impl Topology {
             // Valid-but-empty keeps the discovery log free of CDP noise.
             "CISCO-CDP-MIB::cdpCacheTable" => Some(response(table_id, Vec::new())),
             // LAG tables for the lagpoller. Cisco-style devices answer the
-            // PAgP table with a row per physical port (group = the aggregate
-            // ifIndex for members, 0 otherwise — the live C2960CX shape);
-            // others answer valid-but-empty to keep the logs quiet.
+            // PAgP table with a row per physical port, all groups 0 — the
+            // live C2960CX shape: pagpGroupIfIndex reports nothing for LACP
+            // bundles, which live only in the dot3ad tables. Others answer
+            // valid-but-empty to keep the logs quiet.
             "CISCO-PAGP-MIB::pagpPortTable" => {
                 if dev.vlan_style != VlanStyle::Cisco {
                     return Some(response(table_id, Vec::new()));
@@ -861,10 +862,9 @@ impl Topology {
                 let entries = dev.interfaces.iter()
                     .filter(|iface| !dev.lags.iter().any(|lag| lag.ifindex == iface.ifindex))
                     .map(|iface| {
-                        let group = dev.lags.iter().find(|lag| lag.members.contains(&iface.ifindex)).map(|lag| lag.ifindex).unwrap_or(0);
                         entry(
                             json!({"IF-MIB::ifIndex": iface.ifindex}),
-                            json!({"CISCO-PAGP-MIB::pagpEthcOperationMode": 1, "CISCO-PAGP-MIB::pagpGroupIfIndex": group}),
+                            json!({"CISCO-PAGP-MIB::pagpEthcOperationMode": 1, "CISCO-PAGP-MIB::pagpGroupIfIndex": 0}),
                         )
                     })
                     .collect();
@@ -879,6 +879,7 @@ impl Topology {
                     entry(
                         json!({"IEEE8023-LAG-MIB::dot3adAggIndex": lag.ifindex}),
                         json!({
+                            "IEEE8023-LAG-MIB::dot3adAggActorAdminKey": lag.ifindex - 5000,
                             "IEEE8023-LAG-MIB::dot3adAggActorSystemID": base_mac(dev_idx),
                             "IEEE8023-LAG-MIB::dot3adAggPartnerSystemID": partner,
                         }),
@@ -899,6 +900,7 @@ impl Topology {
                         entries.push(entry(
                             json!({"IEEE8023-LAG-MIB::dot3adAggPortIndex": member}),
                             json!({
+                                "IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": lag.ifindex - 5000,
                                 "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID":
                                     if defaulted { "00:00:00:00:00:00".to_string() } else { self.lag_partner_mac(dev, lag, *member) },
                                 "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": lag.ifindex,

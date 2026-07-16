@@ -1,6 +1,8 @@
 {
   "ID": "CISCO-PAGP-MIB::pagpPortTable",
-  "IndexKeys": ["IF-MIB::ifIndex"],
+  "IndexKeys": [
+    "IF-MIB::ifIndex"
+  ],
   "ObjectKeys": [
     "CISCO-PAGP-MIB::pagpEthcOperationMode",
     "CISCO-PAGP-MIB::pagpGroupIfIndex"
@@ -8,23 +10,43 @@
   "Entries": [
     {
       "HostID": "testcomm@sw1.test.example",
-      "Index": {"IF-MIB::ifIndex": 10101},
-      "Objects": {"CISCO-PAGP-MIB::pagpEthcOperationMode": 1, "CISCO-PAGP-MIB::pagpGroupIfIndex": 5001}
+      "Index": {
+        "IF-MIB::ifIndex": 10101
+      },
+      "Objects": {
+        "CISCO-PAGP-MIB::pagpEthcOperationMode": 1,
+        "CISCO-PAGP-MIB::pagpGroupIfIndex": 0
+      }
     },
     {
       "HostID": "testcomm@sw1.test.example",
-      "Index": {"IF-MIB::ifIndex": 10102},
-      "Objects": {"CISCO-PAGP-MIB::pagpEthcOperationMode": 1, "CISCO-PAGP-MIB::pagpGroupIfIndex": 5001}
+      "Index": {
+        "IF-MIB::ifIndex": 10102
+      },
+      "Objects": {
+        "CISCO-PAGP-MIB::pagpEthcOperationMode": 1,
+        "CISCO-PAGP-MIB::pagpGroupIfIndex": 0
+      }
     },
     {
       "HostID": "testcomm@sw1.test.example",
-      "Index": {"IF-MIB::ifIndex": 10103},
-      "Objects": {"CISCO-PAGP-MIB::pagpEthcOperationMode": 1, "CISCO-PAGP-MIB::pagpGroupIfIndex": 0}
+      "Index": {
+        "IF-MIB::ifIndex": 10103
+      },
+      "Objects": {
+        "CISCO-PAGP-MIB::pagpEthcOperationMode": 1,
+        "CISCO-PAGP-MIB::pagpGroupIfIndex": 0
+      }
     },
     {
       "HostID": "testcomm@sw1.test.example",
-      "Index": {"IF-MIB::ifIndex": 10104},
-      "Objects": {"CISCO-PAGP-MIB::pagpEthcOperationMode": 1, "CISCO-PAGP-MIB::pagpGroupIfIndex": 10104}
+      "Index": {
+        "IF-MIB::ifIndex": 10104
+      },
+      "Objects": {
+        "CISCO-PAGP-MIB::pagpEthcOperationMode": 1,
+        "CISCO-PAGP-MIB::pagpGroupIfIndex": 10104
+      }
     }
   ]
 }

@@ -4,15 +4,19 @@
 //
 // One vendor::Source per incompatible MIB family (probe order and per-device
 // winner cache in collectors::vendor):
-//   - CiscoLagSource: CISCO-PAGP-MIB::pagpPortTable (pagpGroupIfIndex names
-//     the aggregate's ifIndex for every channel mode — on/PAgP/LACP; verified
-//     on a live C2960CX), enriched with the IEEE8023-LAG-MIB tables when the
-//     bundle runs LACP.
+//   - CiscoLagSource: the IEEE8023-LAG-MIB tables carry the LACP bundles
+//     (membership from AttachedAggID plus admin-key matching for configured
+//     members whose link is down); CISCO-PAGP-MIB::pagpPortTable doubles as
+//     the applicability probe and contributes membership for PAgP-negotiated
+//     channels.
 //   - Dot3adLagSource: standard IEEE8023-LAG-MIB only (HP ProCurve "trk"
 //     LACP trunks and other standards-based gear).
 //
-// IF-MIB::ifStackTable is NOT usable for membership on Cisco IOS: verified
-// live, it only carries the degenerate 0<->ifIndex rows.
+// Verified live on a C2960CX (IOS 15.2(7)E10): pagpGroupIfIndex does NOT
+// report LACP bundles — an attached, collecting/distributing LACP member
+// still reports group 0 — so dot3ad is the primary source and pagp only a
+// PAgP-mode supplement. IF-MIB::ifStackTable is not usable either: it only
+// carries the degenerate 0<->ifIndex rows.
 //
 // Results live only in the in-memory `LagStore` (no DB, no Prometheus); the
 // device detail API joins them onto interfaces and computes the mismatch
@@ -127,32 +131,36 @@ pub(crate) fn decode_pagp(pagp: &SNMPBotResponse) -> (BTreeMap<i64, BTreeSet<i64
 }
 
 // IEEE8023-LAG-MIB: membership from dot3adAggPortAttachedAggID (0 = detached,
-// rows are all-zero on gear where LACP is idle), per-aggregate system ids from
-// dot3adAggTable. Only aggregates with at least one attached member appear.
+// rows are all-zero on gear where LACP is idle), supplemented by admin-key
+// matching — a detached port whose ActorAdminKey equals exactly one
+// aggregate's key is a configured member whose link is down/not bundling
+// (verified live: non-members carry admin key 0). Per-aggregate system ids
+// and keys come from dot3adAggTable.
 pub(crate) fn decode_dot3ad(
     agg_table: Option<&SNMPBotResponse>,
     port_table: Option<&SNMPBotResponse>,
 ) -> BTreeMap<i64, LagGroup> {
     let mut groups: BTreeMap<i64, LagGroup> = BTreeMap::new();
 
-    for entry in port_table.map(|t| t.entries.iter()).into_iter().flatten() {
-        let ifindex = match entry.index.get("IEEE8023-LAG-MIB::dot3adAggPortIndex") {
+    // Aggregate admin key -> aggregate ifIndex, for the configured-member
+    // match; keys claimed by more than one aggregate are ambiguous and skipped.
+    let mut agg_by_key: HashMap<i64, Option<i64>> = HashMap::new();
+    for entry in agg_table.map(|t| t.entries.iter()).into_iter().flatten() {
+        let agg = match entry.index.get("IEEE8023-LAG-MIB::dot3adAggIndex") {
             Some(v) => *v,
             None => continue,
         };
-        let attached = obj_i64(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID").unwrap_or(0);
-        // A port attached to itself is an "individual" link, not a bundle.
-        if attached <= 0 || attached == ifindex {
-            continue;
+        if let Some(key) = obj_i64(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggActorAdminKey").filter(|k| *k > 0) {
+            agg_by_key
+                .entry(key)
+                .and_modify(|existing| *existing = None)
+                .or_insert(Some(agg));
         }
-        let member = LagMember {
-            actor_state: obj_bits(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortActorOperState"),
-            partner_state: obj_bits(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState"),
-            partner_system_id: nonzero_mac(obj_str(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID")),
-            partner_port: obj_i64(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort").filter(|p| *p > 0),
-        };
+    }
+
+    let mut add_member = |groups: &mut BTreeMap<i64, LagGroup>, agg: i64, ifindex: i64, member: LagMember| {
         groups
-            .entry(attached)
+            .entry(agg)
             .or_insert_with(|| LagGroup {
                 protocol: "lacp".to_string(),
                 actor_system_id: None,
@@ -161,6 +169,31 @@ pub(crate) fn decode_dot3ad(
             })
             .members
             .insert(ifindex, member);
+    };
+
+    for entry in port_table.map(|t| t.entries.iter()).into_iter().flatten() {
+        let ifindex = match entry.index.get("IEEE8023-LAG-MIB::dot3adAggPortIndex") {
+            Some(v) => *v,
+            None => continue,
+        };
+        let attached = obj_i64(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID").unwrap_or(0);
+        // A port attached to itself is an "individual" link, not a bundle.
+        if attached > 0 && attached != ifindex {
+            let member = LagMember {
+                actor_state: obj_bits(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortActorOperState"),
+                partner_state: obj_bits(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState"),
+                partner_system_id: nonzero_mac(obj_str(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID")),
+                partner_port: obj_i64(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort").filter(|p| *p > 0),
+            };
+            add_member(&mut groups, attached, ifindex, member);
+        } else if let Some(Some(agg)) = obj_i64(&entry.objects, "IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey")
+            .filter(|k| *k > 0)
+            .and_then(|key| agg_by_key.get(&key))
+        {
+            // Configured but not attached: surfaces as an empty-state member
+            // so the not-bundled warning fires.
+            add_member(&mut groups, *agg, ifindex, LagMember::default());
+        }
     }
 
     for entry in agg_table.map(|t| t.entries.iter()).into_iter().flatten() {
@@ -177,10 +210,10 @@ pub(crate) fn decode_dot3ad(
     groups
 }
 
-// Cisco merge: dot3ad carries the LACP detail, pagpGroupIfIndex is the
-// authoritative membership (it also lists configured members that LACP has
-// not attached — down links, mode-on channels). PagpEthcOperationMode: 1=off
-// (LACP or mode on), higher values = PAgP negotiation.
+// Cisco merge: dot3ad carries the LACP bundles (pagpGroupIfIndex never
+// reports them — verified live); pagp adds any PAgP/mode-on channels.
+// PagpEthcOperationMode: off(1), manual(2) = channel mode "on",
+// desirable/auto(3+) = PAgP negotiation.
 pub(crate) fn merge_cisco(
     dot3ad: BTreeMap<i64, LagGroup>,
     pagp_groups: BTreeMap<i64, BTreeSet<i64>>,
@@ -189,7 +222,7 @@ pub(crate) fn merge_cisco(
     let mut groups = dot3ad;
     for (agg, members) in pagp_groups.into_iter() {
         let group = groups.entry(agg).or_insert_with(|| LagGroup {
-            protocol: if members.iter().any(|m| pagp_modes.get(m).map(|mode| *mode > 1).unwrap_or(false)) {
+            protocol: if members.iter().any(|m| pagp_modes.get(m).map(|mode| *mode >= 3).unwrap_or(false)) {
                 "pagp".to_string()
             } else {
                 "static".to_string()
@@ -321,10 +354,8 @@ impl<'a> vendor::Source<LagCtx<'a>> for CiscoLagSource {
             _ => return None,
         };
         let (pagp_groups, pagp_modes) = decode_pagp(&pagp);
-        if pagp_groups.is_empty() {
-            // No aggregates: skip the dot3ad walks entirely.
-            return Some(DeviceLags::default());
-        }
+        // The dot3ad walks always run: LACP bundles appear ONLY there
+        // (pagpGroupIfIndex stays 0/self for LACP members — verified live).
         let agg = fetch_table(ctx.snmpbot_url, ctx.host, "IEEE8023-LAG-MIB::dot3adAggTable");
         let ports = fetch_table(ctx.snmpbot_url, ctx.host, "IEEE8023-LAG-MIB::dot3adAggPortTable");
         Some(merge_cisco(decode_dot3ad(agg.as_ref(), ports.as_ref()), pagp_groups, &pagp_modes))
@@ -451,17 +482,40 @@ mod tests {
         serde_json::from_str(fixture).unwrap()
     }
 
+    // Synthetic PAgP-negotiated channel (the fixture mirrors the live LACP
+    // shape, where pagpGroupIfIndex reports nothing).
+    const PAGP_NEGOTIATED: &str = r#"{
+        "ID": "CISCO-PAGP-MIB::pagpPortTable",
+        "IndexKeys": ["IF-MIB::ifIndex"],
+        "ObjectKeys": ["CISCO-PAGP-MIB::pagpEthcOperationMode", "CISCO-PAGP-MIB::pagpGroupIfIndex"],
+        "Entries": [
+            {"HostID": "h", "Index": {"IF-MIB::ifIndex": 10101},
+             "Objects": {"CISCO-PAGP-MIB::pagpEthcOperationMode": 3, "CISCO-PAGP-MIB::pagpGroupIfIndex": 5001}},
+            {"HostID": "h", "Index": {"IF-MIB::ifIndex": 10102},
+             "Objects": {"CISCO-PAGP-MIB::pagpEthcOperationMode": 3, "CISCO-PAGP-MIB::pagpGroupIfIndex": 5001}}
+        ]
+    }"#;
+
     // --- decode_pagp ---
 
     #[test]
-    fn pagp_groups_bundled_ports_and_skips_self_and_zero() {
+    fn pagp_reports_nothing_for_lacp_bundles() {
+        // The fixture mirrors the live C2960CX with a working LACP Po1:
+        // every port reports group 0 or self — pagpGroupIfIndex does NOT
+        // cover LACP membership, only PAgP-negotiated channels.
         let (groups, modes) = decode_pagp(&parse(PAGP));
-        assert_eq!(groups.len(), 1);
+        assert!(groups.is_empty());
+        assert_eq!(modes[&10101], 1);
+        // group == self (10104) is an unbundled form, not a group.
+        assert_eq!(modes[&10104], 1);
+    }
+
+    #[test]
+    fn pagp_groups_negotiated_channels() {
+        let (groups, modes) = decode_pagp(&parse(PAGP_NEGOTIATED));
         let members: Vec<i64> = groups[&5001].iter().cloned().collect();
         assert_eq!(members, vec![10101, 10102]);
-        // Unbundled forms: group 0 (10103) and group == self (10104).
-        assert_eq!(modes[&10103], 1);
-        assert_eq!(modes[&10104], 1);
+        assert_eq!(modes[&10101], 3);
     }
 
     // --- decode_dot3ad ---
@@ -491,6 +545,36 @@ mod tests {
     }
 
     #[test]
+    fn dot3ad_admin_key_adds_configured_but_detached_members() {
+        // 10102 configured in the channel-group (admin key matches the
+        // aggregate's) but not attached — link down or suspended.
+        let ports = r#"{
+            "ID": "IEEE8023-LAG-MIB::dot3adAggPortTable",
+            "IndexKeys": ["IEEE8023-LAG-MIB::dot3adAggPortIndex"],
+            "ObjectKeys": ["IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey", "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID"],
+            "Entries": [
+                {"HostID": "h", "Index": {"IEEE8023-LAG-MIB::dot3adAggPortIndex": 10101},
+                 "Objects": {"IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": 1,
+                             "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": 5001,
+                             "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": ["lacpActivity", "aggregation", "synchronization", "collecting", "distributing"]}},
+                {"HostID": "h", "Index": {"IEEE8023-LAG-MIB::dot3adAggPortIndex": 10102},
+                 "Objects": {"IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": 1,
+                             "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": 0,
+                             "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": []}},
+                {"HostID": "h", "Index": {"IEEE8023-LAG-MIB::dot3adAggPortIndex": 10103},
+                 "Objects": {"IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": 0,
+                             "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": 0,
+                             "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": []}}
+            ]
+        }"#;
+        let groups = decode_dot3ad(Some(&parse(AGG)), Some(&parse(ports)));
+        let group = &groups[&5001];
+        assert_eq!(group.members.len(), 2, "admin-key match adds 10102; key-0 10103 stays out");
+        assert!(group.members[&10102].actor_state.is_empty(), "detached member has no LACP state");
+        assert!(lacp_bundled(&group.members[&10101].actor_state));
+    }
+
+    #[test]
     fn dot3ad_all_idle_is_empty() {
         // Live shape of a Cisco switch with LACP idle: rows exist, all zero.
         let idle = r#"{
@@ -513,7 +597,8 @@ mod tests {
     // --- merge_cisco ---
 
     #[test]
-    fn cisco_merge_enriches_pagp_membership_with_lacp_detail() {
+    fn cisco_merge_lacp_comes_purely_from_dot3ad() {
+        // Live shape: pagp contributes nothing for an LACP Po.
         let (pagp_groups, modes) = decode_pagp(&parse(PAGP));
         let lags = merge_cisco(decode_dot3ad(Some(&parse(AGG)), Some(&parse(AGG_PORTS))), pagp_groups, &modes);
         let group = &lags.groups[&5001];
@@ -523,38 +608,73 @@ mod tests {
     }
 
     #[test]
-    fn cisco_merge_pagp_only_membership_is_static() {
-        let (pagp_groups, modes) = decode_pagp(&parse(PAGP));
-        // No dot3ad data at all: mode-on channel (or all members down).
+    fn cisco_merge_pagp_negotiated_channel_is_pagp() {
+        let (pagp_groups, modes) = decode_pagp(&parse(PAGP_NEGOTIATED));
         let lags = merge_cisco(BTreeMap::new(), pagp_groups, &modes);
         let group = &lags.groups[&5001];
-        assert_eq!(group.protocol, "static");
+        assert_eq!(group.protocol, "pagp");
         assert_eq!(group.members.len(), 2);
         assert!(group.members[&10101].actor_state.is_empty());
     }
 
     #[test]
-    fn cisco_merge_adds_configured_but_detached_members() {
-        // dot3ad attached one member; pagp knows both (second link down).
-        let (pagp_groups, modes) = decode_pagp(&parse(PAGP));
-        let mut dot3ad = decode_dot3ad(Some(&parse(AGG)), Some(&parse(AGG_PORTS)));
-        dot3ad.get_mut(&5001).unwrap().members.remove(&10102);
-        let lags = merge_cisco(dot3ad, pagp_groups, &modes);
-        let group = &lags.groups[&5001];
-        assert_eq!(group.protocol, "lacp");
-        assert_eq!(group.members.len(), 2);
-        assert!(group.members[&10102].actor_state.is_empty(), "detached member has no LACP state");
-    }
-
-    #[test]
-    fn cisco_merge_pagp_mode_marks_pagp_protocol() {
+    fn cisco_merge_mode_on_channel_is_static() {
+        // manual(2) = channel mode "on": bundled without a protocol.
         let mut modes = HashMap::new();
-        modes.insert(10101, 3i64); // desirable
-        modes.insert(10102, 3i64);
+        modes.insert(10101, 2i64);
+        modes.insert(10102, 2i64);
         let mut pagp_groups = BTreeMap::new();
         pagp_groups.insert(5001, vec![10101i64, 10102].into_iter().collect());
         let lags = merge_cisco(BTreeMap::new(), pagp_groups, &modes);
-        assert_eq!(lags.groups[&5001].protocol, "pagp");
+        assert_eq!(lags.groups[&5001].protocol, "static");
+    }
+
+    // The exact rows the live C2960CX answered with a working single-member
+    // LACP Po1 to a UniFi gateway (2026-07-15) — the regression that was
+    // invisible while the collector trusted pagpGroupIfIndex for membership.
+    #[test]
+    fn cisco_live_shape_single_member_lacp_po() {
+        let agg = r#"{
+            "ID": "IEEE8023-LAG-MIB::dot3adAggTable",
+            "IndexKeys": ["IEEE8023-LAG-MIB::dot3adAggIndex"],
+            "ObjectKeys": ["IEEE8023-LAG-MIB::dot3adAggActorAdminKey", "IEEE8023-LAG-MIB::dot3adAggActorSystemID", "IEEE8023-LAG-MIB::dot3adAggPartnerSystemID"],
+            "Entries": [{"HostID": "h", "Index": {"IEEE8023-LAG-MIB::dot3adAggIndex": 5001},
+                "Objects": {"IEEE8023-LAG-MIB::dot3adAggActorAdminKey": 1,
+                            "IEEE8023-LAG-MIB::dot3adAggActorSystemID": "f8:a7:3a:7d:b6:00",
+                            "IEEE8023-LAG-MIB::dot3adAggPartnerSystemID": "3e:5b:a0:80:62:3a"}}]
+        }"#;
+        let ports = r#"{
+            "ID": "IEEE8023-LAG-MIB::dot3adAggPortTable",
+            "IndexKeys": ["IEEE8023-LAG-MIB::dot3adAggPortIndex"],
+            "ObjectKeys": ["IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey", "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID"],
+            "Entries": [
+                {"HostID": "h", "Index": {"IEEE8023-LAG-MIB::dot3adAggPortIndex": 10106},
+                 "Objects": {"IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": 0,
+                             "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": 0,
+                             "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID": "00:00:00:00:00:00",
+                             "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": [],
+                             "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": []}},
+                {"HostID": "h", "Index": {"IEEE8023-LAG-MIB::dot3adAggPortIndex": 10107},
+                 "Objects": {"IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": 1,
+                             "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": 5001,
+                             "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID": "3e:5b:a0:80:62:3a",
+                             "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort": 1,
+                             "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": ["lacpActivity", "aggregation", "synchronization", "collecting", "distributing"],
+                             "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": ["lacpActivity", "aggregation", "synchronization", "collecting", "distributing"]}}
+            ]
+        }"#;
+        // pagp answered only 0/self groups on the live switch.
+        let lags = merge_cisco(decode_dot3ad(Some(&parse(agg)), Some(&parse(ports))), BTreeMap::new(), &HashMap::new());
+        let group = &lags.groups[&5001];
+        assert_eq!(group.protocol, "lacp");
+        assert_eq!(group.actor_system_id.as_deref(), Some("f8:a7:3a:7d:b6:00"));
+        assert_eq!(group.partner_system_id.as_deref(), Some("3e:5b:a0:80:62:3a"));
+        assert_eq!(group.members.len(), 1);
+        assert!(lacp_bundled(&group.members[&10107].actor_state));
+
+        let meta: HashMap<i64, MemberMeta> =
+            vec![(10107, MemberMeta { name: "Gi0/7".to_string(), connected_to_fqdn: None })].into_iter().collect();
+        assert_eq!(port_channel_warnings(group, &meta, &HashMap::new()), vec!["single-member"]);
     }
 
     // --- warnings ---

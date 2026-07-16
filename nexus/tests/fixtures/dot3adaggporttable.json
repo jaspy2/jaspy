@@ -1,7 +1,10 @@
 {
   "ID": "IEEE8023-LAG-MIB::dot3adAggPortTable",
-  "IndexKeys": ["IEEE8023-LAG-MIB::dot3adAggPortIndex"],
+  "IndexKeys": [
+    "IEEE8023-LAG-MIB::dot3adAggPortIndex"
+  ],
   "ObjectKeys": [
+    "IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey",
     "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID",
     "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID",
     "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort",
@@ -11,35 +14,70 @@
   "Entries": [
     {
       "HostID": "testcomm@sw1.test.example",
-      "Index": {"IEEE8023-LAG-MIB::dot3adAggPortIndex": 10101},
+      "Index": {
+        "IEEE8023-LAG-MIB::dot3adAggPortIndex": 10101
+      },
       "Objects": {
         "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID": "aa:bb:cc:dd:ee:02",
         "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": 5001,
         "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort": 5,
-        "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": ["lacpActivity", "aggregation", "synchronization", "collecting", "distributing"],
-        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": ["lacpActivity", "lacpTimeout", "aggregation", "synchronization", "collecting", "distributing"]
+        "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": [
+          "lacpActivity",
+          "aggregation",
+          "synchronization",
+          "collecting",
+          "distributing"
+        ],
+        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": [
+          "lacpActivity",
+          "lacpTimeout",
+          "aggregation",
+          "synchronization",
+          "collecting",
+          "distributing"
+        ],
+        "IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": 1
       }
     },
     {
       "HostID": "testcomm@sw1.test.example",
-      "Index": {"IEEE8023-LAG-MIB::dot3adAggPortIndex": 10102},
+      "Index": {
+        "IEEE8023-LAG-MIB::dot3adAggPortIndex": 10102
+      },
       "Objects": {
         "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID": "aa:bb:cc:dd:ee:02",
         "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": 5001,
         "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort": 6,
-        "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": ["lacpActivity", "aggregation", "synchronization", "collecting", "distributing"],
-        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": ["lacpActivity", "lacpTimeout", "aggregation", "synchronization", "collecting", "distributing"]
+        "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": [
+          "lacpActivity",
+          "aggregation",
+          "synchronization",
+          "collecting",
+          "distributing"
+        ],
+        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": [
+          "lacpActivity",
+          "lacpTimeout",
+          "aggregation",
+          "synchronization",
+          "collecting",
+          "distributing"
+        ],
+        "IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": 1
       }
     },
     {
       "HostID": "testcomm@sw1.test.example",
-      "Index": {"IEEE8023-LAG-MIB::dot3adAggPortIndex": 10103},
+      "Index": {
+        "IEEE8023-LAG-MIB::dot3adAggPortIndex": 10103
+      },
       "Objects": {
         "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID": "00:00:00:00:00:00",
         "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": 0,
         "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort": 0,
         "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": [],
-        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": []
+        "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": [],
+        "IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": 0
       }
     }
   ]

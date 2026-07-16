@@ -153,6 +153,11 @@
           "Name": "expired"
         }
       ]
+    },
+    {
+      "Name": "dot3adAggPortActorAdminKey",
+      "OID": ".1.2.840.10006.300.43.1.2.1.1.4",
+      "Syntax": "INTEGER"
     }
   ],
   "Tables": [
@@ -164,6 +169,7 @@
         "IEEE8023-LAG-MIB::dot3adAggIndex"
       ],
       "EntryObjects": [
+        "IEEE8023-LAG-MIB::dot3adAggActorAdminKey",
         "IEEE8023-LAG-MIB::dot3adAggActorSystemID",
         "IEEE8023-LAG-MIB::dot3adAggPartnerSystemID"
       ]
@@ -187,6 +193,7 @@
         "IEEE8023-LAG-MIB::dot3adAggPortIndex"
       ],
       "EntryObjects": [
+        "IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey",
         "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID",
         "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID",
         "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort",
