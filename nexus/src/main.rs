@@ -8,6 +8,7 @@ mod models;
 mod db;
 mod schema;
 mod utilities;
+mod snmp;
 mod collectors;
 mod mock;
 mod traphandler;
@@ -110,6 +111,47 @@ async fn server_main() {
     let enable_poller = c.get_bool("enable_poller").unwrap_or(true);
     let enable_pinger = c.get_bool("enable_pinger").unwrap_or(true);
 
+    // SNMP access mode: "snmpbot" (default; the external HTTP sidecar) or
+    // "embedded" (an in-process snmp2 v2c client + MIB registry). Selection is
+    // config, not a build feature, so one binary serves both deployments.
+    let snmp_mode = c.get_string("snmp_mode").unwrap_or_else(|_| "snmpbot".to_string());
+    let snmp_timeout_ms = c.get_int("snmp_timeout_ms").unwrap_or(2000) as u64;
+    let snmp_retries = c.get_int("snmp_retries").unwrap_or(2) as u32;
+    let snmp_bulk_max_repetitions = c.get_int("snmp_bulk_max_repetitions").unwrap_or(20) as u32;
+    // Embedded-mode MIB directory: config override, else the nexus package
+    // location, else the snmpbot package location.
+    let snmp_mib_dir = c.get_string("snmp_mib_dir").ok().or_else(|| {
+        ["/usr/share/jaspy/mibs", "/var/lib/snmpbot/mibs"]
+            .iter()
+            .find(|d| std::path::Path::new(d).is_dir())
+            .map(|d| d.to_string())
+    });
+
+    let mut resolved_mib_dir: Option<String> = None;
+    let mut snmp_mibs_loaded: Option<usize> = None;
+    let snmp: Arc<snmp::SnmpSource> = match snmp_mode.as_str() {
+        "snmpbot" => Arc::new(snmp::SnmpSource::SnmpbotHttp(snmp::snmpbot_http::SnmpbotHttp::new(snmpbot_url.clone()))),
+        "embedded" => {
+            let dir = snmp_mib_dir.clone().unwrap_or_else(|| {
+                panic!("[nexus] snmp_mode=embedded but no MIB directory found; set JASPY_SNMP_MIB_DIR")
+            });
+            let registry = snmp::mib::MibRegistry::load(std::path::Path::new(&dir))
+                .unwrap_or_else(|e| panic!("[nexus] snmp_mode=embedded failed to load MIBs from {}: {}", dir, e));
+            snmp_mibs_loaded = Some(registry.table_count());
+            resolved_mib_dir = Some(dir);
+            println!("[nexus] embedded SNMP client: {} tables / {} objects loaded from {}",
+                registry.table_count(), registry.object_count(), resolved_mib_dir.as_deref().unwrap_or(""));
+            let embedded = snmp::embedded::Embedded::new(
+                Arc::new(registry),
+                std::time::Duration::from_millis(snmp_timeout_ms),
+                snmp_retries,
+                snmp_bulk_max_repetitions,
+            );
+            Arc::new(snmp::SnmpSource::Embedded(embedded))
+        }
+        other => panic!("[nexus] unknown snmp_mode '{}' (expected 'snmpbot' or 'embedded')", other),
+    };
+
     // entitypoller collector (formerly the standalone jaspy-entitypoller binary):
     // entity sensors + per-VLAN STP, default poll interval 120s (matches the Go
     // -poll-interval default).
@@ -128,6 +170,11 @@ async fn server_main() {
     // in-memory store, default poll interval 5 minutes.
     let enable_lagpoller = c.get_bool("enable_lagpoller").unwrap_or(true);
     let lagpoller_interval_msecs = c.get_int("lagpoller_interval_msecs").unwrap_or(300000) as u64;
+
+    // Embedded SNMP trap receiver (independent of snmp_mode so traps can be
+    // migrated off snmptrapd separately).
+    let enable_trap_receiver = c.get_bool("enable_trap_receiver").unwrap_or(false);
+    let trap_bind_address = c.get_string("trap_bind_address").unwrap_or_else(|_| "0.0.0.0:162".to_string());
 
     // Discovery engine (formerly the standalone Python `discover` tool). The
     // in-memory config is seeded from JASPY_DISCOVERY_* env vars and mutable
@@ -204,12 +251,12 @@ async fn server_main() {
     let poller_thread = if enable_poller {
         let imds_collector = imds.clone();
         let running_collector = running.clone();
-        let snmpbot_url_collector = snmpbot_url.clone();
+        let snmp_collector = snmp.clone();
         // Without the pinger, the poller doubles as the device up/down source
         // (a device answering SNMP is up).
         let report_device_status = !enable_pinger;
         Some(std::thread::spawn(move || {
-            collectors::poller::run(snmpbot_url_collector, poll_loop_msecs, report_device_status, imds_collector, running_collector);
+            collectors::poller::run(snmp_collector, poll_loop_msecs, report_device_status, imds_collector, running_collector);
         }))
     } else {
         println!("[poller] disabled via JASPY_ENABLE_POLLER");
@@ -230,9 +277,9 @@ async fn server_main() {
     let entitypoller_thread = if enable_entitypoller {
         let store_collector = entity_metrics.clone();
         let running_collector = running.clone();
-        let snmpbot_url_collector = snmpbot_url.clone();
+        let snmp_collector = snmp.clone();
         Some(std::thread::spawn(move || {
-            collectors::entitypoller::run(snmpbot_url_collector, entitypoller_interval_msecs, entitypoller_disable_sensors, entitypoller_disable_stp, store_collector, running_collector);
+            collectors::entitypoller::run(snmp_collector, entitypoller_interval_msecs, entitypoller_disable_sensors, entitypoller_disable_stp, store_collector, running_collector);
         }))
     } else {
         println!("[entitypoller] disabled via JASPY_ENABLE_ENTITYPOLLER");
@@ -243,9 +290,9 @@ async fn server_main() {
         let store_collector = vlan_store.clone();
         let control_collector = vlan_control.clone();
         let running_collector = running.clone();
-        let snmpbot_url_collector = snmpbot_url.clone();
+        let snmp_collector = snmp.clone();
         Some(std::thread::spawn(move || {
-            collectors::vlanpoller::run(snmpbot_url_collector, vlanpoller_interval_msecs, control_collector, store_collector, running_collector);
+            collectors::vlanpoller::run(snmp_collector, vlanpoller_interval_msecs, control_collector, store_collector, running_collector);
         }))
     } else {
         println!("[vlanpoller] disabled via JASPY_ENABLE_VLANPOLLER");
@@ -255,9 +302,9 @@ async fn server_main() {
     let lagpoller_thread = if enable_lagpoller {
         let store_collector = lag_store.clone();
         let running_collector = running.clone();
-        let snmpbot_url_collector = snmpbot_url.clone();
+        let snmp_collector = snmp.clone();
         Some(std::thread::spawn(move || {
-            collectors::lagpoller::run(snmpbot_url_collector, lagpoller_interval_msecs, store_collector, running_collector);
+            collectors::lagpoller::run(snmp_collector, lagpoller_interval_msecs, store_collector, running_collector);
         }))
     } else {
         println!("[lagpoller] disabled via JASPY_ENABLE_LAGPOLLER");
@@ -270,11 +317,22 @@ async fn server_main() {
         let control = discovery_control.clone();
         let msgbus_collector = msgbus.clone();
         let running_collector = running.clone();
-        let snmpbot_url_collector = snmpbot_url.clone();
+        let snmp_collector = snmp.clone();
         let cache_collector = cache_controller.clone();
         std::thread::spawn(move || {
-            collectors::discovery::run(snmpbot_url_collector, control, msgbus_collector, cache_collector, running_collector);
+            collectors::discovery::run(snmp_collector, control, msgbus_collector, cache_collector, running_collector);
         })
+    };
+
+    let trap_receiver_thread = if enable_trap_receiver {
+        let imds_collector = imds.clone();
+        let running_collector = running.clone();
+        let bind = trap_bind_address.clone();
+        Some(std::thread::spawn(move || {
+            snmp::trap::run(bind, imds_collector, running_collector);
+        }))
+    } else {
+        None
     };
 
     let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
@@ -287,6 +345,11 @@ async fn server_main() {
     // Effective feature configuration for GET /api/v1/system.
     let system_info = models::internal::SystemInfo {
         snmpbot_url: snmpbot_url.clone(),
+        snmp_mode: snmp_mode.clone(),
+        snmp_mib_dir: resolved_mib_dir.clone(),
+        snmp_mibs_loaded: snmp_mibs_loaded,
+        trap_receiver_enabled: enable_trap_receiver,
+        trap_bind_address: if enable_trap_receiver { Some(trap_bind_address.clone()) } else { None },
         poller_enabled: enable_poller,
         poll_loop_msecs: poll_loop_msecs,
         pinger_enabled: enable_pinger,
@@ -427,5 +490,6 @@ async fn server_main() {
     if let Some(entitypoller_thread) = entitypoller_thread { let _ = entitypoller_thread.join(); }
     if let Some(vlanpoller_thread) = vlanpoller_thread { let _ = vlanpoller_thread.join(); }
     if let Some(lagpoller_thread) = lagpoller_thread { let _ = lagpoller_thread.join(); }
+    if let Some(trap_receiver_thread) = trap_receiver_thread { let _ = trap_receiver_thread.join(); }
     let _ = discovery_thread.join();
 }

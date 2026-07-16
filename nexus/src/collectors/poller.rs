@@ -2,11 +2,11 @@
 // binary). Ported near-verbatim from poller/src/{poller,main,models/json}.rs;
 // the only behavioral change is that per-device reports are written directly
 // into IMDS (`report_interfaces`) rather than PUT to /dev/interface/monitor.
-extern crate reqwest;
 extern crate serde_json;
 
 use crate::models;
 use crate::db;
+use crate::snmp::{HostSpec, SnmpSource};
 use crate::utilities::imds::IMDS;
 use crate::utilities::tools;
 use rand::prelude::*;
@@ -15,74 +15,12 @@ use std::sync::{Arc, Mutex, atomic, mpsc};
 use std::thread;
 use std::time;
 
-// --- SNMPBot response models (ported from the standalone poller crate) ---
-
-// snmpbot is Go and marshals nil slices/maps as JSON null (e.g.
-// "Entries": null when a table walk returns no rows — normal for a switch
-// without the MIB in question). Treat null as empty instead of failing the
-// whole decode.
-pub fn null_to_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
-where
-    D: serde::Deserializer<'de>,
-    T: Default + serde::Deserialize<'de>,
-{
-    use serde::Deserialize;
-    let opt = Option::<T>::deserialize(deserializer)?;
-    Ok(opt.unwrap_or_default())
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub enum SNMPBotResultEntryObjectValue {
-    Uint64(u64),
-    Float64(f64),
-    Str(String),
-    Bool(bool),
-    Empty,
-    // Anything else snmpbot may emit (e.g. per-object error structs); callers
-    // treat it as an absent value rather than failing the whole table.
-    Other(serde_json::Value),
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct SNMPBotResultEntry {
-    pub host_i_d: String,
-    #[serde(default, deserialize_with = "null_to_default")]
-    pub index: HashMap<String, i64>,
-    #[serde(default, deserialize_with = "null_to_default")]
-    pub objects: HashMap<String, SNMPBotResultEntryObjectValue>,
-}
-
-// Single-object query response (`GET /api/hosts/{host}/objects/{id}`), shared
-// by the discovery engine and the entitypoller's bridge-scalar polling.
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct SNMPBotObjectInstance {
-    #[serde(default)]
-    pub value: Option<SNMPBotResultEntryObjectValue>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct SNMPBotObjectResponse {
-    #[allow(dead_code)]
-    pub i_d: String,
-    #[serde(default, deserialize_with = "null_to_default")]
-    pub instances: Vec<SNMPBotObjectInstance>,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct SNMPBotResponse {
-    pub i_d: String,
-    #[serde(default, deserialize_with = "null_to_default")]
-    pub index_keys: Vec<String>,
-    #[serde(default, deserialize_with = "null_to_default")]
-    pub object_keys: Vec<String>,
-    #[serde(default, deserialize_with = "null_to_default")]
-    pub entries: Vec<SNMPBotResultEntry>,
-}
+// The snmpbot-shaped response models now live in crate::snmp::types; re-export
+// them here so the many `crate::collectors::poller::SNMP*` references across
+// the collectors, mock and tests keep working unchanged.
+pub use crate::snmp::types::{
+    SNMPBotObjectResponse, SNMPBotResponse, SNMPBotResultEntry, SNMPBotResultEntryObjectValue,
+};
 
 fn try_get_u64(val: Option<&SNMPBotResultEntryObjectValue>) -> Option<u64> {
     if let Some(SNMPBotResultEntryObjectValue::Uint64(val)) = val {
@@ -294,28 +232,11 @@ fn load_devices(pool: &db::Pool) -> HashMap<String, PollDevice> {
     return devices;
 }
 
-fn snmpbot_query(device_fqdn: &String, statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, url: &reqwest::Url) {
-    let response;
-    if let Ok(response_parsed) = reqwest::blocking::get(url.as_str()) {
-        response = response_parsed;
-    } else {
-        // TODO: log?
-        return;
+fn snmp_query(device_fqdn: &str, statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, snmp: &SnmpSource, host: &HostSpec, table_id: &str) {
+    match snmp.table(host, table_id) {
+        Ok(query_result) => merge_query_result(statistics, &query_result),
+        Err(what) => println!("[{}] snmp error for {} ({}), skipping this poll", device_fqdn, table_id, what),
     }
-    if !response.status().is_success() {
-        println!("[{}] snmpbot returned ({}), skipping this poll", device_fqdn, response.status());
-        return;
-    }
-    let query_result: SNMPBotResponse;
-    match response.json() {
-        Ok(resp_json_result) => { query_result = resp_json_result; },
-        Err(what) => {
-            println!("[{}] error parsing json: {}", device_fqdn, what);
-            return;
-        }
-    }
-
-    merge_query_result(statistics, &query_result);
 }
 
 fn merge_query_result(statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, query_result: &SNMPBotResponse) {
@@ -337,35 +258,18 @@ fn merge_query_result(statistics: &mut HashMap<i32, HashMap<String, SNMPBotResul
     }
 }
 
-fn poll_device(snmpbot_url: &String, device: &PollDevice) -> Option<models::json::InterfaceMonitorReport> {
-    let source_url_iftable = format!("{}/api/hosts/{}/tables/{}", snmpbot_url, device.fqdn, "IF-MIB::ifTable");
-    let source_url_ifxtable = format!("{}/api/hosts/{}/tables/{}", snmpbot_url, device.fqdn, "IF-MIB::ifXTable");
-    let snmp_community;
-    if let Some(ref parsed_snmp_community) = device.snmp_community {
-        snmp_community = parsed_snmp_community;
-    } else {
+fn poll_device(snmp: &SnmpSource, device: &PollDevice) -> Option<models::json::InterfaceMonitorReport> {
+    let snmp_community = match device.snmp_community {
+        Some(ref community) => community,
         // TODO: log?
-        return None;
-    }
-
-    let iftable_url;
-    let ifxtable_url;
-    if let Ok(mut parsed_url) = reqwest::Url::parse(&source_url_iftable) {
-        parsed_url.query_pairs_mut().append_pair("snmp", &format!("{}@{}", snmp_community, device.fqdn));
-        iftable_url = parsed_url;
-    } else {
-        return None;
-    }
-    if let Ok(mut parsed_url) = reqwest::Url::parse(&source_url_ifxtable) {
-        parsed_url.query_pairs_mut().append_pair("snmp", &format!("{}@{}", snmp_community, device.fqdn));
-        ifxtable_url = parsed_url;
-    } else {
-        return None;
-    }
+        None => return None,
+    };
+    let host = HostSpec::with_community(&device.fqdn, snmp_community);
 
     let mut stats: HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>> = HashMap::new();
-    snmpbot_query(&device.fqdn, &mut stats, &iftable_url);
-    snmpbot_query(&device.fqdn, &mut stats, &ifxtable_url);
+    // ifTable before ifXTable: first writer wins on object-key collisions.
+    snmp_query(&device.fqdn, &mut stats, snmp, &host, "IF-MIB::ifTable");
+    snmp_query(&device.fqdn, &mut stats, snmp, &host, "IF-MIB::ifXTable");
 
     let mut report = models::json::InterfaceMonitorReport { device_fqdn: device.fqdn.clone(), interfaces: Vec::new() };
     for (ifindex, object_values) in stats.iter() {
@@ -374,7 +278,7 @@ fn poll_device(snmpbot_url: &String, device: &PollDevice) -> Option<models::json
     return Some(report);
 }
 
-fn poll_worker(pool: db::Pool, snmpbot_url: String, device: PollDevice, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, done: mpsc::Sender<bool>) {
+fn poll_worker(pool: db::Pool, snmp: Arc<SnmpSource>, device: PollDevice, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, done: mpsc::Sender<bool>) {
     let no_jitter = std::env::var("JASPY_POLLER_NO_JITTER").map(|v| v == "1" || v == "true").unwrap_or(false);
     let start_sleep = if no_jitter { 0.0 } else { thread_rng().gen_range(0.0, poll_loop_msecs as f64) };
     println!("[{}] start polling thread, delay={:.2}ms", device.fqdn, start_sleep);
@@ -383,7 +287,7 @@ fn poll_worker(pool: db::Pool, snmpbot_url: String, device: PollDevice, poll_loo
         let start = tools::get_time_msecs();
 
         println!("[{}] polling", device.fqdn);
-        if let Some(poll_result) = poll_device(&snmpbot_url, &device) {
+        if let Some(poll_result) = poll_device(&snmp, &device) {
             // With the pinger disabled, a device that answers SNMP is up and
             // one that doesn't is down (empty result = snmpbot got no reply).
             let snmp_ok = !poll_result.interfaces.is_empty();
@@ -411,7 +315,7 @@ fn poll_worker(pool: db::Pool, snmpbot_url: String, device: PollDevice, poll_loo
     println!("[{}] stop polling", device.fqdn);
 }
 
-fn check_if_worker_needed(pool: &db::Pool, snmpbot_url: &String, poll_loop_msecs: u64, report_device_status: bool, imds: &Arc<Mutex<IMDS>>, devices: &HashMap<String, PollDevice>, poll_workers: &mut HashMap<String, PollThreadInfo>) {
+fn check_if_worker_needed(pool: &db::Pool, snmp: &Arc<SnmpSource>, poll_loop_msecs: u64, report_device_status: bool, imds: &Arc<Mutex<IMDS>>, devices: &HashMap<String, PollDevice>, poll_workers: &mut HashMap<String, PollThreadInfo>) {
     for (fqdn, device) in devices.iter() {
         if poll_workers.contains_key(fqdn) {
             continue;
@@ -420,14 +324,14 @@ fn check_if_worker_needed(pool: &db::Pool, snmpbot_url: &String, poll_loop_msecs
         let running_worker = worker_running.clone();
         let (tx, rx) = mpsc::channel();
         let pool_copy = pool.clone();
-        let snmpbot_url_copy = snmpbot_url.clone();
+        let snmp_copy = snmp.clone();
         let device_copy = device.clone();
         let imds_copy = imds.clone();
         poll_workers.insert(
             fqdn.clone(),
             PollThreadInfo {
                 thd: thread::spawn(move || {
-                    poll_worker(pool_copy, snmpbot_url_copy, device_copy, poll_loop_msecs, report_device_status, imds_copy, running_worker, tx);
+                    poll_worker(pool_copy, snmp_copy, device_copy, poll_loop_msecs, report_device_status, imds_copy, running_worker, tx);
                 }),
                 running: worker_running,
                 finished_signal: rx,
@@ -473,8 +377,8 @@ fn reap_finished_threads(reap_threads: &mut Vec<PollThreadInfo>) {
     }
 }
 
-pub fn run(snmpbot_url: String, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>) {
-    println!("[poller] starting in-process collector (snmpbot={}, poll_loop_msecs={})", snmpbot_url, poll_loop_msecs);
+pub fn run(snmp: Arc<SnmpSource>, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>) {
+    println!("[poller] starting in-process collector (poll_loop_msecs={})", poll_loop_msecs);
     if report_device_status {
         println!("[poller] pinger is disabled; deriving device up/down from SNMP poll replies");
     }
@@ -485,7 +389,7 @@ pub fn run(snmpbot_url: String, poll_loop_msecs: u64, report_device_status: bool
     while running.load(atomic::Ordering::Relaxed) {
         let devices = load_devices(&pool);
         let mut expired_fqdns: Vec<String> = Vec::new();
-        check_if_worker_needed(&pool, &snmpbot_url, poll_loop_msecs, report_device_status, &imds, &devices, &mut poll_workers);
+        check_if_worker_needed(&pool, &snmp, poll_loop_msecs, report_device_status, &imds, &devices, &mut poll_workers);
         check_expired_fqdn_workers(&devices, &poll_workers, &mut expired_fqdns);
         prepare_expired_fqdns_for_reap(&mut poll_workers, &expired_fqdns, &mut reap_threads);
         reap_finished_threads(&mut reap_threads);

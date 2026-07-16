@@ -4,6 +4,11 @@ use crate::utilities::tools;
 // immutable rocket state for GET /api/v1/system.
 pub struct SystemInfo {
     pub snmpbot_url: String,
+    pub snmp_mode: String, // "snmpbot" | "embedded"
+    pub snmp_mib_dir: Option<String>, // embedded mode only
+    pub snmp_mibs_loaded: Option<usize>, // embedded mode: resolved table count
+    pub trap_receiver_enabled: bool,
+    pub trap_bind_address: Option<String>,
     pub poller_enabled: bool,
     pub poll_loop_msecs: u64,
     pub pinger_enabled: bool,

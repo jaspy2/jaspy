@@ -7,10 +7,10 @@
 // following LLDP/CDP neighbor announcements via snmpbot, and ingests devices
 // and links through the same utilities::discovery functions the HTTP PUT
 // endpoints use — no localhost HTTP round-trip.
-extern crate reqwest;
 extern crate serde_json;
 
 use crate::collectors::poller::{SNMPBotResponse, SNMPBotResultEntry, SNMPBotResultEntryObjectValue};
+use crate::snmp::{HostSpec, SnmpSource};
 use crate::db;
 use crate::models;
 use crate::utilities;
@@ -59,7 +59,7 @@ impl DiscoveryControl {
 
 #[derive(Clone)]
 struct RunParams {
-    snmpbot_url: String,
+    snmp: Arc<SnmpSource>,
     root_device: String,
     community: String,
     dns_domains: Vec<String>,
@@ -76,45 +76,20 @@ struct RunParams {
 
 use crate::collectors::poller::SNMPBotObjectResponse;
 
-fn snmpbot_url_for(snmpbot_url: &str, fqdn: &str, community: &str, kind: &str, id: &str) -> Option<reqwest::Url> {
-    let source = format!("{}/api/hosts/{}/{}/{}", snmpbot_url, fqdn, kind, id);
-    if let Ok(mut parsed) = reqwest::Url::parse(&source) {
-        parsed.query_pairs_mut().append_pair("snmp", &format!("{}@{}", community, fqdn));
-        Some(parsed)
-    } else {
-        None
-    }
+fn fetch_table(snmp: &SnmpSource, fqdn: &str, community: &str, table: &str) -> Result<SNMPBotResponse, String> {
+    // Discovery addresses hosts with the query-param community form (bare fqdn
+    // in the path). Errors carry snmpbot's body, which holds the real reason
+    // (e.g. "SNMP timeout for GetNextRequest<...>").
+    let host = HostSpec::with_community(fqdn, community);
+    snmp.table(&host, table)
 }
 
-fn fetch_table(client: &reqwest::blocking::Client, snmpbot_url: &str, fqdn: &str, community: &str, table: &str) -> Result<SNMPBotResponse, String> {
-    let url = snmpbot_url_for(snmpbot_url, fqdn, community, "tables", table).ok_or("bad url")?;
-    let response = client.get(url).send().map_err(|e| format!("{}", e))?;
-    if !response.status().is_success() {
-        // Include the response body: snmpbot puts the actual reason there
-        // (e.g. "SNMP timeout for GetNextRequest<...>"), and a bare
-        // "status=500" hides it.
-        let status = response.status();
-        let body = response.text().unwrap_or_default();
-        let body = body.trim();
-        if body.is_empty() {
-            return Err(format!("status={}", status));
-        }
-        return Err(format!("status={}: {:.200}", status, body));
-    }
-    let body = response.text().map_err(|e| format!("read: {}", e))?;
-    serde_json::from_str(&body).map_err(|e| format!("json: {} (body: {:.200})", e, body))
-}
-
-fn fetch_object(client: &reqwest::blocking::Client, snmpbot_url: &str, fqdn: &str, community: &str, object: &str) -> Option<String> {
-    let url = snmpbot_url_for(snmpbot_url, fqdn, community, "objects", object)?;
-    let response = client.get(url).send().ok()?;
-    if !response.status().is_success() {
-        return None;
-    }
-    let parsed: SNMPBotObjectResponse = match response.json() {
+fn fetch_object(snmp: &SnmpSource, fqdn: &str, community: &str, object: &str) -> Option<String> {
+    let host = HostSpec::with_community(fqdn, community);
+    let parsed: SNMPBotObjectResponse = match snmp.object(&host, object) {
         Ok(p) => p,
         Err(e) => {
-            dlog!("[discovery] [{}] error decoding object {}: {}", fqdn, object, e);
+            dlog!("[discovery] [{}] error fetching object {}: {}", fqdn, object, e);
             return None;
         }
     };
@@ -279,23 +254,23 @@ impl DetectedDevice {
 
     // --- collection ---
 
-    fn collect(&mut self, client: &reqwest::blocking::Client, snmpbot_url: &str) -> Result<(), String> {
-        self.bridge_address = fetch_object(client, snmpbot_url, &self.fqdn, &self.community, "BRIDGE-MIB::dot1dBaseBridgeAddress");
-        self.sys_descr = fetch_object(client, snmpbot_url, &self.fqdn, &self.community, "SNMPv2-MIB::sysDescr");
-        self.get_ifmibs(client, snmpbot_url)?;
+    fn collect(&mut self, snmp: &SnmpSource) -> Result<(), String> {
+        self.bridge_address = fetch_object(snmp, &self.fqdn, &self.community, "BRIDGE-MIB::dot1dBaseBridgeAddress");
+        self.sys_descr = fetch_object(snmp, &self.fqdn, &self.community, "SNMPv2-MIB::sysDescr");
+        self.get_ifmibs(snmp)?;
         self.build_anything_to_interface();
-        self.get_lldp_tables(client, snmpbot_url);
-        self.get_cdp_tables(client, snmpbot_url);
-        self.get_entmib_tables(client, snmpbot_url);
+        self.get_lldp_tables(snmp);
+        self.get_cdp_tables(snmp);
+        self.get_entmib_tables(snmp);
         self.ensure_interface_sanity();
         Ok(())
     }
 
-    fn get_ifmibs(&mut self, client: &reqwest::blocking::Client, snmpbot_url: &str) -> Result<(), String> {
+    fn get_ifmibs(&mut self, snmp: &SnmpSource) -> Result<(), String> {
         // ifXTable first, then ifTable: matches the Python handler-dict order.
         // Both are critical tables — any failure invalidates the whole result.
         for table in ["IF-MIB::ifXTable", "IF-MIB::ifTable"].iter() {
-            match fetch_table(client, snmpbot_url, &self.fqdn, &self.community, table) {
+            match fetch_table(snmp, &self.fqdn, &self.community, table) {
                 Ok(response) => {
                     for entry in response.entries.iter() {
                         self.merge_ifmib_entry(entry);
@@ -375,14 +350,14 @@ impl DetectedDevice {
         self.anything_to_interface = mapping;
     }
 
-    fn get_lldp_tables(&mut self, client: &reqwest::blocking::Client, snmpbot_url: &str) {
-        self.lldp_loc_chassis_id = fetch_object(client, snmpbot_url, &self.fqdn, &self.community, "LLDP-MIB::lldpLocChassisId")
+    fn get_lldp_tables(&mut self, snmp: &SnmpSource) {
+        self.lldp_loc_chassis_id = fetch_object(snmp, &self.fqdn, &self.community, "LLDP-MIB::lldpLocChassisId")
             .map(|v| v.replace(" ", ":"));
-        match fetch_table(client, snmpbot_url, &self.fqdn, &self.community, "LLDP-MIB::lldpLocPortTable") {
+        match fetch_table(snmp, &self.fqdn, &self.community, "LLDP-MIB::lldpLocPortTable") {
             Ok(response) => self.handle_lldp_loc_port_table(&response.entries),
             Err(e) => dlog!("[discovery] [{}] table LLDP-MIB::lldpLocPortTable failed: {}", self.fqdn, e),
         }
-        match fetch_table(client, snmpbot_url, &self.fqdn, &self.community, "LLDP-MIB::lldpRemTable") {
+        match fetch_table(snmp, &self.fqdn, &self.community, "LLDP-MIB::lldpRemTable") {
             Ok(response) => self.handle_lldp_rem_table(&response.entries),
             Err(e) => dlog!("[discovery] [{}] table LLDP-MIB::lldpRemTable failed: {}", self.fqdn, e),
         }
@@ -520,8 +495,8 @@ impl DetectedDevice {
         }
     }
 
-    fn get_cdp_tables(&mut self, client: &reqwest::blocking::Client, snmpbot_url: &str) {
-        match fetch_table(client, snmpbot_url, &self.fqdn, &self.community, "CISCO-CDP-MIB::cdpCacheTable") {
+    fn get_cdp_tables(&mut self, snmp: &SnmpSource) {
+        match fetch_table(snmp, &self.fqdn, &self.community, "CISCO-CDP-MIB::cdpCacheTable") {
             Ok(response) => {
                 for entry in response.entries.iter() {
                     let local_ifindex = match entry.index.get("CISCO-CDP-MIB::cdpCacheIfIndex") {
@@ -541,8 +516,8 @@ impl DetectedDevice {
         }
     }
 
-    fn get_entmib_tables(&mut self, client: &reqwest::blocking::Client, snmpbot_url: &str) {
-        let response = match fetch_table(client, snmpbot_url, &self.fqdn, &self.community, "ENTITY-MIB::entPhysicalTable") {
+    fn get_entmib_tables(&mut self, snmp: &SnmpSource) {
+        let response = match fetch_table(snmp, &self.fqdn, &self.community, "ENTITY-MIB::entPhysicalTable") {
             Ok(r) => r,
             Err(e) => {
                 dlog!("[discovery] [{}] table ENTITY-MIB::entPhysicalTable failed: {}", self.fqdn, e);
@@ -762,15 +737,8 @@ fn record_failure(shared: &Arc<CrawlShared>, device_fqdn: &str, reason: String) 
 
 fn discover_device(shared: Arc<CrawlShared>, device_fqdn: String) {
     dlog!("[discovery] [{}] started polling device", device_fqdn);
-    let client = match reqwest::blocking::Client::builder().timeout(time::Duration::from_secs(60)).build() {
-        Ok(c) => c,
-        Err(e) => {
-            record_failure(&shared, &device_fqdn, format!("failed to build http client: {}", e));
-            return;
-        }
-    };
     let mut sds = DetectedDevice::new(&device_fqdn, &shared.params.community);
-    match sds.collect(&client, &shared.params.snmpbot_url) {
+    match sds.collect(&shared.params.snmp) {
         Ok(_) => {},
         Err(e) => {
             dlog!("[discovery] [{}] failed to discover: {}", device_fqdn, e);
@@ -1084,7 +1052,7 @@ fn perform_discovery_run(
 // Supervisor
 // ---------------------------------------------------------------------------
 
-fn next_run_params(snmpbot_url: &str, skip_dns: bool, control: &Arc<Mutex<DiscoveryControl>>) -> Option<RunParams> {
+fn next_run_params(snmp: &Arc<SnmpSource>, skip_dns: bool, control: &Arc<Mutex<DiscoveryControl>>) -> Option<RunParams> {
     let mut control = match control.lock() {
         Ok(c) => c,
         Err(_) => return None,
@@ -1130,7 +1098,7 @@ fn next_run_params(snmpbot_url: &str, skip_dns: bool, control: &Arc<Mutex<Discov
     control.status.last_error = None;
 
     Some(RunParams {
-        snmpbot_url: snmpbot_url.to_string(),
+        snmp: snmp.clone(),
         root_device: root_device,
         community: community,
         dns_domains: overrides.as_ref().and_then(|o| o.dns_domains.clone()).unwrap_or_else(|| control.config.dns_domains.clone()),
@@ -1151,9 +1119,13 @@ mod tests {
         serde_json::from_value(json!({"HostID": "test", "Index": index, "Objects": objects})).unwrap()
     }
 
+    fn test_snmp() -> Arc<SnmpSource> {
+        Arc::new(SnmpSource::SnmpbotHttp(crate::snmp::snmpbot_http::SnmpbotHttp::new("http://127.0.0.1:8286".to_string())))
+    }
+
     fn test_params() -> RunParams {
         RunParams {
-            snmpbot_url: "http://127.0.0.1:8286".to_string(),
+            snmp: Arc::new(SnmpSource::SnmpbotHttp(crate::snmp::snmpbot_http::SnmpbotHttp::new("http://127.0.0.1:8286".to_string()))),
             root_device: "root.example.com".to_string(),
             community: "public".to_string(),
             dns_domains: vec!["example.com".to_string(), "example.net".to_string()],
@@ -1209,21 +1181,6 @@ mod tests {
         assert_eq!(try_unhex_ascii("454"), None);
         assert_eq!(try_unhex_ascii(""), None);
         assert_eq!(try_unhex_ascii("zz"), None);
-    }
-
-    // --- snmpbot_url_for ---
-
-    #[test]
-    fn snmpbot_url_has_path_and_community() {
-        let url = snmpbot_url_for("http://127.0.0.1:8286", "sw1.example.com", "public", "tables", "IF-MIB::ifTable").unwrap();
-        assert_eq!(url.path(), "/api/hosts/sw1.example.com/tables/IF-MIB::ifTable");
-        let pairs: Vec<(String, String)> = url.query_pairs().map(|(k, v)| (k.to_string(), v.to_string())).collect();
-        assert_eq!(pairs, vec![("snmp".to_string(), "public@sw1.example.com".to_string())]);
-    }
-
-    #[test]
-    fn snmpbot_url_rejects_unparseable_base() {
-        assert!(snmpbot_url_for("not a url", "sw1", "public", "tables", "t").is_none());
     }
 
     // --- try_resolve (skip_dns) ---
@@ -1698,7 +1655,7 @@ mod tests {
     #[test]
     fn next_run_idle_returns_none() {
         let control = control_with(configured());
-        assert!(next_run_params("http://sb", true, &control).is_none());
+        assert!(next_run_params(&test_snmp(), true, &control).is_none());
         assert!(!control.lock().unwrap().status.running);
     }
 
@@ -1716,7 +1673,7 @@ mod tests {
                 topology_stable: Some(true),
             });
         }
-        let params = next_run_params("http://sb", true, &control).unwrap();
+        let params = next_run_params(&test_snmp(), true, &control).unwrap();
         assert_eq!(params.root_device, "other-root.example.com");
         assert_eq!(params.community, "private");
         assert_eq!(params.dns_domains, vec!["example.com".to_string()]);
@@ -1735,7 +1692,7 @@ mod tests {
     fn next_run_unconfigured_sets_last_error() {
         let control = control_with(models::json::DiscoveryConfig::default());
         control.lock().unwrap().trigger_requested = true;
-        assert!(next_run_params("http://sb", true, &control).is_none());
+        assert!(next_run_params(&test_snmp(), true, &control).is_none());
         let control = control.lock().unwrap();
         assert!(control.status.last_error.as_ref().unwrap().contains("not configured"));
         assert!(!control.status.running);
@@ -1749,7 +1706,7 @@ mod tests {
         let control = control_with(config);
 
         // Never ran: due immediately.
-        let params = next_run_params("http://sb", true, &control).unwrap();
+        let params = next_run_params(&test_snmp(), true, &control).unwrap();
         assert_eq!(params.trigger, "periodic");
 
         // Just finished: not due.
@@ -1758,11 +1715,11 @@ mod tests {
             control.status.running = false;
             control.status.last_finished = Some(utilities::tools::get_time() - 5.0);
         }
-        assert!(next_run_params("http://sb", true, &control).is_none());
+        assert!(next_run_params(&test_snmp(), true, &control).is_none());
 
         // Interval elapsed: due again.
         control.lock().unwrap().status.last_finished = Some(utilities::tools::get_time() - 61.0);
-        assert!(next_run_params("http://sb", true, &control).is_some());
+        assert!(next_run_params(&test_snmp(), true, &control).is_some());
     }
 
     #[test]
@@ -1772,25 +1729,25 @@ mod tests {
         config.interval_secs = 0; // bad config: must not busy-loop
         let control = control_with(config);
         control.lock().unwrap().status.last_finished = Some(utilities::tools::get_time() - 5.0);
-        assert!(next_run_params("http://sb", true, &control).is_none());
+        assert!(next_run_params(&test_snmp(), true, &control).is_none());
         control.lock().unwrap().status.last_finished = Some(utilities::tools::get_time() - 11.0);
-        assert!(next_run_params("http://sb", true, &control).is_some());
+        assert!(next_run_params(&test_snmp(), true, &control).is_some());
     }
 }
 
 pub fn run(
-    snmpbot_url: String,
+    snmp: Arc<SnmpSource>,
     control: Arc<Mutex<DiscoveryControl>>,
     msgbus: Arc<Mutex<MessageBus>>,
     cache_controller: Arc<Mutex<CacheController>>,
     running: Arc<atomic::AtomicBool>,
 ) {
-    dlog!("[discovery] starting in-process engine (snmpbot={})", snmpbot_url);
+    dlog!("[discovery] starting in-process engine");
     let pool = db::connect();
     let skip_dns = std::env::var("JASPY_DISCOVERY_SKIP_DNS").map(|v| v == "1" || v == "true").unwrap_or(false);
 
     while running.load(atomic::Ordering::Relaxed) {
-        if let Some(params) = next_run_params(&snmpbot_url, skip_dns, &control) {
+        if let Some(params) = next_run_params(&snmp, skip_dns, &control) {
             dlog!("[discovery] starting {} run (root={}, stable={})", params.trigger, params.root_device, params.topology_stable);
             let result = perform_discovery_run(params, &pool, &msgbus, &cache_controller);
             if let Ok(mut control) = control.lock() {

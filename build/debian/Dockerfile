@@ -17,6 +17,11 @@ COPY output/nexus/migrations ./var/lib/jaspy/nexus/migrations
 COPY output/nexus/jaspy-nexus ./usr/lib/jaspy/jaspy-nexus
 COPY output/nexus/diesel ./usr/lib/jaspy/diesel
 
+# SNMP MIB JSON files for the embedded SNMP client (JASPY_SNMP_MODE=embedded).
+# Shipped in the jaspy package so embedded mode needs no separate snmpbot
+# install; nexus defaults JASPY_SNMP_MIB_DIR to /usr/share/jaspy/mibs.
+COPY output/snmpbot/mibs ./usr/share/jaspy/mibs
+
 RUN mkdir ./usr/lib/jaspy/switchmaster
 COPY output/switchmaster/* ./usr/lib/jaspy/switchmaster/
 

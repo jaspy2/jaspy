@@ -26,6 +26,7 @@ extern crate serde_json;
 use crate::collectors::entitypoller::{fetch_table, interruptible_sleep, obj_i64, obj_str};
 use crate::collectors::poller::{SNMPBotResponse, SNMPBotResultEntryObjectValue};
 use crate::collectors::vendor::{self, Vendor};
+use crate::snmp::SnmpSource;
 use crate::db;
 use crate::utilities::stp::normalize_mac;
 use crate::utilities::tools;
@@ -340,7 +341,7 @@ pub fn port_channel_warnings(
 // ---------------------------------------------------------------------------
 
 struct LagCtx<'a> {
-    snmpbot_url: &'a String,
+    snmp: &'a SnmpSource,
     host: &'a String,
 }
 
@@ -360,15 +361,15 @@ impl<'a> vendor::Source<LagCtx<'a>> for CiscoLagSource {
     fn collect(&self, ctx: &LagCtx) -> Option<DeviceLags> {
         // pagpPortTable answers (with rows) on Cisco switches even when no
         // channel is configured, so it doubles as the applicability probe.
-        let pagp = match fetch_table(ctx.snmpbot_url, ctx.host, "CISCO-PAGP-MIB::pagpPortTable") {
+        let pagp = match fetch_table(ctx.snmp, ctx.host, "CISCO-PAGP-MIB::pagpPortTable") {
             Some(t) if !t.entries.is_empty() => t,
             _ => return None,
         };
         let (pagp_groups, pagp_modes) = decode_pagp(&pagp);
         // The dot3ad walks always run: LACP bundles appear ONLY there
         // (pagpGroupIfIndex stays 0/self for LACP members — verified live).
-        let agg = fetch_table(ctx.snmpbot_url, ctx.host, "IEEE8023-LAG-MIB::dot3adAggTable");
-        let ports = fetch_table(ctx.snmpbot_url, ctx.host, "IEEE8023-LAG-MIB::dot3adAggPortTable");
+        let agg = fetch_table(ctx.snmp, ctx.host, "IEEE8023-LAG-MIB::dot3adAggTable");
+        let ports = fetch_table(ctx.snmp, ctx.host, "IEEE8023-LAG-MIB::dot3adAggPortTable");
         Some(merge_cisco(decode_dot3ad(agg.as_ref(), ports.as_ref()), pagp_groups, &pagp_modes))
     }
 }
@@ -389,8 +390,8 @@ impl<'a> vendor::Source<LagCtx<'a>> for Dot3adLagSource {
     fn collect(&self, ctx: &LagCtx) -> Option<DeviceLags> {
         // An empty walk cannot distinguish "no aggregates" from "MIB not
         // supported", so a device without LACP trunks re-probes each cycle.
-        let ports = fetch_table(ctx.snmpbot_url, ctx.host, "IEEE8023-LAG-MIB::dot3adAggPortTable")?;
-        let agg = fetch_table(ctx.snmpbot_url, ctx.host, "IEEE8023-LAG-MIB::dot3adAggTable");
+        let ports = fetch_table(ctx.snmp, ctx.host, "IEEE8023-LAG-MIB::dot3adAggPortTable")?;
+        let agg = fetch_table(ctx.snmp, ctx.host, "IEEE8023-LAG-MIB::dot3adAggTable");
         let groups = decode_dot3ad(agg.as_ref(), Some(&ports));
         if groups.is_empty() {
             return None;
@@ -399,9 +400,9 @@ impl<'a> vendor::Source<LagCtx<'a>> for Dot3adLagSource {
     }
 }
 
-fn poll_device(snmpbot_url: &String, fqdn: &String, community: &String, hint: Vendor, sources_cache: &vendor::SourceCache) -> Option<DeviceLags> {
+fn poll_device(snmp: &SnmpSource, fqdn: &String, community: &String, hint: Vendor, sources_cache: &vendor::SourceCache) -> Option<DeviceLags> {
     let host = format!("{}@{}", community, fqdn);
-    let ctx = LagCtx { snmpbot_url: snmpbot_url, host: &host };
+    let ctx = LagCtx { snmp: snmp, host: &host };
     let sources: [&dyn vendor::Source<LagCtx, Output = DeviceLags>; 2] = [&CiscoLagSource, &Dot3adLagSource];
     vendor::collect_first(sources_cache, fqdn, hint, &sources, &ctx)
 }
@@ -439,12 +440,12 @@ fn load_devices(pool: &db::Pool) -> Vec<LagDevice> {
 const MAX_POLL_WORKERS: usize = 16;
 
 pub fn run(
-    snmpbot_url: String,
+    snmp: Arc<SnmpSource>,
     interval_msecs: u64,
     store: Arc<Mutex<LagStore>>,
     running: Arc<atomic::AtomicBool>,
 ) {
-    println!("[lagpoller] starting in-process collector (snmpbot={}, interval_msecs={})", snmpbot_url, interval_msecs);
+    println!("[lagpoller] starting in-process collector (interval_msecs={})", interval_msecs);
     let pool = db::connect();
     let no_jitter = std::env::var("JASPY_POLLER_NO_JITTER").map(|v| v == "1" || v == "true").unwrap_or(false);
     let sources_cache = Arc::new(vendor::SourceCache::new());
@@ -462,7 +463,7 @@ pub fn run(
         crate::collectors::pool::run_bounded(devices, MAX_POLL_WORKERS, jitter, |device| {
             // Only replace on success so a transient failure keeps the
             // previous data.
-            if let Some(lags) = poll_device(&snmpbot_url, &device.fqdn, &device.community, device.vendor, &sources_cache) {
+            if let Some(lags) = poll_device(&snmp, &device.fqdn, &device.community, device.vendor, &sources_cache) {
                 if let Ok(mut store) = store.lock() {
                     store.replace_device(device.fqdn, lags);
                 }

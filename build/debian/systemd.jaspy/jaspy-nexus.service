@@ -7,8 +7,9 @@ Type=simple
 User=jaspy
 Group=jaspy
 # CAP_NET_RAW is required by the in-process pinger collector (raw ICMP sockets),
-# which was formerly the standalone jaspy-pinger service.
-AmbientCapabilities=CAP_NET_RAW
+# which was formerly the standalone jaspy-pinger service. CAP_NET_BIND_SERVICE
+# lets the embedded trap receiver bind UDP/162 (harmless when unused).
+AmbientCapabilities=CAP_NET_RAW CAP_NET_BIND_SERVICE
 Environment=JASPY_DB_URL=postgresql:///jaspy
 Environment=JASPY_MQTT_SERVER=127.0.0.1
 # nexus serves the web admin UI and API on this one port (no reverse proxy
@@ -16,6 +17,14 @@ Environment=JASPY_MQTT_SERVER=127.0.0.1
 # restrict to localhost again by setting 127.0.0.1 if that is a concern.
 Environment=ROCKET_ADDRESS=0.0.0.0
 Environment=ROCKET_PORT=8000
+# SNMP access mode. Default "snmpbot" uses the external snmpbot sidecar below.
+# For the embedded in-process SNMP client instead, set JASPY_SNMP_MODE=embedded
+# (the snmpbot deb + service are then not needed) and, to replace snmptrapd,
+# enable the embedded trap receiver:
+#Environment=JASPY_SNMP_MODE=embedded
+#Environment=JASPY_SNMP_MIB_DIR=/usr/share/jaspy/mibs
+#Environment=JASPY_ENABLE_TRAP_RECEIVER=true
+#Environment=JASPY_TRAP_BIND_ADDRESS=0.0.0.0:162
 # In-process poller collector (formerly the standalone jaspy-poller service).
 Environment=JASPY_SNMPBOT_URL=http://127.0.0.1:8286/
 Environment=JASPY_POLL_LOOP_MSECS=10000

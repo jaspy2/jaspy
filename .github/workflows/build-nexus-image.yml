@@ -8,6 +8,7 @@ on:
     branches: [master, nexus-merge]
     paths:
       - "nexus/**"
+      - "snmpbot/mibs/**"
       - ".github/workflows/build-nexus-image.yml"
   workflow_dispatch:
 
@@ -25,6 +26,11 @@ jobs:
       # outside the nexus/ build context, so stage it in.
       - name: Stage weathermap into the build context
         run: cp -r weathermap nexus/weathermap
+
+      # The embedded SNMP client reads these MIB JSON files; they live at the
+      # repo root (snmpbot/mibs), outside the nexus/ build context.
+      - name: Stage SNMP MIBs into the build context
+        run: cp -r snmpbot/mibs nexus/mibs
 
       - uses: docker/setup-buildx-action@v3
 

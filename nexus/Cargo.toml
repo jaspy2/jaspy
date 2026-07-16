@@ -34,6 +34,7 @@ libc = "0.2"
 # migrations. Inert unless the binary is started as `jaspy-nexus mock`.
 diesel_migrations = "2.2"
 tempfile = "3"
+snmp2 = { version = "0.5.2", default-features = false }
 
 [dev-dependencies]
 # End-to-end test suite (tests/e2e.rs): mock snmpbot, ephemeral postgres,

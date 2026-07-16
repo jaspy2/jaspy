@@ -106,6 +106,17 @@ pub struct ApiSystemStatus {
     pub version: String,
     pub startup_time: f64,
     pub snmpbot_url: String,
+    // SNMP back end: "snmpbot" (HTTP sidecar) or "embedded" (in-process snmp2).
+    #[serde(default)]
+    pub snmp_mode: String,
+    #[serde(default)]
+    pub snmp_mib_dir: Option<String>,
+    #[serde(default)]
+    pub snmp_mibs_loaded: Option<usize>,
+    #[serde(default)]
+    pub trap_receiver_enabled: bool,
+    #[serde(default)]
+    pub trap_bind_address: Option<String>,
     pub db_url: String,
     pub db_backend: String, // "postgresql" | "sqlite"
     pub db_connected: bool,
@@ -469,6 +480,33 @@ pub struct InterfaceMonitorInterfaceReport {
 pub struct InterfaceMonitorReport {
     pub device_fqdn: String,
     pub interfaces: Vec<InterfaceMonitorInterfaceReport>,
+}
+
+impl InterfaceMonitorReport {
+    // A single-interface up/down report, as produced by a linkUp/linkDown
+    // trap. Shared by the snmptrapd `trap-handler` subcommand and the embedded
+    // trap receiver so both ingest byte-identical reports.
+    pub fn link_event(device_fqdn: &str, if_index: i32, up: bool) -> InterfaceMonitorReport {
+        InterfaceMonitorReport {
+            device_fqdn: device_fqdn.to_string(),
+            interfaces: vec![InterfaceMonitorInterfaceReport {
+                if_index,
+                in_octets: None,
+                out_octets: None,
+                in_unicast_packets: None,
+                in_multicast_packets: None,
+                in_broadcast_packets: None,
+                out_unicast_packets: None,
+                out_multicast_packets: None,
+                out_broadcast_packets: None,
+                in_errors: None,
+                out_errors: None,
+                out_discards: None,
+                up: Some(up),
+                speed: None,
+            }],
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]

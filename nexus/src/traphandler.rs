@@ -29,25 +29,7 @@ fn send_interface_event(jaspy_url: &str, ifm: models::json::InterfaceMonitorRepo
 
 fn send_link_event(jaspy_url: &str, unix_time: f64, hostname: &String, ifindex: i64, up: bool) {
     println!("{} event @ {}: {} {}", if up { "linkup" } else { "linkdown" }, unix_time, hostname, ifindex);
-    let ifm = models::json::InterfaceMonitorReport {
-        device_fqdn: hostname.clone(),
-        interfaces: vec![models::json::InterfaceMonitorInterfaceReport {
-            if_index: ifindex as i32,
-            in_octets: None,
-            out_octets: None,
-            in_unicast_packets: None,
-            in_multicast_packets: None,
-            in_broadcast_packets: None,
-            out_unicast_packets: None,
-            out_multicast_packets: None,
-            out_broadcast_packets: None,
-            in_errors: None,
-            out_errors: None,
-            out_discards: None,
-            up: Some(up),
-            speed: None,
-        }],
-    };
+    let ifm = models::json::InterfaceMonitorReport::link_event(hostname, ifindex as i32, up);
     send_interface_event(jaspy_url, ifm);
 }
 

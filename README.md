@@ -226,6 +226,37 @@ The handler reports over the local nexus API (`PUT /dev/interface/monitor`),
 which updates the live interface state immediately and publishes an
 `interfaceUpDown` MQTT event on state changes.
 
+## SNMP modes: external snmpbot vs. embedded client
+
+nexus talks to devices over SNMP in one of two modes, selected by
+`JASPY_SNMP_MODE` (default `snmpbot`):
+
+* `snmpbot` (default): the external [qmsk/snmpbot](https://github.com/qmsk/snmpbot)
+  HTTP sidecar does the SNMP I/O. This is the historical setup and needs the
+  separate `snmpbot` deb + service (`JASPY_SNMPBOT_URL`, default
+  `http://127.0.0.1:8286/`).
+* `embedded`: nexus polls devices itself with an in-process SNMP v2c client and
+  a built-in SNMP trap receiver — no snmpbot and no snmptrapd. It reads the same
+  MIB JSON files snmpbot uses (shipped in the jaspy package at
+  `/usr/share/jaspy/mibs`), so the request set and value encodings are identical.
+
+To switch an installation to embedded mode, set on `jaspy-nexus`:
+
+```
+JASPY_SNMP_MODE=embedded
+JASPY_SNMP_MIB_DIR=/usr/share/jaspy/mibs   # default; override if relocated
+JASPY_ENABLE_TRAP_RECEIVER=true            # replaces snmptrapd (see above)
+JASPY_TRAP_BIND_ADDRESS=0.0.0.0:162        # needs CAP_NET_BIND_SERVICE
+```
+
+then stop and disable `snmpbot` (and `snmptrapd` if the embedded trap receiver
+is enabled). Binding UDP/162 requires `CAP_NET_BIND_SERVICE`, already granted in
+the shipped `jaspy-nexus.service`; container deployments must publish UDP/162
+and add the capability. Tuning knobs (all optional): `JASPY_SNMP_TIMEOUT_MS`
+(default 2000), `JASPY_SNMP_RETRIES` (2), `JASPY_SNMP_BULK_MAX_REPETITIONS`
+(20). Only SNMP v2c (community strings) is supported, matching snmpbot; the
+active mode and loaded MIB count are reported by `GET /api/v1/system`.
+
 ## Weathermap
 
 Weathermap is a JavaScript tool to show a graphical representation of the network topology in browser. It requires access to Prometheus and jaspy-api.

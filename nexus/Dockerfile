@@ -60,9 +60,17 @@ COPY --from=builder /usr/src/nexus/target/release/jaspy-nexus /usr/local/bin/jas
 # Local runtime-image builds need the same: cp -r ../weathermap ./weathermap
 COPY weathermap /usr/share/jaspy/weathermap
 
+# The SNMP MIB JSON files (used by the embedded SNMP client when
+# JASPY_SNMP_MODE=embedded) live at the repo root under snmpbot/mibs, outside
+# this build context; CI stages them to nexus/mibs. Local runtime-image builds
+# need the same: cp -r ../snmpbot/mibs ./mibs
+COPY mibs /usr/share/jaspy/mibs
+
 ENV ROCKET_ADDRESS=0.0.0.0 ROCKET_PORT=8000 \
     JASPY_WEATHERMAP_DIR=/usr/share/jaspy/weathermap
 EXPOSE 8000
+# SNMP traps (JASPY_ENABLE_TRAP_RECEIVER=true) arrive on UDP/162; publish it
+# (docker run -p 162:162/udp) and grant CAP_NET_BIND_SERVICE for the low port.
 
 # The in-process pinger needs raw ICMP sockets: run with CAP_NET_RAW
 # (docker run --cap-add=NET_RAW / k8s securityContext capabilities.add).
