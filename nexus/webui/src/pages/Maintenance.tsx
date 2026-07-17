@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatTimestamp, formatUptime } from '../api/client';
 
@@ -12,7 +12,29 @@ export default function Maintenance() {
   const queryClient = useQueryClient();
   const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary, refetchInterval: 10000 });
   const system = useQuery({ queryKey: ['system'], queryFn: api.system, refetchInterval: 10000 });
+  const perf = useQuery({ queryKey: ['systemPerf'], queryFn: api.systemPerf, refetchInterval: 3000 });
   const event = useQuery({ queryKey: ['event'], queryFn: api.event });
+
+  // perfstats counters are lifetime totals; diff successive polls into live
+  // per-second rates for the two headline throughput numbers.
+  const prevPerf = useRef<{ polls: number; queries: number; t: number } | null>(null);
+  const [rates, setRates] = useState<{ pollsPerSec: number; queriesPerSec: number } | null>(null);
+  useEffect(() => {
+    const p = perf.data;
+    if (!p) return;
+    const now = Date.now();
+    const prev = prevPerf.current;
+    if (prev) {
+      const dt = (now - prev.t) / 1000;
+      if (dt > 0.5) {
+        setRates({
+          pollsPerSec: Math.max(0, (p.devicePolls - prev.polls) / dt),
+          queriesPerSec: Math.max(0, (p.snmpQueries - prev.queries) / dt),
+        });
+      }
+    }
+    prevPerf.current = { polls: p.devicePolls, queries: p.snmpQueries, t: now };
+  }, [perf.data]);
 
   const [eventName, setEventName] = useState<string | null>(null);
   useEffect(() => {
@@ -40,6 +62,7 @@ export default function Maintenance() {
 
   const s = summary.data;
   const sys = system.data;
+  const p = perf.data;
 
   return (
     <>
@@ -107,6 +130,51 @@ export default function Maintenance() {
             <span className="wrap">
               {sys.weathermapDir ?? <span className="muted">directory not found — not served</span>}
             </span>
+          </div>
+        ) : (
+          <p>Loading…</p>
+        )}
+      </div>
+
+      <h2>Performance</h2>
+      <div className="panel">
+        {p ? (
+          <div className="kv">
+            <span>Device polls</span>
+            <span>
+              {rates ? `${rates.pollsPerSec.toFixed(1)}/s` : '…'}{' '}
+              <span className="muted">({p.devicePolls.toLocaleString()} total)</span>
+              {p.pollOverruns > 0 && (
+                <>{' '}<span className="badge badge-warn">{p.pollOverruns.toLocaleString()} overruns</span></>
+              )}
+            </span>
+            <span>SNMP queries</span>
+            <span>
+              {rates ? `${rates.queriesPerSec.toFixed(0)}/s` : '…'}{' '}
+              {p.snmpErrors > 0
+                ? <span className="badge badge-bad">{p.snmpErrorPct.toFixed(1)}% errors</span>
+                : <span className="badge badge-ok">no errors</span>}
+            </span>
+            <span>SNMP latency</span>
+            <span>mean {p.snmpMeanMs.toFixed(1)} ms · max {p.snmpMaxMs.toFixed(0)} ms</span>
+            <span>Poll iteration</span>
+            <span>mean {p.pollIterMeanMs.toFixed(1)} ms · max {p.pollIterMaxMs.toFixed(0)} ms</span>
+            <span>SNMP in-flight</span>
+            <span>{p.snmpInflight} now · {p.snmpInflightMax} peak</span>
+            <span>IMDS lock wait</span>
+            <span>mean {p.imdsLockWaitMeanMs.toFixed(2)} ms · max {p.imdsLockWaitMaxMs.toFixed(0)} ms</span>
+            <span>IMDS report hold</span>
+            <span>mean {p.imdsReportMeanMs.toFixed(2)} ms</span>
+            <span>Metrics build</span>
+            <span>max {p.metricsBuildMaxMs.toFixed(1)} ms · {p.metricsScrapes.toLocaleString()} scrapes</span>
+            <span>Interfaces reported</span>
+            <span>{p.interfacesReported.toLocaleString()}</span>
+            {sys?.snmpMode === 'embedded' && (
+              <>
+                <span>SNMP socket opens</span>
+                <span>{p.snmpSessionOpens.toLocaleString()}</span>
+              </>
+            )}
           </div>
         ) : (
           <p>Loading…</p>

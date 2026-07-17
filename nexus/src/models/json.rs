@@ -98,6 +98,32 @@ pub struct DiscoveryRunRequest {
 
 // --- /api/v1 DTOs (web admin UI) ---
 
+// GET /api/v1/system/perf: core hot-path performance counters (from
+// utilities::perfstats) for the Maintenance page. Counters are lifetime totals;
+// the UI diffs successive polls for live rates. Times are pre-divided to ms.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiPerfStats {
+    pub device_polls: u64,
+    pub poll_overruns: u64,
+    pub poll_iter_mean_ms: f64,
+    pub poll_iter_max_ms: f64,
+    pub snmp_queries: u64,
+    pub snmp_errors: u64,
+    pub snmp_error_pct: f64,
+    pub snmp_mean_ms: f64,
+    pub snmp_max_ms: f64,
+    pub snmp_session_opens: u64,
+    pub snmp_inflight: u64,
+    pub snmp_inflight_max: u64,
+    pub imds_lock_wait_mean_ms: f64,
+    pub imds_lock_wait_max_ms: f64,
+    pub imds_report_mean_ms: f64,
+    pub interfaces_reported: u64,
+    pub metrics_scrapes: u64,
+    pub metrics_build_max_ms: f64,
+}
+
 // GET /api/v1/system: which features are enabled and how the process is
 // wired, so an admin can see how the system is operating from the UI.
 #[derive(Serialize, Deserialize)]

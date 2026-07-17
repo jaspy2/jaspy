@@ -10,6 +10,7 @@ import type {
   ResetResult,
   StpTree,
   StpVlanSummary,
+  PerfStats,
   Summary,
   SystemStatus,
   VlanSummary,
@@ -38,6 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   summary: () => request<Summary>('/api/v1/summary'),
   system: () => request<SystemStatus>('/api/v1/system'),
+  systemPerf: () => request<PerfStats>('/api/v1/system/perf'),
   devices: () => request<Device[]>('/api/v1/devices'),
   device: (fqdn: string) => request<DeviceDetail>(`/api/v1/devices/${encodeURIComponent(fqdn)}`),
   deviceEntity: (fqdn: string) =>

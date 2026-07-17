@@ -762,6 +762,36 @@ pub fn system_status(
     })
 }
 
+// GET /api/v1/system/perf: core hot-path performance counters for the
+// Maintenance page. Reads the lock-free perfstats atomics and derives per-op
+// means; the UI polls this and diffs successive samples for live rates.
+#[get("/system/perf")]
+pub fn system_perf() -> Json<models::json::ApiPerfStats> {
+    let s = utilities::perfstats::PERF.snapshot();
+    let mean_ms = |nanos: u64, count: u64| if count > 0 { nanos as f64 / count as f64 / 1e6 } else { 0.0 };
+    let max_ms = |nanos: u64| nanos as f64 / 1e6;
+    Json(models::json::ApiPerfStats {
+        device_polls: s.device_polls,
+        poll_overruns: s.poll_overruns,
+        poll_iter_mean_ms: mean_ms(s.poll_iter_nanos, s.device_polls),
+        poll_iter_max_ms: max_ms(s.poll_iter_max_nanos),
+        snmp_queries: s.snmp_queries,
+        snmp_errors: s.snmp_query_errors,
+        snmp_error_pct: if s.snmp_queries > 0 { 100.0 * s.snmp_query_errors as f64 / s.snmp_queries as f64 } else { 0.0 },
+        snmp_mean_ms: mean_ms(s.snmp_query_nanos, s.snmp_queries),
+        snmp_max_ms: max_ms(s.snmp_query_max_nanos),
+        snmp_session_opens: s.snmp_session_opens,
+        snmp_inflight: s.snmp_inflight,
+        snmp_inflight_max: s.snmp_inflight_max,
+        imds_lock_wait_mean_ms: mean_ms(s.imds_lock_wait_nanos, s.device_polls),
+        imds_lock_wait_max_ms: max_ms(s.imds_lock_wait_max_nanos),
+        imds_report_mean_ms: mean_ms(s.imds_report_nanos, s.device_polls),
+        interfaces_reported: s.interfaces_reported,
+        metrics_scrapes: s.metrics_scrapes,
+        metrics_build_max_ms: max_ms(s.metrics_build_max_nanos),
+    })
+}
+
 // Live update stream over WebSocket. The generic transport for pushing updates
 // from the backend to the client: the server replays the topic's backlog on
 // connect, then streams frames as they are published to utilities::livelog.

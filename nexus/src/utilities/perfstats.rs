@@ -151,6 +151,31 @@ impl PerfStats {
         Self::max(&self.metrics_build_max_nanos, ns);
     }
 
+    // Owned snapshot of the raw counters for the JSON API (/api/v1/system/perf).
+    pub fn snapshot(&self) -> PerfSnapshot {
+        let g = |c: &AtomicU64| c.load(Ordering::Relaxed);
+        PerfSnapshot {
+            device_polls: g(&self.device_polls),
+            poll_overruns: g(&self.poll_overruns),
+            poll_iter_nanos: g(&self.poll_iter_nanos),
+            poll_iter_max_nanos: g(&self.poll_iter_max_nanos),
+            snmp_queries: g(&self.snmp_queries),
+            snmp_query_errors: g(&self.snmp_query_errors),
+            snmp_query_nanos: g(&self.snmp_query_nanos),
+            snmp_query_max_nanos: g(&self.snmp_query_max_nanos),
+            snmp_session_opens: g(&self.snmp_session_opens),
+            snmp_inflight: g(&self.snmp_inflight),
+            snmp_inflight_max: g(&self.snmp_inflight_max),
+            imds_lock_wait_nanos: g(&self.imds_lock_wait_nanos),
+            imds_lock_wait_max_nanos: g(&self.imds_lock_wait_max_nanos),
+            imds_report_nanos: g(&self.imds_report_nanos),
+            interfaces_reported: g(&self.interfaces_reported),
+            metrics_scrapes: g(&self.metrics_scrapes),
+            metrics_build_nanos: g(&self.metrics_build_nanos),
+            metrics_build_max_nanos: g(&self.metrics_build_max_nanos),
+        }
+    }
+
     // Prometheus exposition text. Counters are monotonic; the scraper diffs two
     // snapshots to get rates and per-op means.
     pub fn render(&self) -> String {
@@ -182,6 +207,30 @@ impl PerfStats {
         line("jaspy_perf_metrics_build_max_nanos", "Slowest single metrics build (ns)", "gauge", g(&self.metrics_build_max_nanos), &mut s);
         s
     }
+}
+
+// Raw counter values at one instant (see PerfStats::snapshot). The route layer
+// derives means/rates from these for the JSON API.
+#[derive(Clone, Copy)]
+pub struct PerfSnapshot {
+    pub device_polls: u64,
+    pub poll_overruns: u64,
+    pub poll_iter_nanos: u64,
+    pub poll_iter_max_nanos: u64,
+    pub snmp_queries: u64,
+    pub snmp_query_errors: u64,
+    pub snmp_query_nanos: u64,
+    pub snmp_query_max_nanos: u64,
+    pub snmp_session_opens: u64,
+    pub snmp_inflight: u64,
+    pub snmp_inflight_max: u64,
+    pub imds_lock_wait_nanos: u64,
+    pub imds_lock_wait_max_nanos: u64,
+    pub imds_report_nanos: u64,
+    pub interfaces_reported: u64,
+    pub metrics_scrapes: u64,
+    pub metrics_build_nanos: u64,
+    pub metrics_build_max_nanos: u64,
 }
 
 // Process-global instance. `Instant` is a monotonic clock and is fine to use

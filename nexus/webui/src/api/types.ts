@@ -38,10 +38,32 @@ export interface DiscoveryConfig {
 }
 
 // GET /api/v1/system — effective feature configuration + connection state.
+export interface PerfStats {
+  devicePolls: number;
+  pollOverruns: number;
+  pollIterMeanMs: number;
+  pollIterMaxMs: number;
+  snmpQueries: number;
+  snmpErrors: number;
+  snmpErrorPct: number;
+  snmpMeanMs: number;
+  snmpMaxMs: number;
+  snmpSessionOpens: number;
+  snmpInflight: number;
+  snmpInflightMax: number;
+  imdsLockWaitMeanMs: number;
+  imdsLockWaitMaxMs: number;
+  imdsReportMeanMs: number;
+  interfacesReported: number;
+  metricsScrapes: number;
+  metricsBuildMaxMs: number;
+}
+
 export interface SystemStatus {
   version: string;
   startupTime: number;
   snmpbotUrl: string;
+  snmpMode: 'snmpbot' | 'embedded';
   dbUrl: string;
   dbBackend: string; // "postgresql" | "sqlite"
   dbConnected: boolean;
