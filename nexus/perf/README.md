@@ -49,10 +49,34 @@ sudo ./setup-loopback-macos.sh down 250 # teardown when done
 --duration S          measurement window (default 60)
 --warmup S            settle time before measuring (default 25)
 --prometheus-interval S   heavy /dev/metrics scrape period (default 15; 0 = off)
+--snmp-delay-ms MS    simulated per-round-trip network RTT at the fleet (default 0 = loopback)
+--snmp-jitter-ms MS   uniform [0,J] jitter added to each simulated RTT
+--snmp-timeout-ms MS  nexus per-request SNMP timeout (default 2000; must exceed the RTT)
 --keep-collectors     leave entity/vlan/lag pollers on (default: isolate the interface poller)
 --no-build            skip cargo build (use existing release binaries)
+--nexus-bin PATH      run a specific jaspy-nexus binary (to A/B an older build)
 --workdir DIR         keep db + logs here (default: a temp dir)
 ```
+
+### Modelling real network latency
+
+Loopback RTT is sub-millisecond, which hides the cost of SNMP round-trips. The
+simulator can hold each response to model a real network:
+
+```sh
+# 250 x 128 interfaces, 10 ms RTT +/- 5 ms jitter
+python3 run.py --interfaces 128 --snmp-delay-ms 10 --snmp-jitter-ms 5 --snmp-timeout-ms 3000
+```
+
+`--snmp-delay-ms` is added to **every round-trip**, so reported SNMP latency
+becomes `~rounds_per_table x RTT`. This is what makes the per-column-walk cost
+(and the #3 lockstep fix) visible: a walk that needs `columns x rounds`
+round-trips scales with the delay, while the lockstep walk needs only `rounds`.
+Keep the delay below `--snmp-timeout-ms` or every GETBULK times out.
+
+To A/B a fix against an older build at the same RTT, build the old binary in a
+git worktree and point `--nexus-bin` at it (the simulator is unchanged between
+runs, so it's a fair comparison).
 
 ## Reading the report
 

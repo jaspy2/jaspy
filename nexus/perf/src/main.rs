@@ -18,7 +18,7 @@
 use std::collections::BTreeMap;
 use std::net::UdpSocket;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 // ---- IF-MIB layout ---------------------------------------------------------
 
@@ -315,7 +315,28 @@ fn handle_request(mib: &Mib, start: Instant, datagram: &[u8]) -> Option<Vec<u8>>
     Some(build_response(&community, req_id, &varbinds))
 }
 
-fn serve_switch(ip: String, port: u16, mib: Arc<Mib>, start: Instant) {
+// Cheap non-cryptographic PRNG for per-response jitter (avoids a rand dep). Each
+// switch thread seeds its own so the fleet's jitter is uncorrelated.
+fn xorshift64(state: &mut u64) -> u64 {
+    let mut x = *state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    *state = x;
+    x
+}
+
+// Milliseconds to hold a response before sending, modelling network RTT:
+// `base` plus a uniform sample in [0, jitter].
+fn jittered_delay(base: u64, jitter: u64, rng: &mut u64) -> u64 {
+    if jitter == 0 {
+        base
+    } else {
+        base + xorshift64(rng) % (jitter + 1)
+    }
+}
+
+fn serve_switch(ip: String, port: u16, mib: Arc<Mib>, start: Instant, delay_ms: u64, jitter_ms: u64, seed: u64) {
     let addr = format!("{}:{}", ip, port);
     let socket = match UdpSocket::bind(&addr) {
         Ok(s) => s,
@@ -324,11 +345,23 @@ fn serve_switch(ip: String, port: u16, mib: Arc<Mib>, start: Instant) {
             return;
         }
     };
+    // Non-zero seed for the jitter PRNG (xorshift requires it).
+    let mut rng = seed | 1;
     let mut buf = [0u8; 65535];
     loop {
         match socket.recv_from(&mut buf) {
             Ok((n, peer)) => {
                 if let Some(response) = handle_request(&mib, start, &buf[..n]) {
+                    // Delay the response to model network RTT. The client's SNMP
+                    // session is synchronous per device, so this adds `delay` to
+                    // every round-trip — which is exactly what makes the #3
+                    // round-trip-count reduction visible in SNMP latency. One
+                    // thread per switch means one device's delay never blocks
+                    // another's.
+                    let hold = jittered_delay(delay_ms, jitter_ms, &mut rng);
+                    if hold > 0 {
+                        std::thread::sleep(Duration::from_millis(hold));
+                    }
                     let _ = socket.send_to(&response, peer);
                 }
             }
@@ -350,21 +383,26 @@ fn main() {
     //   SNMPSIM_INTERFACES interfaces per switch (default 16 -> 4000 total)
     //   SNMPSIM_PORT       UDP port (default 16100)
     //   SNMPSIM_BASE_OCTET first loopback last-octet (default 2 -> 127.0.0.2..)
+    //   SNMPSIM_DELAY_MS   per-response hold modelling network RTT (default 0)
+    //   SNMPSIM_JITTER_MS  extra uniform [0,J] added to each delay (default 0)
     let switches = env_u32("SNMPSIM_SWITCHES", 250);
     let interfaces = env_u32("SNMPSIM_INTERFACES", 16);
     let port = env_u32("SNMPSIM_PORT", 16100) as u16;
     let base_octet = env_u32("SNMPSIM_BASE_OCTET", 2);
+    let delay_ms = env_u32("SNMPSIM_DELAY_MS", 0) as u64;
+    let jitter_ms = env_u32("SNMPSIM_JITTER_MS", 0) as u64;
 
     let mib = Arc::new(Mib::build(interfaces));
     let start = Instant::now();
     println!(
-        "[snmpsim] {} switches x {} interfaces ({} total), port {}, ips 127.0.0.{}..{}",
+        "[snmpsim] {} switches x {} interfaces ({} total), port {}, ips 127.0.0.{}.., rtt {}ms +[0,{}]ms",
         switches,
         interfaces,
         switches * interfaces,
         port,
         base_octet,
-        base_octet + switches - 1
+        delay_ms,
+        jitter_ms,
     );
 
     let mut handles = Vec::new();
@@ -374,7 +412,8 @@ fn main() {
         // the third octet once the last octet passes 255.
         let ip = format!("127.0.{}.{}", last / 256, last % 256);
         let mib = mib.clone();
-        let handle = std::thread::spawn(move || serve_switch(ip, port, mib, start));
+        let seed = (n as u64).wrapping_add(1);
+        let handle = std::thread::spawn(move || serve_switch(ip, port, mib, start, delay_ms, jitter_ms, seed));
         handles.push(handle);
     }
     for h in handles {
@@ -469,6 +508,21 @@ mod tests {
         // 0,1; reps 2,3 (positions 5,7) are padded.
         assert!(matches!(out[5].1, Value::EndOfMibView));
         assert!(matches!(out[7].1, Value::EndOfMibView));
+    }
+
+    #[test]
+    fn jittered_delay_stays_within_bounds() {
+        let mut rng = 12345u64;
+        // No jitter -> exactly base.
+        assert_eq!(jittered_delay(5, 0, &mut rng), 5);
+        // With jitter -> base..=base+jitter, and it actually varies.
+        let mut seen = std::collections::HashSet::new();
+        for _ in 0..1000 {
+            let d = jittered_delay(10, 4, &mut rng);
+            assert!((10..=14).contains(&d), "delay {} out of bounds", d);
+            seen.insert(d);
+        }
+        assert!(seen.len() > 1, "jitter should produce a range of values");
     }
 
     #[test]

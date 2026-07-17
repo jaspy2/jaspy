@@ -149,12 +149,19 @@ def main():
                     help="heavy /dev/metrics scrape period (s); 0 to disable")
     ap.add_argument("--snmp-port", type=int, default=16100)
     ap.add_argument("--base-octet", type=int, default=2)
+    ap.add_argument("--snmp-delay-ms", type=int, default=0,
+                    help="simulated per-round-trip network RTT at the fleet (default 0 = loopback)")
+    ap.add_argument("--snmp-jitter-ms", type=int, default=0,
+                    help="uniform [0,J] jitter added to each simulated RTT")
     ap.add_argument("--rocket-port", type=int, default=8710)
     ap.add_argument("--community", default="public")
     ap.add_argument("--mib-dir", default=str(DEFAULT_MIB_DIR))
     ap.add_argument("--snmp-timeout-ms", type=int, default=2000)
     ap.add_argument("--snmp-retries", type=int, default=1)
     ap.add_argument("--no-build", action="store_true")
+    ap.add_argument("--nexus-bin", default="",
+                    help="path to a jaspy-nexus binary to run (default: this tree's release build); "
+                         "use to A/B an older build against the same fleet")
     ap.add_argument("--keep-collectors", action="store_true",
                     help="leave entity/vlan/lag pollers enabled (default: isolate the interface poller)")
     ap.add_argument("--workdir", default="", help="dir for db + logs (default: a temp dir)")
@@ -164,7 +171,7 @@ def main():
         build_binaries()
 
     snmpsim_bin = PERF_DIR / "target" / "release" / "snmpsim"
-    nexus_bin = NEXUS_DIR / "target" / "release" / "jaspy-nexus"
+    nexus_bin = Path(args.nexus_bin) if args.nexus_bin else NEXUS_DIR / "target" / "release" / "jaspy-nexus"
     for b in (snmpsim_bin, nexus_bin):
         if not b.exists():
             log(f"missing binary {b}; run without --no-build")
@@ -180,7 +187,11 @@ def main():
     log(f"workdir {workdir}")
 
     total_ifaces = args.switches * args.interfaces
-    log(f"target: {args.switches} switches x {args.interfaces} ifaces = {total_ifaces} interfaces @ {args.poll_msecs}ms")
+    rtt = f", RTT {args.snmp_delay_ms}ms+[0,{args.snmp_jitter_ms}]" if args.snmp_delay_ms or args.snmp_jitter_ms else ""
+    log(f"target: {args.switches} switches x {args.interfaces} ifaces = {total_ifaces} interfaces @ {args.poll_msecs}ms{rtt}")
+    if args.snmp_delay_ms + args.snmp_jitter_ms >= args.snmp_timeout_ms:
+        log(f"WARNING: simulated RTT ({args.snmp_delay_ms}+{args.snmp_jitter_ms}ms) >= snmp-timeout-ms "
+            f"({args.snmp_timeout_ms}); each GETBULK will time out. Raise --snmp-timeout-ms.")
 
     # --- SNMP fleet simulator ---
     sim_env = dict(os.environ)
@@ -189,6 +200,8 @@ def main():
         SNMPSIM_INTERFACES=str(args.interfaces),
         SNMPSIM_PORT=str(args.snmp_port),
         SNMPSIM_BASE_OCTET=str(args.base_octet),
+        SNMPSIM_DELAY_MS=str(args.snmp_delay_ms),
+        SNMPSIM_JITTER_MS=str(args.snmp_jitter_ms),
     )
     sim = Proc("snmpsim", [str(snmpsim_bin)], sim_env, workdir / "snmpsim.log")
     time.sleep(1.0)
