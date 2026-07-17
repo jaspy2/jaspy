@@ -264,9 +264,14 @@ impl IMDS {
                 return;
             }
         }
+        // Snapshot the device's interfaces ONCE per report, not once per
+        // interface. This is only read to annotate link-flap events with LAG
+        // peer statuses (below); cloning it inside the loop made report cost
+        // O(interfaces^2) under the global IMDS lock (PERF.md #1). One clone per
+        // device keeps report_interfaces O(interfaces).
+        let interfaces_snapshot = device.interfaces.clone();
         for interface_report in imr.interfaces.iter() {
             let interface;
-            let mut interfaces_shadow = device.interfaces.clone();
             match device.interfaces.get_mut(&interface_report.if_index) {
                 Some(target_interface) => { interface = target_interface; },
                 None => {
@@ -334,23 +339,20 @@ impl IMDS {
                                 }
                             }
                             for link_interface in link_interfaces.iter() {
-                                if let Some(link_interface_data) = interfaces_shadow.get_mut(&link_interface.index) {
-                                    if link_interface.index == interface_report.if_index {
-                                        link_interface_data.up = interface_report.up;
-                                    }
-                                    let status : String;
-                                    match link_interface_data.up {
-                                        Some(value) => {
-                                            if value {
-                                                status = "up".to_string();
-                                            } else {
-                                                status = "down".to_string();
-                                            }
-                                        },
-                                        None => {
-                                            status = "unknown".to_string();
-                                        }
-                                    }
+                                if let Some(link_interface_data) = interfaces_snapshot.get(&link_interface.index) {
+                                    // The interface that just flapped reports its
+                                    // fresh state; its LAG peers keep their
+                                    // last-known state from the snapshot.
+                                    let up = if link_interface.index == interface_report.if_index {
+                                        interface_report.up
+                                    } else {
+                                        link_interface_data.up
+                                    };
+                                    let status = match up {
+                                        Some(true) => "up".to_string(),
+                                        Some(false) => "down".to_string(),
+                                        None => "unknown".to_string(),
+                                    };
                                     link_statuses.insert(link_interface_data.name.clone(), status);
                                 }
                             }
@@ -408,7 +410,24 @@ impl IMDS {
         }
     }
 
+    // Convenience wrapper used by the unit tests. Non-test callers (the metrics
+    // route) go through metrics_snapshot + metrics_from so the build runs
+    // outside the lock (PERF.md #2).
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn get_metrics(self: &IMDS) -> Vec<models::metrics::LabeledMetric> {
+        IMDS::metrics_from(&self.metrics_storage)
+    }
+
+    // Cheap owned snapshot of the metric store. Taken under the IMDS lock so the
+    // expensive LabeledMetric build (metrics_from) can run OUTSIDE the lock and
+    // stop blocking every poller for the duration of a scrape (PERF.md #2).
+    pub fn metrics_snapshot(self: &IMDS) -> models::metrics::Metrics {
+        self.metrics_storage.clone()
+    }
+
+    // Build the Prometheus metric list from a (snapshotted) store. Pure — holds
+    // no lock — so it is safe to call after releasing the IMDS mutex.
+    pub fn metrics_from(storage: &models::metrics::Metrics) -> Vec<models::metrics::LabeledMetric> {
         let jaspy_interface_octets = "jaspy_interface_octets".to_string();
         let jaspy_interface_unicast_packets = "jaspy_interface_unicast_packets".to_string();
         let jaspy_interface_multicast_packets = "jaspy_interface_multicast_packets".to_string();
@@ -418,7 +437,7 @@ impl IMDS {
         let jaspy_interface_discards = "jaspy_interface_discards".to_string();
 
         let mut metric_values: Vec<models::metrics::LabeledMetric> = Vec::new();
-        for (_device_key, device_metrics) in self.metrics_storage.devices.iter() {
+        for (_device_key, device_metrics) in storage.devices.iter() {
             for (_interface_key, interface_metrics) in device_metrics.interfaces.iter() {
                 let reported_speed = match interface_metrics.speed_override {
                     Some(speed_override) => Some(speed_override),

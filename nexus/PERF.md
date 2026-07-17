@@ -26,7 +26,7 @@ infrastructure that decide scalability:
 
 ## Findings (severity-ranked)
 
-### 1. 🔴 O(N²) clone in the hot path, under the global lock
+### 1. 🔴 O(N²) clone in the hot path, under the global lock  — ✅ FIXED (see results below)
 `utilities/imds.rs` — in `report_interfaces`, `let mut interfaces_shadow =
 device.interfaces.clone();` runs **once per interface** in the report loop, so a
 device with N interfaces clones its whole interface map N times per poll. The
@@ -37,7 +37,7 @@ while holding the single `Mutex<IMDS>`.
 - **Fix:** hoist the clone out of the loop; build the shadow only inside the
   `if old_state != new_state` branch. Near-zero risk, highest value.
 
-### 2. 🔴 One global `Mutex<IMDS>` serializes all pollers + the scrape
+### 2. 🔴 One global `Mutex<IMDS>` serializes all pollers + the scrape  — ✅ FIXED (see results below)
 `poller.rs` holds the lock for the whole `report_interfaces` call; `/dev/metrics`
 (`routes/dev/metrics.rs`) holds the *same* lock while `get_metrics` builds the
 entire `Vec<LabeledMetric>` (~4,000 interfaces × ~7 metrics, two `labels.clone()`
@@ -130,3 +130,28 @@ What each row demonstrates:
 Reproduce: `python3 perf/run.py` (baseline);
 `--interfaces 16 --poll-msecs 1500 --prometheus-interval 1` (A);
 `--interfaces 128 --prometheus-interval 3` (B).
+
+## Results after fixing #1 and #2
+
+- **#1** — `report_interfaces` now clones the device interface map once per
+  report instead of once per interface (O(interfaces) instead of
+  O(interfaces²)); the LAG-peer statuses for link-flap events are read from that
+  single immutable snapshot.
+- **#2** — `/dev/metrics` now takes only a cheap owned snapshot
+  (`IMDS::metrics_snapshot`) under the global lock and builds the
+  `LabeledMetric` list (`IMDS::metrics_from`) *outside* it, so a scrape no longer
+  blocks every poller for its full duration.
+
+Same configs, same machine, before → after:
+
+| Signal | Stress A (250×16 @1.5s, 1 Hz scrape) | Stress B (250×128 = 32k ifaces) |
+|---|---|---|
+| mean IMDS lock wait | 0.30 → **0.00 ms** | 0.01 → 0.01 ms |
+| max IMDS lock wait  | 28.4 → **0.5 ms** | 121.5 → **3.5 ms** |
+| metrics build (under lock) | 31.3 → **0.9 ms** | 141.9 → **6.8 ms** |
+| report hold | 0.03 → 0.01 ms | 1.22 → **0.07 ms** |
+
+Both hot-path serialization costs drop by 20–35×. Metric output is byte-identical
+(the exact-string metric unit tests still pass). Remaining findings (#3 embedded
+per-column walk, #4 shared snmpbot budget, #5 per-request HTTP client, #6/#7) are
+untouched.

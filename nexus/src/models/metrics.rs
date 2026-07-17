@@ -25,6 +25,7 @@ pub struct InterfaceMetrics {
     pub counter_violations: u64,
 }
 
+#[derive(Clone)]
 pub struct DeviceMetrics {
     pub fqdn: String,
 
@@ -41,6 +42,7 @@ pub struct DeviceMetrics {
     pub interfaces: HashMap<i32, InterfaceMetrics>,
 }
 
+#[derive(Clone)]
 pub struct Metrics {
     pub devices: HashMap<String, DeviceMetrics>,
 }

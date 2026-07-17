@@ -33,16 +33,19 @@ pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, entity_metrics: 
     let mut ret : String = String::new();
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 
-    if let Ok(ref mut imds) = imds.inner().lock() {
-        // Time the metric-Vec build: this runs under the global IMDS lock and
-        // blocks every poller for its duration (PERF.md #2).
+    // Take only a cheap owned snapshot under the global IMDS lock, then build
+    // the LabeledMetric list outside it — the build no longer blocks pollers
+    // for the whole scrape (PERF.md #2). The timed section is just the snapshot,
+    // which is what still contends with the pollers.
+    let snapshot = if let Ok(ref imds) = imds.inner().lock() {
         let build_start = std::time::Instant::now();
-        let built = imds.get_metrics();
+        let snap = imds.metrics_snapshot();
         utilities::perfstats::PERF.record_metrics_build(build_start.elapsed());
-        metrics = Some(built);
+        Some(snap)
     } else {
-        metrics = None;
-    }
+        None
+    };
+    metrics = snapshot.map(|s| utilities::imds::IMDS::metrics_from(&s));
 
     if let Some(metrics) = metrics {
         for metric in metrics.iter() {
