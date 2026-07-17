@@ -151,7 +151,7 @@ async fn server_main() {
     let enable_poller = c.get_bool("enable_poller").unwrap_or(true);
     let enable_pinger = c.get_bool("enable_pinger").unwrap_or(true);
 
-    // SNMP access mode: "snmpbot" (default; the external HTTP sidecar) or
+    // SNMP access mode: "snmpbot" (default; the external HTTP service) or
     // "embedded" (an in-process snmp2 v2c client + MIB registry). Selection is
     // config, not a build feature, so one binary serves both deployments.
     let snmp_mode = c.get_string("snmp_mode").unwrap_or_else(|_| "snmpbot".to_string());

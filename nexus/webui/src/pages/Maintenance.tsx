@@ -114,7 +114,7 @@ export default function Maintenance() {
             <span>SNMP backend</span>
             <span className="wrap">
               <span className="badge badge-muted">{sys.snmpMode === 'embedded' ? 'embedded' : 'snmpbot'}</span>
-              {sys.snmpMode === 'embedded' ? ' in-process SNMP' : ' HTTP sidecar'}
+              {sys.snmpMode === 'embedded' ? ' in-process SNMP' : ' external service over HTTP'}
             </span>
             {sys.snmpMode === 'snmpbot' && (
               <>

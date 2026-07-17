@@ -1,4 +1,4 @@
-// Embedded SNMP client: replaces the snmpbot sidecar with an in-process snmp2
+// Embedded SNMP client: replaces the external snmpbot service with an in-process snmp2
 // (v2c) client. Tables are collected by walking each column independently with
 // GETBULK and merging rows by their OID index suffix — deliberately unlike
 // snmpbot's lockstep multi-column walk, which truncates on slow agents. The

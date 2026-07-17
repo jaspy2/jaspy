@@ -729,7 +729,7 @@ pub fn system_status(
     };
     let system = system.inner();
     // Live snmpbot reachability, for the Maintenance page status line. Only
-    // meaningful in snmpbot mode; embedded mode has no sidecar to probe. Short
+    // meaningful in snmpbot mode; embedded mode has no external service to probe. Short
     // timeout so a dead snmpbot doesn't stall this handler (page polls every 10s).
     let snmpbot_connected = if system.snmp_mode == "snmpbot" {
         Some(crate::snmp::snmpbot_http::probe(&system.snmpbot_url, std::time::Duration::from_secs(2)))

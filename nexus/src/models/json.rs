@@ -137,7 +137,7 @@ pub struct ApiSystemStatus {
     // Additive: default-deserialized for older payloads.
     #[serde(default)]
     pub snmpbot_connected: Option<bool>,
-    // SNMP back end: "snmpbot" (HTTP sidecar) or "embedded" (in-process snmp2).
+    // SNMP back end: "snmpbot" (external HTTP service) or "embedded" (in-process snmp2).
     #[serde(default)]
     pub snmp_mode: String,
     #[serde(default)]
