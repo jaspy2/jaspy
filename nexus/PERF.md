@@ -73,7 +73,7 @@ runtime-spawn + TCP-setup/teardown cycles per 10 s. Preserved from the old
 `snmp/embedded.rs::table`/`object` call `SnmpSession::open` each time. Cache a
 session per (host, cycle).
 
-### 7. 🟡 Poller supervisor reloads all monitored devices from the DB every 1 s
+### 7. 🟡 Poller supervisor reloads all monitored devices from the DB every 1 s  — ✅ FIXED (see results below)
 `poller.rs::run` calls `load_devices` every 1,000 ms just to detect add/remove.
 Widen to 10–30 s.
 
@@ -272,4 +272,28 @@ queries in the same window). Latency barely moves because socket setup is
 microseconds; the win is fd/syscall churn and ephemeral-port pressure, which
 matters on a busy host and at high request rates.
 
-All findings #1–#7 are now addressed except #7 (1 Hz device reload).
+## Results after fixing #7
+
+- **#7** — the poller supervisor called `Device::monitored()` (a full table
+  query) every second just to detect device add/remove. It now reconciles the
+  device set every `JASPY_POLLER_RELOAD_SECS` (default 15), while finished-thread
+  reaping still runs every second. Not perf-measurable in a meaningful way (the
+  query is sub-millisecond on sqlite) — it just removes one wasted DB query per
+  second per process. Tests set it to 1 s to keep device pickup fast.
+
+All findings #1–#7 are now addressed. Summary of what each delivered:
+
+| # | fix | measured effect |
+|---|---|---|
+| 1 | hoist O(N²) clone out of report loop | report hold 1.22 → 0.07 ms @ 32k ifaces |
+| 2 | build metrics outside the IMDS lock | max lock wait 121 → 3.5 ms; build 142 → 6.8 ms |
+| 3 | multi-column lockstep GETBULK | SNMP latency 1063 → 117 ms @ 10 ms RTT (~9×) |
+| 4 | global in-flight cap | bounds burst concurrency; ~5× throughput under overrun |
+| 5 | reuse one reqwest client | SNMP latency 39 → 34 ms; ~250 runtime spawns/s removed |
+| 6 | reuse embedded SNMP sessions | socket opens O(requests) → O(devices) |
+| 7 | reconcile devices every 15 s not 1 s | −1 DB query/s |
+
+None of #1–#7 was required to meet the 250/4,000/10 s baseline (which already
+passed) — together they remove the ceilings that appear under scale, real RTT,
+Prometheus scraping, and burst alignment, and add the instrumentation to see all
+of it (`GET /dev/metrics/perf`, `perf/`).

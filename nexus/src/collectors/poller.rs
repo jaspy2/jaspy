@@ -398,13 +398,24 @@ pub fn run(snmp: Arc<SnmpSource>, poll_loop_msecs: u64, report_device_status: bo
     let mut poll_workers: HashMap<String, PollThreadInfo> = HashMap::new();
     let mut reap_threads: Vec<PollThreadInfo> = Vec::new();
 
+    // Reconcile the monitored-device set from the DB every N seconds (default
+    // 15), not every second: membership changes (API/discovery) don't need 1 Hz
+    // detection, and a full Device::monitored() query per second is wasted work
+    // (PERF.md #7). Finished-thread reaping still runs every second.
+    let reload_secs: u64 = std::env::var("JASPY_POLLER_RELOAD_SECS").ok()
+        .and_then(|v| v.parse().ok()).filter(|&v| v > 0).unwrap_or(15);
+    let mut ticks_since_reload = 0u64;
+
     while running.load(atomic::Ordering::Relaxed) {
-        let devices = load_devices(&pool);
-        let mut expired_fqdns: Vec<String> = Vec::new();
-        check_if_worker_needed(&pool, &snmp, poll_loop_msecs, report_device_status, &imds, &devices, &mut poll_workers);
-        check_expired_fqdn_workers(&devices, &poll_workers, &mut expired_fqdns);
-        prepare_expired_fqdns_for_reap(&mut poll_workers, &expired_fqdns, &mut reap_threads);
+        if ticks_since_reload == 0 {
+            let devices = load_devices(&pool);
+            let mut expired_fqdns: Vec<String> = Vec::new();
+            check_if_worker_needed(&pool, &snmp, poll_loop_msecs, report_device_status, &imds, &devices, &mut poll_workers);
+            check_expired_fqdn_workers(&devices, &poll_workers, &mut expired_fqdns);
+            prepare_expired_fqdns_for_reap(&mut poll_workers, &expired_fqdns, &mut reap_threads);
+        }
         reap_finished_threads(&mut reap_threads);
+        ticks_since_reload = (ticks_since_reload + 1) % reload_secs;
         thread::sleep(time::Duration::from_millis(1000));
     }
 

@@ -263,6 +263,7 @@ def main():
         JASPY_ENABLE_LAGPOLLER=collectors_off,
         JASPY_ENABLE_TRAP_RECEIVER="false",
         JASPY_IMDS_REFRESH_SECS="5",
+        JASPY_POLLER_RELOAD_SECS="2",  # pick up the seeded fleet quickly (default 15)
     )
     base_url = f"http://127.0.0.1:{args.rocket_port}"
     nexus = Proc("nexus", [str(nexus_bin)], nexus_env, workdir / "nexus.log")

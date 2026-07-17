@@ -416,6 +416,7 @@ impl NexusBuilder {
             .env("JASPY_VLANPOLLER_INTERVAL_MSECS", self.vlanpoller_interval_msecs.to_string())
             .env("JASPY_LAGPOLLER_INTERVAL_MSECS", self.lagpoller_interval_msecs.to_string())
             .env("JASPY_IMDS_REFRESH_SECS", "1")
+            .env("JASPY_POLLER_RELOAD_SECS", "1")
             .env("JASPY_POLLER_NO_JITTER", "1")
             // Discovery fixtures use non-resolvable FQDNs.
             .env("JASPY_DISCOVERY_SKIP_DNS", "1")
