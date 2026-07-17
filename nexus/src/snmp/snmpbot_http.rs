@@ -6,32 +6,41 @@
 // for GetNextRequest<...>").
 //
 // The reqwest *blocking* client owns a private tokio runtime, so it must be
-// built (and dropped) off any async runtime thread. `SnmpbotHttp` therefore
-// holds only the base URL and constructs a client per request — exactly as the
-// collectors did before (reqwest::blocking::get); every call runs on a
-// collector OS thread, never inside rocket's async context.
+// built off any async runtime thread. `SnmpbotHttp` builds one lazily on first
+// use and reuses it (PERF.md #5); every SNMP call runs on a collector OS
+// thread, never inside rocket's async context, so first-use init is safe.
 use super::hostspec::HostSpec;
 use super::types::{SNMPBotObjectResponse, SNMPBotResponse};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 pub struct SnmpbotHttp {
     base_url: String,
+    // One shared blocking client, built once and reused (PERF.md #5). Building a
+    // fresh client per request spun up a private tokio runtime and opened a new
+    // TCP connection each time; reusing it keeps HTTP/1.1 keep-alive connections
+    // to snmpbot warm and drops the per-request runtime/handshake cost.
+    client: OnceLock<reqwest::blocking::Client>,
 }
 
 impl SnmpbotHttp {
     pub fn new(base_url: String) -> SnmpbotHttp {
-        SnmpbotHttp { base_url }
+        SnmpbotHttp { base_url, client: OnceLock::new() }
     }
 
-    // 60s timeout matches the discovery engine's historical client; the other
-    // collectors previously used the default (no timeout) blocking client, so
-    // a generous ceiling is a strict safety improvement that never fires under
-    // normal poll intervals.
-    fn client() -> reqwest::blocking::Client {
-        reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(60))
-            .build()
-            .unwrap_or_else(|_| reqwest::blocking::Client::new())
+    // The reqwest blocking client owns a private tokio runtime and so must be
+    // built off any async runtime thread. Every SNMP call runs on a collector OS
+    // thread (never inside rocket's async context), so lazily initializing on
+    // first use here is safe. 60s timeout matches the discovery engine's
+    // historical client; a generous ceiling that never fires under normal poll
+    // intervals.
+    fn client(&self) -> &reqwest::blocking::Client {
+        self.client.get_or_init(|| {
+            reqwest::blocking::Client::builder()
+                .timeout(Duration::from_secs(60))
+                .build()
+                .unwrap_or_else(|_| reqwest::blocking::Client::new())
+        })
     }
 
     fn url(&self, host: &HostSpec, kind: &str, id: &str) -> Result<reqwest::Url, String> {
@@ -45,7 +54,7 @@ impl SnmpbotHttp {
 
     pub fn table(&self, host: &HostSpec, table_id: &str) -> Result<SNMPBotResponse, String> {
         let url = self.url(host, "tables", table_id)?;
-        let response = Self::client().get(url).send().map_err(|e| format!("{}", e))?;
+        let response = self.client().get(url).send().map_err(|e| format!("{}", e))?;
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().unwrap_or_default();
@@ -61,7 +70,7 @@ impl SnmpbotHttp {
 
     pub fn object(&self, host: &HostSpec, object_id: &str) -> Result<SNMPBotObjectResponse, String> {
         let url = self.url(host, "objects", object_id)?;
-        let response = Self::client().get(url).send().map_err(|e| format!("{}", e))?;
+        let response = self.client().get(url).send().map_err(|e| format!("{}", e))?;
         if !response.status().is_success() {
             return Err(format!("status={}", response.status()));
         }

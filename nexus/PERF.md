@@ -62,7 +62,7 @@ re-cluster over time. Most likely cause of a regression from the baseline.
 - **Fix:** shared semaphore capping total in-flight requests to snmpbot; stagger
   collector phases.
 
-### 5. 🟠 A fresh reqwest blocking client per SNMP request (no keep-alive)
+### 5. 🟠 A fresh reqwest blocking client per SNMP request (no keep-alive)  — ✅ FIXED (see results below)
 `snmp/snmpbot_http.rs::client()` builds a new `reqwest::blocking::Client` (own
 tokio runtime, fresh TCP, no pool) on **every** table/object call. Thousands of
 runtime-spawn + TCP-setup/teardown cycles per 10 s. Preserved from the old
@@ -191,5 +191,30 @@ cycle around ~45–55 ms RTT; post-#3 has roughly 9× that RTT headroom. (Both s
 showed 0 overruns at 10 ms because thread-per-device gives each switch its own
 10 s budget.)
 
-Remaining findings (#4 shared snmpbot budget, #5 per-request HTTP client, #6/#7)
-are untouched.
+## Results after fixing #5
+
+- **#5** — `SnmpbotHttp` now builds one `reqwest::blocking::Client` lazily (on
+  first use, off the async runtime) and reuses it, instead of constructing one
+  per request. This keeps HTTP/1.1 keep-alive connections to snmpbot warm and
+  drops the per-request tokio-runtime spin-up + TCP handshake.
+
+Measured in **snmpbot mode** (nexus → local snmpbot → fleet), 250×16 @ 2 s cycle
+(~250 HTTP requests/s to snmpbot), loopback, same fleet, pre-#5 binary via
+`--nexus-bin`:
+
+| Signal | pre-#5 (client/request) | post-#5 (shared) |
+|---|---|---|
+| SNMP latency / table (HTTP call) | 39.3 ms | **34.3 ms** |
+| poll iteration / device | 78.8 ms | **68.9 ms** |
+| poll iteration max | 183.8 ms | **144.1 ms** |
+
+~5 ms saved per HTTP request, ~13% off the poll iteration. On loopback the HTTP
+transport is near-free, so that ~5 ms is essentially the client-construction
+cost (a private tokio runtime per call) the shared client removes; the tail
+improves more because the fix also eliminates ~250 runtime/thread spawns per
+second. No regression from sharing one client's runtime across the poller
+threads (still 100% of target, better tail). Run it with
+`perf/run.py --snmp-mode snmpbot`.
+
+Remaining findings (#4 shared snmpbot budget, #6 per-call UDP socket in embedded,
+#7 1 Hz device reload) are untouched.

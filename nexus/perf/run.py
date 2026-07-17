@@ -83,9 +83,14 @@ def octet_to_ip(base_octet, n):
     return f"127.0.{x // 256}.{x % 256}"
 
 
-def seed_db(db_path, switches, interfaces, community, base_octet):
+def seed_db(db_path, switches, interfaces, community, base_octet, port_in_fqdn=None):
     """Insert N devices + N*M interfaces directly into nexus's sqlite db.
-    nexus has already run migrations by the time it serves HTTP."""
+    nexus has already run migrations by the time it serves HTTP.
+
+    In embedded mode the fqdn is the bare loopback IP (nexus appends
+    JASPY_SNMP_PORT). In snmpbot mode snmpbot has no per-device port config, so
+    the port is baked into the fqdn (`127.0.0.X:PORT`) and rides through to
+    snmpbot via the path + ?snmp= param."""
     conn = sqlite3.connect(db_path, timeout=30)
     try:
         conn.execute("PRAGMA busy_timeout=30000")
@@ -94,6 +99,8 @@ def seed_db(db_path, switches, interfaces, community, base_octet):
             ip = octet_to_ip(base_octet, n)
             # fqdn = name.dns_domain = "127" + "." + "0.0.X" = the loopback ip.
             dns_domain = ip.split(".", 1)[1]  # "0.0.X"
+            if port_in_fqdn is not None:
+                dns_domain = f"{dns_domain}:{port_in_fqdn}"
             cur.execute(
                 "INSERT INTO devices (name, dns_domain, snmp_community, polling_enabled) VALUES (?,?,?,1)",
                 ("127", dns_domain, community),
@@ -147,6 +154,10 @@ def main():
     ap.add_argument("--sample-interval", type=float, default=2.0, help="perf-counter sample period (s)")
     ap.add_argument("--prometheus-interval", type=float, default=15.0,
                     help="heavy /dev/metrics scrape period (s); 0 to disable")
+    ap.add_argument("--snmp-mode", choices=["embedded", "snmpbot"], default="embedded",
+                    help="nexus SNMP back end: in-process embedded client, or the external snmpbot sidecar")
+    ap.add_argument("--snmpbot-bin", default=str(Path.home() / "go" / "bin" / "snmpbot"))
+    ap.add_argument("--snmpbot-port", type=int, default=8286)
     ap.add_argument("--snmp-port", type=int, default=16100)
     ap.add_argument("--base-octet", type=int, default=2)
     ap.add_argument("--snmp-delay-ms", type=int, default=0,
@@ -209,18 +220,38 @@ def main():
         log(f"snmpsim died on startup; see {workdir}/snmpsim.log")
         return 2
 
-    # --- nexus (embedded SNMP mode) ---
+    # --- optional snmpbot sidecar (between nexus and the fleet) ---
+    snmpbot = None
+    if args.snmp_mode == "snmpbot":
+        botbin = Path(args.snmpbot_bin)
+        if not botbin.exists():
+            log(f"snmpbot not found at {botbin}; pass --snmpbot-bin")
+            sim.stop()
+            return 2
+        bot_argv = [str(botbin), "-http-listen", f"127.0.0.1:{args.snmpbot_port}",
+                    "-snmp-mibs", args.mib_dir, "-snmp-community", args.community,
+                    "-snmp-timeout", f"{args.snmp_timeout_ms}ms", "-quiet"]
+        snmpbot = Proc("snmpbot", bot_argv, dict(os.environ), workdir / "snmpbot.log")
+        time.sleep(1.5)
+        if not snmpbot.alive():
+            log(f"snmpbot died on startup; see {workdir}/snmpbot.log")
+            sim.stop()
+            return 2
+        log(f"snmpbot on :{args.snmpbot_port} -> fleet")
+
+    # --- nexus ---
     nexus_env = dict(os.environ)
     collectors_off = "false" if not args.keep_collectors else "true"
     nexus_env.update(
         ROCKET_ADDRESS="127.0.0.1",
         ROCKET_PORT=str(args.rocket_port),
         JASPY_DB_URL=f"sqlite:{db_path}",
-        JASPY_SNMP_MODE="embedded",
+        JASPY_SNMP_MODE=args.snmp_mode,
         JASPY_SNMP_PORT=str(args.snmp_port),
         JASPY_SNMP_MIB_DIR=args.mib_dir,
         JASPY_SNMP_TIMEOUT_MS=str(args.snmp_timeout_ms),
         JASPY_SNMP_RETRIES=str(args.snmp_retries),
+        JASPY_SNMPBOT_URL=f"http://127.0.0.1:{args.snmpbot_port}/",
         JASPY_POLL_LOOP_MSECS=str(args.poll_msecs),
         JASPY_ENABLE_POLLER="true",
         JASPY_ENABLE_PINGER="false",       # oping needs root; poller derives up/down
@@ -232,6 +263,9 @@ def main():
     )
     base_url = f"http://127.0.0.1:{args.rocket_port}"
     nexus = Proc("nexus", [str(nexus_bin)], nexus_env, workdir / "nexus.log")
+    # snmpbot mode: bake the fleet port into the fqdn (snmpbot has no per-device
+    # port config); embedded mode appends JASPY_SNMP_PORT itself.
+    port_in_fqdn = args.snmp_port if args.snmp_mode == "snmpbot" else None
 
     report = {}
     try:
@@ -241,7 +275,7 @@ def main():
             return 2
 
         log("seeding db...")
-        seed_db(str(db_path), args.switches, args.interfaces, args.community, args.base_octet)
+        seed_db(str(db_path), args.switches, args.interfaces, args.community, args.base_octet, port_in_fqdn)
 
         log(f"warmup {args.warmup}s (device threads spin up + first cycles)...")
         time.sleep(args.warmup)
@@ -275,6 +309,8 @@ def main():
                               prom_scrapes, prom_bytes)
     finally:
         nexus.stop()
+        if snmpbot is not None:
+            snmpbot.stop()
         sim.stop()
 
     if report:
@@ -334,6 +370,8 @@ def print_report(r, args, workdir):
         "=" * 68,
         f"  fleet                 {args.switches} switches x {args.interfaces} ifaces "
         f"({args.switches * args.interfaces} interfaces)",
+        f"  snmp mode             {args.snmp_mode}"
+        + (f", RTT {args.snmp_delay_ms}+[0,{args.snmp_jitter_ms}]ms" if args.snmp_delay_ms or args.snmp_jitter_ms else ""),
         f"  poll cycle            {args.poll_msecs} ms",
         f"  measured window       {r['elapsed_s']:.1f} s",
         "-" * 68,
