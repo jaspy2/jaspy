@@ -49,8 +49,13 @@ CMD cp -a target/release/jaspy-nexus /output/jaspy-nexus && cp -a /usr/local/car
 # so only the shared libraries are needed (same set the deb depends on).
 FROM debian:bookworm-slim AS runtime
 
+# liboping0/libpq5/ca-certificates are runtime deps; iputils-ping, curl,
+# sqlite3 and jq are debugging conveniences (poke ICMP, HTTP, the sqlite DB and
+# JSON API responses from inside the container — the image is otherwise toolless).
 RUN apt-get update \
-  && apt-get -y install --no-install-recommends liboping0 libpq5 ca-certificates \
+  && apt-get -y install --no-install-recommends \
+     liboping0 libpq5 ca-certificates \
+     iputils-ping curl sqlite3 jq \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/src/nexus/target/release/jaspy-nexus /usr/local/bin/jaspy-nexus
