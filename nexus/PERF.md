@@ -69,7 +69,7 @@ runtime-spawn + TCP-setup/teardown cycles per 10 s. Preserved from the old
 `reqwest::blocking::get`, but a real ceiling.
 - **Fix:** one reused `Client` (or one per worker thread) with keep-alive.
 
-### 6. 🟡 Embedded opens a new UDP socket/session per table and per object
+### 6. 🟡 Embedded opens a new UDP socket/session per table and per object  — ✅ FIXED (see results below)
 `snmp/embedded.rs::table`/`object` call `SnmpSession::open` each time. Cache a
 session per (host, cycle).
 
@@ -247,5 +247,29 @@ valve** against pathological alignment (and against the extra collectors piling
 on), which operators tune to their back end. `perf/run.py --snmp-max-inflight N`
 drives it.
 
-Remaining findings (#6 per-call UDP socket in embedded, #7 1 Hz device reload)
-are untouched.
+## Results after fixing #6
+
+- **#6** — the embedded client opened a fresh UDP socket (`snmp2` session) on
+  every `table()`/`object()` call. It now keeps a **thread-local session cache
+  keyed by destination**: the thread-per-device interface poller opens one
+  socket per device and reuses it across ifTable+ifXTable and across every
+  cycle; a `run_bounded` worker reuses a session while it holds a device. snmp2
+  sessions are single-owner (one request/reply socket), so per-thread is the
+  natural unit and needs no locking; UDP sockets don't break on timeout, so a
+  cached session stays valid. New counter `jaspy_perf_snmp_session_opens_total`.
+
+Measured (embedded, 250×16 @ 2 s, 10±5 ms RTT):
+
+| | before | after |
+|---|---|---|
+| socket opens | 1 per request (~249/s) | **~0/s steady state** (one per device at startup) |
+| SNMP latency mean | 17.8 ms | 16.9 ms |
+
+Socket opens go from **O(requests)** to **O(devices)** — ~249/s → 0/s once
+sessions are warm (≈250 one-time opens for the whole fleet, confirmed by
+capturing startup: 16.5 opens/s × 15 s ≈ 248 ≈ device count, against ~3,500
+queries in the same window). Latency barely moves because socket setup is
+microseconds; the win is fd/syscall churn and ephemeral-port pressure, which
+matters on a busy host and at high request rates.
+
+All findings #1–#7 are now addressed except #7 (1 Hz device reload).

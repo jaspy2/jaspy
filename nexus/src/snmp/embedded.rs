@@ -10,6 +10,8 @@ use super::mib::{MibObject, MibRegistry, MibTable};
 use super::raw::RawValue;
 use super::render::{decode_index, render_value};
 use super::types::{SNMPBotObjectInstance, SNMPBotObjectResponse, SNMPBotResponse, SNMPBotResultEntry};
+use crate::utilities::perfstats::PERF;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -167,6 +169,7 @@ struct SnmpSession {
 
 impl SnmpSession {
     fn open(fqdn: &str, community: &str, port: u16, timeout: Duration, retries: u32) -> Result<SnmpSession, String> {
+        PERF.record_session_open();
         // An fqdn that already carries an explicit `:port` (or is a bracketed
         // IPv6 literal) is used as-is; otherwise the configured port is
         // appended. The explicit-port form is what the perf fleet uses to run
@@ -247,6 +250,24 @@ impl Transport for SnmpSession {
     }
 }
 
+// Per-thread SNMP session cache, keyed by destination (PERF.md #6). snmp2
+// sessions are single-owner (one request/reply socket), so a per-thread cache
+// is the natural unit: the thread-per-device interface poller reuses one
+// session across a device's tables and across every cycle, and a run_bounded
+// worker reuses a session across a device's tables while it holds that device.
+// UDP sockets don't break on timeout, so a cached session stays valid; when a
+// thread ends (worker cycle end, or a device's poll thread is retired) its
+// sessions are dropped and their sockets closed.
+thread_local! {
+    static SESSIONS: RefCell<HashMap<String, SnmpSession>> = RefCell::new(HashMap::new());
+}
+
+// Destination identity for the session cache. Distinct communities (which fold
+// in per-VLAN community indexing) and ports get distinct sessions.
+fn session_key(host: &HostSpec, port: u16) -> String {
+    format!("{}\u{1f}{}\u{1f}{}", host.fqdn, host.effective_community().unwrap_or_default(), port)
+}
+
 pub struct Embedded {
     mibs: Arc<MibRegistry>,
     port: u16,
@@ -260,18 +281,38 @@ impl Embedded {
         Embedded { mibs, port, timeout, retries, max_repetitions }
     }
 
+    // Run `f` with a cached (or freshly opened) session for this destination.
+    // The borrow of the thread-local map is held across `f`, which is safe
+    // because `f` (build_table/build_object) never re-enters the cache.
+    fn with_session<T>(
+        &self,
+        host: &HostSpec,
+        community: &str,
+        f: impl FnOnce(&mut SnmpSession) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let key = session_key(host, self.port);
+        SESSIONS.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            if !cache.contains_key(&key) {
+                let session = SnmpSession::open(&host.fqdn, community, self.port, self.timeout, self.retries)?;
+                cache.insert(key.clone(), session);
+            }
+            f(cache.get_mut(&key).unwrap())
+        })
+    }
+
     pub fn table(&self, host: &HostSpec, table_id: &str) -> Result<SNMPBotResponse, String> {
         let table = self.mibs.table(table_id).ok_or_else(|| format!("unknown table {}", table_id))?.clone();
         let community = host.effective_community().ok_or_else(|| "no community".to_string())?;
-        let mut session = SnmpSession::open(&host.fqdn, &community, self.port, self.timeout, self.retries)?;
-        build_table(&mut session, &table, &host.host_id(), self.max_repetitions)
+        let host_id = host.host_id();
+        let max_rep = self.max_repetitions;
+        self.with_session(host, &community, |session| build_table(session, &table, &host_id, max_rep))
     }
 
     pub fn object(&self, host: &HostSpec, object_id: &str) -> Result<SNMPBotObjectResponse, String> {
         let object = self.mibs.object(object_id).ok_or_else(|| format!("unknown object {}", object_id))?.clone();
         let community = host.effective_community().ok_or_else(|| "no community".to_string())?;
-        let mut session = SnmpSession::open(&host.fqdn, &community, self.port, self.timeout, self.retries)?;
-        build_object(&mut session, &object, object_id)
+        self.with_session(host, &community, |session| build_object(session, &object, object_id))
     }
 }
 
@@ -367,6 +408,22 @@ mod tests {
             index: vec![if_index],
             columns: vec![if_descr, if_status],
         }
+    }
+
+    #[test]
+    fn session_key_separates_by_community_and_port() {
+        let a = HostSpec::with_community("sw1.example.com", "public");
+        let b = HostSpec::with_community("sw1.example.com", "private");
+        // Same host, different community -> different session.
+        assert_ne!(session_key(&a, 161), session_key(&b, 161));
+        // Same host+community, different port -> different session.
+        assert_ne!(session_key(&a, 161), session_key(&a, 16100));
+        // Per-VLAN community indexing folds into the key (distinct VLAN sessions).
+        let v100 = HostSpec::parse("public@100@sw1.example.com");
+        let v200 = HostSpec::parse("public@200@sw1.example.com");
+        assert_ne!(session_key(&v100, 161), session_key(&v200, 161));
+        // Identical destination -> identical key (reused).
+        assert_eq!(session_key(&a, 161), session_key(&HostSpec::with_community("sw1.example.com", "public"), 161));
     }
 
     #[test]

@@ -356,6 +356,8 @@ def build_report(first, last, elapsed, args, total_ifaces, prom_scrapes, prom_by
         "poll_iter_max_ms": gauge("jaspy_perf_poll_iter_max_nanos") / 1e6,
         "lock_wait_mean_ms": mean_ms("jaspy_perf_imds_lock_wait_nanos_total", polls),
         "lock_wait_max_ms": gauge("jaspy_perf_imds_lock_wait_max_nanos") / 1e6,
+        "session_opens": d("jaspy_perf_snmp_session_opens_total"),
+        "session_opens_per_s": (d("jaspy_perf_snmp_session_opens_total") / elapsed) if elapsed > 0 else 0.0,
         "snmp_inflight_peak": gauge("jaspy_perf_snmp_inflight_max"),
         "permit_wait_mean_ms": (d("jaspy_perf_snmp_permit_wait_nanos_total")
                                 / d("jaspy_perf_snmp_permit_waits_total") / 1e6)
@@ -390,6 +392,7 @@ def print_report(r, args, workdir):
         "-" * 68,
         f"  SNMP queries/s        {r['snmp_qps']:.0f}",
         f"  SNMP errors           {int(r['snmp_err'])}  ({r['snmp_err_pct']:.1f}%)",
+        f"  SNMP session opens/s  {r['session_opens_per_s']:.1f}   (embedded socket churn; PERF.md #6)",
         f"  SNMP latency          mean {r['snmp_mean_ms']:.1f} ms   max {r['snmp_max_ms']:.1f} ms",
         f"  SNMP in-flight peak   {int(r['snmp_inflight_peak'])}"
         + (f"   (cap {args.snmp_max_inflight})" if args.snmp_max_inflight else "   (uncapped)")

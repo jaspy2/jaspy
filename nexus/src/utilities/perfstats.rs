@@ -24,6 +24,11 @@ pub struct PerfStats {
     pub snmp_query_nanos: AtomicU64,      // total time spent in SnmpSource calls
     pub snmp_query_max_nanos: AtomicU64,  // slowest single request
 
+    // Embedded SNMP session opens (UDP socket creations). With per-call opening
+    // this tracks the request count; with session reuse it drops to ~one per
+    // (thread, device) (PERF.md #6).
+    pub snmp_session_opens: AtomicU64,
+
     // SNMP concurrency toward the shared back end (PERF.md #4).
     pub snmp_inflight: AtomicU64,          // requests currently in the back end (gauge)
     pub snmp_inflight_max: AtomicU64,      // peak concurrent requests (high-water)
@@ -54,6 +59,7 @@ impl PerfStats {
             snmp_query_errors: AtomicU64::new(0),
             snmp_query_nanos: AtomicU64::new(0),
             snmp_query_max_nanos: AtomicU64::new(0),
+            snmp_session_opens: AtomicU64::new(0),
             snmp_inflight: AtomicU64::new(0),
             snmp_inflight_max: AtomicU64::new(0),
             snmp_permit_waits: AtomicU64::new(0),
@@ -111,6 +117,10 @@ impl PerfStats {
         Self::max(&self.snmp_permit_wait_max_nanos, ns);
     }
 
+    pub fn record_session_open(&self) {
+        Self::add(&self.snmp_session_opens, 1);
+    }
+
     pub fn record_lock_wait(&self, elapsed: std::time::Duration) {
         let ns = elapsed.as_nanos() as u64;
         Self::add(&self.imds_lock_wait_nanos, ns);
@@ -157,6 +167,7 @@ impl PerfStats {
         line("jaspy_perf_snmp_query_errors_total", "SNMP requests returning an error", "counter", g(&self.snmp_query_errors), &mut s);
         line("jaspy_perf_snmp_query_nanos_total", "Total time in SNMP back-end calls (ns)", "counter", g(&self.snmp_query_nanos), &mut s);
         line("jaspy_perf_snmp_query_max_nanos", "Slowest single SNMP request (ns)", "gauge", g(&self.snmp_query_max_nanos), &mut s);
+        line("jaspy_perf_snmp_session_opens_total", "Embedded SNMP session (UDP socket) opens", "counter", g(&self.snmp_session_opens), &mut s);
         line("jaspy_perf_snmp_inflight", "SNMP requests currently in the back end", "gauge", g(&self.snmp_inflight), &mut s);
         line("jaspy_perf_snmp_inflight_max", "Peak concurrent SNMP requests in the back end", "gauge", g(&self.snmp_inflight_max), &mut s);
         line("jaspy_perf_snmp_permit_waits_total", "In-flight limiter acquisitions", "counter", g(&self.snmp_permit_waits), &mut s);
