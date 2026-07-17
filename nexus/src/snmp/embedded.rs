@@ -146,8 +146,16 @@ struct SnmpSession {
 }
 
 impl SnmpSession {
-    fn open(fqdn: &str, community: &str, timeout: Duration, retries: u32) -> Result<SnmpSession, String> {
-        let destination = format!("{}:161", fqdn);
+    fn open(fqdn: &str, community: &str, port: u16, timeout: Duration, retries: u32) -> Result<SnmpSession, String> {
+        // An fqdn that already carries an explicit `:port` (or is a bracketed
+        // IPv6 literal) is used as-is; otherwise the configured port is
+        // appended. The explicit-port form is what the perf fleet uses to run
+        // many simulated agents on one loopback IP.
+        let destination = if fqdn.rsplit(':').next().and_then(|p| p.parse::<u16>().ok()).is_some() && fqdn.contains(':') {
+            fqdn.to_string()
+        } else {
+            format!("{}:{}", fqdn, port)
+        };
         let session = snmp2::SyncSession::new_v2c(destination.as_str(), community.as_bytes(), Some(timeout), 0)
             .map_err(|e| format!("open session to {}: {}", destination, e))?;
         Ok(SnmpSession { session, retries })
@@ -216,27 +224,28 @@ impl Transport for SnmpSession {
 
 pub struct Embedded {
     mibs: Arc<MibRegistry>,
+    port: u16,
     timeout: Duration,
     retries: u32,
     max_repetitions: u32,
 }
 
 impl Embedded {
-    pub fn new(mibs: Arc<MibRegistry>, timeout: Duration, retries: u32, max_repetitions: u32) -> Embedded {
-        Embedded { mibs, timeout, retries, max_repetitions }
+    pub fn new(mibs: Arc<MibRegistry>, port: u16, timeout: Duration, retries: u32, max_repetitions: u32) -> Embedded {
+        Embedded { mibs, port, timeout, retries, max_repetitions }
     }
 
     pub fn table(&self, host: &HostSpec, table_id: &str) -> Result<SNMPBotResponse, String> {
         let table = self.mibs.table(table_id).ok_or_else(|| format!("unknown table {}", table_id))?.clone();
         let community = host.effective_community().ok_or_else(|| "no community".to_string())?;
-        let mut session = SnmpSession::open(&host.fqdn, &community, self.timeout, self.retries)?;
+        let mut session = SnmpSession::open(&host.fqdn, &community, self.port, self.timeout, self.retries)?;
         build_table(&mut session, &table, &host.host_id(), self.max_repetitions)
     }
 
     pub fn object(&self, host: &HostSpec, object_id: &str) -> Result<SNMPBotObjectResponse, String> {
         let object = self.mibs.object(object_id).ok_or_else(|| format!("unknown object {}", object_id))?.clone();
         let community = host.effective_community().ok_or_else(|| "no community".to_string())?;
-        let mut session = SnmpSession::open(&host.fqdn, &community, self.timeout, self.retries)?;
+        let mut session = SnmpSession::open(&host.fqdn, &community, self.port, self.timeout, self.retries)?;
         build_object(&mut session, &object, object_id)
     }
 }
@@ -422,7 +431,7 @@ mod tests {
     // signal collectors treat as "keep last data".
     #[test]
     fn real_session_getbulk_times_out_cleanly() {
-        let mut session = SnmpSession::open("127.0.0.1", "public", Duration::from_millis(150), 0).unwrap();
+        let mut session = SnmpSession::open("127.0.0.1", "public", 161, Duration::from_millis(150), 0).unwrap();
         let result = session.getbulk(&[1, 3, 6, 1, 2, 1, 2, 2, 1, 1], 5);
         assert!(result.is_err(), "getbulk to a dead port should time out, got {:?}", result);
     }

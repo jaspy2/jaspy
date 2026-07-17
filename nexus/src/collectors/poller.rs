@@ -233,7 +233,10 @@ fn load_devices(pool: &db::Pool) -> HashMap<String, PollDevice> {
 }
 
 fn snmp_query(device_fqdn: &str, statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, snmp: &SnmpSource, host: &HostSpec, table_id: &str) {
-    match snmp.table(host, table_id) {
+    let start = time::Instant::now();
+    let result = snmp.table(host, table_id);
+    crate::utilities::perfstats::PERF.record_snmp(start.elapsed(), result.is_ok());
+    match result {
         Ok(query_result) => merge_query_result(statistics, &query_result),
         Err(what) => println!("[{}] snmp error for {} ({}), skipping this poll", device_fqdn, table_id, what),
     }
@@ -285,16 +288,23 @@ fn poll_worker(pool: db::Pool, snmp: Arc<SnmpSource>, device: PollDevice, poll_l
     thread::sleep(time::Duration::from_millis(start_sleep as u64));
     while running.load(atomic::Ordering::Relaxed) {
         let start = tools::get_time_msecs();
+        let iter_start = time::Instant::now();
 
         println!("[{}] polling", device.fqdn);
         if let Some(poll_result) = poll_device(&snmp, &device) {
             // With the pinger disabled, a device that answers SNMP is up and
             // one that doesn't is down (empty result = snmpbot got no reply).
             let snmp_ok = !poll_result.interfaces.is_empty();
+            let n_interfaces = poll_result.interfaces.len() as u64;
             // Do the DB acquire and IMDS lock only after network I/O, and hold
-            // the IMDS lock only for the report itself.
+            // the IMDS lock only for the report itself. The lock-wait timing is
+            // the key signal for the single-global-mutex contention (PERF.md #2).
             if let Ok(mut conn) = pool.get() {
-                if let Ok(ref mut imds) = imds.lock() {
+                let lock_start = time::Instant::now();
+                let imds_guard = imds.lock();
+                crate::utilities::perfstats::PERF.record_lock_wait(lock_start.elapsed());
+                if let Ok(mut imds) = imds_guard {
+                    let report_start = time::Instant::now();
                     imds.report_interfaces(&mut *conn, poll_result);
                     if report_device_status {
                         imds.report_device(&mut *conn, models::json::DeviceMonitorReport {
@@ -302,10 +312,12 @@ fn poll_worker(pool: db::Pool, snmp: Arc<SnmpSource>, device: PollDevice, poll_l
                             up: snmp_ok,
                         });
                     }
+                    crate::utilities::perfstats::PERF.record_report(report_start.elapsed(), n_interfaces);
                 }
             }
         }
 
+        crate::utilities::perfstats::PERF.record_poll_iter(iter_start.elapsed(), poll_loop_msecs);
         let diff = tools::get_time_msecs() - start;
         if diff <= poll_loop_msecs {
             thread::sleep(time::Duration::from_millis(poll_loop_msecs - diff));

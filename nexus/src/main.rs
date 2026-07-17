@@ -153,6 +153,10 @@ async fn server_main() {
     let snmp_timeout_ms = c.get_int("snmp_timeout_ms").unwrap_or(2000) as u64;
     let snmp_retries = c.get_int("snmp_retries").unwrap_or(2) as u32;
     let snmp_bulk_max_repetitions = c.get_int("snmp_bulk_max_repetitions").unwrap_or(20) as u32;
+    // UDP port for the embedded client. Default 161; the perf harness overrides
+    // it (JASPY_SNMP_PORT) so a simulated fleet can run unprivileged. Ignored
+    // for devices whose fqdn already carries an explicit `:port`.
+    let snmp_port = c.get_int("snmp_port").unwrap_or(161) as u16;
     // Embedded-mode MIB directory: config override, else the nexus package
     // location, else the snmpbot package location.
     let snmp_mib_dir = c.get_string("snmp_mib_dir").ok().or_else(|| {
@@ -178,6 +182,7 @@ async fn server_main() {
                 registry.table_count(), registry.object_count(), resolved_mib_dir.as_deref().unwrap_or(""));
             let embedded = snmp::embedded::Embedded::new(
                 Arc::new(registry),
+                snmp_port,
                 std::time::Duration::from_millis(snmp_timeout_ms),
                 snmp_retries,
                 snmp_bulk_max_repetitions,
@@ -487,6 +492,7 @@ async fn server_main() {
             routes![
                 routes::dev::metrics::metrics_fast,
                 routes::dev::metrics::metrics,
+                routes::dev::metrics::metrics_perf,
             ]
         )
         .mount(

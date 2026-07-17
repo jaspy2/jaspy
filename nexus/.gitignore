@@ -1,4 +1,5 @@
 /target
+/perf/target
 **/*.rs.bk
 *.log
 *.stackdump

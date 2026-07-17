@@ -1,0 +1,20 @@
+[package]
+name = "jaspy-perf-snmpsim"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Standalone perf tool; intentionally NOT a member of any nexus workspace so it
+# builds and versions independently of the shippable binary.
+[[bin]]
+name = "snmpsim"
+path = "src/main.rs"
+
+[dependencies]
+# Same SNMP library nexus uses, so request parsing is byte-identical to what the
+# embedded client emits. Only the parser (pdu::Pdu) is public; the response
+# encoder here is hand-rolled and round-trip-tested against this same parser.
+snmp2 = { version = "0.5.2", default-features = false }
+
+[profile.release]
+opt-level = 3

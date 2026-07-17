@@ -34,7 +34,12 @@ pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, entity_metrics: 
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 
     if let Ok(ref mut imds) = imds.inner().lock() {
-        metrics = Some(imds.get_metrics());
+        // Time the metric-Vec build: this runs under the global IMDS lock and
+        // blocks every poller for its duration (PERF.md #2).
+        let build_start = std::time::Instant::now();
+        let built = imds.get_metrics();
+        utilities::perfstats::PERF.record_metrics_build(build_start.elapsed());
+        metrics = Some(built);
     } else {
         metrics = None;
     }
@@ -53,4 +58,12 @@ pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, entity_metrics: 
     ret.push_str("\n");
 
     return Some(ret);
+}
+
+// Lock-free hot-path performance counters (see utilities::perfstats). Separate
+// from the metric endpoints above so the perf harness can scrape it cheaply
+// without touching the IMDS lock.
+#[get("/perf")]
+pub fn metrics_perf() -> String {
+    utilities::perfstats::PERF.render()
 }
