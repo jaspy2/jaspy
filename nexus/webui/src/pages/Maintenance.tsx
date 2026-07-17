@@ -138,6 +138,12 @@ export default function Maintenance() {
 
       <h2>Performance</h2>
       <div className="panel">
+        <p className="muted" style={{ marginTop: 0 }}>
+          Poll and query rates are live (from the last few seconds). Everything
+          else is cumulative since the process started
+          {s ? ` ${formatUptime(s.startupTime)} ago` : ''}: means are lifetime
+          averages and maxima are all-time high-water marks, not a recent window.
+        </p>
         {p ? (
           <div className="kv">
             <span>Device polls</span>
