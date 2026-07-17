@@ -52,6 +52,7 @@ impl Gen {
     }
 }
 
+#[derive(Clone)]
 enum Value {
     Counter64(u64),
     Counter32(u32),
@@ -251,6 +252,27 @@ fn oid_components(oid: &snmp2::Oid) -> Vec<u64> {
     oid.iter().map(|it| it.collect()).unwrap_or_default()
 }
 
+// Standard multi-OID GETBULK: for each requested OID take its up-to-`max`
+// lexical successors, then emit them grouped by repetition (one varbind per
+// requested OID per repetition), padding an exhausted OID with endOfMibView so
+// the client's positional (repetition-major) de-interleaving stays aligned.
+fn bulk_response(mib: &Mib, requested: &[Vec<u64>], max: usize, elapsed_s: u64) -> Vec<(Vec<u64>, Value)> {
+    let per: Vec<Vec<(Vec<u64>, Value)>> = requested.iter().map(|o| mib.successors(o, max, elapsed_s)).collect();
+    let reps = per.iter().map(|p| p.len()).max().unwrap_or(0);
+    let mut out = Vec::new();
+    for rep in 0..reps {
+        for (i, p) in per.iter().enumerate() {
+            if rep < p.len() {
+                out.push(p[rep].clone());
+            } else {
+                let last = p.last().map(|(o, _)| o.clone()).unwrap_or_else(|| requested[i].clone());
+                out.push((last, Value::EndOfMibView));
+            }
+        }
+    }
+    out
+}
+
 // Produce the response bytes for one request datagram, or None if it can't be
 // parsed / isn't a request we serve.
 fn handle_request(mib: &Mib, start: Instant, datagram: &[u8]) -> Option<Vec<u8>> {
@@ -259,9 +281,10 @@ fn handle_request(mib: &Mib, start: Instant, datagram: &[u8]) -> Option<Vec<u8>>
     let req_id = pdu.req_id;
     let elapsed_s = start.elapsed().as_secs();
 
-    // Requested OID(s): our client always sends exactly one.
+    // Requested OID(s). GET/GETNEXT use the first; GETBULK walks all of them
+    // (the embedded client sends one varbind per table column).
     let requested: Vec<Vec<u64>> = pdu.varbinds.clone().map(|(oid, _)| oid_components(&oid)).collect();
-    let first = requested.into_iter().next().unwrap_or_default();
+    let first = requested.first().cloned().unwrap_or_default();
 
     let varbinds: Vec<(Vec<u64>, Value)> = match pdu.message_type {
         snmp2::MessageType::GetRequest => match mib.exact(&first, elapsed_s) {
@@ -279,11 +302,11 @@ fn handle_request(mib: &Mib, start: Instant, datagram: &[u8]) -> Option<Vec<u8>>
         snmp2::MessageType::GetBulkRequest => {
             // GETBULK reuses the error-index slot for max-repetitions.
             let max = pdu.error_index.max(1) as usize;
-            let succ = mib.successors(&first, max, elapsed_s);
-            if succ.is_empty() {
+            let out = bulk_response(mib, &requested, max, elapsed_s);
+            if out.is_empty() {
                 vec![(first, Value::EndOfMibView)]
             } else {
-                succ
+                out
             }
         }
         _ => return None,
@@ -410,6 +433,42 @@ mod tests {
         for (_, v) in oper {
             assert!(matches!(v, Value::Integer(1)));
         }
+    }
+
+    #[test]
+    fn bulk_interleaves_columns_by_repetition() {
+        // Two columns (ifDescr .2, ifOperStatus .8) over a 3-interface table,
+        // max_repetitions=2. Expect repetition-major order: for each of the 2
+        // reps, one varbind per requested column.
+        let mib = Mib::build(3);
+        let descr = vec![1, 3, 6, 1, 2, 1, 2, 2, 1, 2];
+        let status = vec![1, 3, 6, 1, 2, 1, 2, 2, 1, 8];
+        let out = bulk_response(&mib, &[descr.clone(), status.clone()], 2, 0);
+        assert_eq!(out.len(), 4); // 2 reps x 2 columns
+        // rep 0: descr.1 then status.1
+        assert_eq!(out[0].0, [descr.as_slice(), &[1]].concat());
+        assert_eq!(out[1].0, [status.as_slice(), &[1]].concat());
+        // rep 1: descr.2 then status.2
+        assert_eq!(out[2].0, [descr.as_slice(), &[2]].concat());
+        assert_eq!(out[3].0, [status.as_slice(), &[2]].concat());
+        assert!(matches!(out[1].1, Value::Integer(1)));
+    }
+
+    #[test]
+    fn bulk_pads_exhausted_column_with_end_of_mib() {
+        // ifHighSpeed (.15) is the last column in the whole tree, so it has only
+        // `interfaces` successors; ifDescr (.2) keeps yielding (its walk runs on
+        // into later columns). With more repetitions than ifHighSpeed has rows,
+        // ifHighSpeed's slots must pad with endOfMibView to stay aligned.
+        let mib = Mib::build(2);
+        let descr = vec![1, 3, 6, 1, 2, 1, 2, 2, 1, 2];
+        let highspeed = vec![1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 15];
+        let out = bulk_response(&mib, &[descr, highspeed], 4, 0);
+        assert_eq!(out.len(), 8); // 4 reps x 2 columns, padded
+        // ifHighSpeed is column index 1: positions 1,3,5,7. Rows exist for reps
+        // 0,1; reps 2,3 (positions 5,7) are padded.
+        assert!(matches!(out[5].1, Value::EndOfMibView));
+        assert!(matches!(out[7].1, Value::EndOfMibView));
     }
 
     #[test]

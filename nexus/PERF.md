@@ -46,7 +46,7 @@ all other pollers block.
 - **Fix:** snapshot under the lock and build/format metrics outside it; or
   `RwLock`; or shard IMDS per-device.
 
-### 3. 🔴 Embedded client issues ~N_columns× more round-trips per table
+### 3. 🔴 Embedded client issues ~N_columns× more round-trips per table  — ✅ FIXED (see results below)
 `snmp/embedded.rs::build_table` walks **each column independently** with GETBULK.
 ifTable (~22 cols) + ifXTable (~18) ≈ 40 independent walk sequences per device,
 vs snmpbot's lockstep multi-column walk (all columns per row batch in one PDU).
@@ -152,6 +152,30 @@ Same configs, same machine, before → after:
 | report hold | 0.03 → 0.01 ms | 1.22 → **0.07 ms** |
 
 Both hot-path serialization costs drop by 20–35×. Metric output is byte-identical
-(the exact-string metric unit tests still pass). Remaining findings (#3 embedded
-per-column walk, #4 shared snmpbot budget, #5 per-request HTTP client, #6/#7) are
-untouched.
+(the exact-string metric unit tests still pass).
+
+## Results after fixing #3
+
+- **#3** — `build_table` now walks all columns in **lockstep**: one multi-varbind
+  GETBULK per round advances every still-active column at once
+  (`Transport::getbulk_multi`), instead of a separate GETBULK sequence per
+  column. Per-column robustness (prefix boundary, end-of-view, looping-agent
+  guard, row cap) is preserved. Round-trips per device drop from
+  `~columns × ceil(rows/max_rep)` to `~ceil(rows/max_rep)` — a ~column-count
+  reduction (roughly 15–40× for ifTable/ifXTable).
+
+Stress B (250×128 = 32k interfaces), before → after #3:
+
+| Signal | before | after |
+|---|---|---|
+| SNMP latency mean | 4.8 ms | **3.6 ms** |
+| SNMP latency max | 33.3 ms | **12.5 ms** |
+| poll iteration mean | 10.5 ms | **8.4 ms** |
+
+On loopback (sub-ms RTT) the latency win is modest; the real benefit is the
+round-trip *count* collapse, which dominates on a live network where each RTT is
+milliseconds. Verified end-to-end against the real snmp2 client with 0 SNMP
+errors and all 32k interfaces reported.
+
+Remaining findings (#4 shared snmpbot budget, #5 per-request HTTP client, #6/#7)
+are untouched.
