@@ -177,5 +177,19 @@ round-trip *count* collapse, which dominates on a live network where each RTT is
 milliseconds. Verified end-to-end against the real snmp2 client with 0 SNMP
 errors and all 32k interfaces reported.
 
+Measured directly with the simulator's RTT injection (`--snmp-delay-ms 10
+--snmp-jitter-ms 5`, same fleet, pre-#3 binary via `--nexus-bin`):
+
+| Signal (250×128 @ 10 ms±5 ms RTT) | pre-#3 (per-column) | post-#3 (lockstep) |
+|---|---|---|
+| SNMP latency / table | **1063 ms** | **117 ms** |
+| poll iteration / device | **2127 ms** | **236 ms** |
+
+~9× under realistic latency. Consequence for the cycle budget: pre-#3 already
+spent 2.1 s per device at only 10 ms RTT, so it would start overrunning the 10 s
+cycle around ~45–55 ms RTT; post-#3 has roughly 9× that RTT headroom. (Both still
+showed 0 overruns at 10 ms because thread-per-device gives each switch its own
+10 s budget.)
+
 Remaining findings (#4 shared snmpbot budget, #5 per-request HTTP client, #6/#7)
 are untouched.
