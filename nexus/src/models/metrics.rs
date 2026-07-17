@@ -25,11 +25,45 @@ pub struct InterfaceMetrics {
     pub counter_violations: u64,
 }
 
+impl InterfaceMetrics {
+    // Make an interface look never-polled: clear all accumulated counters,
+    // operational state, and the last-report timestamp, leaving only stable
+    // identity (name/type/neighbors/speed_override) intact. Used when the
+    // physical device behind an interface is replaced (see IMDS::refresh_device
+    // base_mac reset): the new hardware's fresh, lower counters would otherwise
+    // be rejected as regressions by validate_counters, and a stale last_report
+    // would make the first post-swap health sample span a huge interval. Single
+    // source of truth so a newly added counter field can't be forgotten by an
+    // ad-hoc reset.
+    pub fn reset_counters(&mut self) {
+        self.last_report = 0;
+        self.in_octets = None;
+        self.out_octets = None;
+        self.in_unicast_packets = None;
+        self.in_multicast_packets = None;
+        self.in_broadcast_packets = None;
+        self.out_unicast_packets = None;
+        self.out_multicast_packets = None;
+        self.out_broadcast_packets = None;
+        self.in_errors = None;
+        self.out_errors = None;
+        self.out_discards = None;
+        self.up = None;
+        self.speed = None;
+        self.counter_violations = 0;
+    }
+}
+
 #[derive(Clone)]
 pub struct DeviceMetrics {
     pub fqdn: String,
 
     pub hostname: String,
+
+    // Chassis base MAC last seen for this device (from discovery). A change
+    // means the physical device was swapped behind the same fqdn/ip; IMDS uses
+    // it to reset stale per-interface counters. None = not yet learned.
+    pub base_mac: Option<String>,
 
     pub up: Option<bool>,
 

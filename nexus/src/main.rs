@@ -37,11 +37,16 @@ fn refresh_imds_items(conn: &mut db::AnyConnection, imds: &Arc<Mutex<utilities::
             imds.retain_devices(&monitored_fqdns);
             for device in refresh_devices.iter() {
                 let device_fqdn = format!("{}.{}", device.name, device.dns_domain);
-                imds.refresh_device(&device_fqdn);
+                imds.refresh_device(&device_fqdn, &device.base_mac);
                 if let Some(device_interfaces) = refresh_interfaces.get(&device_fqdn) {
                     for interface in device_interfaces.iter() {
                         imds.refresh_interface(&device_fqdn, interface.index, &interface.interface_type, &interface.name(), interface.connected_interface.is_some() || interface.virtual_connection.is_some(), interface.speed_override);
                     }
+                    // Drop interfaces whose ifindex is no longer in the DB set
+                    // (reindexed or removed), so a stale ghost stops exporting a
+                    // duplicate metric series. Mirrors retain_devices, per device.
+                    let live_ifindexes: std::collections::HashSet<i32> = device_interfaces.iter().map(|i| i.index).collect();
+                    imds.retain_interfaces(&device_fqdn, &live_ifindexes);
                 }
             }
         }

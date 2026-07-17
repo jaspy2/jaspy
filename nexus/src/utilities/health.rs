@@ -385,6 +385,21 @@ impl HealthStore {
         self.devices.retain(|fqdn, _| keep.contains(fqdn));
     }
 
+    // GC per-interface history for interfaces no longer in the DB (mirrors
+    // IMDS::retain_interfaces). No-op for a device with no history yet.
+    pub fn retain_interfaces(&mut self, fqdn: &str, keep: &HashSet<i32>) {
+        if let Some(interfaces) = self.devices.get_mut(fqdn) {
+            interfaces.retain(|ifindex, _| keep.contains(ifindex));
+        }
+    }
+
+    // Drop all recent history for a device's interfaces — the samples belong to
+    // hardware that was just replaced (IMDS::refresh_device base_mac reset).
+    // No-op for a device with no history yet.
+    pub fn forget_device_interfaces(&mut self, fqdn: &str) {
+        self.devices.remove(fqdn);
+    }
+
     // --- optional disk persistence: only the sample data, never the config ---
 
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
@@ -708,6 +723,33 @@ mod tests {
         s.retain_devices(&keep);
         assert!(s.summary("keep.example.com", 1, 1_000_000, 1_000_000).is_some());
         assert!(s.summary("drop.example.com", 1, 1_000_000, 1_000_000).is_none());
+    }
+
+    #[test]
+    fn retain_interfaces_drops_stale_ifindexes() {
+        let mut s = store();
+        s.ingest(FQDN, 5, counters(0, 0, 1, 10_000), 1_000_000);
+        s.ingest(FQDN, 7, counters(0, 0, 1, 10_000), 1_000_000);
+        // DB only knows ifindex 7 now (5 was reindexed/removed).
+        let keep: HashSet<i32> = vec![7].into_iter().collect();
+        s.retain_interfaces(FQDN, &keep);
+        assert!(s.summary(FQDN, 7, 1_000_000, 1_000_000).is_some());
+        assert!(s.summary(FQDN, 5, 1_000_000, 1_000_000).is_none());
+        // Unknown device is a no-op (must not panic).
+        s.retain_interfaces("ghost.example.com", &keep);
+    }
+
+    #[test]
+    fn forget_device_interfaces_clears_all_history() {
+        let mut s = store();
+        s.ingest(FQDN, 1, counters(0, 0, 1, 10_000), 1_000_000);
+        s.ingest(FQDN, 2, counters(0, 0, 1, 10_000), 1_000_000);
+        // Chassis swapped: drop the whole device's history.
+        s.forget_device_interfaces(FQDN);
+        assert!(s.summary(FQDN, 1, 1_000_000, 1_000_000).is_none());
+        assert!(s.summary(FQDN, 2, 1_000_000, 1_000_000).is_none());
+        // Unknown device is a no-op (must not panic).
+        s.forget_device_interfaces("ghost.example.com");
     }
 
     #[test]

@@ -85,6 +85,20 @@ impl IMDS {
         self.health.retain_devices(monitored_fqdns);
     }
 
+    // Drop interfaces from a device that no longer exist in the DB. Discovery
+    // keys interfaces by name and rewrites the ifindex in place when it changes
+    // (module reseat, reboot, device swap); the IMDS refresh loop keys on ifindex
+    // and only ever inserts/updates, so a changed-or-removed ifindex would
+    // otherwise orphan the old entry forever. Since ifindex is not a metric
+    // label, such a ghost exports a duplicate series frozen at stale values.
+    // Mirrors retain_devices, one level down. No-op for unknown devices.
+    pub fn retain_interfaces(self: &mut IMDS, device_fqdn: &String, live_ifindexes: &HashSet<i32>) {
+        if let Some(device) = self.metrics_storage.devices.get_mut(device_fqdn) {
+            device.interfaces.retain(|ifindex, _| live_ifindexes.contains(ifindex));
+        }
+        self.health.retain_interfaces(device_fqdn, live_ifindexes);
+    }
+
     // Health summary for one interface (None when healthy). The interface's
     // last-poll timestamp drives the stale check.
     pub fn interface_health(self: &IMDS, fqdn: &str, ifindex: i32, now: u64) -> Option<crate::utilities::health::InterfaceHealthSummary> {
@@ -108,25 +122,61 @@ impl IMDS {
         self.health.load_json(json)
     }
 
-    pub fn refresh_device(self: &mut IMDS, device_fqdn: &String) {
-        match self.metrics_storage.devices.get_mut(device_fqdn) {
-            Some(device) => {
-                device.last_report = utilities::tools::get_time_msecs();
-                return;
-            },
-            None => {}
+    pub fn refresh_device(self: &mut IMDS, device_fqdn: &String, base_mac: &Option<String>) {
+        let mut existed = false;
+        let mut hardware_swapped = false;
+        if let Some(device) = self.metrics_storage.devices.get_mut(device_fqdn) {
+            existed = true;
+            device.last_report = utilities::tools::get_time_msecs();
+            // A changed chassis base MAC means the physical device was replaced
+            // behind the same fqdn/ip. Reset every interface's accumulated
+            // counters + operational state so the new hardware's fresh (lower)
+            // counters aren't rejected as regressions by validate_counters, and
+            // no stale samples linger. The stored value is normalized (discovery
+            // emits colon- or space-separated forms and the field is
+            // operator-editable), so only a genuine MAC change trips the reset,
+            // not a reformatting. Only a KNOWN, non-empty MAC updates state: a
+            // missing MAC (None) leaves the last-known value intact, so a
+            // transient gap in discovery neither discards it nor masks a later
+            // real change. Learning a MAC for the first time is not a swap.
+            let new_normalized = base_mac.as_deref()
+                .map(crate::utilities::stp::normalize_mac)
+                .filter(|m| !m.is_empty());
+            if let Some(new_mac) = new_normalized {
+                match &device.base_mac {
+                    Some(old_mac) if *old_mac == new_mac => {}, // unchanged: no write
+                    Some(_) => {
+                        hardware_swapped = true;
+                        for interface in device.interfaces.values_mut() {
+                            interface.reset_counters();
+                        }
+                        device.base_mac = Some(new_mac);
+                    },
+                    None => { device.base_mac = Some(new_mac); }, // first learn
+                }
+            }
         }
-        let fqdn_splitted : Vec<&str> = device_fqdn.split('.').collect();
-        let hostname = fqdn_splitted[0];
-        let dm = models::metrics::DeviceMetrics {
-            last_report: 0,
-            last_poll: 0,
-            fqdn: device_fqdn.clone(),
-            hostname: hostname.to_string(),
-            up: None,
-            interfaces: HashMap::new(),
-        };
-        self.metrics_storage.devices.insert(device_fqdn.clone(), dm);
+        if !existed {
+            let fqdn_splitted : Vec<&str> = device_fqdn.split('.').collect();
+            let hostname = fqdn_splitted[0];
+            let dm = models::metrics::DeviceMetrics {
+                last_report: 0,
+                last_poll: 0,
+                fqdn: device_fqdn.clone(),
+                hostname: hostname.to_string(),
+                base_mac: base_mac.as_deref()
+                    .map(crate::utilities::stp::normalize_mac)
+                    .filter(|m| !m.is_empty()),
+                up: None,
+                interfaces: HashMap::new(),
+            };
+            self.metrics_storage.devices.insert(device_fqdn.clone(), dm);
+        }
+        // Health history belongs to the removed hardware — drop it too. Done
+        // after the device borrow ends to satisfy the borrow checker.
+        if hardware_swapped {
+            self.health.forget_device_interfaces(device_fqdn);
+        }
     }
 
     pub fn report_device(self: &mut IMDS, connection: &mut AnyConnection, dmr: models::json::DeviceMonitorReport) {
@@ -179,6 +229,13 @@ impl IMDS {
         match device.interfaces.get_mut(&if_index) {
             Some(target_interface) => {
                 if target_interface.name != *name { target_interface.name = name.clone(); }
+                // interface_type is deliberately NOT updated here: it is a
+                // Prometheus label (see metrics_from), so mutating it in place
+                // would end the interface's counter series and start a new one,
+                // fabricating a rate() reset/gap. It is effectively immutable
+                // after creation — ifType almost never changes on a live port,
+                // and a port that genuinely changes gets a new ifindex (hence a
+                // fresh entry). A chassis swap is handled by refresh_device.
                 target_interface.neighbors = neighbors;
                 target_interface.speed_override = speed_override;
                 return;
@@ -734,7 +791,7 @@ mod tests {
     fn refresh_device_creates_then_touches() {
         let mut imds = test_imds();
         let fqdn = "sw1.example.com".to_string();
-        imds.refresh_device(&fqdn);
+        imds.refresh_device(&fqdn, &None);
         {
             let device = imds.get_device(&fqdn).unwrap();
             assert_eq!(device.hostname, "sw1");
@@ -742,15 +799,15 @@ mod tests {
             assert_eq!(device.up, None);
             assert_eq!(device.last_report, 0);
         }
-        imds.refresh_device(&fqdn);
+        imds.refresh_device(&fqdn, &None);
         assert!(imds.get_device(&fqdn).unwrap().last_report > 0);
     }
 
     #[test]
     fn retain_devices_drops_missing() {
         let mut imds = test_imds();
-        imds.refresh_device(&"keep.example.com".to_string());
-        imds.refresh_device(&"drop.example.com".to_string());
+        imds.refresh_device(&"keep.example.com".to_string(), &None);
+        imds.refresh_device(&"drop.example.com".to_string(), &None);
         let keep: HashSet<String> = vec!["keep.example.com".to_string()].into_iter().collect();
         imds.retain_devices(&keep);
         assert!(imds.get_device("keep.example.com").is_some());
@@ -761,7 +818,7 @@ mod tests {
     fn refresh_interface_creates_then_updates() {
         let mut imds = test_imds();
         let fqdn = "sw1.example.com".to_string();
-        imds.refresh_device(&fqdn);
+        imds.refresh_device(&fqdn, &None);
         imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
         {
             let iface = &imds.get_device(&fqdn).unwrap().interfaces[&1];
@@ -785,6 +842,222 @@ mod tests {
         assert!(imds.get_device("ghost.example.com").is_none());
     }
 
+    // Reproduces the ghost-interface leak: discovery keys interfaces by name and
+    // rewrites the ifindex in place when it changes (utilities/discovery.rs), but
+    // the IMDS refresh loop keys on ifindex and only ever inserts/updates. When an
+    // interface's ifindex changes (module reseat, reboot, device swap) the old
+    // ifindex entry is orphaned. Because ifindex is NOT a metric label, the ghost
+    // and the live interface export IDENTICAL label sets -> a duplicate Prometheus
+    // series frozen at stale values.
+    #[test]
+    fn reindexed_interface_leaves_ghost_and_duplicate_metric() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn, &None);
+
+        // Interface "Gi1/0/1" first seen at ifindex 5, with a byte counter so it
+        // renders a metric.
+        imds.refresh_interface(&fqdn, 5, &"ethernetCsmacd".to_string(), &"Gi1/0/1".to_string(), false, None);
+        imds.interface_mut(&fqdn, 5).in_octets = Some(100);
+
+        // Same physical interface reappears at ifindex 7 (ifindex changed). The DB
+        // row updated in place; the IMDS refresh calls refresh_interface for the
+        // new ifindex.
+        imds.refresh_interface(&fqdn, 7, &"ethernetCsmacd".to_string(), &"Gi1/0/1".to_string(), false, None);
+        imds.interface_mut(&fqdn, 7).in_octets = Some(200);
+
+        // BUG: both ifindexes now live in the map.
+        assert_eq!(imds.get_device(&fqdn).unwrap().interfaces.len(), 2);
+
+        // BUG: two rx-octet series for the SAME label set (name=Gi1/0/1) — a
+        // duplicate Prometheus series.
+        let metrics = imds.get_metrics();
+        let dup: Vec<&LabeledMetric> = metrics
+            .iter()
+            .filter(|m| m.name == "jaspy_interface_octets"
+                && m.labels.get("name").map(|n| n == "Gi1/0/1").unwrap_or(false)
+                && m.labels.get("direction").map(|d| d == "rx").unwrap_or(false))
+            .collect();
+        assert_eq!(dup.len(), 2, "reindex should leave a duplicate rx series (the bug)");
+    }
+
+    // retain_interfaces reconciles the IMDS interface map against the DB's live
+    // ifindex set, clearing the ghost from a reindex and its duplicate series.
+    #[test]
+    fn retain_interfaces_drops_reindexed_ghost() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn, &None);
+        imds.refresh_interface(&fqdn, 5, &"ethernetCsmacd".to_string(), &"Gi1/0/1".to_string(), false, None);
+        imds.interface_mut(&fqdn, 5).in_octets = Some(100);
+        imds.refresh_interface(&fqdn, 7, &"ethernetCsmacd".to_string(), &"Gi1/0/1".to_string(), false, None);
+        imds.interface_mut(&fqdn, 7).in_octets = Some(200);
+
+        // DB now only knows ifindex 7 (discovery rewrote the index in place).
+        let live: HashSet<i32> = vec![7].into_iter().collect();
+        imds.retain_interfaces(&fqdn, &live);
+
+        let device = imds.get_device(&fqdn).unwrap();
+        assert_eq!(device.interfaces.len(), 1);
+        assert!(device.interfaces.contains_key(&7));
+        assert!(!device.interfaces.contains_key(&5), "ghost ifindex must be gone");
+
+        // No more duplicate series: exactly one rx-octet series for Gi1/0/1.
+        let metrics = imds.get_metrics();
+        let dup: Vec<&LabeledMetric> = metrics
+            .iter()
+            .filter(|m| m.name == "jaspy_interface_octets"
+                && m.labels.get("name").map(|n| n == "Gi1/0/1").unwrap_or(false)
+                && m.labels.get("direction").map(|d| d == "rx").unwrap_or(false))
+            .collect();
+        assert_eq!(dup.len(), 1);
+        assert!(matches!(dup[0].value, MetricValue::Uint64(200)), "surviving series is the live ifindex 7");
+    }
+
+    // Removing an interface entirely (no same-name replacement) is also cleaned
+    // up — the name-match-only heuristic from the report would miss this case.
+    #[test]
+    fn retain_interfaces_drops_removed_interface() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn, &None);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Gi1/0/1".to_string(), false, None);
+        imds.refresh_interface(&fqdn, 2, &"ethernetCsmacd".to_string(), &"Gi1/0/2".to_string(), false, None);
+
+        // DB dropped Gi1/0/2 (module removed); only ifindex 1 survives.
+        let live: HashSet<i32> = vec![1].into_iter().collect();
+        imds.retain_interfaces(&fqdn, &live);
+
+        let device = imds.get_device(&fqdn).unwrap();
+        assert_eq!(device.interfaces.len(), 1);
+        assert!(device.interfaces.contains_key(&1));
+    }
+
+    // interface_type is a Prometheus label, so it must stay stable after
+    // creation: a refresh reporting a different ifType updates neighbors/
+    // speed_override but leaves the type label AND all counters intact.
+    // Mutating the label would fabricate a rate() reset by breaking series
+    // continuity; a genuine port change gets a new ifindex (fresh entry) and a
+    // chassis swap is handled by the base_mac reset.
+    #[test]
+    fn refresh_interface_update_keeps_type_label_and_counters() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn, &None);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Gi0/0".to_string(), false, None);
+        {
+            let iface = imds.interface_mut(&fqdn, 1);
+            iface.in_octets = Some(1_000_000);
+            iface.up = Some(true);
+            iface.speed = Some(1000);
+            iface.counter_violations = 3;
+        }
+
+        // A later refresh reports a different ifType plus new neighbor/override.
+        imds.refresh_interface(&fqdn, 1, &"gigabitEthernet".to_string(), &"Gi0/0".to_string(), true, Some(40000));
+        let iface = &imds.get_device(&fqdn).unwrap().interfaces[&1];
+        assert_eq!(iface.interface_type, "ethernetCsmacd", "type label is immutable after creation");
+        assert_eq!(iface.in_octets, Some(1_000_000), "counters must be preserved");
+        assert_eq!(iface.up, Some(true));
+        assert_eq!(iface.speed, Some(1000));
+        assert_eq!(iface.counter_violations, 3);
+        assert_eq!(iface.neighbors, true, "neighbors still updates");
+        assert_eq!(iface.speed_override, Some(40000), "speed_override still updates");
+    }
+
+    // A chassis replacement behind the same fqdn/ip shows up as a changed
+    // base_mac. refresh_device must reset every interface's counters + state so
+    // the new hardware's fresh (lower) counters aren't rejected as regressions,
+    // and clear the health history that belongs to the removed device.
+    #[test]
+    fn refresh_device_base_mac_change_resets_interface_counters() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        let old_mac = Some("aa:bb:cc:00:00:01".to_string());
+        let new_mac = Some("aa:bb:cc:00:00:02".to_string());
+
+        imds.refresh_device(&fqdn, &old_mac);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Gi0/0".to_string(), false, None);
+        {
+            let iface = imds.interface_mut(&fqdn, 1);
+            iface.in_octets = Some(9_000_000);
+            iface.up = Some(true);
+            iface.speed = Some(1000);
+            iface.counter_violations = 7;
+            iface.last_report = 1_700_000_000_000; // stale poll time from old hw
+        }
+
+        // Same MAC on the next refresh: nothing is disturbed.
+        imds.refresh_device(&fqdn, &old_mac);
+        assert_eq!(imds.get_device(&fqdn).unwrap().interfaces[&1].in_octets, Some(9_000_000));
+
+        // MAC changes -> chassis swapped -> all interface counters/state reset.
+        imds.refresh_device(&fqdn, &new_mac);
+        let device = imds.get_device(&fqdn).unwrap();
+        assert_eq!(device.base_mac, Some("aa:bb:cc:00:00:02".to_string()));
+        let iface = &device.interfaces[&1];
+        assert_eq!(iface.in_octets, None);
+        assert_eq!(iface.up, None);
+        assert_eq!(iface.speed, None);
+        assert_eq!(iface.counter_violations, 0);
+        // last_report cleared so the first post-swap poll is treated as the
+        // baseline, not a huge-interval zero-throughput sample.
+        assert_eq!(iface.last_report, 0);
+        // Identity is retained — only counters/state are cleared.
+        assert_eq!(iface.name, "Gi0/0");
+    }
+
+    // A base_mac that differs only in representation (separators/case) is the
+    // SAME chassis: discovery emits colon- and space-separated forms and the
+    // field is operator-editable, so it must NOT be treated as a swap.
+    #[test]
+    fn refresh_device_base_mac_representation_change_is_not_a_swap() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        imds.refresh_device(&fqdn, &Some("aa:bb:cc:00:00:01".to_string()));
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Gi0/0".to_string(), false, None);
+        imds.interface_mut(&fqdn, 1).in_octets = Some(500);
+
+        // Same MAC, space-separated and upper-cased.
+        imds.refresh_device(&fqdn, &Some("AA BB CC 00 00 01".to_string()));
+        assert_eq!(imds.get_device(&fqdn).unwrap().interfaces[&1].in_octets, Some(500),
+            "a reformatted MAC must not trigger a swap reset");
+    }
+
+    // Learning a base_mac for the first time (None -> Some) or a transient
+    // missing MAC (Some -> None) must NOT count as a swap.
+    #[test]
+    fn refresh_device_base_mac_first_learn_or_missing_is_not_a_swap() {
+        let mut imds = test_imds();
+        let fqdn = "sw1.example.com".to_string();
+        let mac = Some("aa:bb:cc:00:00:01".to_string());
+
+        // Created with no MAC yet, counters accumulate.
+        imds.refresh_device(&fqdn, &None);
+        imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Gi0/0".to_string(), false, None);
+        imds.interface_mut(&fqdn, 1).in_octets = Some(500);
+
+        // None -> Some (first discovery of the MAC): not a swap.
+        imds.refresh_device(&fqdn, &mac);
+        assert_eq!(imds.get_device(&fqdn).unwrap().interfaces[&1].in_octets, Some(500));
+        assert_eq!(imds.get_device(&fqdn).unwrap().base_mac, mac);
+
+        // Some -> None (discovery momentarily didn't report a MAC): not a swap,
+        // and the last-known MAC is not clobbered into a false future swap.
+        imds.interface_mut(&fqdn, 1).in_octets = Some(600);
+        imds.refresh_device(&fqdn, &None);
+        assert_eq!(imds.get_device(&fqdn).unwrap().interfaces[&1].in_octets, Some(600));
+    }
+
+    #[test]
+    fn retain_interfaces_unknown_device_is_noop() {
+        let mut imds = test_imds();
+        let live: HashSet<i32> = vec![1].into_iter().collect();
+        // Must not panic or create the device.
+        imds.retain_interfaces(&"ghost.example.com".to_string(), &live);
+        assert!(imds.get_device("ghost.example.com").is_none());
+    }
+
     // --- metric rendering ---
 
     #[test]
@@ -794,7 +1067,7 @@ mod tests {
         let down = "down.example.com".to_string();
         let unknown = "unknown.example.com".to_string();
         for fqdn in [&up, &down, &unknown] {
-            imds.refresh_device(fqdn);
+            imds.refresh_device(fqdn, &None);
         }
         imds.metrics_storage.devices.get_mut(&up).unwrap().up = Some(true);
         imds.metrics_storage.devices.get_mut(&down).unwrap().up = Some(false);
@@ -823,7 +1096,7 @@ mod tests {
     fn get_metrics_speed_override_wins() {
         let mut imds = test_imds();
         let fqdn = "sw1.example.com".to_string();
-        imds.refresh_device(&fqdn);
+        imds.refresh_device(&fqdn, &None);
         imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, Some(40000));
         imds.interface_mut(&fqdn, 1).speed = Some(1000);
 
@@ -837,7 +1110,7 @@ mod tests {
     fn get_metrics_uses_direction_labels() {
         let mut imds = test_imds();
         let fqdn = "sw1.example.com".to_string();
-        imds.refresh_device(&fqdn);
+        imds.refresh_device(&fqdn, &None);
         imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
         {
             let iface = imds.interface_mut(&fqdn, 1);
@@ -861,7 +1134,7 @@ mod tests {
     fn get_metrics_omits_unset_counters() {
         let mut imds = test_imds();
         let fqdn = "sw1.example.com".to_string();
-        imds.refresh_device(&fqdn);
+        imds.refresh_device(&fqdn, &None);
         imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
         // Everything None: no metrics at all for this interface.
         assert!(imds.get_metrics().is_empty());
@@ -871,7 +1144,7 @@ mod tests {
     fn get_metrics_neighbors_label_yes_no() {
         let mut imds = test_imds();
         let fqdn = "sw1.example.com".to_string();
-        imds.refresh_device(&fqdn);
+        imds.refresh_device(&fqdn, &None);
         imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), true, None);
         imds.refresh_interface(&fqdn, 2, &"ethernetCsmacd".to_string(), &"Eth2".to_string(), false, None);
         imds.interface_mut(&fqdn, 1).in_errors = Some(1);
@@ -901,7 +1174,7 @@ mod tests {
 
         let mut imds = test_imds();
         let fqdn = "sw1.example.com".to_string();
-        imds.refresh_device(&fqdn);
+        imds.refresh_device(&fqdn, &None);
         imds.refresh_interface(&fqdn, 1, &"ethernetCsmacd".to_string(), &"Eth1".to_string(), false, None);
 
         let report = |up: Option<bool>, discards: Option<u64>| {
