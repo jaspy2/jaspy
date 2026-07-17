@@ -537,6 +537,7 @@ async fn server_main() {
                 routes::api::v1::reset,
                 routes::api::v1::system_status,
                 routes::api::v1::system_perf,
+                routes::api::v1::system_env,
                 routes::api::v1::ws_logs,
             ]
         )

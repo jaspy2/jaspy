@@ -176,6 +176,16 @@ pub struct ApiSystemStatus {
     pub weathermap_dir: Option<String>,
 }
 
+// GET /api/v1/system/env: one JASPY_* environment variable and its (redacted)
+// value, so an admin can see the effective startup configuration. Secret-ish
+// values (SNMP communities, passwords, URL credentials) are masked server-side.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiEnvVar {
+    pub name: String,
+    pub value: String,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiSummary {

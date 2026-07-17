@@ -801,6 +801,60 @@ pub fn system_perf() -> Json<models::json::ApiPerfStats> {
     })
 }
 
+// Mask secrets before an env value is shown in the admin UI. SNMP communities
+// and any *_PASSWORD/_SECRET/_TOKEN/_APIKEY are shown as set-but-hidden; URL
+// values (JASPY_DB_URL, JASPY_MQTT_SERVER, …) have any embedded credentials
+// stripped; everything else (booleans, intervals, paths, domains) is verbatim.
+fn redact_env_value(name: &str, value: &str) -> String {
+    if value.is_empty() {
+        return String::new();
+    }
+    let upper = name.to_uppercase();
+    let secretish = ["COMMUNITY", "PASSWORD", "PASSWD", "SECRET", "TOKEN", "APIKEY"]
+        .iter()
+        .any(|marker| upper.contains(marker));
+    if secretish {
+        return "\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}".to_string(); // ••••••
+    }
+    if value.contains("://") {
+        if let Ok(mut url) = reqwest::Url::parse(value) {
+            let mut changed = false;
+            if url.password().is_some() {
+                let _ = url.set_password(Some("***"));
+                changed = true;
+            }
+            if !url.username().is_empty() {
+                let _ = url.set_username("***");
+                changed = true;
+            }
+            if changed {
+                return url.to_string();
+            }
+        }
+    }
+    value.to_string()
+}
+
+// Collect JASPY_* env vars (name + redacted value), sorted by name. Pure over an
+// iterator so tests never touch process-global state.
+fn collect_jaspy_env<I: Iterator<Item = (String, String)>>(vars: I) -> Vec<models::json::ApiEnvVar> {
+    let mut out: Vec<models::json::ApiEnvVar> = vars
+        .filter(|(name, _)| name.starts_with("JASPY_"))
+        .map(|(name, value)| models::json::ApiEnvVar { value: redact_env_value(&name, &value), name })
+        .collect();
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
+// GET /api/v1/system/env: the JASPY_* environment the process is running with,
+// so an admin can see the effective configuration on the Maintenance page.
+// Values are redacted server-side (see redact_env_value) so secrets never reach
+// the client. Reflects the live process env; startup-fixed in practice.
+#[get("/system/env")]
+pub fn system_env() -> Json<Vec<models::json::ApiEnvVar>> {
+    Json(collect_jaspy_env(std::env::vars()))
+}
+
 // Live update stream over WebSocket. The generic transport for pushing updates
 // from the backend to the client: the server replays the topic's backlog on
 // connect, then streams frames as they are published to utilities::livelog.
@@ -874,6 +928,45 @@ mod tests {
         ];
         assert_eq!(order_device_ips(addrs.into_iter()), vec!["10.0.0.1", "10.0.0.2", "::1", "fe80::1"]);
         assert!(order_device_ips(std::iter::empty()).is_empty());
+    }
+
+    #[test]
+    fn env_secrets_are_masked_and_urls_stripped() {
+        // SNMP community and password-ish names are fully masked.
+        assert_eq!(redact_env_value("JASPY_DISCOVERY_COMMUNITY", "public"), "••••••");
+        assert_eq!(redact_env_value("JASPY_MQTT_PASSWORD", "hunter2"), "••••••");
+        // URL credentials are stripped, host/scheme kept.
+        assert_eq!(
+            redact_env_value("JASPY_DB_URL", "postgres://user:pass@db.example:5432/jaspy"),
+            "postgres://***:***@db.example:5432/jaspy"
+        );
+        assert_eq!(
+            redact_env_value("JASPY_MQTT_SERVER", "mqtt://alice:s3cr3t@broker:1883"),
+            "mqtt://***:***@broker:1883"
+        );
+        // Non-secret, non-URL values pass through verbatim.
+        assert_eq!(redact_env_value("JASPY_POLL_LOOP_MSECS", "1000"), "1000");
+        assert_eq!(redact_env_value("JASPY_SNMPBOT_URL", "http://127.0.0.1:8286"), "http://127.0.0.1:8286");
+        assert_eq!(redact_env_value("JASPY_SNMP_MODE", "snmpbot"), "snmpbot");
+        // Empty stays empty (don't render a mask for an unset-but-present var).
+        assert_eq!(redact_env_value("JASPY_DISCOVERY_COMMUNITY", ""), "");
+    }
+
+    #[test]
+    fn collect_env_filters_prefix_sorts_and_redacts() {
+        let vars = vec![
+            ("PATH".to_string(), "/usr/bin".to_string()),        // non-JASPY: dropped
+            ("JASPY_SNMP_MODE".to_string(), "snmpbot".to_string()),
+            ("JASPY_DISCOVERY_COMMUNITY".to_string(), "public".to_string()),
+            ("HOME".to_string(), "/root".to_string()),           // non-JASPY: dropped
+        ];
+        let out = collect_jaspy_env(vars.into_iter());
+        assert_eq!(out.len(), 2);
+        // Sorted by name.
+        assert_eq!(out[0].name, "JASPY_DISCOVERY_COMMUNITY");
+        assert_eq!(out[0].value, "••••••");
+        assert_eq!(out[1].name, "JASPY_SNMP_MODE");
+        assert_eq!(out[1].value, "snmpbot");
     }
 
     #[test]

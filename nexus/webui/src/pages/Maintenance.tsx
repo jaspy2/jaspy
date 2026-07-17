@@ -14,6 +14,8 @@ export default function Maintenance() {
   const system = useQuery({ queryKey: ['system'], queryFn: api.system, refetchInterval: 10000 });
   const perf = useQuery({ queryKey: ['systemPerf'], queryFn: api.systemPerf, refetchInterval: 3000 });
   const event = useQuery({ queryKey: ['event'], queryFn: api.event });
+  // Env config is fixed at startup, so a single fetch is enough (no interval).
+  const env = useQuery({ queryKey: ['systemEnv'], queryFn: api.systemEnv });
 
   // perfstats counters are lifetime totals; diff successive polls into live
   // per-second rates for the two headline throughput numbers.
@@ -63,6 +65,7 @@ export default function Maintenance() {
   const s = summary.data;
   const sys = system.data;
   const p = perf.data;
+  const envVars = env.data;
 
   return (
     <>
@@ -146,6 +149,31 @@ export default function Maintenance() {
               {sys.weathermapDir ?? <span className="muted">directory not found — not served</span>}
             </span>
           </div>
+        ) : (
+          <p>Loading…</p>
+        )}
+      </div>
+
+      <h2>Configuration</h2>
+      <div className="panel">
+        <p className="muted" style={{ marginTop: 0 }}>
+          The <code>JASPY_*</code> environment the process is running with, read
+          at startup. Secrets (SNMP communities, passwords, URL credentials) are
+          masked.
+        </p>
+        {envVars ? (
+          envVars.length > 0 ? (
+            <div className="kv">
+              {envVars.flatMap((e) => [
+                <span key={e.name}><code>{e.name}</code></span>,
+                <span key={`${e.name}-v`} className="wrap">
+                  {e.value === '' ? <span className="muted">(empty)</span> : <code>{e.value}</code>}
+                </span>,
+              ])}
+            </div>
+          ) : (
+            <p className="muted">No <code>JASPY_*</code> variables set.</p>
+          )
         ) : (
           <p>Loading…</p>
         )}

@@ -87,6 +87,11 @@ export interface SystemStatus {
   weathermapDir: string | null;
 }
 
+export interface EnvVar {
+  name: string;
+  value: string; // redacted server-side (secrets masked)
+}
+
 export interface Summary {
   version: string;
   stateId: number;

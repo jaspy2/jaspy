@@ -5,6 +5,7 @@ import type {
   DeviceEntity,
   DeviceUpdate,
   DiscoveryConfig,
+  EnvVar,
   DiscoveryStatus,
   EventInfo,
   ResetResult,
@@ -40,6 +41,7 @@ export const api = {
   summary: () => request<Summary>('/api/v1/summary'),
   system: () => request<SystemStatus>('/api/v1/system'),
   systemPerf: () => request<PerfStats>('/api/v1/system/perf'),
+  systemEnv: () => request<EnvVar[]>('/api/v1/system/env'),
   devices: () => request<Device[]>('/api/v1/devices'),
   device: (fqdn: string) => request<DeviceDetail>(`/api/v1/devices/${encodeURIComponent(fqdn)}`),
   deviceEntity: (fqdn: string) =>

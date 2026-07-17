@@ -103,6 +103,15 @@ live rates). Times are pre-divided to milliseconds.
 
 Response: [`ApiPerfStats`](#apiperfstats).
 
+### `GET /api/v1/system/env`
+
+The `JASPY_*` environment the process is running with, for an admin config view.
+Values are redacted server-side: SNMP communities and `*_PASSWORD`/`_SECRET`/
+`_TOKEN`/`_APIKEY` are masked, and credentials embedded in URL values are
+stripped. Sorted by name.
+
+Response: array of [`ApiEnvVar`](#apienvvar).
+
 ---
 
 ## Devices
@@ -679,6 +688,15 @@ milliseconds.
 | `interfacesReported` | integer |
 | `metricsScrapes` | integer |
 | `metricsBuildMaxMs` | number |
+
+### ApiEnvVar
+
+One `JASPY_*` environment variable (value redacted; see `GET /system/env`).
+
+| Field | Type |
+|-------|------|
+| `name` | string |
+| `value` | string |
 
 ### DiscoveryStatus
 
