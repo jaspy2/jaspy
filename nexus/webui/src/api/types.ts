@@ -63,6 +63,7 @@ export interface SystemStatus {
   version: string;
   startupTime: number;
   snmpbotUrl: string;
+  snmpbotConnected: boolean | null; // true=responding, false=down, null=embedded mode
   snmpMode: 'snmpbot' | 'embedded';
   dbUrl: string;
   dbBackend: string; // "postgresql" | "sqlite"

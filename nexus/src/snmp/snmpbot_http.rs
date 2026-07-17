@@ -79,9 +79,32 @@ impl SnmpbotHttp {
     }
 }
 
+// Liveness probe for the Maintenance page's snmpbot status line. Does a short
+// GET to the snmpbot API root and treats ANY HTTP response — even a 4xx — as
+// "up": we only care that snmpbot is reachable and answering, not what it says
+// (the mock snmpbot, for one, answers 404 there). A transport error
+// (connection refused, DNS failure, timeout) means down.
+//
+// Runs on a dedicated OS thread because reqwest::blocking spins its own tokio
+// runtime and would panic if called from rocket's async worker (see the client
+// note above). The reqwest timeout bounds how long the join can block.
+pub fn probe(base_url: &str, timeout: Duration) -> bool {
+    let url = format!("{}/api/", base_url.trim_end_matches('/'));
+    std::thread::spawn(move || {
+        match reqwest::blocking::Client::builder().timeout(timeout).build() {
+            Ok(client) => client.get(&url).send().is_ok(),
+            Err(_) => false,
+        }
+    })
+    .join()
+    .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
 
     #[test]
     fn query_param_url_has_path_and_snmp() {
@@ -107,5 +130,32 @@ mod tests {
         let http = SnmpbotHttp::new("not a url".to_string());
         let host = HostSpec::with_community("sw1", "public");
         assert!(http.url(&host, "tables", "t").is_err());
+    }
+
+    // A responding snmpbot is "up" even when it answers 404 (the mock does):
+    // the probe only checks that an HTTP response came back at all.
+    #[test]
+    fn probe_true_when_server_responds_even_404() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buf = [0u8; 512];
+                let _ = stream.read(&mut buf); // drain the request line + headers
+                let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 2\r\n\r\n{}");
+            }
+        });
+        assert!(probe(&format!("http://127.0.0.1:{}", port), Duration::from_secs(2)));
+        let _ = server.join();
+    }
+
+    // Nothing listening -> connection refused -> down.
+    #[test]
+    fn probe_false_when_unreachable() {
+        // Bind then drop to obtain a port guaranteed to have no listener.
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        assert!(!probe(&format!("http://127.0.0.1:{}", port), Duration::from_secs(2)));
     }
 }

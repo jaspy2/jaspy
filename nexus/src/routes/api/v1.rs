@@ -728,10 +728,19 @@ pub fn system_status(
         Err(_) => (false, 0),
     };
     let system = system.inner();
+    // Live snmpbot reachability, for the Maintenance page status line. Only
+    // meaningful in snmpbot mode; embedded mode has no sidecar to probe. Short
+    // timeout so a dead snmpbot doesn't stall this handler (page polls every 10s).
+    let snmpbot_connected = if system.snmp_mode == "snmpbot" {
+        Some(crate::snmp::snmpbot_http::probe(&system.snmpbot_url, std::time::Duration::from_secs(2)))
+    } else {
+        None
+    };
     Json(models::json::ApiSystemStatus {
         version: env!("CARGO_PKG_VERSION").to_string(),
         startup_time: startup_time,
         snmpbot_url: system.snmpbot_url.clone(),
+        snmpbot_connected: snmpbot_connected,
         snmp_mode: system.snmp_mode.clone(),
         snmp_mib_dir: system.snmp_mib_dir.clone(),
         snmp_mibs_loaded: system.snmp_mibs_loaded,

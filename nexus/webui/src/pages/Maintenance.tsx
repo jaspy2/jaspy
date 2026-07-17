@@ -111,7 +111,18 @@ export default function Maintenance() {
                 <span className="badge badge-muted">disabled</span>
               )}
             </span>
-            <span>snmpbot</span><span className="wrap">{sys.snmpbotUrl}</span>
+            <span>snmpbot</span>
+            <span className="wrap">
+              {sys.snmpMode === 'snmpbot' && (
+                <>
+                  {sys.snmpbotConnected === true && <span className="badge badge-ok">responding</span>}
+                  {sys.snmpbotConnected === false && <span className="badge badge-bad">not responding</span>}
+                  {(sys.snmpbotConnected === null || sys.snmpbotConnected === undefined) && <span className="badge badge-warn">checking…</span>}
+                  {' '}
+                </>
+              )}
+              {sys.snmpbotUrl}
+            </span>
             <span>Database</span>
             <span className="wrap">
               {sys.dbConnected ? (

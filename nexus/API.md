@@ -625,6 +625,7 @@ Present only when a signal has tripped.
 | `version` | string | |
 | `startupTime` | number | Unix seconds |
 | `snmpbotUrl` | string | |
+| `snmpbotConnected` | boolean \| null | live reachability probe; null in embedded mode |
 | `snmpMode` | string | `"snmpbot"` \| `"embedded"` |
 | `snmpMibDir` | string \| null | |
 | `snmpMibsLoaded` | integer \| null | |

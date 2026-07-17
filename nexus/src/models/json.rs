@@ -132,6 +132,11 @@ pub struct ApiSystemStatus {
     pub version: String,
     pub startup_time: f64,
     pub snmpbot_url: String,
+    // Live snmpbot reachability probe: true = responding, false = not
+    // responding/timed out, null = not applicable (embedded mode, no snmpbot).
+    // Additive: default-deserialized for older payloads.
+    #[serde(default)]
+    pub snmpbot_connected: Option<bool>,
     // SNMP back end: "snmpbot" (HTTP sidecar) or "embedded" (in-process snmp2).
     #[serde(default)]
     pub snmp_mode: String,
