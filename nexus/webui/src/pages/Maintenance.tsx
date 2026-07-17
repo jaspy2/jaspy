@@ -111,18 +111,22 @@ export default function Maintenance() {
                 <span className="badge badge-muted">disabled</span>
               )}
             </span>
-            <span>snmpbot</span>
+            <span>SNMP backend</span>
             <span className="wrap">
-              {sys.snmpMode === 'snmpbot' && (
-                <>
+              <span className="badge badge-muted">{sys.snmpMode === 'embedded' ? 'embedded' : 'snmpbot'}</span>
+              {sys.snmpMode === 'embedded' ? ' in-process SNMP' : ' HTTP sidecar'}
+            </span>
+            {sys.snmpMode === 'snmpbot' && (
+              <>
+                <span>snmpbot status</span>
+                <span className="wrap">
                   {sys.snmpbotConnected === true && <span className="badge badge-ok">responding</span>}
                   {sys.snmpbotConnected === false && <span className="badge badge-bad">not responding</span>}
                   {(sys.snmpbotConnected === null || sys.snmpbotConnected === undefined) && <span className="badge badge-warn">checking…</span>}
-                  {' '}
-                </>
-              )}
-              {sys.snmpbotUrl}
-            </span>
+                  {' '}{sys.snmpbotUrl}
+                </span>
+              </>
+            )}
             <span>Database</span>
             <span className="wrap">
               {sys.dbConnected ? (
