@@ -24,6 +24,13 @@ pub struct PerfStats {
     pub snmp_query_nanos: AtomicU64,      // total time spent in SnmpSource calls
     pub snmp_query_max_nanos: AtomicU64,  // slowest single request
 
+    // SNMP concurrency toward the shared back end (PERF.md #4).
+    pub snmp_inflight: AtomicU64,          // requests currently in the back end (gauge)
+    pub snmp_inflight_max: AtomicU64,      // peak concurrent requests (high-water)
+    pub snmp_permit_waits: AtomicU64,      // acquisitions of the in-flight limiter
+    pub snmp_permit_wait_nanos: AtomicU64, // total time blocked on the limiter
+    pub snmp_permit_wait_max_nanos: AtomicU64,
+
     // IMDS global mutex (the central serialization point).
     pub imds_lock_wait_nanos: AtomicU64,  // time blocked acquiring the lock in the poller
     pub imds_lock_wait_max_nanos: AtomicU64,
@@ -47,6 +54,11 @@ impl PerfStats {
             snmp_query_errors: AtomicU64::new(0),
             snmp_query_nanos: AtomicU64::new(0),
             snmp_query_max_nanos: AtomicU64::new(0),
+            snmp_inflight: AtomicU64::new(0),
+            snmp_inflight_max: AtomicU64::new(0),
+            snmp_permit_waits: AtomicU64::new(0),
+            snmp_permit_wait_nanos: AtomicU64::new(0),
+            snmp_permit_wait_max_nanos: AtomicU64::new(0),
             imds_lock_wait_nanos: AtomicU64::new(0),
             imds_lock_wait_max_nanos: AtomicU64::new(0),
             imds_report_nanos: AtomicU64::new(0),
@@ -76,6 +88,27 @@ impl PerfStats {
         }
         Self::add(&self.snmp_query_nanos, ns);
         Self::max(&self.snmp_query_max_nanos, ns);
+    }
+
+    // A request entered the back end (permit already held). Updates the current
+    // gauge and the peak high-water mark.
+    pub fn inflight_enter(&self) {
+        let now = self.snmp_inflight.fetch_add(1, Ordering::Relaxed) + 1;
+        Self::max(&self.snmp_inflight_max, now);
+    }
+
+    pub fn inflight_exit(&self) {
+        self.snmp_inflight.fetch_sub(1, Ordering::Relaxed);
+    }
+
+    // Time spent blocked acquiring an in-flight permit (near zero when the cap
+    // isn't the bottleneck; grows when the fleet would otherwise overrun the
+    // back end).
+    pub fn record_permit_wait(&self, elapsed: std::time::Duration) {
+        let ns = elapsed.as_nanos() as u64;
+        Self::add(&self.snmp_permit_waits, 1);
+        Self::add(&self.snmp_permit_wait_nanos, ns);
+        Self::max(&self.snmp_permit_wait_max_nanos, ns);
     }
 
     pub fn record_lock_wait(&self, elapsed: std::time::Duration) {
@@ -124,6 +157,11 @@ impl PerfStats {
         line("jaspy_perf_snmp_query_errors_total", "SNMP requests returning an error", "counter", g(&self.snmp_query_errors), &mut s);
         line("jaspy_perf_snmp_query_nanos_total", "Total time in SNMP back-end calls (ns)", "counter", g(&self.snmp_query_nanos), &mut s);
         line("jaspy_perf_snmp_query_max_nanos", "Slowest single SNMP request (ns)", "gauge", g(&self.snmp_query_max_nanos), &mut s);
+        line("jaspy_perf_snmp_inflight", "SNMP requests currently in the back end", "gauge", g(&self.snmp_inflight), &mut s);
+        line("jaspy_perf_snmp_inflight_max", "Peak concurrent SNMP requests in the back end", "gauge", g(&self.snmp_inflight_max), &mut s);
+        line("jaspy_perf_snmp_permit_waits_total", "In-flight limiter acquisitions", "counter", g(&self.snmp_permit_waits), &mut s);
+        line("jaspy_perf_snmp_permit_wait_nanos_total", "Total time blocked on the in-flight limiter (ns)", "counter", g(&self.snmp_permit_wait_nanos), &mut s);
+        line("jaspy_perf_snmp_permit_wait_max_nanos", "Longest single in-flight-limiter wait (ns)", "gauge", g(&self.snmp_permit_wait_max_nanos), &mut s);
         line("jaspy_perf_imds_lock_wait_nanos_total", "Total time blocked acquiring the IMDS lock in the poller (ns)", "counter", g(&self.imds_lock_wait_nanos), &mut s);
         line("jaspy_perf_imds_lock_wait_max_nanos", "Longest single IMDS lock wait (ns)", "gauge", g(&self.imds_lock_wait_max_nanos), &mut s);
         line("jaspy_perf_imds_report_nanos_total", "Total time holding the IMDS lock in report_interfaces (ns)", "counter", g(&self.imds_report_nanos), &mut s);

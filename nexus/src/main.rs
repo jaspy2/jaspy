@@ -157,6 +157,10 @@ async fn server_main() {
     // it (JASPY_SNMP_PORT) so a simulated fleet can run unprivileged. Ignored
     // for devices whose fqdn already carries an explicit `:port`.
     let snmp_port = c.get_int("snmp_port").unwrap_or(161) as u16;
+    // Global cap on concurrent SNMP requests across ALL collectors, protecting
+    // the shared back end from burst overrun (PERF.md #4). 0 = unlimited
+    // (historical behaviour).
+    let snmp_max_inflight = c.get_int("snmp_max_inflight").unwrap_or(0).max(0) as usize;
     // Embedded-mode MIB directory: config override, else the nexus package
     // location, else the snmpbot package location.
     let snmp_mib_dir = c.get_string("snmp_mib_dir").ok().or_else(|| {
@@ -169,7 +173,10 @@ async fn server_main() {
     let mut resolved_mib_dir: Option<String> = None;
     let mut snmp_mibs_loaded: Option<usize> = None;
     let snmp: Arc<snmp::SnmpSource> = match snmp_mode.as_str() {
-        "snmpbot" => Arc::new(snmp::SnmpSource::SnmpbotHttp(snmp::snmpbot_http::SnmpbotHttp::new(snmpbot_url.clone()))),
+        "snmpbot" => Arc::new(snmp::SnmpSource::new(
+            snmp::SnmpBackend::SnmpbotHttp(snmp::snmpbot_http::SnmpbotHttp::new(snmpbot_url.clone())),
+            snmp_max_inflight,
+        )),
         "embedded" => {
             let dir = snmp_mib_dir.clone().unwrap_or_else(|| {
                 panic!("[nexus] snmp_mode=embedded but no MIB directory found; set JASPY_SNMP_MIB_DIR")
@@ -187,7 +194,7 @@ async fn server_main() {
                 snmp_retries,
                 snmp_bulk_max_repetitions,
             );
-            Arc::new(snmp::SnmpSource::Embedded(embedded))
+            Arc::new(snmp::SnmpSource::new(snmp::SnmpBackend::Embedded(embedded), snmp_max_inflight))
         }
         other => panic!("[nexus] unknown snmp_mode '{}' (expected 'snmpbot' or 'embedded')", other),
     };

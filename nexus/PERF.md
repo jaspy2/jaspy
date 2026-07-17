@@ -54,7 +54,7 @@ Roughly an order of magnitude more UDP round-trips per device. Opt-in
 (`snmp_mode=embedded`), but not a peer of snmpbot at this scale.
 - **Fix:** multi-varbind GETBULK (request several column OIDs per PDU).
 
-### 4. 🟠 Three new default-on collectors share the one snmpbot
+### 4. 🟠 Three new default-on collectors share the one snmpbot  — ✅ MECHANISM ADDED (see results below)
 `main.rs` — `entitypoller`/`vlanpoller`/`lagpoller` (each `unwrap_or(true)`) add
 up to 16 workers each against the sidecar the 250-thread poller already loads.
 No global in-flight budget; jitter is `interval/2`, so the 120 s/300 s cycles
@@ -216,5 +216,36 @@ second. No regression from sharing one client's runtime across the poller
 threads (still 100% of target, better tail). Run it with
 `perf/run.py --snmp-mode snmpbot`.
 
-Remaining findings (#4 shared snmpbot budget, #6 per-call UDP socket in embedded,
-#7 1 Hz device reload) are untouched.
+## Results after fixing #4
+
+- **#4** — `SnmpSource` now owns an optional counting semaphore
+  (`JASPY_SNMP_MAX_INFLIGHT`, 0 = unlimited) that every collector's SNMP call
+  passes through, capping the *total* concurrent requests all collectors
+  (interface poller + entity/vlan/lag) may have outstanding toward the shared
+  back end. New perf gauges expose peak concurrency and permit-wait time
+  (`jaspy_perf_snmp_inflight_max`, `jaspy_perf_snmp_permit_wait_*`).
+
+Demonstration (embedded, 250×16 @ 1.5 s, 50±20 ms RTT, jitter **off** to force an
+aligned 250-thread burst — the pathological alignment #4 warns about):
+
+| | uncapped | capped 32 |
+|---|---|---|
+| peak concurrent SNMP | **250** | **32** |
+| SNMP queries/s | 14 | **68** |
+| interfaces/s | 109 | **545** |
+| permit wait mean | 0 | 259 ms |
+
+Uncapped, all 250 poll threads hit the back end at once; the burst overruns it
+(here, loopback UDP buffers drop packets and the 3 s timeout+retry stalls
+collapse throughput to ~4% of target — 0 "errors", just near-zero progress). The
+cap bounds concurrency to 32, avoids the overload, and recovers ~5× the
+throughput; permit-wait quantifies the smoothing.
+
+Default is 0 (unlimited) so nothing changes out of the box — the poller's
+per-thread start jitter already spreads normal load, so the cap is a **safety
+valve** against pathological alignment (and against the extra collectors piling
+on), which operators tune to their back end. `perf/run.py --snmp-max-inflight N`
+drives it.
+
+Remaining findings (#6 per-call UDP socket in embedded, #7 1 Hz device reload)
+are untouched.

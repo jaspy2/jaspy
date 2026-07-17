@@ -168,6 +168,8 @@ def main():
     ap.add_argument("--community", default="public")
     ap.add_argument("--mib-dir", default=str(DEFAULT_MIB_DIR))
     ap.add_argument("--snmp-timeout-ms", type=int, default=2000)
+    ap.add_argument("--snmp-max-inflight", type=int, default=0,
+                    help="cap on concurrent SNMP requests across all collectors (0 = unlimited, PERF.md #4)")
     ap.add_argument("--snmp-retries", type=int, default=1)
     ap.add_argument("--no-build", action="store_true")
     ap.add_argument("--nexus-bin", default="",
@@ -251,6 +253,7 @@ def main():
         JASPY_SNMP_MIB_DIR=args.mib_dir,
         JASPY_SNMP_TIMEOUT_MS=str(args.snmp_timeout_ms),
         JASPY_SNMP_RETRIES=str(args.snmp_retries),
+        JASPY_SNMP_MAX_INFLIGHT=str(args.snmp_max_inflight),
         JASPY_SNMPBOT_URL=f"http://127.0.0.1:{args.snmpbot_port}/",
         JASPY_POLL_LOOP_MSECS=str(args.poll_msecs),
         JASPY_ENABLE_POLLER="true",
@@ -353,6 +356,11 @@ def build_report(first, last, elapsed, args, total_ifaces, prom_scrapes, prom_by
         "poll_iter_max_ms": gauge("jaspy_perf_poll_iter_max_nanos") / 1e6,
         "lock_wait_mean_ms": mean_ms("jaspy_perf_imds_lock_wait_nanos_total", polls),
         "lock_wait_max_ms": gauge("jaspy_perf_imds_lock_wait_max_nanos") / 1e6,
+        "snmp_inflight_peak": gauge("jaspy_perf_snmp_inflight_max"),
+        "permit_wait_mean_ms": (d("jaspy_perf_snmp_permit_wait_nanos_total")
+                                / d("jaspy_perf_snmp_permit_waits_total") / 1e6)
+                               if d("jaspy_perf_snmp_permit_waits_total") > 0 else 0.0,
+        "permit_wait_max_ms": gauge("jaspy_perf_snmp_permit_wait_max_nanos") / 1e6,
         "report_mean_ms": mean_ms("jaspy_perf_imds_report_nanos_total", polls),
         "metrics_build_max_ms": gauge("jaspy_perf_metrics_build_max_nanos") / 1e6,
         "prom_scrapes": prom_scrapes,
@@ -383,6 +391,9 @@ def print_report(r, args, workdir):
         f"  SNMP queries/s        {r['snmp_qps']:.0f}",
         f"  SNMP errors           {int(r['snmp_err'])}  ({r['snmp_err_pct']:.1f}%)",
         f"  SNMP latency          mean {r['snmp_mean_ms']:.1f} ms   max {r['snmp_max_ms']:.1f} ms",
+        f"  SNMP in-flight peak   {int(r['snmp_inflight_peak'])}"
+        + (f"   (cap {args.snmp_max_inflight})" if args.snmp_max_inflight else "   (uncapped)")
+        + f"   permit wait mean {r['permit_wait_mean_ms']:.2f} ms max {r['permit_wait_max_ms']:.1f} ms",
         f"  poll iteration        mean {r['poll_iter_mean_ms']:.1f} ms   max {r['poll_iter_max_ms']:.1f} ms",
         "-" * 68,
         f"  IMDS lock WAIT        mean {r['lock_wait_mean_ms']:.2f} ms   max {r['lock_wait_max_ms']:.1f} ms  <-- contention (PERF.md #2)",

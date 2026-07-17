@@ -3,6 +3,7 @@ pub mod imds;
 pub mod livelog;
 pub mod msgbus;
 pub mod perfstats;
+pub mod semaphore;
 pub mod tools;
 pub mod cache;
 pub mod discovery;

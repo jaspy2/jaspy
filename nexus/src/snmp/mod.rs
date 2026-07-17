@@ -16,4 +16,4 @@ pub mod source;
 pub mod trap;
 
 pub use hostspec::HostSpec;
-pub use source::SnmpSource;
+pub use source::{SnmpBackend, SnmpSource};

@@ -1120,12 +1120,12 @@ mod tests {
     }
 
     fn test_snmp() -> Arc<SnmpSource> {
-        Arc::new(SnmpSource::SnmpbotHttp(crate::snmp::snmpbot_http::SnmpbotHttp::new("http://127.0.0.1:8286".to_string())))
+        Arc::new(SnmpSource::new(crate::snmp::SnmpBackend::SnmpbotHttp(crate::snmp::snmpbot_http::SnmpbotHttp::new("http://127.0.0.1:8286".to_string())), 0))
     }
 
     fn test_params() -> RunParams {
         RunParams {
-            snmp: Arc::new(SnmpSource::SnmpbotHttp(crate::snmp::snmpbot_http::SnmpbotHttp::new("http://127.0.0.1:8286".to_string()))),
+            snmp: Arc::new(SnmpSource::new(crate::snmp::SnmpBackend::SnmpbotHttp(crate::snmp::snmpbot_http::SnmpbotHttp::new("http://127.0.0.1:8286".to_string())), 0)),
             root_device: "root.example.com".to_string(),
             community: "public".to_string(),
             dns_domains: vec!["example.com".to_string(), "example.net".to_string()],
