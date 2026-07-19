@@ -58,11 +58,7 @@ impl SnmpbotHttp {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().unwrap_or_default();
-            let body = body.trim();
-            if body.is_empty() {
-                return Err(format!("status={}", status));
-            }
-            return Err(format!("status={}: {:.200}", status, body));
+            return Err(describe_snmpbot_failure(status, &body));
         }
         let body = response.text().map_err(|e| format!("read: {}", e))?;
         serde_json::from_str(&body).map_err(|e| format!("json: {} (body: {:.200})", e, body))
@@ -72,11 +68,29 @@ impl SnmpbotHttp {
         let url = self.url(host, "objects", object_id)?;
         let response = self.client().get(url).send().map_err(|e| format!("{}", e))?;
         if !response.status().is_success() {
-            return Err(format!("status={}", response.status()));
+            let status = response.status();
+            let body = response.text().unwrap_or_default();
+            return Err(describe_snmpbot_failure(status, &body));
         }
         let body = response.text().map_err(|e| format!("read: {}", e))?;
         serde_json::from_str(&body).map_err(|e| format!("json: {} (body: {:.200})", e, body))
     }
+}
+
+// snmpbot answers HTTP 500 with a body like
+//   "SNMP<[::]:55334> timeout for GetNextRequest<1.3.6.1.2.1.17.6, ...>"
+// when the polled device does not answer SNMP within snmpbot's timeout. Turn
+// that into a concise "device not responding" reason rather than surfacing the
+// raw 500 status line + OID dump; other failures keep the status (+ body).
+fn describe_snmpbot_failure(status: reqwest::StatusCode, body: &str) -> String {
+    let body = body.trim();
+    if body.to_ascii_lowercase().contains("timeout") {
+        return "SNMP timeout: device not responding".to_string();
+    }
+    if body.is_empty() {
+        return format!("status={}", status);
+    }
+    format!("status={}: {:.200}", status, body)
 }
 
 // Liveness probe for the Maintenance page's snmpbot status line. Does a short
@@ -130,6 +144,38 @@ mod tests {
         let http = SnmpbotHttp::new("not a url".to_string());
         let host = HostSpec::with_community("sw1", "public");
         assert!(http.url(&host, "tables", "t").is_err());
+    }
+
+    // snmpbot's real "device not responding" body (from prod logs) must become a
+    // concise reason, not the raw 500 status line + OID dump.
+    #[test]
+    fn timeout_body_reads_as_device_not_responding() {
+        let body = "SNMP<[::]:55334> timeout for GetNextRequest<1.3.6.1.2.1.17.6, \
+                    1.3.6.1.4.1.9.12.1, 1.3.6.1.4.1.9, 1.3.6.1.4.1.6027>";
+        assert_eq!(
+            describe_snmpbot_failure(reqwest::StatusCode::INTERNAL_SERVER_ERROR, body),
+            "SNMP timeout: device not responding",
+        );
+    }
+
+    // Non-timeout failures (e.g. an unknown MIB table) keep the status + body so
+    // the real reason is still visible.
+    #[test]
+    fn non_timeout_failure_keeps_status_and_body() {
+        let msg = describe_snmpbot_failure(
+            reqwest::StatusCode::NOT_FOUND,
+            "BRIDGE-MIB name not found: jaspyStpBridgeTable",
+        );
+        assert!(msg.starts_with("status=404"), "got: {}", msg);
+        assert!(msg.contains("name not found"), "got: {}", msg);
+    }
+
+    #[test]
+    fn empty_failure_body_shows_status_only() {
+        assert_eq!(
+            describe_snmpbot_failure(reqwest::StatusCode::BAD_GATEWAY, "   "),
+            "status=502 Bad Gateway",
+        );
     }
 
     // A responding snmpbot is "up" even when it answers 404 (the mock does):
