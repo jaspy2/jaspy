@@ -180,18 +180,29 @@ impl IMDS {
     }
 
     pub fn report_device(self: &mut IMDS, connection: &mut AnyConnection, dmr: models::json::DeviceMonitorReport) {
-        let device;
-        match self.metrics_storage.devices.get_mut(&dmr.fqdn) {
-            Some(value) => {
-                device = value;
-                device.last_report = utilities::tools::get_time_msecs();
-            },
-            None => {
-                // TODO: log? this means we got a report from a host that is not being monitored, it is possible this is normal on device removal
-                return;
-            }
-        }
-        
+        // Upsert: the pinger only reports monitored devices, but at startup it
+        // can ping (and report) before the DB refresh / poller has populated
+        // IMDS. Creating the entry on demand keeps an early up/down report from
+        // being dropped — otherwise a reachable device whose first ping reply
+        // beats the first IMDS refresh would stay "unknown" (up=None) forever,
+        // since the pinger only re-reports on state transitions. Mirrors the
+        // minimal entry refresh_device seeds; later refreshes fill base_mac etc.
+        let now = utilities::tools::get_time_msecs();
+        let hostname = dmr.fqdn.split('.').next().unwrap_or(&dmr.fqdn).to_string();
+        let device = self.metrics_storage.devices
+            .entry(dmr.fqdn.clone())
+            .or_insert_with(|| models::metrics::DeviceMetrics {
+                last_report: 0,
+                last_poll: 0,
+                fqdn: dmr.fqdn.clone(),
+                hostname,
+                base_mac: None,
+                up: None,
+                interfaces: HashMap::new(),
+            });
+        device.last_report = now;
+
+
         if let Some(device_up) = device.up {
             if device_up != dmr.up {
                 if let Some(device) = models::dbo::Device::find_by_fqdn(connection, &dmr.fqdn) {
@@ -1199,5 +1210,36 @@ mod tests {
         assert_eq!(summary.severity, Some(crate::utilities::health::Severity::Bad)); // flapping
         // Device rollup reflects the same worst severity.
         assert_eq!(imds.device_health(&fqdn, now), Some(crate::utilities::health::Severity::Bad));
+    }
+
+    // Regression: a pinger up-report for a device not yet populated in IMDS (the
+    // DB refresh / poller has not run yet at startup) must not be silently
+    // dropped. report_device used to early-return for unknown devices, so a
+    // reachable device that replied before the first IMDS refresh stayed
+    // "unknown" (up=None) forever — the pinger only re-reports on state
+    // transitions, so the lost initial "up" was never resent.
+    #[test]
+    fn report_device_records_up_for_not_yet_known_device() {
+        use crate::models::json::DeviceMonitorReport;
+        use diesel::Connection;
+        // The device-create path does not touch the DB (the peer lookup only
+        // runs on an up CHANGE, i.e. when up was already Some), so an unmigrated
+        // in-memory connection is sufficient.
+        let mut conn = AnyConnection::Sqlite(
+            diesel::sqlite::SqliteConnection::establish(":memory:").unwrap(),
+        );
+        let mut imds = test_imds();
+        let fqdn = "tele-sw1.loopback.fi".to_string();
+
+        // Precondition: IMDS has never seen this device (no refresh_device/poll).
+        assert!(imds.get_device(&fqdn).is_none());
+
+        // The pinger's first successful ping reports the device up.
+        imds.report_device(&mut conn, DeviceMonitorReport { fqdn: fqdn.clone(), up: true });
+
+        // The report must be retained, not dropped.
+        let device = imds.get_device(&fqdn)
+            .expect("report_device must create an entry for a not-yet-known monitored device");
+        assert_eq!(device.up, Some(true), "reported up state must be recorded");
     }
 }
