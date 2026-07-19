@@ -185,6 +185,9 @@ button {
 button:hover:not(:disabled) { filter: brightness(1.1); }
 button:disabled { opacity: 0.5; cursor: default; }
 button.danger { background: var(--danger); }
+/* Low-emphasis action (e.g. un-acknowledge): outlined, not filled. */
+button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+button.secondary:hover:not(:disabled) { filter: none; background: var(--muted-bg); }
 
 .actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }

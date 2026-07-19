@@ -1,10 +1,23 @@
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatTimestamp, formatUptime } from '../api/client';
+import { HealthBadge } from '../components/StatusBadge';
+
+// Compact "5m ago" from an epoch-ms timestamp.
+function ago(ms: number): string {
+  const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary, refetchInterval: 10000 });
+  const issues = useQuery({ queryKey: ['issues'], queryFn: api.issues, refetchInterval: 10000 });
   const discovery = useQuery({
     queryKey: ['discovery-status'],
     queryFn: api.discoveryStatus,
@@ -19,6 +32,8 @@ export default function Dashboard() {
 
   const s = summary.data;
   const d = discovery.data;
+  const activeIssues = (issues.data?.issues ?? []).filter((i) => !i.acknowledged);
+  const recentIssues = activeIssues.slice(0, 10);
 
   return (
     <>
@@ -52,6 +67,42 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <h2>
+        Issues{' '}
+        {activeIssues.length > 0 && <span className="badge badge-bad">{activeIssues.length}</span>}
+      </h2>
+      <div className="panel">
+        {issues.isError && <p className="error">Failed to load issues: {String(issues.error)}</p>}
+        {recentIssues.length === 0 ? (
+          <p className="muted">{issues.isLoading ? 'Loading…' : 'No active issues — the fleet is healthy. 🎉'}</p>
+        ) : (
+          <div className="item-list">
+            {recentIssues.map((issue) => (
+              <div key={issue.issueKey} className="item-card">
+                <div className="item-title">
+                  <span>
+                    {issue.fqdn ? (
+                      <Link to={`/devices/${encodeURIComponent(issue.fqdn)}`}>{issue.hostname || issue.fqdn}</Link>
+                    ) : (
+                      <span className="muted">network</span>
+                    )}{' '}
+                    — {issue.title}
+                  </span>
+                  <HealthBadge severity={issue.severity} label={issue.severity === 'bad' ? '⚠ critical' : '⚠ warning'} />
+                </div>
+                <div className="item-sub">
+                  {issue.subjectLabel && <span>{issue.subjectLabel}</span>}
+                  <span className="muted">{ago(issue.firstSeen)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="actions">
+          <Link to="/issues">View all issues →</Link>
+        </div>
+      </div>
 
       <h2>Discovery</h2>
       <div className="panel">

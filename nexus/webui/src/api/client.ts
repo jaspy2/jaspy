@@ -8,6 +8,9 @@ import type {
   EnvVar,
   DiscoveryStatus,
   EventInfo,
+  Issue,
+  IssuesResponse,
+  IssueAckRequest,
   ResetResult,
   StpTree,
   StpVlanSummary,
@@ -72,6 +75,11 @@ export const api = {
   vlans: () => request<VlanSummary[]>('/api/v1/vlans'),
   stp: () => request<StpVlanSummary[]>('/api/v1/stp'),
   stpTree: (vlan: number) => request<StpTree>(`/api/v1/stp/${vlan}`),
+  issues: () => request<IssuesResponse>('/api/v1/issues'),
+  ackIssue: (body: IssueAckRequest) =>
+    request<Issue>('/api/v1/issues/ack', { method: 'POST', body: JSON.stringify(body) }),
+  unackIssue: (body: IssueAckRequest) =>
+    request<void>('/api/v1/issues/unack', { method: 'POST', body: JSON.stringify(body) }),
 };
 
 // WebSocket endpoint for live log tailing (backlog replay + push). Relative to

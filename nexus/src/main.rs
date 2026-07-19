@@ -53,6 +53,40 @@ fn refresh_imds_items(conn: &mut db::AnyConnection, imds: &Arc<Mutex<utilities::
     }
 }
 
+// Periodically re-derive fleet issues and fold them into the tracker so onset
+// times / recurrence detection stay accurate independently of UI polling.
+fn issue_scan_worker(
+    running: Arc<AtomicBool>,
+    imds: Arc<Mutex<utilities::imds::IMDS>>,
+    entity_metrics: Arc<Mutex<collectors::entitypoller::EntityMetricsStore>>,
+    lag_store: Arc<Mutex<collectors::lagpoller::LagStore>>,
+    cache_controller: Arc<Mutex<utilities::cache::CacheController>>,
+    tracker: Arc<Mutex<utilities::issues::IssueTracker>>,
+) {
+    let interval_secs: u64 = std::env::var("JASPY_ISSUE_SCAN_SECS").ok()
+        .and_then(|v| v.parse().ok()).filter(|v| *v > 0).unwrap_or(15);
+    println!("[issues] scanning for fleet issues every {}s", interval_secs);
+    let pool = db::connect();
+    let mut counter = 0u64;
+    loop {
+        if !should_continue(&running) { break; }
+        if counter == 0 {
+            match pool.get() {
+                Ok(mut conn) => {
+                    let derived = routes::api::v1::collect_issues(&mut *conn, &imds, &entity_metrics, &lag_store, &cache_controller);
+                    let now = utilities::tools::get_time_msecs();
+                    if let Ok(mut tracker) = tracker.lock() {
+                        tracker.reconcile(now, derived);
+                    }
+                }
+                Err(e) => println!("[issues] failed to acquire db connection for scan: {}", e),
+            }
+        }
+        counter = if counter + 1 >= interval_secs { 0 } else { counter + 1 };
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+    }
+}
+
 fn imds_worker(running : Arc<AtomicBool>, imds : Arc<Mutex<utilities::imds::IMDS>>) {
     // Refresh the IMDS device/interface metadata from the DB every N seconds
     // (default 10). Configurable so tests can converge quickly.
@@ -323,6 +357,38 @@ async fn server_main() {
     let lag_store : Arc<Mutex<collectors::lagpoller::LagStore>> = Arc::new(Mutex::new(collectors::lagpoller::LagStore::new()));
     let vlan_control : Arc<Mutex<collectors::vlanpoller::VlanPollerControl>> = Arc::new(Mutex::new(collectors::vlanpoller::VlanPollerControl::new()));
     let cache_controller : Arc<Mutex<utilities::cache::CacheController>> = Arc::new(Mutex::new(utilities::cache::CacheController::new()));
+    // Derived-issue onset tracker (utilities::issues). Grace keeps a briefly
+    // cleared issue's first_seen stable across a single missed scan; a genuine
+    // clear-then-recur gets a fresh first_seen so a stale ack re-alerts.
+    let issue_tracker : Arc<Mutex<utilities::issues::IssueTracker>> = Arc::new(Mutex::new(utilities::issues::IssueTracker::new(60_000)));
+    // Seed first_seen from persisted acknowledgements before any scan runs, so a
+    // restart keeps a still-active acked issue acknowledged (a genuine
+    // clear-then-recur, detected at runtime, still re-alerts). Must precede the
+    // scan thread below.
+    match pool.get() {
+        Ok(mut conn) => {
+            if let Ok(mut tracker) = issue_tracker.lock() {
+                let now = utilities::tools::get_time_msecs();
+                for ack in models::dbo::IssueAck::all(&mut *conn) {
+                    tracker.seed(ack.issue_key, ack.first_seen as u64, now);
+                }
+            }
+        }
+        Err(e) => println!("[issues] could not seed tracker from persisted acks: {}", e),
+    }
+    // Keep the tracker warm even when nobody is viewing the Issues page, so
+    // onset times and recurrence detection stay accurate.
+    let issue_scan_thread = {
+        let running_collector = running.clone();
+        let imds_collector = imds.clone();
+        let entity_collector = entity_metrics.clone();
+        let lag_collector = lag_store.clone();
+        let cache_collector = cache_controller.clone();
+        let tracker_collector = issue_tracker.clone();
+        std::thread::spawn(move || {
+            issue_scan_worker(running_collector, imds_collector, entity_collector, lag_collector, cache_collector, tracker_collector);
+        })
+    };
 
     let imds_worker_imds = imds.clone();
     let imds_worker_running = running.clone();
@@ -528,6 +594,9 @@ async fn server_main() {
                 routes::api::v1::vlans,
                 routes::api::v1::stp_summary,
                 routes::api::v1::stp_tree,
+                routes::api::v1::issues,
+                routes::api::v1::issue_ack,
+                routes::api::v1::issue_unack,
                 routes::api::v1::device_create,
                 routes::api::v1::device_update,
                 routes::api::v1::device_delete,
@@ -561,6 +630,7 @@ async fn server_main() {
         .manage(vlan_control.clone())
         .manage(discovery_control.clone())
         .manage(cache_controller.clone())
+        .manage(issue_tracker.clone())
         .manage(runtime_info.clone())
         .manage(system_info)
         .manage(msgbus.clone());
@@ -586,6 +656,7 @@ async fn server_main() {
     if let Some(lagpoller_thread) = lagpoller_thread { let _ = lagpoller_thread.join(); }
     if let Some(trap_receiver_thread) = trap_receiver_thread { let _ = trap_receiver_thread.join(); }
     let _ = discovery_thread.join();
+    let _ = issue_scan_thread.join();
     if let Some(health_persist_thread) = health_persist_thread { let _ = health_persist_thread.join(); }
     // Final dump so a graceful shutdown never loses the last minute of state.
     if let Some(path) = health_state_path.as_ref() { dump_health(&imds, path); }

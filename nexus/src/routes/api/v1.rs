@@ -540,6 +540,249 @@ pub fn vlans(vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanSto
     Json(vlans)
 }
 
+// Aggregate every currently-detected fleet problem into a flat list of derived
+// issues. Takes plain Arc handles (not Rocket State) so both the route handlers
+// and the background scan worker in main.rs can call it. Pure condition->issue
+// mapping lives in utilities::issues; this function is only the plumbing that
+// reads the in-memory stores and (for STP/LAG) the DB topology.
+pub fn collect_issues(
+    connection: &mut db::AnyConnection,
+    imds: &Arc<Mutex<utilities::imds::IMDS>>,
+    entity_metrics: &Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>,
+    lag_store: &Arc<Mutex<crate::collectors::lagpoller::LagStore>>,
+    cache_controller: &Arc<Mutex<utilities::cache::CacheController>>,
+) -> Vec<crate::utilities::issues::DerivedIssue> {
+    use crate::utilities::issues;
+    let now = utilities::tools::get_time_msecs();
+    let devices = models::dbo::Device::all(connection);
+    let mut out: Vec<issues::DerivedIssue> = Vec::new();
+
+    // --- Device down + per-interface health (one IMDS lock) ---
+    if let Ok(imds_guard) = imds.lock() {
+        for device in devices.iter() {
+            let fqdn = format!("{}.{}", device.name, device.dns_domain);
+            // Snapshot the fields we need so the &DeviceMetrics borrow ends
+            // before interface_health() re-borrows the guard.
+            let snapshot = imds_guard.get_device(&fqdn).map(|dm| {
+                let ssp = if dm.last_poll > 0 { Some(now.saturating_sub(dm.last_poll) / 1000) } else { None };
+                let names: Vec<(i32, String)> = dm.interfaces.iter().map(|(idx, m)| (*idx, m.name.clone())).collect();
+                (dm.up, ssp, names)
+            });
+            if let Some((up, ssp, names)) = snapshot {
+                if let Some(issue) = issues::device_down_issue(&fqdn, up, ssp) {
+                    out.push(issue);
+                }
+                for (ifindex, name) in names.iter() {
+                    if let Some(summary) = imds_guard.interface_health(&fqdn, *ifindex, now) {
+                        let health = api_interface_health(summary);
+                        out.extend(issues::interface_health_issues(&fqdn, *ifindex, name, &health));
+                    }
+                }
+            }
+        }
+    }
+
+    // --- STP structural anomalies (per VLAN with STP data) ---
+    let (stp_ports, stp_bridges) = match entity_metrics.lock() {
+        Ok(store) => store.network_stp(),
+        Err(_) => Default::default(),
+    };
+    if !stp_ports.is_empty() {
+        let topology = crate::routes::dev::weathermap::cached_topology_data(connection, cache_controller);
+        let base_macs = device_base_macs(connection);
+        let lag_members = lag_store.lock().map(|store| store.lag_members()).unwrap_or_default();
+        let vlans: std::collections::BTreeSet<i64> = stp_ports.values().flatten().map(|p| p.vlan).collect();
+        for vlan in vlans {
+            let inputs = crate::utilities::stp::StpInputs {
+                ports: &stp_ports,
+                bridges: &stp_bridges,
+                base_macs: &base_macs,
+                topology: &topology,
+                lag_members: &lag_members,
+            };
+            let tree = crate::utilities::stp::build_stp_tree(&inputs, vlan);
+            out.extend(issues::stp_tree_issues(&tree));
+        }
+    }
+
+    // --- LAG / port-channel warnings (per device) ---
+    for device in devices.iter() {
+        let fqdn = format!("{}.{}", device.name, device.dns_domain);
+        let device_lags = match lag_store.lock() {
+            Ok(store) => store.device_lags(&fqdn).unwrap_or_default(),
+            Err(_) => crate::collectors::lagpoller::DeviceLags::default(),
+        };
+        if device_lags.groups.is_empty() {
+            continue;
+        }
+        let interfaces = device.interfaces(connection);
+        for (agg, group) in device_lags.groups.iter() {
+            let meta: std::collections::HashMap<i64, crate::collectors::lagpoller::MemberMeta> = group
+                .members
+                .keys()
+                .filter_map(|member| {
+                    interfaces.iter().find(|i| i.index as i64 == *member).map(|i| {
+                        let peer_fqdn = i.peer_interface(connection).map(|peer| {
+                            let peer_device = peer.device(connection);
+                            format!("{}.{}", peer_device.name, peer_device.dns_domain)
+                        });
+                        (*member, crate::collectors::lagpoller::MemberMeta { name: i.name.clone(), connected_to_fqdn: peer_fqdn })
+                    })
+                })
+                .collect();
+            let mut peer_lags: std::collections::HashMap<String, crate::collectors::lagpoller::DeviceLags> = std::collections::HashMap::new();
+            if let Ok(store) = lag_store.lock() {
+                for peer_fqdn in meta.values().filter_map(|m| m.connected_to_fqdn.clone()) {
+                    if let Some(peer) = store.device_lags(&peer_fqdn) {
+                        peer_lags.insert(peer_fqdn, peer);
+                    }
+                }
+            }
+            let warnings = crate::collectors::lagpoller::port_channel_warnings(group, &meta, &peer_lags);
+            if warnings.is_empty() {
+                continue;
+            }
+            let agg_name = interfaces.iter().find(|i| i.index as i64 == *agg).map(|i| i.name.clone());
+            let pc = models::json::ApiPortChannel {
+                ifindex: *agg,
+                name: agg_name,
+                up: None,
+                protocol: group.protocol.clone(),
+                partner_system_id: group.partner_system_id.clone(),
+                members: Vec::new(),
+                warnings,
+            };
+            out.extend(issues::port_channel_issues(&fqdn, &pc));
+        }
+    }
+
+    out
+}
+
+// GET /api/v1/issues: every known fleet problem (active and acknowledged),
+// derived on the fly and enriched with tracker timestamps + any persisted
+// acknowledgement. Sorted most-recent-first.
+#[get("/issues")]
+pub fn issues(
+    mut connection: db::JaspyDB,
+    imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
+    entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
+    lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+    tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>,
+) -> Json<models::json::ApiIssuesResponse> {
+    let derived = collect_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), cache_controller.inner());
+    let now = utilities::tools::get_time_msecs();
+    let (tracked, known_keys) = match tracker.inner().lock() {
+        Ok(mut t) => {
+            let tracked = t.reconcile(now, derived);
+            let known = t.known_keys();
+            (tracked, known)
+        }
+        Err(_) => (Vec::new(), std::collections::HashSet::new()),
+    };
+
+    let acks: std::collections::HashMap<String, models::dbo::IssueAck> = models::dbo::IssueAck::all(&mut connection)
+        .into_iter()
+        .map(|a| (a.issue_key.clone(), a))
+        .collect();
+    // Prune acks whose issue the tracker has fully forgotten (grace-aware).
+    let _ = models::dbo::IssueAck::delete_orphans(&mut connection, &known_keys);
+
+    let mut issues: Vec<models::json::ApiIssue> = tracked
+        .into_iter()
+        .map(|t| {
+            let key = t.issue.issue_key();
+            let ack = acks.get(&key);
+            // An ack applies only to the same occurrence: first_seen must match,
+            // so a cleared-then-recurring condition surfaces as active again.
+            let acknowledged = ack.map_or(false, |a| a.first_seen as u64 == t.first_seen);
+            models::json::ApiIssue {
+                issue_key: key,
+                fqdn: t.issue.fqdn,
+                hostname: t.issue.hostname,
+                kind: t.issue.kind,
+                severity: t.issue.severity,
+                title: t.issue.title,
+                description: t.issue.description,
+                subject_label: t.issue.subject_label,
+                detail: t.issue.detail,
+                first_seen: t.first_seen,
+                last_seen: t.last_seen,
+                acknowledged,
+                acked_at: if acknowledged { ack.map(|a| a.acked_at) } else { None },
+                acked_by: if acknowledged { ack.and_then(|a| a.acked_by.clone()) } else { None },
+                note: if acknowledged { ack.and_then(|a| a.note.clone()) } else { None },
+            }
+        })
+        .collect();
+    // Most recent first.
+    issues.sort_by(|a, b| b.first_seen.cmp(&a.first_seen));
+    Json(models::json::ApiIssuesResponse { issues })
+}
+
+// POST /api/v1/issues/ack: acknowledge the current occurrence of an issue.
+// Binds the ack to the occurrence's first_seen (409 if the issue is not
+// currently active, so there is nothing meaningful to acknowledge).
+#[post("/issues/ack", data = "<body>")]
+pub fn issue_ack(
+    body: Json<models::json::ApiIssueAckRequest>,
+    mut connection: db::JaspyDB,
+    imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
+    entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
+    lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+    tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>,
+) -> Result<Json<models::dbo::IssueAck>, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let req = body.into_inner();
+    let derived = collect_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), cache_controller.inner());
+    let now = utilities::tools::get_time_msecs();
+    let first_seen = match tracker.inner().lock() {
+        Ok(mut t) => {
+            t.reconcile(now, derived);
+            t.first_seen_of(&req.issue_key)
+        }
+        Err(_) => None,
+    };
+    let first_seen = match first_seen {
+        Some(fs) => fs,
+        None => {
+            return Err((rocket::http::Status::Conflict, Json(models::json::ApiError {
+                error: format!("issue not currently active: {}", req.issue_key),
+            })));
+        }
+    };
+    let ack = models::dbo::IssueAck {
+        issue_key: req.issue_key.clone(),
+        first_seen: first_seen as i64,
+        acked_at: now as i64,
+        acked_by: None,
+        note: req.note.clone(),
+    };
+    if let Err(e) = ack.upsert(&mut connection) {
+        return Err((rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+            error: format!("failed to persist acknowledgement: {} (are the migrations up to date?)", e),
+        })));
+    }
+    Ok(Json(ack))
+}
+
+// POST /api/v1/issues/unack: remove an acknowledgement, returning the issue to
+// the active list. Idempotent — deleting an absent ack is a no-op.
+#[post("/issues/unack", data = "<body>")]
+pub fn issue_unack(
+    body: Json<models::json::ApiIssueAckRequest>,
+    mut connection: db::JaspyDB,
+) -> Result<rocket::http::Status, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let req = body.into_inner();
+    match models::dbo::IssueAck::delete(&mut connection, &req.issue_key) {
+        Ok(_) => Ok(rocket::http::Status::Ok),
+        Err(e) => Err((rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+            error: format!("failed to remove acknowledgement: {}", e),
+        }))),
+    }
+}
+
 // Queue an immediate VLAN membership poll for one device. The vlanpoller
 // supervisor drains the queue on its next 1s tick, so fresh data lands in
 // GET /devices/<fqdn> within a couple of seconds instead of the regular

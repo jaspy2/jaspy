@@ -1,4 +1,4 @@
-use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations,settings};
+use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations,settings,issue_acks};
 use diesel;
 use crate::db::AnyConnection;
 use diesel::prelude::*;
@@ -156,6 +156,64 @@ impl Setting {
 
     pub fn delete(connection: &mut AnyConnection, name: &str) -> Result<usize, diesel::result::Error> {
         return diesel::delete(settings::table.filter(settings::name.eq(name))).execute(connection);
+    }
+}
+
+// A persisted acknowledgement of one issue occurrence. Issues are derived, not
+// stored (see utilities::issues); this table only remembers which occurrence an
+// operator has silenced. `first_seen` is the tracker's onset timestamp for the
+// acked occurrence — the GET /issues handler only treats an issue as
+// acknowledged when both the key and first_seen still match, so a
+// cleared-then-recurring condition (new first_seen) re-alerts.
+#[derive(Serialize, Deserialize, Queryable, Insertable, Identifiable, AsChangeset, Clone, Debug)]
+#[diesel(table_name = issue_acks, primary_key(issue_key))]
+#[serde(rename_all = "camelCase")]
+pub struct IssueAck {
+    pub issue_key: String,
+    pub first_seen: i64,
+    pub acked_at: i64,
+    pub acked_by: Option<String>,
+    pub note: Option<String>,
+}
+
+impl IssueAck {
+    pub fn all(connection: &mut AnyConnection) -> Vec<IssueAck> {
+        issue_acks::table.load::<IssueAck>(connection).unwrap_or_default()
+    }
+
+    // Upsert: acking an already-acked issue (e.g. after it recurred with a new
+    // first_seen) overwrites the previous ack. ON CONFLICT is not expressible
+    // through the MultiConnection enum; dispatch per backend like Setting::set.
+    pub fn upsert(&self, connection: &mut AnyConnection) -> Result<usize, diesel::result::Error> {
+        crate::with_backend!(connection, |conn| {
+            diesel::insert_into(issue_acks::table)
+                .values(self)
+                .on_conflict(issue_acks::issue_key)
+                .do_update()
+                .set((
+                    issue_acks::first_seen.eq(self.first_seen),
+                    issue_acks::acked_at.eq(self.acked_at),
+                    issue_acks::acked_by.eq(&self.acked_by),
+                    issue_acks::note.eq(&self.note),
+                ))
+                .execute(conn)
+        })
+    }
+
+    pub fn delete(connection: &mut AnyConnection, issue_key: &str) -> Result<usize, diesel::result::Error> {
+        diesel::delete(issue_acks::table.filter(issue_acks::issue_key.eq(issue_key))).execute(connection)
+    }
+
+    // Drop ack rows whose issue is no longer active, keeping the table bounded.
+    // `active_keys` is every issue_key present in the current derivation.
+    pub fn delete_orphans(connection: &mut AnyConnection, active_keys: &std::collections::HashSet<String>) -> Result<usize, diesel::result::Error> {
+        let mut removed = 0;
+        for ack in IssueAck::all(connection) {
+            if !active_keys.contains(&ack.issue_key) {
+                removed += IssueAck::delete(connection, &ack.issue_key)?;
+            }
+        }
+        Ok(removed)
     }
 }
 
@@ -620,6 +678,37 @@ mod tests {
         assert_eq!(Setting::get(&mut conn, "event").as_deref(), Some("second"));
         Setting::delete(&mut conn, "event").unwrap();
         assert_eq!(Setting::get(&mut conn, "event"), None);
+    }
+
+    #[test]
+    fn issue_ack_roundtrip_and_orphan_cleanup() {
+        let mut conn = conn();
+        assert!(IssueAck::all(&mut conn).is_empty());
+
+        let ack = IssueAck {
+            issue_key: "sw1.test.example|iface-flapping|10001".to_string(),
+            first_seen: 1000,
+            acked_at: 2000,
+            acked_by: None,
+            note: Some("known cabling work".to_string()),
+        };
+        ack.upsert(&mut conn).unwrap();
+        assert_eq!(IssueAck::all(&mut conn).len(), 1);
+
+        // Upsert with a new first_seen (occurrence recurred) overwrites in place.
+        let mut ack2 = ack.clone();
+        ack2.first_seen = 5000;
+        ack2.acked_at = 6000;
+        ack2.upsert(&mut conn).unwrap();
+        let rows = IssueAck::all(&mut conn);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].first_seen, 5000);
+
+        // Orphan cleanup removes acks whose issue is no longer active.
+        let active: std::collections::HashSet<String> =
+            vec!["other.test.example|device-down|".to_string()].into_iter().collect();
+        assert_eq!(IssueAck::delete_orphans(&mut conn, &active).unwrap(), 1);
+        assert!(IssueAck::all(&mut conn).is_empty());
     }
 
     #[test]

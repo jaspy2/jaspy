@@ -1,5 +1,6 @@
 pub mod health;
 pub mod imds;
+pub mod issues;
 pub mod livelog;
 pub mod msgbus;
 pub mod perfstats;

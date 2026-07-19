@@ -366,3 +366,34 @@ export interface EventInfo {
 export interface ResetResult {
   devicesDeleted: number;
 }
+
+// A derived fleet issue (GET /api/v1/issues). Issues are computed on the fly
+// from the in-memory stores; `issueKey` is the deterministic composite that a
+// persisted acknowledgement is keyed on.
+export interface Issue {
+  issueKey: string;
+  fqdn: string;
+  hostname: string;
+  kind: string;
+  severity: 'warn' | 'bad';
+  title: string;
+  description: string;
+  subjectLabel: string | null;
+  // Ordered label/value pairs describing every known signal, for the detail view.
+  detail: [string, string][];
+  firstSeen: number; // epoch ms of the current occurrence's onset
+  lastSeen: number; // epoch ms it was last observed active
+  acknowledged: boolean;
+  ackedAt: number | null; // epoch ms
+  ackedBy: string | null;
+  note: string | null;
+}
+
+export interface IssuesResponse {
+  issues: Issue[];
+}
+
+export interface IssueAckRequest {
+  issueKey: string;
+  note?: string | null;
+}

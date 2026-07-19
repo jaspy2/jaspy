@@ -688,3 +688,48 @@ pub struct ClientLocationInfo {
     pub chaddr: String,
     pub option82: HashMap<String, String>,
 }
+
+// GET /api/v1/issues: one derived fleet problem. Issues are computed on the fly
+// from the in-memory stores (see utilities::issues); this DTO is enriched with
+// tracker timestamps and, if present, the persisted acknowledgement.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiIssue {
+    // Deterministic composite "<fqdn>|<kind>|<subject>" — stable across
+    // re-derivation and restarts, so it keys the acknowledgement.
+    pub issue_key: String,
+    pub fqdn: String,
+    pub hostname: String,
+    pub kind: String,        // stable slug, e.g. "device-down", "iface-flapping"
+    pub severity: String,    // "warn" | "bad"
+    pub title: String,       // short human title
+    pub description: String, // one-line human description
+    // Human label for the affected sub-entity (interface name, "VLAN 10", "Po1"),
+    // null for device-level issues.
+    pub subject_label: Option<String>,
+    // All known signal detail for the expanded view (ordered label/value pairs).
+    pub detail: Vec<(String, String)>,
+    pub first_seen: u64, // epoch ms of the current occurrence's onset
+    pub last_seen: u64,  // epoch ms it was last observed active
+    pub acknowledged: bool,
+    pub acked_at: Option<i64>,
+    pub acked_by: Option<String>,
+    pub note: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiIssuesResponse {
+    // Sorted by first_seen descending (most recent first). Both active and
+    // acknowledged issues are included; `acknowledged` distinguishes them.
+    pub issues: Vec<ApiIssue>,
+}
+
+// Request body for POST /api/v1/issues/ack and /unack.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiIssueAckRequest {
+    pub issue_key: String,
+    #[serde(default)]
+    pub note: Option<String>,
+}
