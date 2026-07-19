@@ -84,7 +84,7 @@ impl SnmpbotHttp {
 // raw 500 status line + OID dump; other failures keep the status (+ body).
 fn describe_snmpbot_failure(status: reqwest::StatusCode, body: &str) -> String {
     let body = body.trim();
-    if body.to_ascii_lowercase().contains("timeout") {
+    if crate::snmp::is_snmp_timeout(body) {
         return "SNMP timeout: device not responding".to_string();
     }
     if body.is_empty() {

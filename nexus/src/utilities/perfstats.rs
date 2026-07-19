@@ -11,18 +11,35 @@
 // per-metric max is kept via fetch_max for tail visibility.
 use std::sync::atomic::{AtomicU64, Ordering};
 
+// Outcome of one SNMP request, so timeouts (a dead device costs the full
+// timeout) are bucketed apart from real responses/errors and kept out of the
+// latency/error averages. See PerfStats::record_snmp.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SnmpOutcome {
+    Ok,       // got a reply
+    Error,    // replied with (or failed as) a genuine error: bad MIB, parse, HTTP status
+    Timeout,  // device did not respond within the SNMP timeout
+}
+
 pub struct PerfStats {
     // Interface poller (collectors/poller.rs).
-    pub device_polls: AtomicU64,          // completed per-device poll iterations
-    pub poll_overruns: AtomicU64,         // iterations whose wall time exceeded the cycle budget
-    pub poll_iter_nanos: AtomicU64,       // total per-iteration wall time
-    pub poll_iter_max_nanos: AtomicU64,   // slowest single iteration
+    pub device_polls: AtomicU64,          // completed responsive per-device poll iterations
+    pub poll_overruns: AtomicU64,         // responsive iterations whose wall time exceeded the cycle budget
+    pub poll_iter_nanos: AtomicU64,       // total per-iteration wall time (responsive iterations)
+    pub poll_iter_max_nanos: AtomicU64,   // slowest single responsive iteration
+    // Iterations skipped for the stats above because an SNMP timeout made the
+    // device unresponsive (their ~timeout-long wall time would be a false
+    // overrun and would pollute the poll-latency mean).
+    pub unresponsive_polls: AtomicU64,
 
     // SNMP back end (both snmpbot and embedded, via snmp_query).
-    pub snmp_queries: AtomicU64,          // table/object requests attempted
-    pub snmp_query_errors: AtomicU64,     // requests that returned Err (timeout etc.)
-    pub snmp_query_nanos: AtomicU64,      // total time spent in SnmpSource calls
-    pub snmp_query_max_nanos: AtomicU64,  // slowest single request
+    pub snmp_queries: AtomicU64,          // table/object requests that got a reply or a real error
+    pub snmp_query_errors: AtomicU64,     // requests that returned a genuine (non-timeout) error
+    pub snmp_query_nanos: AtomicU64,      // total time spent in SnmpSource calls (excludes timeouts)
+    pub snmp_query_max_nanos: AtomicU64,  // slowest single non-timeout request
+    // Requests where the device did not respond (full-timeout waits). Kept out
+    // of snmp_queries/errors/latency so the averages reflect real responses.
+    pub snmp_timeouts: AtomicU64,
 
     // Embedded SNMP session opens (UDP socket creations). With per-call opening
     // this tracks the request count; with session reuse it drops to ~one per
@@ -55,10 +72,12 @@ impl PerfStats {
             poll_overruns: AtomicU64::new(0),
             poll_iter_nanos: AtomicU64::new(0),
             poll_iter_max_nanos: AtomicU64::new(0),
+            unresponsive_polls: AtomicU64::new(0),
             snmp_queries: AtomicU64::new(0),
             snmp_query_errors: AtomicU64::new(0),
             snmp_query_nanos: AtomicU64::new(0),
             snmp_query_max_nanos: AtomicU64::new(0),
+            snmp_timeouts: AtomicU64::new(0),
             snmp_session_opens: AtomicU64::new(0),
             snmp_inflight: AtomicU64::new(0),
             snmp_inflight_max: AtomicU64::new(0),
@@ -85,11 +104,17 @@ impl PerfStats {
         counter.fetch_max(v, Ordering::Relaxed);
     }
 
-    // Record one SNMP request: its wall time and whether it failed.
-    pub fn record_snmp(&self, elapsed: std::time::Duration, ok: bool) {
+    // Record one SNMP request. A timeout (device not responding) is bucketed on
+    // its own and left out of the query count/error count/latency so those
+    // reflect only real responses; a genuine error still counts and is timed.
+    pub fn record_snmp(&self, elapsed: std::time::Duration, outcome: SnmpOutcome) {
+        if outcome == SnmpOutcome::Timeout {
+            Self::add(&self.snmp_timeouts, 1);
+            return;
+        }
         let ns = elapsed.as_nanos() as u64;
         Self::add(&self.snmp_queries, 1);
-        if !ok {
+        if outcome == SnmpOutcome::Error {
             Self::add(&self.snmp_query_errors, 1);
         }
         Self::add(&self.snmp_query_nanos, ns);
@@ -132,9 +157,15 @@ impl PerfStats {
         Self::add(&self.interfaces_reported, interfaces);
     }
 
-    // Record one completed poll iteration: its wall time and whether it
-    // overran the cycle budget.
-    pub fn record_poll_iter(&self, elapsed: std::time::Duration, budget_msecs: u64) {
+    // Record one completed poll iteration. An unresponsive iteration (an SNMP
+    // timeout made the device not respond) is counted on its own and excluded
+    // from the poll count/latency/overruns: its wall time is dominated by the
+    // ~timeout wait, so counting it would be a false overrun and skew the mean.
+    pub fn record_poll_iter(&self, elapsed: std::time::Duration, budget_msecs: u64, responsive: bool) {
+        if !responsive {
+            Self::add(&self.unresponsive_polls, 1);
+            return;
+        }
         let ns = elapsed.as_nanos() as u64;
         Self::add(&self.device_polls, 1);
         Self::add(&self.poll_iter_nanos, ns);
@@ -159,10 +190,12 @@ impl PerfStats {
             poll_overruns: g(&self.poll_overruns),
             poll_iter_nanos: g(&self.poll_iter_nanos),
             poll_iter_max_nanos: g(&self.poll_iter_max_nanos),
+            unresponsive_polls: g(&self.unresponsive_polls),
             snmp_queries: g(&self.snmp_queries),
             snmp_query_errors: g(&self.snmp_query_errors),
             snmp_query_nanos: g(&self.snmp_query_nanos),
             snmp_query_max_nanos: g(&self.snmp_query_max_nanos),
+            snmp_timeouts: g(&self.snmp_timeouts),
             snmp_session_opens: g(&self.snmp_session_opens),
             snmp_inflight: g(&self.snmp_inflight),
             snmp_inflight_max: g(&self.snmp_inflight_max),
@@ -188,10 +221,12 @@ impl PerfStats {
         line("jaspy_perf_poll_overruns_total", "Poll iterations exceeding the cycle budget", "counter", g(&self.poll_overruns), &mut s);
         line("jaspy_perf_poll_iter_nanos_total", "Total per-iteration poll wall time (ns)", "counter", g(&self.poll_iter_nanos), &mut s);
         line("jaspy_perf_poll_iter_max_nanos", "Slowest single poll iteration (ns)", "gauge", g(&self.poll_iter_max_nanos), &mut s);
-        line("jaspy_perf_snmp_queries_total", "SNMP table/object requests attempted", "counter", g(&self.snmp_queries), &mut s);
-        line("jaspy_perf_snmp_query_errors_total", "SNMP requests returning an error", "counter", g(&self.snmp_query_errors), &mut s);
-        line("jaspy_perf_snmp_query_nanos_total", "Total time in SNMP back-end calls (ns)", "counter", g(&self.snmp_query_nanos), &mut s);
-        line("jaspy_perf_snmp_query_max_nanos", "Slowest single SNMP request (ns)", "gauge", g(&self.snmp_query_max_nanos), &mut s);
+        line("jaspy_perf_unresponsive_polls_total", "Poll iterations skipped as unresponsive (SNMP timeout)", "counter", g(&self.unresponsive_polls), &mut s);
+        line("jaspy_perf_snmp_queries_total", "SNMP table/object requests that got a reply or real error", "counter", g(&self.snmp_queries), &mut s);
+        line("jaspy_perf_snmp_query_errors_total", "SNMP requests returning a genuine (non-timeout) error", "counter", g(&self.snmp_query_errors), &mut s);
+        line("jaspy_perf_snmp_query_nanos_total", "Total time in SNMP back-end calls, excluding timeouts (ns)", "counter", g(&self.snmp_query_nanos), &mut s);
+        line("jaspy_perf_snmp_query_max_nanos", "Slowest single non-timeout SNMP request (ns)", "gauge", g(&self.snmp_query_max_nanos), &mut s);
+        line("jaspy_perf_snmp_timeouts_total", "SNMP requests where the device did not respond", "counter", g(&self.snmp_timeouts), &mut s);
         line("jaspy_perf_snmp_session_opens_total", "Embedded SNMP session (UDP socket) opens", "counter", g(&self.snmp_session_opens), &mut s);
         line("jaspy_perf_snmp_inflight", "SNMP requests currently in the back end", "gauge", g(&self.snmp_inflight), &mut s);
         line("jaspy_perf_snmp_inflight_max", "Peak concurrent SNMP requests in the back end", "gauge", g(&self.snmp_inflight_max), &mut s);
@@ -217,10 +252,12 @@ pub struct PerfSnapshot {
     pub poll_overruns: u64,
     pub poll_iter_nanos: u64,
     pub poll_iter_max_nanos: u64,
+    pub unresponsive_polls: u64,
     pub snmp_queries: u64,
     pub snmp_query_errors: u64,
     pub snmp_query_nanos: u64,
     pub snmp_query_max_nanos: u64,
+    pub snmp_timeouts: u64,
     pub snmp_session_opens: u64,
     pub snmp_inflight: u64,
     pub snmp_inflight_max: u64,
@@ -245,10 +282,10 @@ mod tests {
     #[test]
     fn render_contains_all_series() {
         let stats = PerfStats::new();
-        stats.record_snmp(Duration::from_millis(3), true);
-        stats.record_snmp(Duration::from_millis(9), false);
-        stats.record_poll_iter(Duration::from_millis(50), 10_000);
-        stats.record_poll_iter(Duration::from_millis(12_000), 10_000);
+        stats.record_snmp(Duration::from_millis(3), SnmpOutcome::Ok);
+        stats.record_snmp(Duration::from_millis(9), SnmpOutcome::Error);
+        stats.record_poll_iter(Duration::from_millis(50), 10_000, true);
+        stats.record_poll_iter(Duration::from_millis(12_000), 10_000, true);
         stats.record_lock_wait(Duration::from_micros(400));
         stats.record_report(Duration::from_millis(2), 48);
         stats.record_metrics_build(Duration::from_millis(5));
@@ -262,13 +299,50 @@ mod tests {
         assert!(text.contains("jaspy_perf_interfaces_reported_total 48"));
         // Max tracks the slower of the two SNMP calls (9ms).
         assert!(text.contains(&format!("jaspy_perf_snmp_query_max_nanos {}", 9_000_000u64)));
+        // New buckets are exported (both zero here).
+        assert!(text.contains("jaspy_perf_snmp_timeouts_total 0"));
+        assert!(text.contains("jaspy_perf_unresponsive_polls_total 0"));
     }
 
     #[test]
     fn max_is_monotonic_high_water_mark() {
         let stats = PerfStats::new();
-        stats.record_snmp(Duration::from_millis(5), true);
-        stats.record_snmp(Duration::from_millis(2), true);
+        stats.record_snmp(Duration::from_millis(5), SnmpOutcome::Ok);
+        stats.record_snmp(Duration::from_millis(2), SnmpOutcome::Ok);
         assert_eq!(stats.snmp_query_max_nanos.load(Ordering::Relaxed), 5_000_000);
+    }
+
+    #[test]
+    fn snmp_timeout_bucketed_apart_from_queries_and_latency() {
+        let stats = PerfStats::new();
+        stats.record_snmp(Duration::from_millis(3), SnmpOutcome::Ok);
+        stats.record_snmp(Duration::from_millis(4), SnmpOutcome::Error);
+        // A 10s timeout must NOT touch queries / errors / latency / max.
+        stats.record_snmp(Duration::from_millis(10_000), SnmpOutcome::Timeout);
+
+        let g = |c: &AtomicU64| c.load(Ordering::Relaxed);
+        assert_eq!(g(&stats.snmp_queries), 2, "timeout excluded from query count");
+        assert_eq!(g(&stats.snmp_query_errors), 1, "timeout not counted as an error");
+        assert_eq!(g(&stats.snmp_timeouts), 1);
+        // Latency sum/max reflect only the 3ms + 4ms real responses.
+        assert_eq!(g(&stats.snmp_query_nanos), 7_000_000);
+        assert_eq!(g(&stats.snmp_query_max_nanos), 4_000_000);
+    }
+
+    #[test]
+    fn unresponsive_poll_excluded_from_overruns_and_latency() {
+        let stats = PerfStats::new();
+        // Responsive over-budget iteration -> counts as one poll + one overrun.
+        stats.record_poll_iter(Duration::from_millis(12_000), 10_000, true);
+        // Unresponsive iteration (SNMP timeout) -> only unresponsive_polls.
+        stats.record_poll_iter(Duration::from_millis(30_000), 10_000, false);
+
+        let g = |c: &AtomicU64| c.load(Ordering::Relaxed);
+        assert_eq!(g(&stats.device_polls), 1);
+        assert_eq!(g(&stats.poll_overruns), 1, "only the responsive over-budget iter overran");
+        assert_eq!(g(&stats.unresponsive_polls), 1);
+        // Poll-latency sum excludes the unresponsive 30s iteration.
+        assert_eq!(g(&stats.poll_iter_nanos), 12_000_000_000);
+        assert_eq!(g(&stats.poll_iter_max_nanos), 12_000_000_000);
     }
 }

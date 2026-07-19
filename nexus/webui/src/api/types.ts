@@ -43,11 +43,13 @@ export interface PerfStats {
   pollOverruns: number;
   pollIterMeanMs: number;
   pollIterMaxMs: number;
+  unresponsivePolls: number;
   snmpQueries: number;
   snmpErrors: number;
   snmpErrorPct: number;
   snmpMeanMs: number;
   snmpMaxMs: number;
+  snmpTimeouts: number;
   snmpSessionOpens: number;
   snmpInflight: number;
   snmpInflightMax: number;

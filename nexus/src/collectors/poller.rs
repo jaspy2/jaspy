@@ -8,6 +8,7 @@ use crate::models;
 use crate::db;
 use crate::snmp::{HostSpec, SnmpSource};
 use crate::utilities::imds::IMDS;
+use crate::utilities::perfstats::SnmpOutcome;
 use crate::utilities::tools;
 use rand::prelude::*;
 use std::collections::HashMap;
@@ -232,14 +233,22 @@ fn load_devices(pool: &db::Pool) -> HashMap<String, PollDevice> {
     return devices;
 }
 
-fn snmp_query(device_fqdn: &str, statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, snmp: &SnmpSource, host: &HostSpec, table_id: &str) {
+fn snmp_query(device_fqdn: &str, statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, snmp: &SnmpSource, host: &HostSpec, table_id: &str) -> SnmpOutcome {
     let start = time::Instant::now();
     let result = snmp.table(host, table_id);
-    crate::utilities::perfstats::PERF.record_snmp(start.elapsed(), result.is_ok());
+    // A timeout (device not responding) is bucketed apart from real responses
+    // and genuine errors so it stays out of the SNMP latency/error averages.
+    let outcome = match &result {
+        Ok(_) => SnmpOutcome::Ok,
+        Err(what) if crate::snmp::is_snmp_timeout(what) => SnmpOutcome::Timeout,
+        Err(_) => SnmpOutcome::Error,
+    };
+    crate::utilities::perfstats::PERF.record_snmp(start.elapsed(), outcome);
     match result {
         Ok(query_result) => merge_query_result(statistics, &query_result),
         Err(what) => println!("[{}] snmp error for {} ({}), skipping this poll", device_fqdn, table_id, what),
     }
+    outcome
 }
 
 fn merge_query_result(statistics: &mut HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>>, query_result: &SNMPBotResponse) {
@@ -261,7 +270,10 @@ fn merge_query_result(statistics: &mut HashMap<i32, HashMap<String, SNMPBotResul
     }
 }
 
-fn poll_device(snmp: &SnmpSource, device: &PollDevice) -> Option<models::json::InterfaceMonitorReport> {
+// Returns the interface report plus whether any SNMP query timed out (the
+// device didn't respond) — the caller uses that to keep the iteration out of
+// the overrun/latency stats.
+fn poll_device(snmp: &SnmpSource, device: &PollDevice) -> Option<(models::json::InterfaceMonitorReport, bool)> {
     let snmp_community = match device.snmp_community {
         Some(ref community) => community,
         // TODO: log?
@@ -271,14 +283,15 @@ fn poll_device(snmp: &SnmpSource, device: &PollDevice) -> Option<models::json::I
 
     let mut stats: HashMap<i32, HashMap<String, SNMPBotResultEntryObjectValue>> = HashMap::new();
     // ifTable before ifXTable: first writer wins on object-key collisions.
-    snmp_query(&device.fqdn, &mut stats, snmp, &host, "IF-MIB::ifTable");
-    snmp_query(&device.fqdn, &mut stats, snmp, &host, "IF-MIB::ifXTable");
+    let o1 = snmp_query(&device.fqdn, &mut stats, snmp, &host, "IF-MIB::ifTable");
+    let o2 = snmp_query(&device.fqdn, &mut stats, snmp, &host, "IF-MIB::ifXTable");
+    let timed_out = o1 == SnmpOutcome::Timeout || o2 == SnmpOutcome::Timeout;
 
     let mut report = models::json::InterfaceMonitorReport { device_fqdn: device.fqdn.clone(), interfaces: Vec::new() };
     for (ifindex, object_values) in stats.iter() {
         report.interfaces.push(interface_report_from_entry(ifindex, object_values));
     }
-    return Some(report);
+    return Some((report, timed_out));
 }
 
 fn poll_worker(pool: db::Pool, snmp: Arc<SnmpSource>, device: PollDevice, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, done: mpsc::Sender<bool>) {
@@ -291,33 +304,39 @@ fn poll_worker(pool: db::Pool, snmp: Arc<SnmpSource>, device: PollDevice, poll_l
         let iter_start = time::Instant::now();
 
         println!("[{}] polling", device.fqdn);
-        if let Some(poll_result) = poll_device(&snmp, &device) {
-            // With the pinger disabled, a device that answers SNMP is up and
-            // one that doesn't is down (empty result = snmpbot got no reply).
-            let snmp_ok = !poll_result.interfaces.is_empty();
-            let n_interfaces = poll_result.interfaces.len() as u64;
-            // Do the DB acquire and IMDS lock only after network I/O, and hold
-            // the IMDS lock only for the report itself. The lock-wait timing is
-            // the key signal for the single-global-mutex contention (PERF.md #2).
-            if let Ok(mut conn) = pool.get() {
-                let lock_start = time::Instant::now();
-                let imds_guard = imds.lock();
-                crate::utilities::perfstats::PERF.record_lock_wait(lock_start.elapsed());
-                if let Ok(mut imds) = imds_guard {
-                    let report_start = time::Instant::now();
-                    imds.report_interfaces(&mut *conn, poll_result);
-                    if report_device_status {
-                        imds.report_device(&mut *conn, models::json::DeviceMonitorReport {
-                            fqdn: device.fqdn.clone(),
-                            up: snmp_ok,
-                        });
+        // An iteration is "responsive" unless an SNMP query timed out; a
+        // no-community device (poll_device None) did no I/O, so it's fast/fine.
+        let responsive = match poll_device(&snmp, &device) {
+            Some((poll_result, timed_out)) => {
+                // With the pinger disabled, a device that answers SNMP is up and
+                // one that doesn't is down (empty result = snmpbot got no reply).
+                let snmp_ok = !poll_result.interfaces.is_empty();
+                let n_interfaces = poll_result.interfaces.len() as u64;
+                // Do the DB acquire and IMDS lock only after network I/O, and hold
+                // the IMDS lock only for the report itself. The lock-wait timing is
+                // the key signal for the single-global-mutex contention (PERF.md #2).
+                if let Ok(mut conn) = pool.get() {
+                    let lock_start = time::Instant::now();
+                    let imds_guard = imds.lock();
+                    crate::utilities::perfstats::PERF.record_lock_wait(lock_start.elapsed());
+                    if let Ok(mut imds) = imds_guard {
+                        let report_start = time::Instant::now();
+                        imds.report_interfaces(&mut *conn, poll_result);
+                        if report_device_status {
+                            imds.report_device(&mut *conn, models::json::DeviceMonitorReport {
+                                fqdn: device.fqdn.clone(),
+                                up: snmp_ok,
+                            });
+                        }
+                        crate::utilities::perfstats::PERF.record_report(report_start.elapsed(), n_interfaces);
                     }
-                    crate::utilities::perfstats::PERF.record_report(report_start.elapsed(), n_interfaces);
                 }
+                !timed_out
             }
-        }
+            None => true,
+        };
 
-        crate::utilities::perfstats::PERF.record_poll_iter(iter_start.elapsed(), poll_loop_msecs);
+        crate::utilities::perfstats::PERF.record_poll_iter(iter_start.elapsed(), poll_loop_msecs, responsive);
         let diff = tools::get_time_msecs() - start;
         if diff <= poll_loop_msecs {
             thread::sleep(time::Duration::from_millis(poll_loop_msecs - diff));

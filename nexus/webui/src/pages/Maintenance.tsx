@@ -196,6 +196,9 @@ export default function Maintenance() {
               {p.pollOverruns > 0 && (
                 <>{' '}<span className="badge badge-warn">{p.pollOverruns.toLocaleString()} overruns</span></>
               )}
+              {p.unresponsivePolls > 0 && (
+                <>{' '}<span className="badge badge-muted" title="poll cycles skipped because the device did not answer SNMP (not counted as overruns)">{p.unresponsivePolls.toLocaleString()} unresponsive</span></>
+              )}
             </span>
             <span>SNMP queries</span>
             <span>
@@ -203,6 +206,9 @@ export default function Maintenance() {
               {p.snmpErrors > 0
                 ? <span className="badge badge-bad">{p.snmpErrorPct.toFixed(1)}% errors</span>
                 : <span className="badge badge-ok">no errors</span>}
+              {p.snmpTimeouts > 0 && (
+                <>{' '}<span className="badge badge-muted" title="requests where the device did not respond (excluded from latency/error averages)">{p.snmpTimeouts.toLocaleString()} timeouts</span></>
+              )}
             </span>
             <span>SNMP latency</span>
             <span>mean {p.snmpMeanMs.toFixed(1)} ms · max {p.snmpMaxMs.toFixed(0)} ms</span>
