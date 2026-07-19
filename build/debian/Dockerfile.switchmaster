@@ -1,0 +1,42 @@
+# Packages switchmaster into a standalone jaspy-switchmaster .deb for the
+# Debian 10 (buster) amd64 VM. Driven by build/build-debian10-switchmaster.sh.
+#
+# This is a REPACKAGE, not a build. switchmaster's from-source image
+# (switchmaster/Dockerfile) is unusable today: its mcr.microsoft.com/dotnet/
+# core/sdk:2.2 base sits on Debian stretch, which is EOL and 404s on apt. Since
+# switchmaster is a self-contained .NET Core 2.2 publish (it bundles its own
+# runtime), the binaries lifted from the VM backup are a valid drop-in as-is;
+# build-debian10-switchmaster.sh stages them under output/debian10-switchmaster.
+#
+# fpm only assembles files, so the packaging base OS is irrelevant to the
+# shipped binaries; we stay on bullseye (fpm's Ruby needs) and force the package
+# Architecture to amd64. The payload's own glibc/runtime came off the buster VM.
+ARG DEBIAN_VERSION=bullseye-slim
+FROM debian:${DEBIAN_VERSION}
+
+RUN apt-get update && apt-get -y install ruby ruby-dev libffi-dev build-essential
+RUN gem install fpm
+
+ARG version=unknown
+
+WORKDIR /usr/src/switchmaster
+
+# Payload staged from the backup tarball: root/usr/lib/jaspy/switchmaster/*
+COPY output/debian10-switchmaster/root ./root
+# Ship the maintained service unit from the repo (functionally identical to the
+# VM's, and the source of truth), not the copy embedded in the backup.
+COPY debian/systemd.jaspy/jaspy-switchmaster.service ./root/etc/systemd/system/jaspy-switchmaster.service
+COPY debian/switchmaster.postinst.sh ./
+
+# Runtime deps of the self-contained .NET app on buster. libc6/libstdc++6/
+# zlib1g/libgcc1 are base; these are the extras it links against or dlopens:
+# libcurl4 (System.Net.Http.Native), libgssapi-krb5-2 (SPNEGO), liblttng-ust0
+# (EventPipe tracing), libicu63 (globalization), libssl1.1 (crypto). Verified
+# with ldd + a runtime load on debian:buster-slim.
+RUN fpm -t deb -s dir -n "jaspy-switchmaster" -v "${version}" -a amd64 \
+      -m "Antti Tönkyrä <daedalus@pingtimeout.net>" \
+      -d libcurl4 -d libgssapi-krb5-2 -d liblttng-ust0 -d libicu63 -d libssl1.1 \
+      --after-install ./switchmaster.postinst.sh \
+      /usr/src/switchmaster/root/=/
+
+CMD cp -a /usr/src/switchmaster/*.deb /output/

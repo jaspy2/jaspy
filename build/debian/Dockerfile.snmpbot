@@ -1,0 +1,39 @@
+# Repackages snmpbot into a refreshed .deb for the Debian 10 (buster) amd64 VM,
+# carrying the current repo MIB set (44 files, incl. the custom
+# jaspyStpBridgeTable / jaspyVlanTrunkPortTable the merged nexus queries).
+# Driven by build/build-debian10-snmpbot.sh.
+#
+# snmpbot's binary is UPSTREAM (github.com/qmsk/snmpbot), not jaspy code, and its
+# from-source build (snmpbot/Dockerfile) is dead on EOL buster: buster ships Go
+# 1.11 but current upstream needs io/fs (Go >= 1.16). So the binary AND the
+# service unit are reused from the deployed snmpbot (proven, unchanged — the unit
+# carries operational flags like -snmp-timeout that the repo unit lacks); only
+# the MIBs advance. Same package name/layout/maintainer as the installed
+# snmpbot 2.2.0-39, so dpkg treats it as a normal upgrade (adds the 15 new MIBs,
+# updates BRIDGE-MIB + CISCO-VTP-MIB, removes nothing — the old set is a subset).
+#
+# fpm only assembles files, so the packaging base OS is irrelevant to the shipped
+# binary (which came off the buster VM). Architecture is forced to amd64.
+ARG DEBIAN_VERSION=bullseye-slim
+FROM debian:${DEBIAN_VERSION}
+
+RUN apt-get update && apt-get -y install ruby ruby-dev libffi-dev build-essential
+RUN gem install fpm
+
+ARG version=unknown
+
+WORKDIR /usr/src/snmpbot
+
+# Staged tree assembled by build-debian10-snmpbot.sh:
+#   root/usr/bin/snmpbot                     (from the deployed host)
+#   root/etc/systemd/system/snmpbot.service  (from the deployed host)
+#   root/var/lib/snmpbot/mibs/*.json         (from the repo: snmpbot/mibs, 44)
+COPY output/debian10-snmpbot/root ./root
+COPY debian/snmpbot.postinst.sh ./
+
+RUN fpm -t deb -s dir -n "snmpbot" -v "${version}" -a amd64 \
+      -m "Antti Tönkyrä <daedalus@pingtimeout.net>" \
+      --after-install ./snmpbot.postinst.sh \
+      /usr/src/snmpbot/root/=/
+
+CMD cp -a /usr/src/snmpbot/*.deb /output/

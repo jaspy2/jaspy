@@ -1,0 +1,57 @@
+# Packages the buster/amd64 nexus artifacts into a "jaspy-nexus" .deb for the
+# legacy Debian 10 prod VM. Driven by build/build-debian10.sh.
+#
+# Package name is "jaspy-nexus" (NOT "jaspy") with "Replaces: jaspy" and NO
+# Conflicts/Breaks. This triggers dpkg's *partial replacement* (Debian Policy
+# 7.6.1): jaspy-nexus takes over the files it ships that the old monolithic
+# "jaspy" also owns (the jaspy-nexus binary, diesel, cli, migrations, the
+# jaspy-nexus.service unit), while the old "jaspy" package STAYS INSTALLED and
+# keeps everything else — crucially switchmaster + jaspy-switchmaster.service,
+# which are therefore never touched. The poller/pinger/entitypoller/discover/
+# snmptrapd binaries were merged into nexus; their old files/units linger under
+# the frozen "jaspy" package and should be `systemctl disable --now`'d at cutover
+# so they don't double-poll the API the new nexus still serves.
+#
+# No --after-remove here (unlike the full jaspy package): the shared "jaspy" user
+# is still needed by switchmaster from the coexisting "jaspy" package, so
+# removing jaspy-nexus must not userdel it.
+#
+# fpm only assembles files, so the packaging base OS does not affect the shipped
+# binaries' glibc requirement (that was fixed by compiling on buster). We keep
+# it on bullseye to avoid fpm's newer-Ruby needs on buster; the resulting .deb
+# installs fine on Debian 10. The package Architecture is forced to amd64 below.
+ARG DEBIAN_VERSION=bullseye-slim
+
+FROM debian:${DEBIAN_VERSION}
+
+WORKDIR /usr/src/jaspy/root
+
+RUN apt-get update && apt-get -y install ruby ruby-dev libffi-dev build-essential
+RUN gem install fpm
+
+ARG version=unknown
+ENV VERSION=$version
+
+# Paths are namespaced under output/debian10/ so this manual build never
+# clobbers build/build-debian.sh's output/ tree. Build context is build/.
+COPY output/debian10/cli ./usr/local/bin
+COPY output/debian10/weathermap ./var/lib/jaspy/weathermap
+
+COPY output/debian10/nexus/migrations ./var/lib/jaspy/nexus/migrations
+COPY output/debian10/nexus/jaspy-nexus ./usr/lib/jaspy/jaspy-nexus
+COPY output/debian10/nexus/diesel ./usr/lib/jaspy/diesel
+
+# SNMP MIB JSON files for the embedded SNMP client (JASPY_SNMP_MODE=embedded),
+# so embedded mode needs no separate snmpbot install. nexus defaults
+# JASPY_SNMP_MIB_DIR to /usr/share/jaspy/mibs.
+COPY output/debian10/nexus/mibs ./usr/share/jaspy/mibs
+
+# Only the nexus service. switchmaster's unit stays owned by the coexisting
+# "jaspy" package (partial replacement leaves it untouched).
+COPY debian/systemd.jaspy/jaspy-nexus.service ./etc/systemd/system/
+
+WORKDIR /usr/src/jaspy
+COPY debian/jaspy.*.sh ./
+RUN fpm -t deb -s dir -n "jaspy-nexus" -v "${version}" -a amd64 -m "Antti Tönkyrä <daedalus@pingtimeout.net>" -d liboping0 -d libpq5 --replaces jaspy --after-install ./jaspy.postinst.sh --after-upgrade ./jaspy.postupgrade.sh /usr/src/jaspy/root/=/
+
+CMD cp -a /usr/src/jaspy/*.deb /output/

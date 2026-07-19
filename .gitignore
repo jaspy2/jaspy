@@ -5,3 +5,4 @@ jaspy.env
 vendor/
 /build/output/*
 jaspy.log
+backup/
