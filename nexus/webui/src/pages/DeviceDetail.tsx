@@ -40,6 +40,19 @@ export function formatVlanRanges(vlans: number[]): string {
   return parts.join(', ');
 }
 
+// Cap the tagged-VLAN column: show the collapsed range list when it's a
+// handful of segments, otherwise a count (the full per-VLAN breakdown is in the
+// expandable detail row). Deciding on segment count rather than raw VLAN count
+// keeps a contiguous trunk compact ("1-4094" is one segment, always shown)
+// while collapsing a scattered list into "N tagged VLANs".
+const MAX_VLAN_SEGMENTS = 6;
+
+export function summarizeTaggedVlans(vlans: number[]): string {
+  const ranges = formatVlanRanges(vlans);
+  if (ranges.split(', ').length <= MAX_VLAN_SEGMENTS) return ranges;
+  return `${vlans.length} tagged VLANs`;
+}
+
 // Expanded view of one interface's VLANs: native first, then every tagged
 // VLAN, each with its id and (when the device reports one) its name.
 function InterfaceVlanList({ iface, names }: { iface: Interface; names: Map<number, string | null> }) {
@@ -520,8 +533,8 @@ export default function DeviceDetail() {
                   </td>
                   <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
                   <td>{iface.nativeVlan ?? '—'}</td>
-                  <td className="wrap" title={iface.taggedVlans?.join(', ')}>
-                    {(iface.taggedVlans?.length ?? 0) > 0 ? formatVlanRanges(iface.taggedVlans!) : '—'}
+                  <td className="vlan-cell" title={iface.taggedVlans?.join(', ')}>
+                    {(iface.taggedVlans?.length ?? 0) > 0 ? summarizeTaggedVlans(iface.taggedVlans!) : '—'}
                   </td>
                   <td>{iface.alias ?? '—'}</td>
                   <td>{iface.interfaceType}</td>

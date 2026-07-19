@@ -137,7 +137,11 @@ pub fn build() -> Topology {
             stp_vlans: &[10, 20],
             stp_style: StpStyle::Cisco,
             vlan_style: VlanStyle::Cisco,
-            vlans: &[1, 10, 20],
+            // A core switch trunks a lot of VLANs. This scattered set makes the
+            // core1 uplinks carry ~14 tagged VLANs, exercising the device-detail
+            // "N tagged VLANs" column summary (the full list stays in the
+            // expandable per-interface detail).
+            vlans: &[1, 10, 20, 30, 40, 50, 100, 101, 102, 110, 200, 210, 300, 900, 999],
             interfaces: vec![
                 // The dist downlinks are 2×10G LACP bundles (Po1/Po2 below);
                 // both ends are monitored, so the far-end cross-checks run.
