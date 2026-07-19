@@ -4,8 +4,8 @@
 # Package name is "jaspy-nexus" (NOT "jaspy") with "Replaces: jaspy" and NO
 # Conflicts/Breaks. This triggers dpkg's *partial replacement* (Debian Policy
 # 7.6.1): jaspy-nexus takes over the files it ships that the old monolithic
-# "jaspy" also owns (the jaspy-nexus binary, diesel, cli, migrations, the
-# jaspy-nexus.service unit), while the old "jaspy" package STAYS INSTALLED and
+# "jaspy" also owns (the jaspy-nexus binary, cli, the jaspy-nexus.service unit),
+# while the old "jaspy" package STAYS INSTALLED and
 # keeps everything else — crucially switchmaster + jaspy-switchmaster.service,
 # which are therefore never touched. The poller/pinger/entitypoller/discover/
 # snmptrapd binaries were merged into nexus; their old files/units linger under
@@ -37,14 +37,14 @@ ENV VERSION=$version
 COPY output/debian10/cli ./usr/local/bin
 COPY output/debian10/weathermap ./var/lib/jaspy/weathermap
 
-COPY output/debian10/nexus/migrations ./var/lib/jaspy/nexus/migrations
+# Migrations are embedded in the binary (diesel embed_migrations!) and applied on
+# startup, so the deb ships neither an on-disk migrations dir nor the diesel CLI.
 COPY output/debian10/nexus/jaspy-nexus ./usr/lib/jaspy/jaspy-nexus
-COPY output/debian10/nexus/diesel ./usr/lib/jaspy/diesel
 
-# The extracted release binaries can carry owner-only (0700) perms from the
-# Docker artifact extraction, but the service + postinst run as the jaspy user —
-# force world-exec so they don't fail with "Permission denied" on install/start.
-RUN chmod 0755 ./usr/lib/jaspy/jaspy-nexus ./usr/lib/jaspy/diesel
+# The extracted release binary can carry owner-only (0700) perms from the Docker
+# artifact extraction, but the service runs as the jaspy user — force world-exec
+# so it doesn't fail with "Permission denied" on start.
+RUN chmod 0755 ./usr/lib/jaspy/jaspy-nexus
 
 # SNMP MIB JSON files for the embedded SNMP client (JASPY_SNMP_MODE=embedded),
 # so embedded mode needs no separate snmpbot install. nexus defaults

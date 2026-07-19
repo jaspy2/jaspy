@@ -6,6 +6,8 @@ su - postgres -c 'psql jaspy -c "SELECT 1"' || (
  su - postgres -c 'psql -t -c "REVOKE ALL ON DATABASE jaspy FROM PUBLIC"'
  su - postgres -c 'psql -t -c "GRANT ALL ON DATABASE jaspy TO jaspy"';
 )
-su jaspy -c 'export DATABASE_URL=postgresql:///jaspy; cd /var/lib/jaspy/nexus && /usr/lib/jaspy/diesel migration run'
+# No migration step here: jaspy-nexus applies its embedded migrations itself on
+# startup (db::auto_migrate, on by default), so the deb ships neither the diesel
+# CLI nor an on-disk migrations dir. The DB just needs to exist (above).
 systemctl daemon-reload
 
