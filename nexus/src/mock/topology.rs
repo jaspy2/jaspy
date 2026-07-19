@@ -639,6 +639,69 @@ impl Topology {
                         "ENTITY-MIB::entPhysicalDescr": "Power supply sensor",
                     }),
                 ));
+                // Per-port physical entities for media/form-factor classification
+                // (collectors::entity_media). Modeled on real Cisco IOS-XE shapes
+                // (verified on a C9300): fixed copper ports are class "port" held
+                // by the fixed module; 10G uplinks are SFP cages (class
+                // "container"), and a plugged optic is a class "port" *inside* the
+                // container whose descr is the optic media. Every third cage is
+                // left empty, and one populated cage carries a 1G optic in a 10G
+                // slot so the SFP-vs-SFP+ split is exercised. Port-channels are
+                // logical: no physical entity.
+                let fixed_module = 3000i64;
+                entries.push(entry(
+                    json!({"ENTITY-MIB::entPhysicalIndex": fixed_module}),
+                    json!({
+                        "ENTITY-MIB::entPhysicalClass": "module",
+                        "ENTITY-MIB::entPhysicalName": "Fixed Module 0",
+                        "ENTITY-MIB::entPhysicalDescr": format!("{} - Fixed Module 0", dev.model),
+                    }),
+                ));
+                let mut ent_idx = 3001i64;
+                for iface in dev.interfaces.iter() {
+                    if iface.name.starts_with("Po") {
+                        continue;
+                    }
+                    if iface.speed_mbps >= 10000 {
+                        let container = ent_idx;
+                        ent_idx += 1;
+                        entries.push(entry(
+                            json!({"ENTITY-MIB::entPhysicalIndex": container}),
+                            json!({
+                                "ENTITY-MIB::entPhysicalClass": "container",
+                                "ENTITY-MIB::entPhysicalName": format!("{} Container", iface.name),
+                                "ENTITY-MIB::entPhysicalDescr": format!("{} Container", iface.name),
+                            }),
+                        ));
+                        if iface.ifindex % 3 != 0 {
+                            // Most optics are 10G (SFP+); every fifth is a 1G SFP
+                            // seated in the 10G cage.
+                            let optic = if iface.ifindex % 5 == 0 { "1000BaseLX SFP" } else { "SFP-10GBase-SR" };
+                            let optic_port = ent_idx;
+                            ent_idx += 1;
+                            entries.push(entry(
+                                json!({"ENTITY-MIB::entPhysicalIndex": optic_port}),
+                                json!({
+                                    "ENTITY-MIB::entPhysicalClass": "port",
+                                    "ENTITY-MIB::entPhysicalName": iface.name,
+                                    "ENTITY-MIB::entPhysicalDescr": optic,
+                                    "ENTITY-MIB::entPhysicalContainedIn": container,
+                                }),
+                            ));
+                        }
+                    } else {
+                        entries.push(entry(
+                            json!({"ENTITY-MIB::entPhysicalIndex": ent_idx}),
+                            json!({
+                                "ENTITY-MIB::entPhysicalClass": "port",
+                                "ENTITY-MIB::entPhysicalName": iface.name,
+                                "ENTITY-MIB::entPhysicalDescr": iface.descr,
+                                "ENTITY-MIB::entPhysicalContainedIn": fixed_module,
+                            }),
+                        ));
+                        ent_idx += 1;
+                    }
+                }
                 Some(response(table_id, entries))
             }
             "ENTITY-SENSOR-MIB::entPhySensorTable" | "CISCO-ENTITY-SENSOR-MIB::entSensorValueTable" => {
@@ -1443,6 +1506,34 @@ mod tests {
                 assert!(port.tagged_vlans.is_empty(), "{} access tagged", iface.name);
             }
         }
+    }
+
+    #[test]
+    fn entphysical_table_classifies_media() {
+        use crate::collectors::entity_media::classify_media;
+        let topo = build();
+
+        // An access switch: Gi ports are copper, its 10G uplink is an SFP+ cage.
+        let access = topo.devices.iter().find(|d| d.name == "access-hall-a-01").unwrap();
+        let phys = topo.table(&access.fqdn(), None, "ENTITY-MIB::entPhysicalTable", 0.0).unwrap();
+        let media = classify_media(&phys.entries);
+        assert_eq!(media.get("Gi1/0/1").map(String::as_str), Some("copper"));
+        assert_eq!(media.get("Gi1/0/8").map(String::as_str), Some("copper"));
+        // Uplink Te1/1/1 (ifindex 10101, divisible by 3) is an empty cage.
+        assert_eq!(media.get("Te1/1/1").map(String::as_str), Some("sfp"));
+
+        // core1's 10G uplinks are all SFP cages (some populated); no copper.
+        let core = topo.devices.iter().find(|d| d.name == "core1").unwrap();
+        let phys = topo.table(&core.fqdn(), None, "ENTITY-MIB::entPhysicalTable", 0.0).unwrap();
+        let media = classify_media(&phys.entries);
+        assert!(media.values().all(|m| m.starts_with("sfp")), "core1 media: {:?}", media);
+        // Populated cages report the optic descr, including both a 10G (SFP+) and
+        // a 1G (SFP) optic so the SFP-vs-SFP+ distinction is exercised.
+        assert!(media.values().any(|m| m.contains("10GBase")), "expected a 10G optic: {:?}", media);
+        assert!(media.values().any(|m| m.contains("1000Base")), "expected a 1G optic: {:?}", media);
+        assert!(media.values().any(|m| m == "sfp"), "expected an empty cage: {:?}", media);
+        // Port-channels are logical: no physical entity, no media.
+        assert!(!media.contains_key("Po1"));
     }
 
     #[test]

@@ -175,6 +175,9 @@ struct DiscoveredIface {
     // resolution pick the one that maps to a discovered device.
     lldp: Vec<LldpNeighbor>,
     cdp: Option<CdpNeighbor>,
+    // Physical media/form-factor from ENTITY-MIB (collectors::entity_media);
+    // None until get_entmib_tables classifies this port.
+    media: Option<String>,
 }
 
 impl DiscoveredIface {
@@ -565,6 +568,20 @@ impl DetectedDevice {
                 }
             }
         }
+
+        // Derive per-interface media/form-factor from the same table and stamp
+        // it onto the matching interface by name (entPhysicalName == ifName;
+        // entAliasMappingTable is unusable via snmpbot, see entity_media).
+        let media = crate::collectors::entity_media::classify_media(&response.entries);
+        if !media.is_empty() {
+            for iface in self.interfaces.values_mut() {
+                let matched = iface.name.as_deref().and_then(|n| media.get(n))
+                    .or_else(|| iface.descr.as_deref().and_then(|d| media.get(d)));
+                if let Some(value) = matched {
+                    iface.media = Some(value.clone());
+                }
+            }
+        }
     }
 
     fn ensure_interface_sanity(&mut self) {
@@ -715,6 +732,7 @@ fn discovered_device_payload(sds: &DetectedDevice) -> Option<models::json::Disco
             name: name,
             alias: iface.alias.clone(),
             description: iface.descr.clone(),
+            media: iface.media.clone(),
         });
     }
     Some(models::json::DiscoveredDevice {

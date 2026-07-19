@@ -186,6 +186,10 @@ export interface Interface {
   // interface (health.severity is null when nothing is wrong), null only
   // before the first poll.
   health: InterfaceHealth | null;
+  // Physical media/form-factor from ENTITY-MIB: "copper" (fixed RJ45), "sfp"
+  // (empty SFP cage) or "sfp: <descr>" (populated transceiver). null when
+  // unknown (device without ENTITY-MIB / not yet discovered).
+  media: string | null;
 }
 
 // A VLAN known on the device, for resolving interface VLAN ids to names.

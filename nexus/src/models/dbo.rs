@@ -26,6 +26,7 @@ pub struct NewInterface {
     pub name: String,
     pub alias: Option<String>,
     pub description: Option<String>,
+    pub media: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Clone)]
@@ -108,6 +109,10 @@ pub struct Interface {
     pub polling_enabled: Option<bool>,
     pub speed_override: Option<i32>,
     pub virtual_connection: Option<i32>,
+    // Physical media / form-factor derived from ENTITY-MIB: "copper" (fixed
+    // RJ45 port), "sfp" (empty SFP cage) or "sfp: <descr>" (populated
+    // transceiver). None until discovery reads it. See collectors::entity_media.
+    pub media: Option<String>,
 }
 
 // Simple key/value store for runtime-mutable state that must survive restarts
@@ -639,11 +644,11 @@ mod tests {
         let sw2 = Device::create(&new_device("sw2", None), &mut conn).unwrap();
         let if1 = Interface::create(&NewInterface {
             index: 10101, interface_type: "ethernetCsmacd".to_string(), device_id: sw1.id,
-            name: "Gi0/1".to_string(), alias: None, description: None,
+            name: "Gi0/1".to_string(), alias: None, description: None, media: Some("copper".to_string()),
         }, &mut conn).unwrap();
         let mut if2 = Interface::create(&NewInterface {
             index: 10101, interface_type: "ethernetCsmacd".to_string(), device_id: sw2.id,
-            name: "Gi0/1".to_string(), alias: None, description: None,
+            name: "Gi0/1".to_string(), alias: None, description: None, media: None,
         }, &mut conn).unwrap();
 
         if2.connected_interface = Some(if1.id);
@@ -653,6 +658,10 @@ mod tests {
         assert_eq!(peer.id, if1.id);
         assert_eq!(peer.device(&mut conn).id, sw1.id);
         assert_eq!(sw1.interfaces(&mut conn).len(), 1);
+        // media round-trips through the new column (doubles as the sqlite
+        // migration drift guard for it).
+        assert_eq!(Interface::by_id(if1.id, &mut conn).unwrap().media.as_deref(), Some("copper"));
+        assert_eq!(Interface::by_id(if2.id, &mut conn).unwrap().media, None);
     }
 
     #[test]
@@ -706,7 +715,7 @@ mod tests {
         let device = Device::create(&new_device("sw1", None), &mut conn).unwrap();
         Interface::create(&NewInterface {
             index: 1, interface_type: "ethernetCsmacd".to_string(), device_id: device.id,
-            name: "Gi0/1".to_string(), alias: None, description: None,
+            name: "Gi0/1".to_string(), alias: None, description: None, media: None,
         }, &mut conn).unwrap();
         ClientLocation::create(&NewClientLocation {
             device_id: device.id, ip_address: "10.0.0.1".to_string(),

@@ -53,6 +53,120 @@ export function summarizeTaggedVlans(vlans: number[]): string {
   return `${vlans.length} tagged VLANs`;
 }
 
+// Nominal port speed label, capability-first: read the Cisco-style name prefix
+// (stable regardless of link state), falling back to the negotiated speed.
+function portSpeedLabel(iface: Interface): string {
+  const n = iface.displayName ?? iface.name ?? '';
+  if (/^(Hu|HundredGig)/i.test(n)) return '100G';
+  if (/^(Fo|FortyGig)/i.test(n)) return '40G';
+  if (/^(Twe|TwentyFiveGig)/i.test(n)) return '25G';
+  if (/^(Te|TenGig)/i.test(n)) return '10G';
+  if (/^(Gi|GigabitEthernet)/i.test(n)) return '1G';
+  if (/^(Fa|FastEthernet)/i.test(n)) return '100M';
+  const s = iface.speed;
+  if (s === null) return '?';
+  return s >= 1000 ? `${s / 1000}G` : `${s}M`;
+}
+
+function speedRank(label: string): number {
+  const m = /^(\d+(?:\.\d+)?)([MG])$/.exec(label);
+  if (!m) return Number.MAX_SAFE_INTEGER; // '?' sorts last
+  return parseFloat(m[1]) * (m[2] === 'G' ? 1000 : 1);
+}
+
+// One-line physical-port capability summary for the device header, e.g.
+// "24 × 1G copper, 4 SFP slots (2 populated)". Only counts physical Ethernet
+// ports (ifType ethernetCsmacd). Buckets: copper (media "copper") and SFP cages
+// (media "sfp…") get explicit form-factor words; ports with no media data are
+// counted by speed alone so the summary degrades gracefully. Returns null when
+// there are no physical ports.
+export function summarizePorts(interfaces: Interface[]): string | null {
+  const phys = interfaces.filter((i) => i.interfaceType === 'ethernetCsmacd');
+  if (phys.length === 0) return null;
+
+  const copper = phys.filter((i) => i.media === 'copper');
+  const sfp = phys.filter((i) => i.media?.startsWith('sfp'));
+  const unknown = phys.filter((i) => !i.media);
+
+  const parts: string[] = [];
+  const byTier = (list: Interface[], suffix: string) => {
+    const counts = new Map<string, number>();
+    for (const i of list) {
+      const label = portSpeedLabel(i);
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => speedRank(a[0]) - speedRank(b[0]))
+      .map(([label, n]) => `${n} × ${label}${suffix}`);
+  };
+
+  parts.push(...byTier(copper, ' copper'));
+  parts.push(...byTier(unknown, ''));
+
+  // SFP cages grouped by family (SFP / SFP+ / SFP28 / QSFP…) with a populated
+  // count, so the summary distinguishes 1G SFP from 10G SFP+ slots.
+  if (sfp.length > 0) {
+    const groups = new Map<string, { total: number; populated: number }>();
+    for (const i of sfp) {
+      const kind = sfpKind(i);
+      const g = groups.get(kind) ?? { total: 0, populated: 0 };
+      g.total += 1;
+      if (i.media!.startsWith('sfp:')) g.populated += 1;
+      groups.set(kind, g);
+    }
+    const order = ['SFP', 'SFP+', 'SFP28', 'QSFP+', 'QSFP28'];
+    const rank = (k: string) => { const i = order.indexOf(k); return i < 0 ? order.length : i; };
+    for (const kind of [...groups.keys()].sort((a, b) => rank(a) - rank(b))) {
+      const g = groups.get(kind)!;
+      const note = g.populated > 0 ? ` (${g.populated} populated)` : '';
+      parts.push(`${g.total} ${kind} slot${g.total === 1 ? '' : 's'}${note}`);
+    }
+  }
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
+// The transceiver family implied by an optic descr — SFP+ is the 10G form of
+// SFP, SFP28 the 25G form, QSFP+/QSFP28 the 40/100G forms. This is the reliable
+// SFP-vs-SFP+ signal: it comes straight from the optic (e.g. "SFP-10GBase-LR"
+// → SFP+, "1000BaseLX SFP" → SFP), so a 1G optic seated in a 10G cage is still
+// reported as SFP, not SFP+.
+function sfpKindFromDescr(descr: string): string | null {
+  if (/100G/i.test(descr)) return 'QSFP28';
+  if (/40G/i.test(descr)) return 'QSFP+';
+  if (/25G/i.test(descr)) return 'SFP28';
+  if (/10G/i.test(descr)) return 'SFP+';
+  if (/1000Base|(?:^|[^0-9])1G(?![0-9])/i.test(descr)) return 'SFP';
+  return null;
+}
+
+// SFP family for a cage: from the optic descr when populated, else inferred
+// from the port's nominal speed (an empty 10G cage is an SFP+ slot).
+function sfpKind(iface: Interface): string {
+  const m = iface.media ?? '';
+  if (m.startsWith('sfp:')) {
+    const kind = sfpKindFromDescr(m.slice(4));
+    if (kind) return kind;
+  }
+  switch (portSpeedLabel(iface)) {
+    case '100G': return 'QSFP28';
+    case '40G': return 'QSFP+';
+    case '25G': return 'SFP28';
+    case '10G': return 'SFP+';
+    default: return 'SFP';
+  }
+}
+
+// Human-friendly rendering of the raw media string for the per-interface detail
+// row: "copper (RJ45)", "SFP slot (empty)", or "SFP+ (SFP-10GBase-LR)".
+export function mediaLabel(media: string): string {
+  if (media === 'copper') return 'copper (RJ45)';
+  if (media === 'sfp') return 'SFP slot (empty)';
+  const descr = media.startsWith('sfp:') ? media.slice(4).trim() : '';
+  if (!descr) return 'SFP';
+  const kind = sfpKindFromDescr(descr);
+  return kind ? `${kind} (${descr})` : `SFP (${descr})`;
+}
+
 // Expanded view of one interface's VLANs: native first, then every tagged
 // VLAN, each with its id and (when the device reports one) its name.
 function InterfaceVlanList({ iface, names }: { iface: Interface; names: Map<number, string | null> }) {
@@ -173,6 +287,7 @@ function InterfaceDetail({ iface, names }: { iface: Interface; names: Map<number
   rows.push({ label: 'ifIndex', value: String(iface.index) });
   rows.push({ label: 'Oper status', value: iface.up === true ? 'up' : iface.up === false ? 'down' : 'unknown' });
   rows.push({ label: 'Type', value: iface.interfaceType });
+  if (iface.media) rows.push({ label: 'Media', value: mediaLabel(iface.media) });
   rows.push({ label: 'Speed', value: iface.speed !== null ? `${iface.speed} Mb/s` : '—' });
   if (iface.speedOverride !== null) rows.push({ label: 'Speed override', value: `${iface.speedOverride} Mb/s` });
   if (iface.inOctets !== null) rows.push({ label: 'Received (total)', value: formatBytes(iface.inOctets) });
@@ -353,6 +468,7 @@ export default function DeviceDetail() {
   if (detail.isError || !detail.data) return <p className="error">Failed to load {fqdn}: {String(detail.error)}</p>;
 
   const { device, interfaces } = detail.data;
+  const portSummary = summarizePorts(interfaces);
   const vlanNames = new Map((detail.data.vlans ?? []).map((v) => [v.id, v.name]));
   const portChannels = detail.data.portChannels ?? [];
   const sensors = entity.data?.sensors ?? [];
@@ -368,6 +484,7 @@ export default function DeviceDetail() {
       <div className="panel">
         <div className="kv">
           <span>Type</span><span>{device.deviceType ?? '—'}</span>
+          {portSummary && (<><span>Ports</span><span className="wrap">{portSummary}</span></>)}
           <span>IP address</span><span>{(detail.data.ipAddresses ?? []).join(', ') || '—'}</span>
           <span>Software</span><span>{device.softwareVersion ?? '—'}</span>
           <span>OS info</span><span className="wrap">{device.osInfo ?? '—'}</span>

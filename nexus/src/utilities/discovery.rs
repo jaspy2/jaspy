@@ -107,6 +107,11 @@ pub fn ingest_device(
                 updated_interface.name = interface.name.clone();
                 updated_interface.alias = interface.alias.clone();
                 updated_interface.description = interface.description.clone();
+                // Only overwrite media when this crawl actually classified it,
+                // so a transient ENTITY-MIB failure doesn't wipe a prior value.
+                if interface.media.is_some() {
+                    updated_interface.media = interface.media.clone();
+                }
                 match updated_interface.update(connection) {
                     Ok(_) => {},
                     Err(e) => {
@@ -123,6 +128,7 @@ pub fn ingest_device(
                     device_id: device.id,
                     index: interface.index,
                     interface_type: interface.interface_type.clone(),
+                    media: interface.media.clone(),
                 };
 
                 match models::dbo::Interface::create(&new_interface, connection) {

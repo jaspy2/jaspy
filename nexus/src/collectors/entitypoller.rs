@@ -37,11 +37,16 @@ struct DeviceEntity {
 
 pub struct EntityMetricsStore {
     devices: HashMap<String, DeviceEntity>,
+    // Live per-interface media/form-factor overlay (db interface id -> media),
+    // derived from ENTITY-MIB alongside the sensor poll. Kept separate from
+    // DeviceEntity so replace_device stays a pure metrics sink. Served to
+    // /api/v1 as an overlay on the persisted discovery baseline.
+    media: HashMap<String, HashMap<i32, String>>,
 }
 
 impl EntityMetricsStore {
     pub fn new() -> EntityMetricsStore {
-        EntityMetricsStore { devices: HashMap::new() }
+        EntityMetricsStore { devices: HashMap::new(), media: HashMap::new() }
     }
 
     fn replace_device(&mut self, fqdn: String, metrics: Vec<LabeledMetric>) {
@@ -49,9 +54,26 @@ impl EntityMetricsStore {
         self.devices.insert(fqdn, DeviceEntity { metrics: metrics, entity: entity });
     }
 
+    // Replace the media overlay for one device (empty => forget it, so a device
+    // that stops answering ENTITY-MIB falls back to the DB baseline).
+    fn set_media(&mut self, fqdn: String, media: HashMap<i32, String>) {
+        if media.is_empty() {
+            self.media.remove(&fqdn);
+        } else {
+            self.media.insert(fqdn, media);
+        }
+    }
+
+    // Live media overlay for one device (db interface id -> media). Empty when
+    // the entitypoller hasn't (or can't) classified this device's ports.
+    pub fn media_for(&self, fqdn: &str) -> HashMap<i32, String> {
+        self.media.get(fqdn).cloned().unwrap_or_default()
+    }
+
     // Drop metrics for devices no longer monitored (the Go version leaked these).
     fn retain(&mut self, keep: &HashSet<String>) {
         self.devices.retain(|fqdn, _| keep.contains(fqdn));
+        self.media.retain(|fqdn, _| keep.contains(fqdn));
     }
 
     // Prometheus text for every stored device, one metric per line.
@@ -862,12 +884,21 @@ struct EntityIdentity {
     description: String,
 }
 
-fn get_entities(snmp: &SnmpSource, device: &EntityDevice, out: &mut Vec<LabeledMetric>) {
+fn get_entities(snmp: &SnmpSource, device: &EntityDevice, out: &mut Vec<LabeledMetric>, media_out: &mut HashMap<i32, String>) {
     let host = format!("{}@{}", device.community, device.fqdn);
     let phys = match fetch_table(snmp, &host, "ENTITY-MIB::entPhysicalTable") {
         Some(t) => t,
         None => return,
     };
+
+    // Live media/form-factor overlay from the same table, resolved to db
+    // interface ids via the name/description map (see entity_media for the
+    // name-join rationale).
+    for (name, value) in crate::collectors::entity_media::classify_media(&phys.entries) {
+        if let Some((_, id)) = device.interfaces.get(&name) {
+            media_out.insert(*id, value);
+        }
+    }
 
     let mut identities: HashMap<i64, EntityIdentity> = HashMap::new();
     for entry in phys.entries.iter() {
@@ -1403,14 +1434,16 @@ pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, di
         let jitter = if no_jitter { 0 } else { interval_msecs / 2 };
         crate::collectors::pool::run_bounded(devices, MAX_POLL_WORKERS, jitter, |device| {
             let mut metrics: Vec<LabeledMetric> = Vec::new();
+            let mut media: HashMap<i32, String> = HashMap::new();
             if !disable_sensors {
-                get_entities(&snmp, &device, &mut metrics);
+                get_entities(&snmp, &device, &mut metrics, &mut media);
             }
             if !disable_stp {
                 get_stp(&snmp, &device, &stp_sources, &mut metrics);
             }
             if let Ok(mut store) = store.lock() {
                 store.replace_device(device.fqdn.clone(), metrics);
+                store.set_media(device.fqdn.clone(), media);
             }
         });
 

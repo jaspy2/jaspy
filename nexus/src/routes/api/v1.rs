@@ -217,7 +217,7 @@ pub fn devices(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::im
 }
 
 #[get("/devices/<device_fqdn>")]
-pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>, lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
+pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>, lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>, entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
     let device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
     // Live interface state (up/speed) plus recent-history health from IMDS,
@@ -264,6 +264,13 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         Ok(store) => store.device_lags(&device_fqdn).unwrap_or_default(),
         Err(_) => crate::collectors::lagpoller::DeviceLags::default(),
     };
+    // Live per-interface media overlay (db interface id -> media) from the
+    // entitypoller; falls back per-interface to the persisted discovery baseline.
+    let media_overlay = match entity_metrics.inner().lock() {
+        Ok(store) => store.media_for(&device_fqdn),
+        Err(_) => std::collections::HashMap::new(),
+    };
+
     // member ifIndex -> aggregate ifIndex, for the per-interface chip.
     let mut member_groups: std::collections::HashMap<i64, i64> = std::collections::HashMap::new();
     for (agg, group) in device_lags.groups.iter() {
@@ -332,6 +339,7 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             tagged_vlans: interface_vlans.map(|v| v.tagged_vlans.clone()),
             port_channel: port_channel,
             health: health.remove(&interface.index),
+            media: media_overlay.get(&interface.id).cloned().or_else(|| interface.media.clone()),
         });
     }
     interfaces.sort_by_key(|i| i.index);

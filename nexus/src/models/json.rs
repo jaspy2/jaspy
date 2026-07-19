@@ -39,6 +39,10 @@ pub struct DiscoveredInterface {
     pub name: String,
     pub alias: Option<String>,
     pub description: Option<String>,
+    // Physical media/form-factor from ENTITY-MIB (see collectors::entity_media).
+    // Defaulted so older /dev payloads without the field still deserialize.
+    #[serde(default)]
+    pub media: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -267,6 +271,12 @@ pub struct ApiInterface {
     // interface is healthy, so the UI shows nothing. Additive.
     #[serde(default)]
     pub health: Option<ApiInterfaceHealth>,
+    // Physical media/form-factor from ENTITY-MIB (collectors::entity_media):
+    // "copper", "sfp" (empty cage) or "sfp: <descr>" (populated). Live overlay
+    // from the entitypoller when running, else the persisted discovery baseline.
+    // null when unknown. Additive: default-deserialized.
+    #[serde(default)]
+    pub media: Option<String>,
 }
 
 // Per-interface health summary surfaced only when a signal trips. The UI turns
