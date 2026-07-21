@@ -1,0 +1,104 @@
+{
+  "ID": "POWER-ETHERNET-MIB::pethPsePortTable",
+  "IndexKeys": [
+    "POWER-ETHERNET-MIB::pethPsePortGroupIndex",
+    "POWER-ETHERNET-MIB::pethPsePortIndex"
+  ],
+  "ObjectKeys": [
+    "POWER-ETHERNET-MIB::pethPsePortAdminEnable",
+    "POWER-ETHERNET-MIB::pethPsePortDetectionStatus",
+    "POWER-ETHERNET-MIB::pethPsePortPowerPriority",
+    "POWER-ETHERNET-MIB::pethPsePortType",
+    "POWER-ETHERNET-MIB::pethPsePortPowerClassifications"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 1 },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": "deliveringPower",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+        "POWER-ETHERNET-MIB::pethPsePortType": "Ieee PD",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": "class4"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 2 },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": "deliveringPower",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+        "POWER-ETHERNET-MIB::pethPsePortType": "Ieee PD",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": "class4"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 3 },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": "searching",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+        "POWER-ETHERNET-MIB::pethPsePortType": "",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": "class0"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 4 },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": "deliveringPower",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+        "POWER-ETHERNET-MIB::pethPsePortType": "Ieee PD",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": "class4"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 5 },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": "searching",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+        "POWER-ETHERNET-MIB::pethPsePortType": "",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": "class0"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 6 },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": "disabled",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+        "POWER-ETHERNET-MIB::pethPsePortType": "",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": "class0"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 7 },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": "searching",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+        "POWER-ETHERNET-MIB::pethPsePortType": "",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": "class0"
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 8 },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": "searching",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+        "POWER-ETHERNET-MIB::pethPsePortType": "",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": "class0"
+      }
+    }
+  ]
+}

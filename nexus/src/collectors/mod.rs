@@ -26,3 +26,7 @@ pub mod lagpoller;
 // cage vs populated transceiver) from ENTITY-MIB; shared by discovery (DB
 // baseline) and entitypoller (live overlay).
 pub mod entity_media;
+// poe decodes Power-over-Ethernet state: per-port status/class/power
+// (POWER-ETHERNET-MIB + CISCO-POWER-ETHERNET-EXT-MIB) and switch-wide PSE
+// budget; the entitypoller polls it into an in-memory overlay served by /api/v1.
+pub mod poe;

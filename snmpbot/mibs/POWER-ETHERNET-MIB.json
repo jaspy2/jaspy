@@ -1,0 +1,130 @@
+{
+  "Name": "POWER-ETHERNET-MIB",
+  "OID": ".1.3.6.1.2.1.105",
+  "Objects": [
+    {
+      "Name": "pethPsePortGroupIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.105.1.1.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "pethPsePortIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.105.1.1.1.2",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "pethPsePortAdminEnable",
+      "OID": ".1.3.6.1.2.1.105.1.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        { "Name": "true", "Value": 1 },
+        { "Name": "false", "Value": 2 }
+      ]
+    },
+    {
+      "Name": "pethPsePortDetectionStatus",
+      "OID": ".1.3.6.1.2.1.105.1.1.1.6",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        { "Name": "disabled", "Value": 1 },
+        { "Name": "searching", "Value": 2 },
+        { "Name": "deliveringPower", "Value": 3 },
+        { "Name": "fault", "Value": 4 },
+        { "Name": "test", "Value": 5 },
+        { "Name": "otherFault", "Value": 6 }
+      ]
+    },
+    {
+      "Name": "pethPsePortPowerPriority",
+      "OID": ".1.3.6.1.2.1.105.1.1.1.7",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        { "Name": "critical", "Value": 1 },
+        { "Name": "high", "Value": 2 },
+        { "Name": "low", "Value": 3 }
+      ]
+    },
+    {
+      "Name": "pethPsePortType",
+      "OID": ".1.3.6.1.2.1.105.1.1.1.9",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "pethPsePortPowerClassifications",
+      "OID": ".1.3.6.1.2.1.105.1.1.1.10",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        { "Name": "class0", "Value": 1 },
+        { "Name": "class1", "Value": 2 },
+        { "Name": "class2", "Value": 3 },
+        { "Name": "class3", "Value": 4 },
+        { "Name": "class4", "Value": 5 }
+      ]
+    },
+    {
+      "Name": "pethMainPseGroupIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.2.1.105.1.3.1.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "pethMainPsePower",
+      "OID": ".1.3.6.1.2.1.105.1.3.1.1.2",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "pethMainPseOperStatus",
+      "OID": ".1.3.6.1.2.1.105.1.3.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        { "Name": "on", "Value": 1 },
+        { "Name": "off", "Value": 2 },
+        { "Name": "faulty", "Value": 3 }
+      ]
+    },
+    {
+      "Name": "pethMainPseConsumptionPower",
+      "OID": ".1.3.6.1.2.1.105.1.3.1.1.4",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "pethMainPseUsageThreshold",
+      "OID": ".1.3.6.1.2.1.105.1.3.1.1.5",
+      "Syntax": "Integer32"
+    }
+  ],
+  "Tables": [
+    {
+      "Name": "pethPsePortTable",
+      "OID": ".1.3.6.1.2.1.105.1.1.1",
+      "EntryName": "pethPsePortEntry",
+      "IndexObjects": [
+        "POWER-ETHERNET-MIB::pethPsePortGroupIndex",
+        "POWER-ETHERNET-MIB::pethPsePortIndex"
+      ],
+      "EntryObjects": [
+        "POWER-ETHERNET-MIB::pethPsePortAdminEnable",
+        "POWER-ETHERNET-MIB::pethPsePortDetectionStatus",
+        "POWER-ETHERNET-MIB::pethPsePortPowerPriority",
+        "POWER-ETHERNET-MIB::pethPsePortType",
+        "POWER-ETHERNET-MIB::pethPsePortPowerClassifications"
+      ]
+    },
+    {
+      "Name": "pethMainPseTable",
+      "OID": ".1.3.6.1.2.1.105.1.3.1",
+      "EntryName": "pethMainPseEntry",
+      "IndexObjects": [
+        "POWER-ETHERNET-MIB::pethMainPseGroupIndex"
+      ],
+      "EntryObjects": [
+        "POWER-ETHERNET-MIB::pethMainPsePower",
+        "POWER-ETHERNET-MIB::pethMainPseOperStatus",
+        "POWER-ETHERNET-MIB::pethMainPseConsumptionPower",
+        "POWER-ETHERNET-MIB::pethMainPseUsageThreshold"
+      ]
+    }
+  ]
+}

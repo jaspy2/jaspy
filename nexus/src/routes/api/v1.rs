@@ -266,9 +266,11 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
     };
     // Live per-interface media overlay (db interface id -> media) from the
     // entitypoller; falls back per-interface to the persisted discovery baseline.
-    let media_overlay = match entity_metrics.inner().lock() {
-        Ok(store) => store.media_for(&device_fqdn),
-        Err(_) => std::collections::HashMap::new(),
+    // The same lock read grabs the PoE overlay (db interface id -> PoE) and the
+    // switch-wide PSE budget.
+    let (media_overlay, poe_overlay, poe_budget) = match entity_metrics.inner().lock() {
+        Ok(store) => (store.media_for(&device_fqdn), store.poe_for(&device_fqdn), store.poe_budget_for(&device_fqdn)),
+        Err(_) => (std::collections::HashMap::new(), std::collections::HashMap::new(), Vec::new()),
     };
 
     // member ifIndex -> aggregate ifIndex, for the per-interface chip.
@@ -340,6 +342,7 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             port_channel: port_channel,
             health: health.remove(&interface.index),
             media: media_overlay.get(&interface.id).cloned().or_else(|| interface.media.clone()),
+            poe: poe_overlay.get(&interface.id).map(api_interface_poe),
         });
     }
     interfaces.sort_by_key(|i| i.index);
@@ -415,7 +418,39 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         vlans: vlans,
         port_channels: port_channels,
         ip_addresses: resolve_device_ips(&device_fqdn),
+        poe_budget: poe_budget.iter().map(api_poe_budget).collect(),
     }))
+}
+
+// collectors::poe::InterfacePoe -> API DTO (enum -> slug, watts pass through).
+fn api_interface_poe(poe: &crate::collectors::poe::InterfacePoe) -> models::json::ApiInterfacePoe {
+    models::json::ApiInterfacePoe {
+        status: poe.status.as_str().to_string(),
+        admin_enabled: poe.admin_enabled,
+        class: poe.class,
+        power_mw: poe.power_mw,
+        allocated_mw: poe.allocated_mw,
+        max_drawn_mw: poe.max_drawn_mw,
+        priority: poe.priority.clone(),
+    }
+}
+
+// collectors::poe::PoeBudget -> API DTO, deriving remaining watts and integer
+// utilization percent (clamped; total 0 => 0% rather than a divide-by-zero).
+fn api_poe_budget(budget: &crate::collectors::poe::PoeBudget) -> models::json::ApiPoeBudget {
+    let utilization_pct = if budget.total_w > 0 {
+        (budget.consumed_w * 100 / budget.total_w).clamp(0, 100)
+    } else {
+        0
+    };
+    models::json::ApiPoeBudget {
+        group: budget.group,
+        total_w: budget.total_w,
+        consumed_w: budget.consumed_w,
+        remaining_w: (budget.total_w - budget.consumed_w).max(0),
+        utilization_pct: utilization_pct,
+        oper_on: budget.oper_on,
+    }
 }
 
 // Latest entitypoller results (entity sensors + per-VLAN STP) for one device,
@@ -603,6 +638,15 @@ pub fn collect_issues(
             let tree = crate::utilities::stp::build_stp_tree(&inputs, vlan);
             out.extend(issues::stp_tree_issues(&tree));
         }
+    }
+
+    // --- PoE budget / PSE health (per device with PoE) ---
+    let poe_budgets = match entity_metrics.lock() {
+        Ok(store) => store.network_poe_budget(),
+        Err(_) => Default::default(),
+    };
+    for (fqdn, budgets) in poe_budgets.iter() {
+        out.extend(issues::poe_budget_issues(fqdn, budgets));
     }
 
     // --- LAG / port-channel warnings (per device) ---

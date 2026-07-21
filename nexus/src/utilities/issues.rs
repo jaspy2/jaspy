@@ -74,6 +74,76 @@ pub fn device_down_issue(fqdn: &str, up: Option<bool>, seconds_since_last_poll: 
     })
 }
 
+// --- PoE budget -----------------------------------------------------------
+
+// Utilization percent we warn at when the switch reports no configured
+// pethMainPseUsageThreshold (0/unset), and the ceiling above which a PoE budget
+// is critical regardless of the configured threshold.
+const POE_DEFAULT_WARN_PCT: i64 = 85;
+const POE_CRITICAL_PCT: i64 = 95;
+
+// One issue per PSE group that is either not operational (bad) or running near
+// its power budget (warn, escalating to bad past POE_CRITICAL_PCT). A device
+// with several PSE groups (stacked/modular) yields one issue per group, each
+// independently acknowledgeable via its group subject.
+pub fn poe_budget_issues(fqdn: &str, budgets: &[crate::collectors::poe::PoeBudget]) -> Vec<DerivedIssue> {
+    let host = hostname_of(fqdn);
+    let mut out = Vec::new();
+    for budget in budgets {
+        let subject = budget.group.to_string();
+        let subject_label = Some(format!("PSE {}", budget.group));
+
+        // A PSE that isn't on can't source power; its budget figures are
+        // meaningless, so report the outage instead of a utilization warning.
+        if !budget.oper_on {
+            out.push(DerivedIssue {
+                fqdn: fqdn.to_string(),
+                hostname: host.clone(),
+                kind: "poe-pse-down".to_string(),
+                subject,
+                severity: SEV_BAD.to_string(),
+                title: "PoE power supply not operational".to_string(),
+                description: format!("{} PSE {} is not on", host, budget.group),
+                subject_label,
+                detail: vec![pair("state", "off")],
+            });
+            continue;
+        }
+
+        if budget.total_w <= 0 {
+            continue;
+        }
+        let utilization = (budget.consumed_w * 100 / budget.total_w).clamp(0, 100);
+        let warn_at = budget.threshold_pct.unwrap_or(POE_DEFAULT_WARN_PCT);
+        if utilization < warn_at {
+            continue;
+        }
+        let severity = if utilization >= POE_CRITICAL_PCT { SEV_BAD } else { SEV_WARN };
+        let remaining = (budget.total_w - budget.consumed_w).max(0);
+        let mut detail = vec![
+            pair("utilization", format!("{}%", utilization)),
+            pair("consumed", format!("{} W", budget.consumed_w)),
+            pair("total budget", format!("{} W", budget.total_w)),
+            pair("remaining", format!("{} W", remaining)),
+        ];
+        if let Some(threshold) = budget.threshold_pct {
+            detail.push(pair("threshold", format!("{}%", threshold)));
+        }
+        out.push(DerivedIssue {
+            fqdn: fqdn.to_string(),
+            hostname: host.clone(),
+            kind: "poe-budget".to_string(),
+            subject,
+            severity: severity.to_string(),
+            title: "PoE budget near capacity".to_string(),
+            description: format!("{} PSE {} at {}% of its power budget", host, budget.group, utilization),
+            subject_label,
+            detail,
+        });
+    }
+    out
+}
+
 // --- Interface health -----------------------------------------------------
 
 // Splits a tripped interface-health summary into one issue per active signal
@@ -403,6 +473,66 @@ impl IssueTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::collectors::poe::PoeBudget;
+
+    fn budget(total_w: i64, consumed_w: i64, oper_on: bool, threshold_pct: Option<i64>) -> PoeBudget {
+        PoeBudget { group: 1, total_w, consumed_w, oper_on, threshold_pct }
+    }
+
+    #[test]
+    fn poe_budget_below_default_threshold_is_silent() {
+        // 10/124 W ~= 8% (live ticket-sw2), well under the 85% default.
+        assert!(poe_budget_issues("sw1.example.com", &[budget(124, 10, true, None)]).is_empty());
+    }
+
+    #[test]
+    fn poe_budget_over_default_threshold_warns() {
+        let issues = poe_budget_issues("sw1.example.com", &[budget(124, 110, true, None)]);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].kind, "poe-budget");
+        assert_eq!(issues[0].severity, SEV_WARN);
+        assert_eq!(issues[0].subject, "1");
+        assert_eq!(issues[0].subject_label.as_deref(), Some("PSE 1"));
+        // 110/124 = 88%.
+        assert!(issues[0].detail.iter().any(|(k, v)| k == "utilization" && v == "88%"));
+        assert!(issues[0].detail.iter().any(|(k, v)| k == "remaining" && v == "14 W"));
+    }
+
+    #[test]
+    fn poe_budget_past_critical_ceiling_is_bad() {
+        // 120/124 = 96% >= 95% critical ceiling.
+        let issues = poe_budget_issues("sw1.example.com", &[budget(124, 120, true, None)]);
+        assert_eq!(issues[0].severity, SEV_BAD);
+    }
+
+    #[test]
+    fn poe_budget_honors_configured_threshold() {
+        // 70/124 = 56%; under the 85% default but over a configured 50%.
+        let issues = poe_budget_issues("sw1.example.com", &[budget(124, 70, true, Some(50))]);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].severity, SEV_WARN);
+        assert!(issues[0].detail.iter().any(|(k, v)| k == "threshold" && v == "50%"));
+    }
+
+    #[test]
+    fn poe_pse_not_operational_is_bad_and_skips_budget() {
+        let issues = poe_budget_issues("sw1.example.com", &[budget(124, 200, false, None)]);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].kind, "poe-pse-down");
+        assert_eq!(issues[0].severity, SEV_BAD);
+    }
+
+    #[test]
+    fn poe_budget_one_issue_per_pse_group() {
+        let budgets = vec![
+            budget(124, 118, true, None),
+            PoeBudget { group: 2, total_w: 124, consumed_w: 5, oper_on: true, threshold_pct: None },
+        ];
+        let issues = poe_budget_issues("sw1.example.com", &budgets);
+        // Only group 1 is near budget; group 2 is quiet.
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].subject, "1");
+    }
 
     fn health(severity: Option<&str>) -> json::ApiInterfaceHealth {
         json::ApiInterfaceHealth {

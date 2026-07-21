@@ -190,6 +190,21 @@ export interface Interface {
   // (empty SFP cage) or "sfp: <descr>" (populated transceiver). null when
   // unknown (device without ENTITY-MIB / not yet discovered).
   media: string | null;
+  // Power-over-Ethernet state; null for non-PoE ports/devices.
+  poe: InterfacePoe | null;
+}
+
+// Per-port PoE from POWER-ETHERNET-MIB (+ Cisco extension for watts). `status`
+// is the SNMP detection-status slug; watts are milliwatts and null on
+// standards-only (non-Cisco) devices.
+export interface InterfacePoe {
+  status: string; // deliveringPower | searching | disabled | fault | test | otherFault | other
+  adminEnabled: boolean;
+  class: number | null; // 0..4
+  powerMw: number | null;
+  allocatedMw: number | null;
+  maxDrawnMw: number | null;
+  priority: string | null; // critical | high | low
 }
 
 // A VLAN known on the device, for resolving interface VLAN ids to names.
@@ -245,6 +260,18 @@ export interface DeviceDetail {
   // What the fqdn resolves to at request time (v4 first); empty when
   // resolution fails.
   ipAddresses: string[];
+  // Switch-wide PoE budget per PSE group; empty for non-PoE devices.
+  poeBudget: PoeBudget[];
+}
+
+// One PSE group's power budget for the device-wide PoE summary (watts).
+export interface PoeBudget {
+  group: number;
+  totalW: number;
+  consumedW: number;
+  remainingW: number;
+  utilizationPct: number;
+  operOn: boolean;
 }
 
 // GET /api/v1/devices/<fqdn>/entity — latest entitypoller results. Empty

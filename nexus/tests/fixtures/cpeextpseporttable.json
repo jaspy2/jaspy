@@ -1,0 +1,95 @@
+{
+  "ID": "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortTable",
+  "IndexKeys": [
+    "POWER-ETHERNET-MIB::pethPsePortGroupIndex",
+    "POWER-ETHERNET-MIB::pethPsePortIndex"
+  ],
+  "ObjectKeys": [
+    "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated",
+    "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption",
+    "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn",
+    "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 1 },
+      "Objects": {
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": 15400,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": 4578,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": 5229,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": 1005
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 2 },
+      "Objects": {
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": 15400,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": 1635,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": 2509,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": 1006
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 3 },
+      "Objects": {
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": 1007
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 4 },
+      "Objects": {
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": 15400,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": 5123,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": 8443,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": 1008
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 5 },
+      "Objects": {
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": 1009
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 6 },
+      "Objects": {
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": 1010
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 7 },
+      "Objects": {
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": 1011
+      }
+    },
+    {
+      "HostID": "sw1.test.example",
+      "Index": { "POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": 8 },
+      "Objects": {
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": 0,
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": 1012
+      }
+    }
+  ]
+}

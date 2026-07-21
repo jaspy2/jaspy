@@ -1,0 +1,26 @@
+{
+  "ID": "POWER-ETHERNET-MIB::pethMainPseTable",
+  "IndexKeys": [
+    "POWER-ETHERNET-MIB::pethMainPseGroupIndex"
+  ],
+  "ObjectKeys": [
+    "POWER-ETHERNET-MIB::pethMainPsePower",
+    "POWER-ETHERNET-MIB::pethMainPseOperStatus",
+    "POWER-ETHERNET-MIB::pethMainPseConsumptionPower",
+    "POWER-ETHERNET-MIB::pethMainPseUsageThreshold"
+  ],
+  "Entries": [
+    {
+      "HostID": "sw1.test.example",
+      "Index": {
+        "POWER-ETHERNET-MIB::pethMainPseGroupIndex": 1
+      },
+      "Objects": {
+        "POWER-ETHERNET-MIB::pethMainPsePower": 124,
+        "POWER-ETHERNET-MIB::pethMainPseOperStatus": "on",
+        "POWER-ETHERNET-MIB::pethMainPseConsumptionPower": 10,
+        "POWER-ETHERNET-MIB::pethMainPseUsageThreshold": 0
+      }
+    }
+  ]
+}

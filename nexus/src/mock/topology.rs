@@ -80,6 +80,15 @@ pub struct MockLag {
     pub defaulted_members: &'static [i64],
 }
 
+// PoE state for a PSE-capable switch: a switch-wide budget plus the copper
+// access ports actively delivering power (with their real-time draw). Ports not
+// listed are "searching" (no PD plugged). Feeds pethMainPseTable /
+// pethPsePortTable / cpeExtPsePortTable (see the poe collector).
+pub struct MockPoe {
+    pub budget_w: i64,
+    pub delivering: Vec<(i64, i64)>, // (ifindex, consumption_mw)
+}
+
 pub struct MockDevice {
     pub name: &'static str,
     pub model: &'static str,
@@ -96,6 +105,8 @@ pub struct MockDevice {
     pub vlans: &'static [i64],
     pub interfaces: Vec<MockInterface>,
     pub lags: Vec<MockLag>,
+    // PoE, for PSE-capable access switches; None on non-PoE devices.
+    pub poe: Option<MockPoe>,
 }
 
 impl MockDevice {
@@ -160,6 +171,7 @@ pub fn build() -> Topology {
                 MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] },
                 MockLag { ifindex: 5002, members: &[10102, 10106], partner_mac: "", defaulted_members: &[] },
             ],
+            poe: None,
         },
         MockDevice {
             name: "dist1",
@@ -190,6 +202,7 @@ pub fn build() -> Topology {
                 port_channel(5001, "Po1", "Port-channel1", "uplink core1 port-channel", 20000),
             ],
             lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] }],
+            poe: None,
         },
         MockDevice {
             name: "dist2",
@@ -209,6 +222,7 @@ pub fn build() -> Topology {
                 port_channel(5001, "Po1", "Port-channel1", "uplink core1 port-channel", 20000),
             ],
             lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] }],
+            poe: None,
         },
         {
             // a-01 carries a healthy 2-member LACP bundle to an unmonitored
@@ -256,6 +270,15 @@ pub fn build() -> Topology {
             // link keeps renegotiating its speed (failing SFP/duplex).
             set_iface(&mut b01, 10201, |i| i.saturated = true);
             set_iface(&mut b01, 10202, |i| i.renegotiates = true);
+            // A full closet: 7 PDs drawing 112 W against a 124 W budget (~90%),
+            // so this device raises the poe-budget Issue (warn) for the demo/e2e.
+            b01.poe = Some(MockPoe {
+                budget_w: 124,
+                delivering: vec![
+                    (10201, 16000), (10202, 16000), (10203, 16000), (10204, 16000),
+                    (10205, 16000), (10206, 16000), (10207, 16000),
+                ],
+            });
             b01
         },
         MockDevice {
@@ -272,6 +295,7 @@ pub fn build() -> Topology {
                 uplink(1, "Te0/0/1", "TenGigE0/0/1", "uplink dist2", 10000, ("dist2", "Te1/1/4")),
             ],
             lags: Vec::new(),
+            poe: None,
         },
         MockDevice {
             name: "fw1",
@@ -287,6 +311,7 @@ pub fn build() -> Topology {
                 uplink(1, "port1", "port1", "uplink core1", 10000, ("core1", "Te1/0/3")),
             ],
             lags: Vec::new(),
+            poe: None,
         },
     ];
     Topology { devices, started: crate::utilities::tools::get_time() }
@@ -338,7 +363,55 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
         vlans: &[1, 10, 20],
         interfaces,
         lags: Vec::new(),
+        // C9300-48P is a PoE switch: a couple of access ports power phones,
+        // well under budget. build() bumps one hall near its budget to exercise
+        // the poe-budget Issue.
+        poe: Some(MockPoe {
+            budget_w: 370,
+            delivering: vec![(10201, 15400), (10203, 6500)],
+        }),
     }
+}
+
+// entPhysicalIndex of a port's own "port"-class entity, mirroring the
+// entPhysicalTable arm's numbering so cpeExtPsePortEntPhyIndex resolves back to
+// the same interface (the join collectors::poe/entitypoller performs). Returns
+// None for logical (Po) ports and empty SFP cages, which have no port entity.
+// KEEP IN SYNC with the "ENTITY-MIB::entPhysicalTable" arm in table().
+pub fn port_ent_index(dev: &MockDevice, ifindex: i64) -> Option<i64> {
+    let mut ent_idx = 3001i64;
+    for iface in dev.interfaces.iter() {
+        if iface.name.starts_with("Po") {
+            continue;
+        }
+        if iface.speed_mbps >= 10000 {
+            ent_idx += 1; // SFP cage (container)
+            if iface.ifindex % 3 != 0 {
+                let optic_port = ent_idx;
+                ent_idx += 1;
+                if iface.ifindex == ifindex {
+                    return Some(optic_port);
+                }
+            } else if iface.ifindex == ifindex {
+                return None; // empty cage: no port entity
+            }
+        } else {
+            if iface.ifindex == ifindex {
+                return Some(ent_idx);
+            }
+            ent_idx += 1;
+        }
+    }
+    None
+}
+
+// The device's PoE ports in index order: copper access ports (skip logical Po
+// aggregates and 10G uplinks). Shared by the pethPsePort / cpeExtPsePort arms so
+// both number ports identically.
+fn poe_ports(dev: &MockDevice) -> Vec<&MockInterface> {
+    dev.interfaces.iter()
+        .filter(|i| !i.name.starts_with("Po") && i.speed_mbps < 10000)
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
@@ -1091,6 +1164,64 @@ impl Topology {
                         ));
                     }
                 }
+                Some(response(table_id, entries))
+            }
+            // PoE (POWER-ETHERNET-MIB + Cisco ext). PoE-capable switches answer
+            // with rows; others answer valid-but-empty (like a real switch that
+            // lacks the MIB — an empty walk, not a 404).
+            "POWER-ETHERNET-MIB::pethMainPseTable" => {
+                let poe = match &dev.poe {
+                    Some(p) => p,
+                    None => return Some(response(table_id, Vec::new())),
+                };
+                let consumed_w: i64 = poe.delivering.iter().map(|(_, mw)| mw).sum::<i64>() / 1000;
+                Some(response(table_id, vec![entry(
+                    json!({"POWER-ETHERNET-MIB::pethMainPseGroupIndex": 1}),
+                    json!({
+                        "POWER-ETHERNET-MIB::pethMainPsePower": poe.budget_w,
+                        "POWER-ETHERNET-MIB::pethMainPseOperStatus": "on",
+                        "POWER-ETHERNET-MIB::pethMainPseConsumptionPower": consumed_w,
+                        "POWER-ETHERNET-MIB::pethMainPseUsageThreshold": 0,
+                    }),
+                )]))
+            }
+            "POWER-ETHERNET-MIB::pethPsePortTable" => {
+                let poe = match &dev.poe {
+                    Some(p) => p,
+                    None => return Some(response(table_id, Vec::new())),
+                };
+                let entries = poe_ports(dev).into_iter().enumerate().map(|(i, iface)| {
+                    let delivering = poe.delivering.iter().any(|(ifx, _)| *ifx == iface.ifindex);
+                    entry(
+                        json!({"POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": i as i64 + 1}),
+                        json!({
+                            "POWER-ETHERNET-MIB::pethPsePortAdminEnable": "true",
+                            "POWER-ETHERNET-MIB::pethPsePortDetectionStatus": if delivering { "deliveringPower" } else { "searching" },
+                            "POWER-ETHERNET-MIB::pethPsePortPowerPriority": "low",
+                            "POWER-ETHERNET-MIB::pethPsePortType": if delivering { "Ieee PD" } else { "" },
+                            "POWER-ETHERNET-MIB::pethPsePortPowerClassifications": if delivering { "class4" } else { "class0" },
+                        }),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortTable" => {
+                let poe = match &dev.poe {
+                    Some(p) => p,
+                    None => return Some(response(table_id, Vec::new())),
+                };
+                let entries = poe_ports(dev).into_iter().enumerate().map(|(i, iface)| {
+                    let mw = poe.delivering.iter().find(|(ifx, _)| *ifx == iface.ifindex).map(|(_, mw)| *mw).unwrap_or(0);
+                    entry(
+                        json!({"POWER-ETHERNET-MIB::pethPsePortGroupIndex": 1, "POWER-ETHERNET-MIB::pethPsePortIndex": i as i64 + 1}),
+                        json!({
+                            "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated": if mw > 0 { 15400 } else { 0 },
+                            "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption": mw,
+                            "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn": mw + mw / 10,
+                            "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex": port_ent_index(dev, iface.ifindex).unwrap_or(0),
+                        }),
+                    )
+                }).collect();
                 Some(response(table_id, entries))
             }
             _ => None,

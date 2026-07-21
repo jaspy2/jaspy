@@ -277,6 +277,26 @@ pub struct ApiInterface {
     // null when unknown. Additive: default-deserialized.
     #[serde(default)]
     pub media: Option<String>,
+    // Power-over-Ethernet state from the entitypoller (POWER-ETHERNET-MIB +
+    // Cisco ext); null for non-PoE ports / devices. Additive: default-deserialized.
+    #[serde(default)]
+    pub poe: Option<ApiInterfacePoe>,
+}
+
+// Per-port PoE, surfaced only for PoE-capable ports. `status` is the
+// POWER-ETHERNET-MIB detection status slug (deliveringPower/searching/
+// disabled/fault/test/otherFault/other); watts are milliwatts from the Cisco
+// extension and null on standards-only devices.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInterfacePoe {
+    pub status: String,
+    pub admin_enabled: bool,
+    pub class: Option<i64>,       // 0..=4
+    pub power_mw: Option<i64>,    // real-time consumption
+    pub allocated_mw: Option<i64>,
+    pub max_drawn_mw: Option<i64>,
+    pub priority: Option<String>, // critical/high/low
 }
 
 // Per-interface health summary surfaced only when a signal trips. The UI turns
@@ -438,6 +458,24 @@ pub struct ApiDeviceDetail {
     // resolution fails. Additive: default-deserialized for older payloads.
     #[serde(default)]
     pub ip_addresses: Vec<String>,
+    // Switch-wide PoE budget per PSE group (pethMainPseTable); empty for
+    // non-PoE devices. Additive: default-deserialized for older payloads.
+    #[serde(default)]
+    pub poe_budget: Vec<ApiPoeBudget>,
+}
+
+// One PSE group's power budget for the device-wide PoE summary. Watts are
+// whole-watt figures straight from pethMainPseTable; remaining/utilization are
+// derived for the UI.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiPoeBudget {
+    pub group: i64,
+    pub total_w: i64,
+    pub consumed_w: i64,
+    pub remaining_w: i64,
+    pub utilization_pct: i64,
+    pub oper_on: bool,
 }
 
 // One link aggregate (Cisco port-channel / HP trk) with its member ports and

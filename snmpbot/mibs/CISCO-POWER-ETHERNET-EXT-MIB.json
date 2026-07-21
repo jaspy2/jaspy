@@ -1,0 +1,43 @@
+{
+  "Name": "CISCO-POWER-ETHERNET-EXT-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.402",
+  "Objects": [
+    {
+      "Name": "cpeExtPsePortPwrAllocated",
+      "OID": ".1.3.6.1.4.1.9.9.402.1.2.1.8",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "cpeExtPsePortPwrConsumption",
+      "OID": ".1.3.6.1.4.1.9.9.402.1.2.1.9",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "cpeExtPsePortMaxPwrDrawn",
+      "OID": ".1.3.6.1.4.1.9.9.402.1.2.1.10",
+      "Syntax": "Gauge32"
+    },
+    {
+      "Name": "cpeExtPsePortEntPhyIndex",
+      "OID": ".1.3.6.1.4.1.9.9.402.1.2.1.11",
+      "Syntax": "Integer32"
+    }
+  ],
+  "Tables": [
+    {
+      "Name": "cpeExtPsePortTable",
+      "OID": ".1.3.6.1.4.1.9.9.402.1.2.1",
+      "EntryName": "cpeExtPsePortEntry",
+      "IndexObjects": [
+        "POWER-ETHERNET-MIB::pethPsePortGroupIndex",
+        "POWER-ETHERNET-MIB::pethPsePortIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrAllocated",
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortPwrConsumption",
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortMaxPwrDrawn",
+        "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortEntPhyIndex"
+      ]
+    }
+  ]
+}

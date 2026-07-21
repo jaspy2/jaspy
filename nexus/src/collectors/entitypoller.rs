@@ -42,11 +42,21 @@ pub struct EntityMetricsStore {
     // DeviceEntity so replace_device stays a pure metrics sink. Served to
     // /api/v1 as an overlay on the persisted discovery baseline.
     media: HashMap<String, HashMap<i32, String>>,
+    // Live per-interface PoE state (db interface id -> InterfacePoe) and the
+    // switch-wide PSE budget per device, from POWER-ETHERNET-MIB (+ Cisco ext).
+    // In-memory only, like media: PoE is dynamic and re-polled each cycle.
+    poe: HashMap<String, HashMap<i32, crate::collectors::poe::InterfacePoe>>,
+    poe_budget: HashMap<String, Vec<crate::collectors::poe::PoeBudget>>,
 }
 
 impl EntityMetricsStore {
     pub fn new() -> EntityMetricsStore {
-        EntityMetricsStore { devices: HashMap::new(), media: HashMap::new() }
+        EntityMetricsStore {
+            devices: HashMap::new(),
+            media: HashMap::new(),
+            poe: HashMap::new(),
+            poe_budget: HashMap::new(),
+        }
     }
 
     fn replace_device(&mut self, fqdn: String, metrics: Vec<LabeledMetric>) {
@@ -70,10 +80,48 @@ impl EntityMetricsStore {
         self.media.get(fqdn).cloned().unwrap_or_default()
     }
 
+    // Replace the per-interface PoE overlay for one device (empty => forget it,
+    // so a device that stops answering PoE MIBs falls back to no overlay).
+    fn set_poe(&mut self, fqdn: String, poe: HashMap<i32, crate::collectors::poe::InterfacePoe>) {
+        if poe.is_empty() {
+            self.poe.remove(&fqdn);
+        } else {
+            self.poe.insert(fqdn, poe);
+        }
+    }
+
+    // Replace the switch-wide PSE budget for one device (empty => forget it).
+    fn set_poe_budget(&mut self, fqdn: String, budget: Vec<crate::collectors::poe::PoeBudget>) {
+        if budget.is_empty() {
+            self.poe_budget.remove(&fqdn);
+        } else {
+            self.poe_budget.insert(fqdn, budget);
+        }
+    }
+
+    // Live PoE overlay for one device (db interface id -> InterfacePoe). Empty
+    // when the device exposes no PoE MIBs (or hasn't been polled yet).
+    pub fn poe_for(&self, fqdn: &str) -> HashMap<i32, crate::collectors::poe::InterfacePoe> {
+        self.poe.get(fqdn).cloned().unwrap_or_default()
+    }
+
+    // Switch-wide PSE budget for one device (one entry per PSE group).
+    pub fn poe_budget_for(&self, fqdn: &str) -> Vec<crate::collectors::poe::PoeBudget> {
+        self.poe_budget.get(fqdn).cloned().unwrap_or_default()
+    }
+
+    // Every device's PSE budget at once, for the fleet-wide Issues scan
+    // (mirrors network_stp). Devices without PoE are omitted.
+    pub fn network_poe_budget(&self) -> HashMap<String, Vec<crate::collectors::poe::PoeBudget>> {
+        self.poe_budget.clone()
+    }
+
     // Drop metrics for devices no longer monitored (the Go version leaked these).
     fn retain(&mut self, keep: &HashSet<String>) {
         self.devices.retain(|fqdn, _| keep.contains(fqdn));
         self.media.retain(|fqdn, _| keep.contains(fqdn));
+        self.poe.retain(|fqdn, _| keep.contains(fqdn));
+        self.poe_budget.retain(|fqdn, _| keep.contains(fqdn));
     }
 
     // Prometheus text for every stored device, one metric per line.
@@ -1010,6 +1058,67 @@ fn get_entities_by_physical_index(
 }
 
 // ---------------------------------------------------------------------------
+// PoE polling (POWER-ETHERNET-MIB + CISCO-POWER-ETHERNET-EXT-MIB)
+// ---------------------------------------------------------------------------
+
+// Poll a device's PoE state: the vendor-neutral switch budget (pethMainPseTable)
+// and per-port status/class (pethPsePortTable), overlaid with Cisco per-port
+// watts (cpeExtPsePortTable) where available. Per-port rows are mapped to db
+// interface ids via ENTITY-MIB entPhysicalName — the same join get_entities
+// uses for media — which needs the Cisco entPhyIndex; standards-only devices
+// keep only the switch-wide budget. Decode logic lives in collectors::poe.
+fn get_poe(
+    snmp: &SnmpSource,
+    device: &EntityDevice,
+    poe_out: &mut HashMap<i32, crate::collectors::poe::InterfacePoe>,
+    budget_out: &mut Vec<crate::collectors::poe::PoeBudget>,
+) {
+    use crate::collectors::poe;
+    let host = format!("{}@{}", device.community, device.fqdn);
+
+    // Switch-wide budget first: an absent table is the "no PoE on this device"
+    // signal (most non-PoE switches answer with an empty walk).
+    if let Some(main) = fetch_table(snmp, &host, "POWER-ETHERNET-MIB::pethMainPseTable") {
+        *budget_out = poe::decode_main_pse(&main);
+    }
+
+    let peth = match fetch_table(snmp, &host, "POWER-ETHERNET-MIB::pethPsePortTable") {
+        Some(t) if !t.entries.is_empty() => t,
+        // No per-port PoE table: keep whatever budget we captured and stop
+        // before the extra ENTITY-MIB walk.
+        _ => return,
+    };
+    let cpext = fetch_table(snmp, &host, "CISCO-POWER-ETHERNET-EXT-MIB::cpeExtPsePortTable");
+    let ports = poe::decode_port_poe(&peth, cpext.as_ref());
+
+    // entPhysicalIndex -> entPhysicalName, joined to db interface ids by name.
+    let phys_names = entity_phys_names(snmp, &host);
+    let iface_by_name: HashMap<String, i32> =
+        device.interfaces.iter().map(|(key, (_, id))| (key.clone(), *id)).collect();
+    *poe_out = poe::map_to_interfaces(&ports, &phys_names, &iface_by_name);
+}
+
+// entPhysicalIndex -> entPhysicalName from ENTITY-MIB. (get_entities walks the
+// same table for sensors/media; PoE runs independently of the sensor flag, so
+// it re-walks here — one extra walk per PoE device per cycle, negligible at the
+// entitypoller's minutes-scale interval.)
+fn entity_phys_names(snmp: &SnmpSource, host: &String) -> HashMap<i64, String> {
+    let mut names: HashMap<i64, String> = HashMap::new();
+    if let Some(phys) = fetch_table(snmp, host, "ENTITY-MIB::entPhysicalTable") {
+        for entry in phys.entries.iter() {
+            let id = match entry.index.get("ENTITY-MIB::entPhysicalIndex") {
+                Some(v) => *v,
+                None => continue,
+            };
+            if let Some(name) = obj_str(&entry.objects, "ENTITY-MIB::entPhysicalName") {
+                names.insert(id, name);
+            }
+        }
+    }
+    names
+}
+
+// ---------------------------------------------------------------------------
 // STP polling, one vendor::Source per incompatible MIB family:
 //   - CiscoStpxSource: CISCO-STP-EXTENSIONS-MIB roles + per-VLAN BRIDGE-MIB
 //   - HpRpvstSource:   HP-ICF-RPVST-MIB (ProCurve RPVST+)
@@ -1435,15 +1544,20 @@ pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, di
         crate::collectors::pool::run_bounded(devices, MAX_POLL_WORKERS, jitter, |device| {
             let mut metrics: Vec<LabeledMetric> = Vec::new();
             let mut media: HashMap<i32, String> = HashMap::new();
+            let mut poe: HashMap<i32, crate::collectors::poe::InterfacePoe> = HashMap::new();
+            let mut poe_budget: Vec<crate::collectors::poe::PoeBudget> = Vec::new();
             if !disable_sensors {
                 get_entities(&snmp, &device, &mut metrics, &mut media);
             }
             if !disable_stp {
                 get_stp(&snmp, &device, &stp_sources, &mut metrics);
             }
+            get_poe(&snmp, &device, &mut poe, &mut poe_budget);
             if let Ok(mut store) = store.lock() {
                 store.replace_device(device.fqdn.clone(), metrics);
                 store.set_media(device.fqdn.clone(), media);
+                store.set_poe(device.fqdn.clone(), poe);
+                store.set_poe_budget(device.fqdn.clone(), poe_budget);
             }
         });
 

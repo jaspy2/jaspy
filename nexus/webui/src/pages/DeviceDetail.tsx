@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Device, DeviceUpdate, Interface, InterfaceHealth, LiveEvent, PortChannelMember } from '../api/types';
+import type { Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember } from '../api/types';
 import { HealthBadge, PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import useLiveSocket from '../hooks/useLiveSocket';
 
@@ -72,6 +72,65 @@ function speedRank(label: string): number {
   const m = /^(\d+(?:\.\d+)?)([MG])$/.exec(label);
   if (!m) return Number.MAX_SAFE_INTEGER; // '?' sorts last
   return parseFloat(m[1]) * (m[2] === 'G' ? 1000 : 1);
+}
+
+// --- PoE rendering --------------------------------------------------------
+
+// Milliwatts -> "4.6 W"; null (standards-only device) -> null.
+function formatWatts(mw: number | null): string | null {
+  if (mw === null) return null;
+  return `${Math.round(mw / 100) / 10} W`;
+}
+
+// Short word for a non-delivering PoE status.
+const POE_STATUS_LABEL: Record<string, string> = {
+  searching: 'searching',
+  disabled: 'disabled',
+  fault: 'fault',
+  test: 'test',
+  otherFault: 'fault',
+  other: '—',
+};
+
+// PoE column cell: live draw + class when delivering, otherwise a muted status.
+function PoeCell({ poe }: { poe: InterfacePoe | null }) {
+  if (!poe) return <>—</>;
+  if (poe.status === 'deliveringPower') {
+    const watts = formatWatts(poe.powerMw);
+    const cls = poe.class !== null ? ` · class ${poe.class}` : '';
+    return <span title={poe.priority ? `priority ${poe.priority}` : undefined}>⚡ {watts ?? 'on'}{cls}</span>;
+  }
+  return <span className="muted">{POE_STATUS_LABEL[poe.status] ?? poe.status}</span>;
+}
+
+// Utilization bar colour: green under 85%, amber to 95%, red above.
+function poeMeterColor(pct: number): string {
+  if (pct >= 95) return '#e5534b';
+  if (pct >= 85) return '#d9a406';
+  return '#3fb950';
+}
+
+// Device-wide PoE budget summary (one card per PSE group), with a utilization
+// meter. Shown only for PoE-capable devices.
+function PoeBudgetSummary({ budgets }: { budgets: PoeBudget[] }) {
+  return (
+    <>
+      <h2>PoE budget</h2>
+      {budgets.map((b) => (
+        <div key={b.group} className="panel">
+          <div className="kv">
+            <span>PSE</span><span>{b.group}{b.operOn ? '' : ' — not operational'}</span>
+            <span>Total budget</span><span>{b.totalW} W</span>
+            <span>Consumed</span><span>{b.consumedW} W ({b.utilizationPct}%)</span>
+            <span>Remaining</span><span>{b.remainingW} W</span>
+          </div>
+          <div style={{ background: 'rgba(128,128,128,0.25)', borderRadius: 4, height: 8, overflow: 'hidden', marginTop: 8 }}>
+            <div style={{ width: `${b.utilizationPct}%`, height: '100%', background: poeMeterColor(b.utilizationPct) }} />
+          </div>
+        </div>
+      ))}
+    </>
+  );
 }
 
 // One-line physical-port capability summary for the device header, e.g.
@@ -288,6 +347,16 @@ function InterfaceDetail({ iface, names }: { iface: Interface; names: Map<number
   rows.push({ label: 'Oper status', value: iface.up === true ? 'up' : iface.up === false ? 'down' : 'unknown' });
   rows.push({ label: 'Type', value: iface.interfaceType });
   if (iface.media) rows.push({ label: 'Media', value: mediaLabel(iface.media) });
+  if (iface.poe) {
+    const poe = iface.poe;
+    const parts: string[] = [POE_STATUS_LABEL[poe.status] ?? (poe.status === 'deliveringPower' ? 'delivering power' : poe.status)];
+    const watts = formatWatts(poe.powerMw);
+    if (watts) parts.push(`${watts} drawn`);
+    if (poe.class !== null) parts.push(`class ${poe.class}`);
+    if (!poe.adminEnabled) parts.push('admin disabled');
+    if (poe.priority) parts.push(`${poe.priority} priority`);
+    rows.push({ label: 'PoE', value: parts.join(' · ') });
+  }
   rows.push({ label: 'Speed', value: iface.speed !== null ? `${iface.speed} Mb/s` : '—' });
   if (iface.speedOverride !== null) rows.push({ label: 'Speed override', value: `${iface.speedOverride} Mb/s` });
   if (iface.inOctets !== null) rows.push({ label: 'Received (total)', value: formatBytes(iface.inOctets) });
@@ -469,6 +538,7 @@ export default function DeviceDetail() {
 
   const { device, interfaces } = detail.data;
   const portSummary = summarizePorts(interfaces);
+  const poeBudget = detail.data.poeBudget ?? [];
   const vlanNames = new Map((detail.data.vlans ?? []).map((v) => [v.id, v.name]));
   const portChannels = detail.data.portChannels ?? [];
   const sensors = entity.data?.sensors ?? [];
@@ -600,6 +670,9 @@ export default function DeviceDetail() {
                   {(iface.taggedVlans?.length ?? 0) > 0 && ` (+${iface.taggedVlans!.length} tagged)`}
                 </span>
               )}
+              {iface.poe && iface.poe.status === 'deliveringPower' && (
+                <span>PoE <PoeCell poe={iface.poe} /></span>
+              )}
               {iface.alias && <span>{iface.alias}</span>}
             </span>
             {iface.connectedTo && (
@@ -628,6 +701,7 @@ export default function DeviceDetail() {
               <th>Speed</th>
               <th>VLAN</th>
               <th>Tagged VLANs</th>
+              <th>PoE</th>
               <th>Alias</th>
               <th>Type</th>
               <th>Connected to</th>
@@ -653,6 +727,7 @@ export default function DeviceDetail() {
                   <td className="vlan-cell" title={iface.taggedVlans?.join(', ')}>
                     {(iface.taggedVlans?.length ?? 0) > 0 ? summarizeTaggedVlans(iface.taggedVlans!) : '—'}
                   </td>
+                  <td><PoeCell poe={iface.poe} /></td>
                   <td>{iface.alias ?? '—'}</td>
                   <td>{iface.interfaceType}</td>
                   <td>
@@ -670,7 +745,7 @@ export default function DeviceDetail() {
                 </tr>
                 {expandedDetail.has(iface.id) && (
                   <tr className="vlan-detail-row">
-                    <td colSpan={8}>
+                    <td colSpan={9}>
                       <InterfaceDetail iface={iface} names={vlanNames} />
                     </td>
                   </tr>
@@ -680,6 +755,8 @@ export default function DeviceDetail() {
           </tbody>
         </table>
       </div>
+
+      {poeBudget.length > 0 && <PoeBudgetSummary budgets={poeBudget} />}
 
       {sensors.length > 0 && (
         <>
