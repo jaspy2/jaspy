@@ -78,6 +78,10 @@ pub struct MockLag {
     // Members that report the `defaulted` LACP bit: sending LACPDUs but
     // hearing nothing back (far end not running LACP).
     pub defaulted_members: &'static [i64],
+    // Members whose link is physically down (ifOperStatus down): the switch
+    // still lists them as configured aggregate members (admin key matches) but
+    // detached — the "a cable fell out of one uplink" demo.
+    pub down_members: &'static [i64],
 }
 
 // PoE state for a PSE-capable switch: a switch-wide budget plus the copper
@@ -172,8 +176,8 @@ pub fn build() -> Topology {
                 port_channel(5002, "Po2", "Port-channel2", "port-channel dist2", 20000),
             ],
             lags: vec![
-                MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] },
-                MockLag { ifindex: 5002, members: &[10102, 10106], partner_mac: "", defaulted_members: &[] },
+                MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[], down_members: &[] },
+                MockLag { ifindex: 5002, members: &[10102, 10106], partner_mac: "", defaulted_members: &[], down_members: &[] },
             ],
             poe: None,
         },
@@ -206,7 +210,7 @@ pub fn build() -> Topology {
                 // "uplink ..." alias so stp_role makes the bundle the root port.
                 port_channel(5001, "Po1", "Port-channel1", "uplink core1 port-channel", 20000),
             ],
-            lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] }],
+            lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[], down_members: &[] }],
             poe: None,
         },
         MockDevice {
@@ -223,10 +227,23 @@ pub fn build() -> Topology {
                 uplink(10101, "Te1/1/1", "TenGigabitEthernet1/1/1", "uplink core1", 10000, ("core1", "Te1/0/2")),
                 uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "downlink hall b 01", 10000, ("access-hall-b-01", "Te1/1/1")),
                 uplink(10104, "Te1/1/4", "TenGigabitEthernet1/1/4", "wlc uplink", 10000, ("wlc1", "Te0/0/1")),
-                uplink(10105, "Te1/1/5", "TenGigabitEthernet1/1/5", "uplink core1 (2)", 10000, ("core1", "Te1/0/6")),
+                // Second uplink member with its cable pulled: link down. The
+                // bundle stays up on Te1/1/1, so this is the "one of two LACP
+                // uplinks fell out" demo (see MockLag.down_members below).
+                MockInterface {
+                    ifindex: 10105,
+                    name: "Te1/1/5",
+                    descr: "TenGigabitEthernet1/1/5",
+                    alias: "uplink core1 (2)",
+                    speed_mbps: 10000,
+                    peer: Some(("core1", "Te1/0/6")),
+                    flaps: false,
+                    up: false,
+                    discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false,
+                },
                 port_channel(5001, "Po1", "Port-channel1", "uplink core1 port-channel", 20000),
             ],
-            lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[] }],
+            lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[], down_members: &[10105] }],
             poe: None,
         },
         {
@@ -242,6 +259,7 @@ pub fn build() -> Topology {
                 members: &[10201, 10202],
                 partner_mac: "02:00:00:00:99:01",
                 defaulted_members: &[],
+                down_members: &[],
             }];
             // Simulated faults (non-LAG, up ports): a congested port dropping
             // ~200 discards/s and a flaky-cable port taking ~5 input errors/s.
@@ -265,6 +283,7 @@ pub fn build() -> Topology {
                 members: &[10101, 10102],
                 partner_mac: "",
                 defaulted_members: &[10102],
+                down_members: &[],
             }];
             a02
         },
@@ -1177,7 +1196,7 @@ impl Topology {
             "IEEE8023-LAG-MIB::dot3adAggTable" => {
                 let entries = dev.lags.iter().map(|lag| {
                     let partner = lag.members.iter()
-                        .find(|m| !lag.defaulted_members.contains(m))
+                        .find(|m| !lag.defaulted_members.contains(m) && !lag.down_members.contains(m))
                         .map(|m| self.lag_partner_mac(dev, lag, *m))
                         .unwrap_or_else(|| "00:00:00:00:00:00".to_string());
                     entry(
@@ -1196,21 +1215,29 @@ impl Topology {
                 for lag in dev.lags.iter() {
                     for (pos, member) in lag.members.iter().enumerate() {
                         let defaulted = lag.defaulted_members.contains(member);
-                        let actor_state = if defaulted {
+                        let down = lag.down_members.contains(member);
+                        // A down member is still a configured member (its admin
+                        // key matches the aggregate, so the collector re-adds it)
+                        // but detached with an empty actor state — it cannot
+                        // bundle while its link is down.
+                        let actor_state = if down {
+                            json!([])
+                        } else if defaulted {
                             json!(["lacpActivity", "aggregation", "defaulted"])
                         } else {
                             json!(["lacpActivity", "aggregation", "synchronization", "collecting", "distributing"])
                         };
+                        let inactive = defaulted || down;
                         entries.push(entry(
                             json!({"IEEE8023-LAG-MIB::dot3adAggPortIndex": member}),
                             json!({
                                 "IEEE8023-LAG-MIB::dot3adAggPortActorAdminKey": lag.ifindex - 5000,
                                 "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperSystemID":
-                                    if defaulted { "00:00:00:00:00:00".to_string() } else { self.lag_partner_mac(dev, lag, *member) },
-                                "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": lag.ifindex,
-                                "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort": if defaulted { 0 } else { pos as i64 + 1 },
+                                    if inactive { "00:00:00:00:00:00".to_string() } else { self.lag_partner_mac(dev, lag, *member) },
+                                "IEEE8023-LAG-MIB::dot3adAggPortAttachedAggID": if down { 0 } else { lag.ifindex },
+                                "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperPort": if inactive { 0 } else { pos as i64 + 1 },
                                 "IEEE8023-LAG-MIB::dot3adAggPortActorOperState": actor_state,
-                                "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": if defaulted { json!([]) } else { actor_state.clone() },
+                                "IEEE8023-LAG-MIB::dot3adAggPortPartnerOperState": if inactive { json!([]) } else { actor_state.clone() },
                             }),
                         ));
                     }
@@ -1485,6 +1512,20 @@ mod tests {
             lagpoller::port_channel_warnings(group, &meta_for("dist1", group), &peer_lags),
             Vec::<String>::new(),
             "dist1 Po1 to core1 must warn nothing"
+        );
+
+        // dist2 Po1 to core1 has one member (Te1/1/5) with its cable pulled:
+        // still a configured member (2 total) but detached / not bundled.
+        let dist2_lags = decode("dist2.mock.jaspy");
+        let group = &dist2_lags.groups[&5001];
+        assert_eq!(group.members.len(), 2, "the down member is still a configured member");
+        assert!(lagpoller::lacp_bundled(&group.members[&10101].actor_state), "the surviving member bundles");
+        assert!(!lagpoller::lacp_bundled(&group.members[&10105].actor_state), "the down member cannot bundle");
+        peer_lags.insert("dist2.mock.jaspy".to_string(), dist2_lags.clone());
+        assert_eq!(
+            lagpoller::port_channel_warnings(group, &meta_for("dist2", group), &peer_lags),
+            vec!["member-not-bundled:Te1/1/5".to_string()],
+            "the down uplink shows as an unbundled member (issues.rs upgrades this to a link-down verdict)"
         );
     }
 

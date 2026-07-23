@@ -636,6 +636,10 @@ pub fn collect_issues(
         Ok(store) => store.network_stp(),
         Err(_) => Default::default(),
     };
+    // Per-device shallowest hop distance from a computed STP root, across all
+    // VLANs. Feeds the LAG down-uplink verdict's best-effort "which cable end is
+    // loose" guess (the switch further from the root is the likelier culprit).
+    let mut root_depth: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
     if !stp_ports.is_empty() {
         let topology = crate::routes::dev::weathermap::cached_topology_data(connection, cache_controller);
         let base_macs = device_base_macs(connection);
@@ -652,6 +656,12 @@ pub fn collect_issues(
                 vlan_members: &vlan_members,
             };
             let tree = crate::utilities::stp::build_stp_tree(&inputs, vlan);
+            for node in tree.nodes.iter() {
+                root_depth
+                    .entry(node.fqdn.clone())
+                    .and_modify(|d| *d = (*d).min(node.depth))
+                    .or_insert(node.depth);
+            }
             out.extend(issues::stp_tree_issues(&tree));
         }
     }
@@ -676,6 +686,16 @@ pub fn collect_issues(
             continue;
         }
         let interfaces = device.interfaces(connection);
+        // Live per-interface oper status (ifindex -> up), so the down-uplink
+        // verdict can tell a physically-down member from one that is merely
+        // failing to bundle.
+        let member_up: std::collections::HashMap<i64, Option<bool>> = imds
+            .lock()
+            .ok()
+            .and_then(|g| g.get_device(&fqdn).map(|dm| {
+                dm.interfaces.iter().map(|(idx, m)| (*idx as i64, m.up)).collect()
+            }))
+            .unwrap_or_default();
         for (agg, group) in device_lags.groups.iter() {
             let meta: std::collections::HashMap<i64, crate::collectors::lagpoller::MemberMeta> = group
                 .members
@@ -703,16 +723,31 @@ pub fn collect_issues(
                 continue;
             }
             let agg_name = interfaces.iter().find(|i| i.index as i64 == *agg).map(|i| i.name.clone());
+            let members = group.members.iter().map(|(member, state)| {
+                let member_interface = interfaces.iter().find(|i| i.index as i64 == *member);
+                models::json::ApiPortChannelMember {
+                    ifindex: *member,
+                    name: member_interface.map(|i| i.name.clone()),
+                    up: member_up.get(member).copied().flatten(),
+                    connected_to: meta.get(member).and_then(|m| m.connected_to_fqdn.clone()).map(|fqdn| {
+                        models::json::ApiInterfaceConnection { fqdn, interface: String::new() }
+                    }),
+                    actor_state: state.actor_state.clone(),
+                    partner_state: state.partner_state.clone(),
+                    partner_port: state.partner_port,
+                    bundled: crate::collectors::lagpoller::lacp_bundled(&state.actor_state),
+                }
+            }).collect();
             let pc = models::json::ApiPortChannel {
                 ifindex: *agg,
                 name: agg_name,
                 up: None,
                 protocol: group.protocol.clone(),
                 partner_system_id: group.partner_system_id.clone(),
-                members: Vec::new(),
+                members,
                 warnings,
             };
-            out.extend(issues::port_channel_issues(&fqdn, &pc));
+            out.extend(issues::port_channel_issues(&fqdn, &pc, &root_depth));
         }
     }
 

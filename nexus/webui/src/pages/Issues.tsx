@@ -51,6 +51,8 @@ function explainKind(kind: string): string | null {
       return 'A PoE power supply is running near its budget. New powered devices on this switch may fail to power up.';
     case 'poe-pse-down':
       return 'A PoE power supply is not operational — ports it feeds cannot deliver power.';
+    case 'lag:member-link-down':
+      return 'One member of this LACP uplink bundle is physically down while another is still up — the uplink keeps working but has lost its redundancy. The verdict below names the most likely loose cable end.';
   }
   if (kind.startsWith('stp-flag:multiple-roots'))
     return 'Two or more bridges each believe they are this VLAN’s root, so spanning tree has not converged to a single tree. Whether that is dangerous depends on whether they share a path — the claimed roots and their connectivity are below.';

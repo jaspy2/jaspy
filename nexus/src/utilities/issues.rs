@@ -588,45 +588,146 @@ fn lag_human(code: &str) -> &'static str {
     }
 }
 
-pub fn port_channel_issues(fqdn: &str, pc: &json::ApiPortChannel) -> Vec<DerivedIssue> {
+// `root_depth` maps fqdn -> its shallowest hop distance from a computed STP
+// root (across all VLANs). Used only for the down-uplink verdict's best-effort
+// guess at which cable end came loose; empty when no STP data is available.
+pub fn port_channel_issues(
+    fqdn: &str,
+    pc: &json::ApiPortChannel,
+    root_depth: &HashMap<String, i64>,
+) -> Vec<DerivedIssue> {
     let host = hostname_of(fqdn);
     let agg_name = pc.name.clone().unwrap_or_else(|| format!("ifIndex {}", pc.ifindex));
-    pc.warnings
-        .iter()
-        .map(|warning| {
-            // Warnings are "code" or "code:<detail>" (member name or protocol).
-            let (code, suffix) = match warning.split_once(':') {
-                Some((code, rest)) => (code, Some(rest.to_string())),
-                None => (warning.as_str(), None),
-            };
-            let human = lag_human(code);
-            let description = match suffix.as_ref() {
-                Some(s) => format!("{} {} {} ({})", host, agg_name, human, s),
-                None => format!("{} {} {}", host, agg_name, human),
-            };
-            let mut detail = vec![
-                pair("port-channel", agg_name.clone()),
-                pair("protocol", pc.protocol.clone()),
-                pair("warning", warning.clone()),
-            ];
+    let mut issues: Vec<DerivedIssue> = Vec::new();
+
+    // The common "a cable fell out of one of two LACP uplinks" failure: one (or
+    // more) member is operationally down while the bundle still carries at least
+    // one working member. Surface it as a focused, actionable verdict instead of
+    // the generic per-member "not bundled" warning it would otherwise produce.
+    let down: Vec<&json::ApiPortChannelMember> =
+        pc.members.iter().filter(|m| m.up == Some(false)).collect();
+    // "Redundancy remains" means at least one other member is actually carrying
+    // traffic (bundled and up). This deliberately excludes a bundle whose only
+    // survivor is itself unhealthy (e.g. a misconfigured member not bundling) —
+    // that is a different, already-warned problem, not a clean "one uplink of
+    // several fell out".
+    let healthy: Vec<&json::ApiPortChannelMember> =
+        pc.members.iter().filter(|m| m.bundled && m.up == Some(true)).collect();
+    let mut down_member_names: HashSet<String> = HashSet::new();
+    if !down.is_empty() && !healthy.is_empty() {
+        let down_names: Vec<String> =
+            down.iter().filter_map(|m| m.name.clone()).collect();
+        for n in &down_names {
+            down_member_names.insert(n.clone());
+        }
+        let names_joined = if down_names.is_empty() {
+            "a member".to_string()
+        } else {
+            down_names.join(", ")
+        };
+        let count = down.len();
+        let (count_word, noun, cable) = if count == 1 {
+            ("one".to_string(), "uplink", "cable is")
+        } else {
+            (count.to_string(), "uplinks", "cables are")
+        };
+
+        // Best-effort guess at the loose end: the switch further from the STP
+        // root (typically the access-layer / leaf side) is the more likely spot
+        // for an accidentally disturbed cable. We can never be certain which end
+        // is loose, so the wording stays a hint.
+        let peer_fqdn = down.iter().find_map(|m| m.connected_to.as_ref().map(|c| c.fqdn.clone()));
+        let guess = match (root_depth.get(fqdn), peer_fqdn.as_ref().and_then(|p| root_depth.get(p))) {
+            (Some(here), Some(there)) if here > there =>
+                format!(" The loose end is most likely here — {} sits further from the STP root.", host),
+            (Some(here), Some(there)) if here < there => format!(
+                " The loose end is most likely at the far end ({}), which sits further from the STP root — but check both.",
+                peer_fqdn.as_ref().map(|p| hostname_of(p)).unwrap_or_default()
+            ),
+            _ => " We can't tell which end is loose — check both, starting with the switch furthest from the STP root.".to_string(),
+        };
+        let verdict = format!(
+            "{} has {} {} ({}) DOWN. Check that the {} firmly attached.{}",
+            host, count_word, noun, names_joined, cable, guess
+        );
+
+        let mut detail = vec![
+            verdict_row("verdict", verdict, "warn"),
+            pair("port-channel", agg_name.clone()),
+            pair("protocol", pc.protocol.clone()),
+        ];
+        for m in &down {
+            detail.push(iface_row("down member", m.name.clone().unwrap_or_else(|| m.ifindex.to_string()), Some("down".to_string())));
+        }
+        let up_names: Vec<String> = healthy.iter().filter_map(|m| m.name.clone()).collect();
+        if !up_names.is_empty() {
+            detail.push(pair("still up", up_names.join(", ")));
+        }
+        if let Some(p) = peer_fqdn.as_ref() {
+            detail.push(device_row("upstream", p.clone()));
+        }
+
+        // Sorted names keep the subject (and thus the issue key) stable
+        // regardless of member iteration order.
+        let mut sorted = down_names.clone();
+        sorted.sort();
+        issues.push(DerivedIssue {
+            fqdn: fqdn.to_string(),
+            hostname: host.clone(),
+            kind: "lag:member-link-down".to_string(),
+            subject: format!("{}:{}", pc.ifindex, sorted.join(",")),
+            severity: SEV_WARN.to_string(),
+            title: "Port-channel: uplink member down".to_string(),
+            description: format!("{} {} {} member ({}) down", host, agg_name, count_word, names_joined),
+            subject_label: Some(agg_name.clone()),
+            detail,
+        });
+    }
+
+    for warning in pc.warnings.iter() {
+        // Warnings are "code" or "code:<detail>" (member name or protocol).
+        let (code, suffix) = match warning.split_once(':') {
+            Some((code, rest)) => (code, Some(rest.to_string())),
+            None => (warning.as_str(), None),
+        };
+        // A member the down-uplink verdict already covers surfaces here only as
+        // "not bundled" (its link is down, so it cannot bundle) — suppress that
+        // duplicate.
+        if code == "member-not-bundled" {
             if let Some(s) = suffix.as_ref() {
-                detail.push(pair("detail", s.clone()));
+                if down_member_names.contains(s) {
+                    continue;
+                }
             }
-            DerivedIssue {
-                fqdn: fqdn.to_string(),
-                hostname: host.clone(),
-                kind: format!("lag:{}", code),
-                // Same code can hit several aggregates/members on one device;
-                // key on the aggregate ifindex plus the detail suffix.
-                subject: format!("{}:{}", pc.ifindex, suffix.clone().unwrap_or_default()),
-                severity: lag_severity(code).to_string(),
-                title: format!("Port-channel: {}", human),
-                description,
-                subject_label: Some(agg_name.clone()),
-                detail,
-            }
-        })
-        .collect()
+        }
+        let human = lag_human(code);
+        let description = match suffix.as_ref() {
+            Some(s) => format!("{} {} {} ({})", host, agg_name, human, s),
+            None => format!("{} {} {}", host, agg_name, human),
+        };
+        let mut detail = vec![
+            pair("port-channel", agg_name.clone()),
+            pair("protocol", pc.protocol.clone()),
+            pair("warning", warning.clone()),
+        ];
+        if let Some(s) = suffix.as_ref() {
+            detail.push(pair("detail", s.clone()));
+        }
+        issues.push(DerivedIssue {
+            fqdn: fqdn.to_string(),
+            hostname: host.clone(),
+            kind: format!("lag:{}", code),
+            // Same code can hit several aggregates/members on one device;
+            // key on the aggregate ifindex plus the detail suffix.
+            subject: format!("{}:{}", pc.ifindex, suffix.clone().unwrap_or_default()),
+            severity: lag_severity(code).to_string(),
+            title: format!("Port-channel: {}", human),
+            description,
+            subject_label: Some(agg_name.clone()),
+            detail,
+        });
+    }
+    issues
 }
 
 // --- Tracker --------------------------------------------------------------
@@ -1093,6 +1194,19 @@ mod tests {
         assert_eq!(verdict_tone(issue), Some("neutral"));
     }
 
+    fn pc_member(ifindex: i64, name: &str, up: Option<bool>, bundled: bool, peer_fqdn: Option<&str>) -> json::ApiPortChannelMember {
+        json::ApiPortChannelMember {
+            ifindex,
+            name: Some(name.to_string()),
+            up,
+            connected_to: peer_fqdn.map(|f| json::ApiInterfaceConnection { fqdn: f.to_string(), interface: String::new() }),
+            actor_state: vec![],
+            partner_state: vec![],
+            partner_port: None,
+            bundled,
+        }
+    }
+
     #[test]
     fn port_channel_warnings_map_to_issues() {
         let pc = json::ApiPortChannel {
@@ -1104,7 +1218,7 @@ mod tests {
             members: vec![],
             warnings: vec!["single-member".to_string(), "member-not-bundled:Te1/0/1".to_string()],
         };
-        let issues = port_channel_issues("dist1.example.com", &pc);
+        let issues = port_channel_issues("dist1.example.com", &pc, &HashMap::new());
         assert_eq!(issues.len(), 2);
         let single = issues.iter().find(|i| i.kind == "lag:single-member").unwrap();
         assert_eq!(single.severity, SEV_WARN);
@@ -1113,6 +1227,96 @@ mod tests {
         assert_eq!(notb.severity, SEV_BAD);
         assert_eq!(notb.subject, "5001:Te1/0/1");
         assert_eq!(notb.issue_key(), "dist1.example.com|lag:member-not-bundled|5001:Te1/0/1");
+    }
+
+    #[test]
+    fn one_down_uplink_member_yields_a_focused_verdict() {
+        // A 2-member LACP uplink to core1 with one member physically down: the
+        // collector reports it as an unbundled member (empty actor state) whose
+        // interface is oper-down.
+        let pc = json::ApiPortChannel {
+            ifindex: 5001,
+            name: Some("Po1".to_string()),
+            up: Some(true),
+            protocol: "lacp".to_string(),
+            partner_system_id: None,
+            members: vec![
+                pc_member(10101, "Te1/1/1", Some(true), true, Some("core1.example.com")),
+                pc_member(10105, "Te1/1/5", Some(false), false, Some("core1.example.com")),
+            ],
+            // A down member still shows up as "not bundled" from the LACP walk.
+            warnings: vec!["member-not-bundled:Te1/1/5".to_string()],
+        };
+        // dist2 is one hop below the root (core1); the guess should point here.
+        let depth = HashMap::from([
+            ("dist2.example.com".to_string(), 1),
+            ("core1.example.com".to_string(), 0),
+        ]);
+        let issues = port_channel_issues("dist2.example.com", &pc, &depth);
+
+        // Exactly one issue: the focused link-down verdict, NOT the raw
+        // "not bundled" warning (which is suppressed for the down member).
+        assert_eq!(issues.len(), 1);
+        let issue = &issues[0];
+        assert_eq!(issue.kind, "lag:member-link-down");
+        assert_eq!(issue.severity, SEV_WARN); // degraded, not down → yellow
+        assert_eq!(issue.subject, "5001:Te1/1/5");
+        assert_eq!(verdict_tone(issue), Some("warn"));
+        let verdict = issue.detail.iter().find_map(|d| match &d.value {
+            ApiIssueDetailValue::Verdict { text, .. } => Some(text.clone()),
+            _ => None,
+        }).unwrap();
+        assert!(verdict.contains("Te1/1/5"), "names the down member");
+        assert!(verdict.contains("DOWN"));
+        assert!(verdict.contains("cable"));
+        assert!(verdict.contains("most likely here"), "dist2 is further from root: {}", verdict);
+    }
+
+    #[test]
+    fn down_member_with_no_survivor_is_not_a_degraded_uplink() {
+        // Every member down = the whole bundle is down; that is not the
+        // "one uplink loose" case, so no link-down verdict fires (the generic
+        // not-bundled warnings still describe it).
+        let pc = json::ApiPortChannel {
+            ifindex: 5001,
+            name: Some("Po1".to_string()),
+            up: Some(false),
+            protocol: "lacp".to_string(),
+            partner_system_id: None,
+            members: vec![
+                pc_member(10101, "Te1/1/1", Some(false), false, Some("core1.example.com")),
+                pc_member(10105, "Te1/1/5", Some(false), false, Some("core1.example.com")),
+            ],
+            warnings: vec![
+                "member-not-bundled:Te1/1/1".to_string(),
+                "member-not-bundled:Te1/1/5".to_string(),
+            ],
+        };
+        let issues = port_channel_issues("dist2.example.com", &pc, &HashMap::new());
+        assert!(issues.iter().all(|i| i.kind != "lag:member-link-down"));
+        assert_eq!(issues.iter().filter(|i| i.kind == "lag:member-not-bundled").count(), 2);
+    }
+
+    #[test]
+    fn down_member_whose_only_survivor_is_unhealthy_is_not_a_degraded_uplink() {
+        // a-02-style: one member's link is down while the only other member is
+        // up but not bundling (misconfigured). That is not a clean "lost one of
+        // several working uplinks" — the misconfig warnings own it, so no
+        // link-down verdict fires.
+        let pc = json::ApiPortChannel {
+            ifindex: 5001,
+            name: Some("Po1".to_string()),
+            up: Some(true),
+            protocol: "lacp".to_string(),
+            partner_system_id: None,
+            members: vec![
+                pc_member(10101, "Te1/1/1", Some(false), false, Some("dist1.example.com")),
+                pc_member(10102, "Te1/1/2", Some(true), false, Some("core1.example.com")),
+            ],
+            warnings: vec!["member-no-lacp-partner:Te1/1/2".to_string()],
+        };
+        let issues = port_channel_issues("access2.example.com", &pc, &HashMap::new());
+        assert!(issues.iter().all(|i| i.kind != "lag:member-link-down"));
     }
 
     #[test]
