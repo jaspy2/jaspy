@@ -178,7 +178,8 @@ a { color: var(--accent); }
 .form label.checkbox { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
 
 input,
-select {
+select,
+textarea {
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
@@ -186,8 +187,23 @@ select {
   padding: 8px 10px;
   font: inherit;
 }
+textarea { resize: vertical; }
 input:focus,
-select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+select:focus,
+textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* Inline reason form shown when acknowledging an issue. */
+.ack-form { display: flex; flex-direction: column; gap: 8px; min-width: 320px; }
+.ack-note { width: 100%; box-sizing: border-box; min-height: 5.5em; }
+.ack-form-actions { display: flex; gap: 8px; }
+
+/* The acknowledgement reason, shown inline under an acknowledged issue's title. */
+.issue-note-inline {
+  color: var(--muted);
+  font-size: 0.9em;
+  margin-top: 4px;
+  white-space: pre-wrap;
+}
 
 button {
   background: var(--accent);

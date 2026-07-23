@@ -223,7 +223,22 @@ export default function Issues() {
   }, [issues.data]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['issues'] });
-  const ack = useMutation({ mutationFn: api.ackIssue, onSuccess: invalidate });
+  // The issue whose Acknowledge form is currently open, plus its in-progress
+  // note text. Clicking Acknowledge opens the form rather than acking straight
+  // away, so an admin can record why a known condition is expected.
+  const [ackingKey, setAckingKey] = useState<string | null>(null);
+  const [ackNote, setAckNote] = useState('');
+  const closeAckForm = () => {
+    setAckingKey(null);
+    setAckNote('');
+  };
+  const ack = useMutation({
+    mutationFn: api.ackIssue,
+    onSuccess: () => {
+      closeAckForm();
+      invalidate();
+    },
+  });
   const unack = useMutation({ mutationFn: api.unackIssue, onSuccess: invalidate });
   const pending = ack.isPending || unack.isPending;
 
@@ -235,29 +250,64 @@ export default function Issues() {
     };
   }, [issues.data]);
 
-  const actionButton = (issue: Issue) =>
-    issue.acknowledged ? (
+  const actionButton = (issue: Issue) => {
+    if (issue.acknowledged)
+      return (
+        <button
+          className="secondary"
+          disabled={pending}
+          onClick={(e) => {
+            e.stopPropagation();
+            unack.mutate({ issueKey: issue.issueKey });
+          }}
+        >
+          Un-acknowledge
+        </button>
+      );
+
+    if (ackingKey === issue.issueKey)
+      return (
+        <form
+          className="ack-form"
+          onClick={(e) => e.stopPropagation()}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const note = ackNote.trim();
+            ack.mutate({ issueKey: issue.issueKey, note: note || null });
+          }}
+        >
+          <textarea
+            className="ack-note"
+            rows={4}
+            autoFocus
+            placeholder="Optional reason — why is this expected? (e.g. transit links intentionally left unconnected while the event is inactive)"
+            value={ackNote}
+            onChange={(e) => setAckNote(e.target.value)}
+          />
+          <div className="ack-form-actions">
+            <button type="submit" disabled={pending}>
+              {pending ? 'Acknowledging…' : 'Acknowledge'}
+            </button>
+            <button type="button" className="secondary" disabled={pending} onClick={closeAckForm}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      );
+
+    return (
       <button
-        className="secondary"
         disabled={pending}
         onClick={(e) => {
           e.stopPropagation();
-          unack.mutate({ issueKey: issue.issueKey });
-        }}
-      >
-        Un-acknowledge
-      </button>
-    ) : (
-      <button
-        disabled={pending}
-        onClick={(e) => {
-          e.stopPropagation();
-          ack.mutate({ issueKey: issue.issueKey });
+          setAckNote('');
+          setAckingKey(issue.issueKey);
         }}
       >
         Acknowledge
       </button>
     );
+  };
 
   // Mobile: a card per issue that expands inline.
   const cardList = (list: Issue[]) => (
@@ -275,6 +325,7 @@ export default function Issues() {
             {issue.subjectLabel && <span>{issue.subjectLabel}</span>}
             <span className="muted">{ago(issue.firstSeen)}</span>
           </div>
+          {issue.acknowledged && issue.note && <div className="issue-note-inline">{issue.note}</div>}
           {expanded.has(issue.issueKey) && (
             <IssueDetail issue={issue} related={relatedByKey.get(issue.issueKey) ?? []} onOpenRelated={openIssue} />
           )}
@@ -311,6 +362,7 @@ export default function Issues() {
                   <button className="detail-toggle" onClick={() => toggle(issue.issueKey)} aria-expanded={expanded.has(issue.issueKey)}>
                     {issue.title} {expanded.has(issue.issueKey) ? '▾' : '▸'}
                   </button>
+                  {issue.acknowledged && issue.note && <div className="issue-note-inline">{issue.note}</div>}
                 </td>
                 <td className="muted" title={absolute(issue.firstSeen)}>{ago(issue.firstSeen)}</td>
                 <td>{actionButton(issue)}</td>
