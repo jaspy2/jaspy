@@ -146,6 +146,27 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
         _ => flags.push("multiple-roots".to_string()),
     }
 
+    // The elected root's identity, used to explain any root mismatch: its
+    // base MAC (what reported roots are compared against) and the priority it
+    // reports for itself. Only meaningful with a single computed root.
+    let computed_root = roots.first().map(|rfqdn| {
+        let mac = inputs.base_macs.get(rfqdn).cloned().flatten();
+        let priority = inputs
+            .bridges
+            .get(rfqdn)
+            .and_then(|bridges| bridges.iter().find(|b| b.vlan == vlan))
+            .and_then(|b| b.root_priority);
+        (rfqdn.clone(), mac, priority)
+    });
+    // Every monitored bridge MAC, so a reported root can be classified as
+    // on- or off-fleet.
+    let monitored_macs: HashSet<String> = inputs
+        .base_macs
+        .values()
+        .filter_map(|m| m.as_ref())
+        .map(|m| normalize_mac(m))
+        .collect();
+
     // Cycle guard: a node whose parent chain loops back on itself is part of
     // a cycle; demote the cycle members (and only them) to orphan. Nodes
     // whose chain merely leads *into* a cycle keep their parent — after the
@@ -223,6 +244,43 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
                 },
                 _ => false,
             };
+            // When mismatched, capture both sides for the Issues detail view:
+            // who jaspy elected, what this node reports, and — decisively —
+            // which bridge ID STP would actually prefer.
+            let root_mismatch_detail = if root_mismatch {
+                computed_root.as_ref().map(|(root_fqdn, root_mac, root_priority)| {
+                    let reported_mac = reported.as_ref().and_then(|b| b.root_mac.clone());
+                    let reported_priority = reported.as_ref().and_then(|b| b.root_priority);
+                    let reported_root_monitored = reported_mac
+                        .as_ref()
+                        .map(|m| monitored_macs.contains(&normalize_mac(m)))
+                        .unwrap_or(false);
+                    // Lower bridge ID wins: compare priority first, MAC on a tie.
+                    let reported_root_superior = match (reported_priority, root_priority) {
+                        (Some(rp), Some(cp)) if rp != *cp => Some(rp < *cp),
+                        (Some(_), Some(_)) => match (reported_mac.as_ref(), root_mac.as_ref()) {
+                            (Some(a), Some(b)) => Some(normalize_mac(a) < normalize_mac(b)),
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    crate::models::json::ApiStpRootMismatchDetail {
+                        computed_root_fqdn: root_fqdn.clone(),
+                        computed_root_hostname: root_fqdn.split('.').next().unwrap_or(root_fqdn).to_string(),
+                        // Normalize both sides to lowercase colon form so the UI
+                        // compares/displays them consistently regardless of how
+                        // each device rendered its bridge ID.
+                        computed_root_mac: root_mac.as_ref().map(|m| normalize_mac(m)),
+                        computed_root_priority: *root_priority,
+                        reported_root_mac: reported_mac.as_ref().map(|m| normalize_mac(m)),
+                        reported_root_priority: reported_priority,
+                        reported_root_monitored,
+                        reported_root_superior,
+                    }
+                })
+            } else {
+                None
+            };
             nodes.push(ApiStpNode {
                 fqdn: fqdn.to_string(),
                 depth,
@@ -233,6 +291,7 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
                 path_cost: node.root_port.map(|p| p.path_cost),
                 reported,
                 root_mismatch,
+                root_mismatch_detail,
                 orphan: node.orphan,
             });
             // Push children reversed so the DFS emits them in sorted order.
@@ -288,9 +347,15 @@ mod tests {
     }
 
     fn bridge(vlan: i64, mac: &str, cost: i64) -> ApiStpBridge {
+        bridge_prio(vlan, mac, 32768 + vlan, cost)
+    }
+
+    // A reported bridge with an explicit root priority — for mismatch cases
+    // that hinge on which bridge ID STP would prefer.
+    fn bridge_prio(vlan: i64, mac: &str, priority: i64, cost: i64) -> ApiStpBridge {
         ApiStpBridge {
             vlan,
-            root_priority: Some(32768 + vlan),
+            root_priority: Some(priority),
             root_mac: Some(mac.to_string()),
             root_cost: Some(cost),
             root_port: None,
@@ -493,6 +558,79 @@ mod tests {
     }
 
     #[test]
+    fn multiple_roots_suppresses_root_mismatch() {
+        // With more than one computed root there is no single reference to
+        // compare against, so no node is flagged as disagreeing — the
+        // "multiple-roots" flag already tells the story. (Guards against
+        // double-alerting a split tree as N root mismatches.)
+        let (mut ports, mut bridges, base_macs, topology) = three_level_inputs();
+        ports.insert("leaf-b.x".to_string(), vec![port(10, "designated", "forwarding", 401, "b-up", 0)]);
+        // leaf-b even reports a different root — still must not be a mismatch.
+        bridges.insert("leaf-b.x".to_string(), vec![bridge(10, "02 00 00 00 99 99", 0)]);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
+        assert!(tree.flags.contains(&"multiple-roots".to_string()));
+        assert!(tree.nodes.iter().all(|n| !n.root_mismatch));
+        assert!(tree.nodes.iter().all(|n| n.root_mismatch_detail.is_none()));
+    }
+
+    #[test]
+    fn root_mismatch_against_monitored_superior_bridge() {
+        // leaf-b reports a *monitored* peer (dist.x) as root, with a better
+        // (lower) priority than the elected root — a genuine split-brain
+        // between two monitored bridges, not an off-fleet upstream.
+        let (ports, mut bridges, base_macs, topology) = three_level_inputs();
+        bridges.insert("leaf-b.x".to_string(), vec![bridge_prio(10, "02:00:00:00:10:02", 4096, 8)]);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
+        let detail = tree.nodes.iter().find(|n| n.fqdn == "leaf-b.x").unwrap().root_mismatch_detail.as_ref().unwrap();
+        assert_eq!(detail.computed_root_fqdn, "core.x");
+        assert!(detail.reported_root_monitored); // dist.x is a fleet device
+        assert_eq!(detail.reported_root_superior, Some(true)); // 4096 < 32778
+    }
+
+    #[test]
+    fn root_mismatch_with_weaker_reported_root_is_not_superior() {
+        // leaf-b reports an off-fleet root with a *worse* (higher) priority —
+        // its STP view is stale/partitioned, the elected root still wins.
+        let (ports, mut bridges, base_macs, topology) = three_level_inputs();
+        bridges.insert("leaf-b.x".to_string(), vec![bridge_prio(10, "02 00 00 00 99 99", 61440, 8)]);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
+        let detail = tree.nodes.iter().find(|n| n.fqdn == "leaf-b.x").unwrap().root_mismatch_detail.as_ref().unwrap();
+        assert!(!detail.reported_root_monitored);
+        assert_eq!(detail.reported_root_superior, Some(false)); // 61440 > 32778
+    }
+
+    #[test]
+    fn root_mismatch_superiority_breaks_ties_on_mac() {
+        // Equal priority → STP decides on the lower MAC. The elected root
+        // (core.x) has base MAC 02:00:00:00:10:01 and reports priority 32778.
+        let base = 32768 + 10;
+        // Lower reported MAC wins the tie → reported root is superior.
+        let (ports, mut bridges, base_macs, topology) = three_level_inputs();
+        bridges.insert("leaf-b.x".to_string(), vec![bridge_prio(10, "00:00:00:00:00:01", base, 8)]);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
+        let lower = tree.nodes.iter().find(|n| n.fqdn == "leaf-b.x").unwrap().root_mismatch_detail.as_ref().unwrap();
+        assert_eq!(lower.reported_root_superior, Some(true));
+
+        // Higher reported MAC loses the tie → not superior.
+        let (ports, mut bridges, base_macs, topology) = three_level_inputs();
+        bridges.insert("leaf-b.x".to_string(), vec![bridge_prio(10, "ff:ff:ff:ff:ff:ff", base, 8)]);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
+        let higher = tree.nodes.iter().find(|n| n.fqdn == "leaf-b.x").unwrap().root_mismatch_detail.as_ref().unwrap();
+        assert_eq!(higher.reported_root_superior, Some(false));
+    }
+
+    #[test]
+    fn root_mismatch_needs_a_known_computed_root_mac() {
+        // The elected root's base MAC is unknown (discovery never recorded it),
+        // so there is nothing to compare against — no mismatch is raised.
+        let (ports, mut bridges, mut base_macs, topology) = three_level_inputs();
+        base_macs.insert("core.x".to_string(), None);
+        bridges.insert("leaf-b.x".to_string(), vec![bridge(10, "02 00 00 00 99 99", 8)]);
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
+        assert!(tree.nodes.iter().all(|n| !n.root_mismatch));
+    }
+
+    #[test]
     fn cycle_demotes_to_orphans_and_flags() {
         let (mut ports, bridges, base_macs, mut topology) = three_level_inputs();
         // dist and core point at each other with root ports (data anomaly).
@@ -523,8 +661,20 @@ mod tests {
         // leaf-a agrees with the computed root, spaced-uppercase form.
         bridges.insert("leaf-a.x".to_string(), vec![bridge(10, "02 00 00 00 10 01", 8)]);
         let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
-        assert!(tree.nodes.iter().find(|n| n.fqdn == "leaf-b.x").unwrap().root_mismatch);
+        let leaf_b = tree.nodes.iter().find(|n| n.fqdn == "leaf-b.x").unwrap();
+        assert!(leaf_b.root_mismatch);
         assert!(!tree.nodes.iter().find(|n| n.fqdn == "leaf-a.x").unwrap().root_mismatch);
+
+        // The mismatch carries both sides: jaspy's elected root (core.x) and
+        // the off-fleet MAC leaf-b reports.
+        let detail = leaf_b.root_mismatch_detail.as_ref().expect("mismatch detail present");
+        assert_eq!(detail.computed_root_fqdn, "core.x");
+        assert_eq!(detail.computed_root_mac.as_deref(), Some("02:00:00:00:10:01"));
+        assert_eq!(detail.reported_root_mac.as_deref(), Some("02:00:00:00:99:99"));
+        // 99:99 is not a monitored base MAC.
+        assert!(!detail.reported_root_monitored);
+        // leaf-a, which agrees, has no mismatch detail.
+        assert!(tree.nodes.iter().find(|n| n.fqdn == "leaf-a.x").unwrap().root_mismatch_detail.is_none());
     }
 
     #[test]

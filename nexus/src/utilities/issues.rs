@@ -13,6 +13,7 @@
 // cleared-then-recurring condition gets a fresh first_seen and re-alerts.
 use std::collections::{HashMap, HashSet};
 use crate::models::json;
+use crate::models::json::{ApiIssueDetail, ApiIssueDetailValue};
 
 pub const SEV_WARN: &str = "warn";
 pub const SEV_BAD: &str = "bad";
@@ -27,8 +28,48 @@ fn hostname_of(fqdn: &str) -> String {
     }
 }
 
-fn pair(k: &str, v: impl Into<String>) -> (String, String) {
-    (k.to_string(), v.into())
+// --- Detail row constructors ---------------------------------------------
+// `pair` builds a plain-text row (the default every signal uses); the typed
+// helpers below let an issue surface a MAC, device link, interface, verdict or
+// hyperlink the UI can render richly.
+
+fn pair(k: &str, v: impl Into<String>) -> ApiIssueDetail {
+    ApiIssueDetail { label: k.to_string(), value: ApiIssueDetailValue::Text { text: v.into() } }
+}
+
+fn mac_row(k: &str, mac: String, monitored: bool) -> ApiIssueDetail {
+    ApiIssueDetail { label: k.to_string(), value: ApiIssueDetailValue::Mac { mac, monitored } }
+}
+
+fn device_row(k: &str, fqdn: String) -> ApiIssueDetail {
+    let hostname = hostname_of(&fqdn);
+    ApiIssueDetail { label: k.to_string(), value: ApiIssueDetailValue::Device { fqdn, hostname } }
+}
+
+fn iface_row(k: &str, name: String, state: Option<String>) -> ApiIssueDetail {
+    ApiIssueDetail { label: k.to_string(), value: ApiIssueDetailValue::Interface { name, state } }
+}
+
+fn verdict_row(k: &str, text: impl Into<String>, tone: &str) -> ApiIssueDetail {
+    ApiIssueDetail { label: k.to_string(), value: ApiIssueDetailValue::Verdict { text: text.into(), tone: tone.to_string() } }
+}
+
+fn link_row(k: &str, text: impl Into<String>, href: impl Into<String>) -> ApiIssueDetail {
+    ApiIssueDetail { label: k.to_string(), value: ApiIssueDetailValue::Link { text: text.into(), href: href.into() } }
+}
+
+// Compact human duration from seconds: "154d", "3h 5m", "45m", "30s".
+fn human_secs(secs: i64) -> String {
+    let s = secs.max(0);
+    if s < 60 {
+        format!("{}s", s)
+    } else if s < 3600 {
+        format!("{}m", s / 60)
+    } else if s < 86400 {
+        format!("{}h {}m", s / 3600, (s % 3600) / 60)
+    } else {
+        format!("{}d", s / 86400)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -41,7 +82,7 @@ pub struct DerivedIssue {
     pub title: String,
     pub description: String,
     pub subject_label: Option<String>,
-    pub detail: Vec<(String, String)>,
+    pub detail: Vec<ApiIssueDetail>,
 }
 
 impl DerivedIssue {
@@ -154,7 +195,7 @@ pub fn interface_health_issues(fqdn: &str, ifindex: i32, iface_name: &str, h: &j
         return Vec::new();
     }
     let host = hostname_of(fqdn);
-    let mk = |kind: &str, severity: &str, title: &str, description: String, detail: Vec<(String, String)>| DerivedIssue {
+    let mk = |kind: &str, severity: &str, title: &str, description: String, detail: Vec<ApiIssueDetail>| DerivedIssue {
         fqdn: fqdn.to_string(),
         hostname: host.clone(),
         kind: kind.to_string(),
@@ -292,28 +333,66 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
         });
     }
 
+    let stp_tree_link = link_row("spanning tree", format!("VLAN {} tree", vlan), format!("/stp?vlan={}", vlan));
+
     for node in tree.nodes.iter() {
         let host = hostname_of(&node.fqdn);
         if node.root_mismatch {
+            // A disagreement whose "winning" root is a *superior, unmonitored*
+            // bridge is not a fault on this device — jaspy simply does not poll
+            // the real root. Downgrade it from a critical mismatch to a warn
+            // that names the situation, and don't pin blame on the reporter.
+            let unmonitored_root = node
+                .root_mismatch_detail
+                .as_ref()
+                .map(|d| d.reported_root_superior == Some(true) && !d.reported_root_monitored)
+                .unwrap_or(false);
+            let (kind, severity, title, description) = if unmonitored_root {
+                (
+                    "stp-unmonitored-root",
+                    SEV_WARN,
+                    "STP root not monitored",
+                    format!(
+                        "VLAN {}'s root bridge is not monitored by jaspy — {} sees a superior root upstream",
+                        vlan, host
+                    ),
+                )
+            } else {
+                (
+                    "stp-root-mismatch",
+                    SEV_BAD,
+                    "STP root mismatch",
+                    format!("{} disagrees about the VLAN {} root bridge", host, vlan),
+                )
+            };
             out.push(DerivedIssue {
                 fqdn: node.fqdn.clone(),
                 hostname: host.clone(),
-                kind: "stp-root-mismatch".to_string(),
+                kind: kind.to_string(),
                 subject: subject.clone(),
-                severity: SEV_BAD.to_string(),
-                title: "STP root mismatch".to_string(),
-                description: format!("{} disagrees about the VLAN {} root bridge", host, vlan),
+                severity: severity.to_string(),
+                title: title.to_string(),
+                description,
                 subject_label: Some(vlan_label.clone()),
-                detail: vec![
-                    pair("vlan", vlan.to_string()),
-                    pair(
-                        "reported root",
-                        node.reported.as_ref().and_then(|b| b.root_mac.clone()).unwrap_or_else(|| "—".to_string()),
-                    ),
-                ],
+                detail: root_mismatch_detail(node, &stp_tree_link),
             });
         }
         if node.orphan {
+            let mut detail = Vec::new();
+            if let Some(name) = node.root_port_interface_name.clone() {
+                detail.push(iface_row("root port", name, node.root_port_state.clone()));
+            } else {
+                detail.push(pair("root port", "—"));
+            }
+            if let Some(cost) = node.path_cost {
+                detail.push(pair("path cost", cost.to_string()));
+            }
+            detail.push(verdict_row(
+                "upstream",
+                "unresolved — the neighbour on the root port is not monitored (or has no discovered link)",
+                "warn",
+            ));
+            detail.push(stp_tree_link.clone());
             out.push(DerivedIssue {
                 fqdn: node.fqdn.clone(),
                 hostname: host.clone(),
@@ -323,14 +402,87 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
                 title: "STP orphan".to_string(),
                 description: format!("{} has a root port on VLAN {} but its upstream is unresolved", host, vlan),
                 subject_label: Some(vlan_label.clone()),
-                detail: vec![
-                    pair("vlan", vlan.to_string()),
-                    pair("root port", node.root_port_interface_name.clone().unwrap_or_else(|| "—".to_string())),
-                ],
+                detail,
             });
         }
     }
     out
+}
+
+// The expanded detail for a root-mismatch: both sides of the disagreement,
+// their bridge priorities, whether the reported root is even monitored, and a
+// verdict on which claim STP would actually elect — everything an admin needs
+// to triage without leaving the Issues page.
+fn root_mismatch_detail(node: &json::ApiStpNode, stp_tree_link: &ApiIssueDetail) -> Vec<ApiIssueDetail> {
+    let mut detail = Vec::new();
+    let Some(d) = node.root_mismatch_detail.as_ref() else {
+        // No context computed (shouldn't happen for a real mismatch): fall back
+        // to the bare reported MAC.
+        detail.push(mac_row(
+            "reported root",
+            node.reported.as_ref().and_then(|b| b.root_mac.clone()).unwrap_or_else(|| "—".to_string()),
+            false,
+        ));
+        return detail;
+    };
+
+    // This node's claim.
+    detail.push(mac_row(
+        "reported root",
+        d.reported_root_mac.clone().unwrap_or_else(|| "—".to_string()),
+        d.reported_root_monitored,
+    ));
+    if let Some(p) = d.reported_root_priority {
+        detail.push(pair("reported root priority", p.to_string()));
+    }
+    // The bridge jaspy elected as root for the VLAN — the other side of the
+    // disagreement. When the reported root is the superior one, this pick is
+    // the isolated/stale bridge, so label it as jaspy's structural pick rather
+    // than "the root" to avoid implying it is authoritative.
+    detail.push(device_row("jaspy's elected root", d.computed_root_fqdn.clone()));
+    if let Some(mac) = d.computed_root_mac.clone() {
+        detail.push(mac_row("elected root bridge", mac, true));
+    }
+    if let Some(p) = d.computed_root_priority {
+        detail.push(pair("elected root priority", p.to_string()));
+    }
+
+    // The verdict: which bridge ID STP actually prefers, and — crucially —
+    // whether this device is at fault. Coloured by how alarming it is.
+    let verdict = match (d.reported_root_superior, d.reported_root_monitored) {
+        (Some(true), false) => Some(verdict_row(
+            "verdict",
+            "this device sees a superior root (lower bridge ID) that jaspy does not monitor — that off-fleet bridge, not jaspy's elected root, is the VLAN's real root. This device is not at fault; jaspy just doesn't poll the actual root.",
+            "warn",
+        )),
+        (Some(true), true) => Some(verdict_row(
+            "verdict",
+            "the reported root has a superior bridge ID and is a monitored device — jaspy's elected root should not be root. Real disagreement between two monitored bridges.",
+            "bad",
+        )),
+        (Some(false), _) => Some(verdict_row(
+            "verdict",
+            "jaspy's elected root has the superior bridge ID; this node reports a weaker root — likely stale or partitioned STP data on this device.",
+            "neutral",
+        )),
+        (None, _) => None,
+    };
+    if let Some(v) = verdict {
+        detail.push(v);
+    }
+
+    // Where the disagreement enters this switch.
+    if let Some(name) = node.root_port_interface_name.clone() {
+        detail.push(iface_row("entered via", name, node.root_port_state.clone()));
+    }
+    if node.orphan {
+        detail.push(verdict_row("upstream", "unresolved — see the STP orphan on this VLAN", "warn"));
+    }
+    if let Some(secs) = node.reported.as_ref().and_then(|b| b.time_since_topology_change_secs) {
+        detail.push(pair("last topology change", format!("{} ago", human_secs(secs))));
+    }
+    detail.push(stp_tree_link.clone());
+    detail
 }
 
 // --- LAG / port-channel ---------------------------------------------------
@@ -479,6 +631,18 @@ mod tests {
         PoeBudget { group: 1, total_w, consumed_w, oper_on, threshold_pct }
     }
 
+    // Plain-text value of the detail row with `label`, if any.
+    fn detail_text<'a>(issue: &'a DerivedIssue, label: &str) -> Option<&'a str> {
+        issue.detail.iter().find(|d| d.label == label).and_then(|d| match &d.value {
+            ApiIssueDetailValue::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+    }
+
+    fn has_text(issue: &DerivedIssue, label: &str, value: &str) -> bool {
+        detail_text(issue, label) == Some(value)
+    }
+
     #[test]
     fn poe_budget_below_default_threshold_is_silent() {
         // 10/124 W ~= 8% (live ticket-sw2), well under the 85% default.
@@ -494,8 +658,8 @@ mod tests {
         assert_eq!(issues[0].subject, "1");
         assert_eq!(issues[0].subject_label.as_deref(), Some("PSE 1"));
         // 110/124 = 88%.
-        assert!(issues[0].detail.iter().any(|(k, v)| k == "utilization" && v == "88%"));
-        assert!(issues[0].detail.iter().any(|(k, v)| k == "remaining" && v == "14 W"));
+        assert!(has_text(&issues[0], "utilization", "88%"));
+        assert!(has_text(&issues[0], "remaining", "14 W"));
     }
 
     #[test]
@@ -511,7 +675,7 @@ mod tests {
         let issues = poe_budget_issues("sw1.example.com", &[budget(124, 70, true, Some(50))]);
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].severity, SEV_WARN);
-        assert!(issues[0].detail.iter().any(|(k, v)| k == "threshold" && v == "50%"));
+        assert!(has_text(&issues[0], "threshold", "50%"));
     }
 
     #[test]
@@ -620,10 +784,20 @@ mod tests {
                     parent: None,
                     parent_interface: None,
                     root_port_interface_name: Some("Te1/1/1".to_string()),
-                    root_port_state: None,
-                    path_cost: None,
+                    root_port_state: Some("forwarding".to_string()),
+                    path_cost: Some(20000),
                     reported: None,
                     root_mismatch: true,
+                    root_mismatch_detail: Some(json::ApiStpRootMismatchDetail {
+                        computed_root_fqdn: "core1.example.com".to_string(),
+                        computed_root_hostname: "core1".to_string(),
+                        computed_root_mac: Some("cc:98:91:6a:16:80".to_string()),
+                        computed_root_priority: Some(28672),
+                        reported_root_mac: Some("5c:e1:76:60:9b:00".to_string()),
+                        reported_root_priority: Some(4096),
+                        reported_root_monitored: false,
+                        reported_root_superior: Some(true),
+                    }),
                     orphan: false,
                 },
                 json::ApiStpNode {
@@ -636,6 +810,7 @@ mod tests {
                     path_cost: None,
                     reported: None,
                     root_mismatch: false,
+                    root_mismatch_detail: None,
                     orphan: true,
                 },
             ],
@@ -647,12 +822,130 @@ mod tests {
         assert_eq!(by_kind["stp-flag:no-root"].severity, SEV_BAD);
         assert_eq!(by_kind["stp-flag:no-root"].fqdn, ""); // vlan-level
         assert_eq!(by_kind["stp-flag:multiple-root-ports"].fqdn, "core1.example.com");
-        assert_eq!(by_kind["stp-root-mismatch"].fqdn, "dist1.example.com");
-        assert_eq!(by_kind["stp-root-mismatch"].severity, SEV_BAD);
+        // dist1's reported root is a *superior, unmonitored* bridge, so it is
+        // the low-severity "unmonitored root", not a critical mismatch.
+        assert_eq!(by_kind["stp-unmonitored-root"].fqdn, "dist1.example.com");
+        assert_eq!(by_kind["stp-unmonitored-root"].severity, SEV_WARN);
+        assert!(!by_kind.contains_key("stp-root-mismatch"));
         assert_eq!(by_kind["stp-orphan"].fqdn, "access1.example.com");
         assert_eq!(by_kind["stp-orphan"].severity, SEV_WARN);
         // Distinct subject keeps per-vlan flags unique.
         assert_eq!(by_kind["stp-flag:no-root"].issue_key(), "|stp-flag:no-root|vlan10");
+
+        // The detail still carries both sides of the disagreement.
+        let mismatch = by_kind["stp-unmonitored-root"];
+        let reported = mismatch.detail.iter().find(|d| d.label == "reported root").unwrap();
+        assert_eq!(
+            reported.value,
+            ApiIssueDetailValue::Mac { mac: "5c:e1:76:60:9b:00".to_string(), monitored: false },
+        );
+        let jaspy_root = mismatch.detail.iter().find(|d| d.label == "jaspy's elected root").unwrap();
+        assert_eq!(
+            jaspy_root.value,
+            ApiIssueDetailValue::Device { fqdn: "core1.example.com".to_string(), hostname: "core1".to_string() },
+        );
+        // Superior + off-fleet → a warn verdict (unmonitored upstream, not split-brain).
+        let verdict = mismatch.detail.iter().find(|d| d.label == "verdict").unwrap();
+        match &verdict.value {
+            ApiIssueDetailValue::Verdict { tone, text } => {
+                assert_eq!(tone, "warn");
+                assert!(text.contains("superior"));
+            }
+            other => panic!("expected a verdict, got {:?}", other),
+        }
+        // Every mismatch links to the VLAN's spanning tree.
+        assert!(mismatch.detail.iter().any(|d| matches!(&d.value, ApiIssueDetailValue::Link { href, .. } if href == "/stp?vlan=10")));
+    }
+
+    // A minimal mismatched node carrying the given disagreement context.
+    fn mismatch_node(superior: Option<bool>, monitored: bool) -> json::ApiStpNode {
+        json::ApiStpNode {
+            fqdn: "sw.example.com".to_string(),
+            depth: 0,
+            parent: None,
+            parent_interface: None,
+            root_port_interface_name: Some("Te1/1/1".to_string()),
+            root_port_state: Some("forwarding".to_string()),
+            path_cost: Some(20000),
+            reported: None,
+            root_mismatch: true,
+            root_mismatch_detail: Some(json::ApiStpRootMismatchDetail {
+                computed_root_fqdn: "core.example.com".to_string(),
+                computed_root_hostname: "core".to_string(),
+                computed_root_mac: Some("cc:98:91:6a:16:80".to_string()),
+                computed_root_priority: Some(28672),
+                reported_root_mac: Some("5c:e1:76:60:9b:00".to_string()),
+                reported_root_priority: Some(4096),
+                reported_root_monitored: monitored,
+                reported_root_superior: superior,
+            }),
+            orphan: false,
+        }
+    }
+
+    fn verdict_tone(issue: &DerivedIssue) -> Option<&str> {
+        issue.detail.iter().find(|d| d.label == "verdict").and_then(|d| match &d.value {
+            ApiIssueDetailValue::Verdict { tone, .. } => Some(tone.as_str()),
+            _ => None,
+        })
+    }
+
+    fn tree_with_node(node: json::ApiStpNode) -> json::ApiStpTree {
+        json::ApiStpTree { vlan: 63, roots: vec!["core.example.com".to_string()], nodes: vec![node], blocked_links: vec![], flags: vec![] }
+    }
+
+    #[test]
+    fn human_secs_scales_by_magnitude() {
+        assert_eq!(human_secs(-5), "0s"); // clamps negatives
+        assert_eq!(human_secs(0), "0s");
+        assert_eq!(human_secs(45), "45s");
+        assert_eq!(human_secs(90), "1m");
+        assert_eq!(human_secs(3600), "1h 0m");
+        assert_eq!(human_secs(3660), "1h 1m");
+        // ~154 days (the mobydick tele-sw1 topology-change age) → whole days.
+        assert_eq!(human_secs(13_364_950), "154d");
+    }
+
+    #[test]
+    fn root_mismatch_verdict_tone_by_scenario() {
+        // Superior + off-fleet → warn (unmonitored upstream, the common case).
+        let warn = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), false)));
+        assert_eq!(verdict_tone(&warn[0]), Some("warn"));
+
+        // Superior + monitored → bad (real split-brain between two fleet bridges).
+        let bad = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), true)));
+        assert_eq!(verdict_tone(&bad[0]), Some("bad"));
+
+        // Reported root is weaker → neutral (stale/partitioned data on this node).
+        let neutral = stp_tree_issues(&tree_with_node(mismatch_node(Some(false), false)));
+        assert_eq!(verdict_tone(&neutral[0]), Some("neutral"));
+
+        // Priority unknown → no verdict at all (never guess which is superior).
+        let unknown = stp_tree_issues(&tree_with_node(mismatch_node(None, false)));
+        assert_eq!(verdict_tone(&unknown[0]), None);
+    }
+
+    #[test]
+    fn superior_unmonitored_root_is_warn_not_critical() {
+        // The mobydick tele-sw1 case: reported root is superior AND off-fleet →
+        // a warn "root not monitored", not a critical mismatch, and no blame on
+        // the reporting device.
+        let issues = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), false)));
+        assert_eq!(issues[0].kind, "stp-unmonitored-root");
+        assert_eq!(issues[0].severity, SEV_WARN);
+        assert!(issues[0].description.contains("not monitored"));
+        assert!(!issues[0].description.contains("disagrees"));
+    }
+
+    #[test]
+    fn monitored_or_weaker_disagreement_stays_critical_mismatch() {
+        // A superior *monitored* root, or a weaker reported root, is a genuine
+        // fault → the critical stp-root-mismatch is preserved.
+        for (superior, monitored) in [(Some(true), true), (Some(false), false), (None, false)] {
+            let issues = stp_tree_issues(&tree_with_node(mismatch_node(superior, monitored)));
+            assert_eq!(issues[0].kind, "stp-root-mismatch", "superior={:?} monitored={}", superior, monitored);
+            assert_eq!(issues[0].severity, SEV_BAD);
+        }
     }
 
     #[test]

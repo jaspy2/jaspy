@@ -375,9 +375,37 @@ pub struct ApiStpNode {
     pub reported: Option<ApiStpBridge>,
     // This device's reported root disagrees with the computed root's bridge MAC.
     pub root_mismatch: bool,
+    // The triage context behind `root_mismatch` (both sides of the
+    // disagreement, priorities, and whether the reported root is monitored).
+    // Present only when `root_mismatch` is true.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root_mismatch_detail: Option<ApiStpRootMismatchDetail>,
     // Has a root port but its upstream could not be resolved (missing
     // adjacency, unmonitored parent, or a cycle) — rendered as its own tree.
     pub orphan: bool,
+}
+
+// The two sides of an STP root-bridge disagreement, computed alongside the
+// tree so the Issues view can explain who disagrees with whom and which claim
+// STP would actually elect.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpRootMismatchDetail {
+    // The root jaspy elected for this VLAN — the reference the mismatch is
+    // measured against (the monitored bridge with no upstream root port).
+    pub computed_root_fqdn: String,
+    pub computed_root_hostname: String,
+    pub computed_root_mac: Option<String>,
+    pub computed_root_priority: Option<i64>,
+    // What this node reports as the root bridge.
+    pub reported_root_mac: Option<String>,
+    pub reported_root_priority: Option<i64>,
+    // The reported root's MAC belongs to a monitored (polled) device.
+    pub reported_root_monitored: bool,
+    // The reported root has a strictly better (lower) bridge ID than the
+    // computed root — i.e. STP would elect it, so the computed root is the one
+    // out of step. None when either priority is unknown.
+    pub reported_root_superior: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -727,6 +755,36 @@ pub struct ClientLocationInfo {
     pub option82: HashMap<String, String>,
 }
 
+// One typed value in an issue's expanded detail. Tagged so the UI can render a
+// MAC, a device link, an interface, a triage verdict or a hyperlink richly
+// instead of as an opaque string. `Text` is the default every legacy signal
+// still uses.
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ApiIssueDetailValue {
+    Text { text: String },
+    // A bridge/host MAC. `monitored` is false when it belongs to no polled
+    // device (an off-fleet bridge), which the UI flags.
+    Mac { mac: String, monitored: bool },
+    // A device the UI links to by fqdn.
+    Device { fqdn: String, hostname: String },
+    // An interface, optionally with its STP/oper state.
+    Interface { name: String, state: Option<String> },
+    // A short triage conclusion; `tone` ("good"|"bad"|"warn"|"neutral") drives
+    // the badge colour.
+    Verdict { text: String, tone: String },
+    // A hyperlink (e.g. to the STP tree for the affected VLAN).
+    Link { text: String, href: String },
+}
+
+// A single label/value row in an issue's expanded detail.
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiIssueDetail {
+    pub label: String,
+    pub value: ApiIssueDetailValue,
+}
+
 // GET /api/v1/issues: one derived fleet problem. Issues are computed on the fly
 // from the in-memory stores (see utilities::issues); this DTO is enriched with
 // tracker timestamps and, if present, the persisted acknowledgement.
@@ -745,8 +803,8 @@ pub struct ApiIssue {
     // Human label for the affected sub-entity (interface name, "VLAN 10", "Po1"),
     // null for device-level issues.
     pub subject_label: Option<String>,
-    // All known signal detail for the expanded view (ordered label/value pairs).
-    pub detail: Vec<(String, String)>,
+    // All known signal detail for the expanded view (ordered typed rows).
+    pub detail: Vec<ApiIssueDetail>,
     pub first_seen: u64, // epoch ms of the current occurrence's onset
     pub last_seen: u64,  // epoch ms it was last observed active
     pub acknowledged: bool,

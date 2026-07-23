@@ -344,7 +344,22 @@ export interface StpNode {
   pathCost: number | null;
   reported: StpBridge | null;
   rootMismatch: boolean;
+  // Both sides of the root disagreement; present only when rootMismatch.
+  rootMismatchDetail?: StpRootMismatchDetail | null;
   orphan: boolean;
+}
+
+// Context behind an STP root mismatch: who jaspy elected vs. what the node
+// reports, their priorities, and whether the reported root is even monitored.
+export interface StpRootMismatchDetail {
+  computedRootFqdn: string;
+  computedRootHostname: string;
+  computedRootMac: string | null;
+  computedRootPriority: number | null;
+  reportedRootMac: string | null;
+  reportedRootPriority: number | null;
+  reportedRootMonitored: boolean;
+  reportedRootSuperior: boolean | null;
 }
 
 export interface StpBlockedLink {
@@ -394,6 +409,21 @@ export interface ResetResult {
   devicesDeleted: number;
 }
 
+// One typed value in an issue's expanded detail (server enum ApiIssueDetailValue,
+// internally tagged on `type`). The UI renders each variant differently.
+export type IssueDetailValue =
+  | { type: 'text'; text: string }
+  | { type: 'mac'; mac: string; monitored: boolean }
+  | { type: 'device'; fqdn: string; hostname: string }
+  | { type: 'interface'; name: string; state: string | null }
+  | { type: 'verdict'; text: string; tone: 'good' | 'bad' | 'warn' | 'neutral' }
+  | { type: 'link'; text: string; href: string };
+
+export interface IssueDetail {
+  label: string;
+  value: IssueDetailValue;
+}
+
 // A derived fleet issue (GET /api/v1/issues). Issues are computed on the fly
 // from the in-memory stores; `issueKey` is the deterministic composite that a
 // persisted acknowledgement is keyed on.
@@ -406,8 +436,8 @@ export interface Issue {
   title: string;
   description: string;
   subjectLabel: string | null;
-  // Ordered label/value pairs describing every known signal, for the detail view.
-  detail: [string, string][];
+  // Ordered typed rows describing every known signal, for the detail view.
+  detail: IssueDetail[];
   firstSeen: number; // epoch ms of the current occurrence's onset
   lastSeen: number; // epoch ms it was last observed active
   acknowledged: boolean;

@@ -283,6 +283,45 @@ button.health-toggle:hover:not(:disabled) { text-decoration: underline; }
 }
 .iface-detail dt { color: var(--muted); white-space: nowrap; }
 .iface-detail dd { margin: 0; word-break: break-word; }
+
+/* Issue detail: a one-line triage explainer above the raw signal rows. */
+.issue-explain {
+  margin: 4px 0 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--muted-bg);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: var(--fg);
+}
+/* A verdict row: a tinted callout (not a pill) so a full sentence stays readable. */
+.verdict {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.verdict-good { background: var(--ok-bg); color: var(--ok); }
+.verdict-bad { background: var(--bad-bg); color: var(--bad); }
+.verdict-warn { background: var(--warn-bg); color: var(--warn); }
+.verdict-neutral { background: var(--muted-bg); color: var(--muted); }
+/* Related-issue chips: buttons that expand the correlated sibling issue. */
+.issue-related { display: flex; flex-wrap: wrap; gap: 6px; }
+.related-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.related-chip:hover { background: var(--muted-bg); }
 .iface-detail-heading {
   color: var(--muted);
   font-size: 12px;

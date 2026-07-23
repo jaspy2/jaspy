@@ -185,7 +185,17 @@ export default function STP() {
                       <DeviceLink fqdn={node.fqdn} />
                       {node.depth === 0 && !node.orphan && <span className="badge badge-ok" style={{ marginLeft: 8 }}>root</span>}
                       {node.orphan && <span className="badge badge-warn" style={{ marginLeft: 8 }} title="Upstream could not be resolved from the link topology">orphan</span>}
-                      {node.rootMismatch && <span className="badge badge-warn" style={{ marginLeft: 8 }} title={`This switch reports root ${node.reported?.rootMac ?? '?'}, which is not the computed root`}>root mismatch</span>}
+                      {node.rootMismatch && (() => {
+                        // A superior, off-fleet reported root is the benign
+                        // "root not monitored" case, not a genuine mismatch.
+                        const d = node.rootMismatchDetail;
+                        const unmonitored = d?.reportedRootSuperior === true && !d.reportedRootMonitored;
+                        return unmonitored ? (
+                          <span className="badge badge-muted" style={{ marginLeft: 8 }} title={`The real root ${node.reported?.rootMac ?? '?'} (lower bridge ID) is not monitored by jaspy`}>root not monitored</span>
+                        ) : (
+                          <span className="badge badge-warn" style={{ marginLeft: 8 }} title={`This switch reports root ${node.reported?.rootMac ?? '?'}, which is not the computed root`}>root mismatch</span>
+                        );
+                      })()}
                     </td>
                     <td>
                       {node.rootPortInterfaceName ?? '—'}

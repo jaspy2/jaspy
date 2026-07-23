@@ -704,6 +704,60 @@ mod tests {
         assert_eq!(v200.time_since_topology_change_secs, Some(2297973));
     }
 
+    // Gap-1 seam: the root MAC an HP ProCurve reports via HP-ICF-RPVST-MIB
+    // (not BRIDGE-MIB) must feed root-mismatch detection just like a Cisco's.
+    // Composes the real RPVST decode with build_stp_tree rather than trusting
+    // each layer in isolation.
+    #[test]
+    fn rpvst_reported_root_drives_root_mismatch() {
+        use crate::models::json::{ApiStpPort, WeathermapBase};
+        use crate::utilities::stp::{build_stp_tree, StpInputs};
+
+        let mut store = EntityMetricsStore::new();
+        store.replace_device(DEV.to_string(), rpvst_fixture_metrics());
+        let (mut ports, bridges) = store.network_stp();
+        // The HP switch decoded a root port on vlan 100, so it is a non-root
+        // node. Add a monitored bridge that IS the elected root (no root port),
+        // whose base MAC differs from the 70:10:6f:63:f2:70 the HP reports.
+        ports.insert(
+            "root.example.com".to_string(),
+            vec![ApiStpPort {
+                vlan: 100,
+                stp_port_id: 1,
+                interface_name: Some("1".to_string()),
+                interface_id: Some(1),
+                role: "designated".to_string(),
+                state: "forwarding".to_string(),
+                enabled: Some(true),
+                designated_cost: 0,
+                path_cost: 0,
+                priority: 128,
+                forward_transitions: 1,
+                timestamp: 1,
+            }],
+        );
+        let mut base_macs = HashMap::new();
+        base_macs.insert("root.example.com".to_string(), Some("aa:bb:cc:dd:ee:01".to_string()));
+        base_macs.insert(DEV.to_string(), Some("70:10:6f:63:f2:70".to_string()));
+
+        let tree = build_stp_tree(
+            &StpInputs {
+                ports: &ports,
+                bridges: &bridges,
+                base_macs: &base_macs,
+                topology: &WeathermapBase { devices: HashMap::new() },
+                lag_members: &HashMap::new(),
+            },
+            100,
+        );
+        assert_eq!(tree.roots, vec!["root.example.com".to_string()]);
+        let hp = tree.nodes.iter().find(|n| n.fqdn == DEV).unwrap();
+        assert!(hp.root_mismatch, "HP-reported root must be compared to the elected root");
+        let detail = hp.root_mismatch_detail.as_ref().unwrap();
+        assert_eq!(detail.reported_root_mac.as_deref(), Some("70:10:6f:63:f2:70"));
+        assert_eq!(detail.computed_root_fqdn, "root.example.com");
+    }
+
     // --- bridge scalars via the jaspyStpBridgeTable view ---
 
     const BRIDGE_SCALARS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/jaspystpbridgetable.json"));

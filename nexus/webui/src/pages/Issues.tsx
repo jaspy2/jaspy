@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { Issue } from '../api/types';
+import type { Issue, IssueDetailValue } from '../api/types';
 import { HealthBadge } from '../components/StatusBadge';
 
 // Compact "5m ago" from an epoch-ms timestamp.
@@ -28,11 +28,89 @@ function deviceCell(issue: Issue) {
   return <Link to={`/devices/${encodeURIComponent(issue.fqdn)}`}>{issue.hostname || issue.fqdn}</Link>;
 }
 
-// The expanded body: description, every known signal, timing, and (if acked)
+// The subject portion of an issueKey ("<fqdn>|<kind>|<subject>"); used to find
+// sibling issues on the same sub-entity (e.g. the same VLAN).
+function subjectOf(issueKey: string): string {
+  const parts = issueKey.split('|');
+  return parts.length >= 3 ? parts.slice(2).join('|') : '';
+}
+
+// One-line "what this means / how to triage" per issue kind. Keeps the raw
+// signal rows below it self-explanatory for an on-call admin.
+function explainKind(kind: string): string | null {
+  switch (kind) {
+    case 'stp-root-mismatch':
+      return 'This device names a different root bridge than the one jaspy elected for the VLAN. Compare the two bridge IDs below — the lower one is the root STP would actually choose.';
+    case 'stp-unmonitored-root':
+      return "The VLAN's real root bridge (the lowest bridge ID) is a switch jaspy does not poll. This device correctly points at it — the finding is that the true root is off-fleet, not that this device is misconfigured. Add the upstream bridge to monitoring to resolve it.";
+    case 'stp-orphan':
+      return 'This device has a root port (an upstream toward the root) but jaspy could not resolve the neighbour on it — usually an unmonitored switch or a missing discovered link.';
+    case 'device-down':
+      return 'The device stopped answering polls. Check power, the management link, and SNMP reachability.';
+    case 'poe-budget':
+      return 'A PoE power supply is running near its budget. New powered devices on this switch may fail to power up.';
+    case 'poe-pse-down':
+      return 'A PoE power supply is not operational — ports it feeds cannot deliver power.';
+  }
+  if (kind.startsWith('stp-flag:multiple-roots'))
+    return 'More than one bridge claims to be the VLAN root — a split spanning tree. The two halves are not exchanging BPDUs, so traffic between them may loop or black-hole.';
+  if (kind.startsWith('stp-flag:no-root'))
+    return 'The VLAN has spanning-tree nodes but no elected root bridge — an incomplete or partitioned view.';
+  if (kind.startsWith('stp-flag:cycle'))
+    return 'The computed spanning tree contains a cycle — a physical or logical loop STP has not resolved.';
+  if (kind.startsWith('stp-flag:multiple-root-ports'))
+    return 'A device has more than one root port on this VLAN — an ambiguous path to the root.';
+  if (kind.startsWith('iface-'))
+    return 'An interface-health signal crossed its threshold. The counters below are over the stated window.';
+  if (kind.startsWith('lag:'))
+    return 'A link-aggregation (port-channel) consistency check failed. Members may not be bundling as intended.';
+  return null;
+}
+
+// Render one typed detail value.
+function DetailValue({ value }: { value: IssueDetailValue }) {
+  switch (value.type) {
+    case 'text':
+      return <>{value.text}</>;
+    case 'mac':
+      return (
+        <>
+          <span className="mono">{value.mac}</span>
+          {!value.monitored && <span className="badge badge-warn" style={{ marginLeft: 8 }}>off-fleet</span>}
+        </>
+      );
+    case 'device':
+      return <Link to={`/devices/${encodeURIComponent(value.fqdn)}`}>{value.hostname || value.fqdn}</Link>;
+    case 'interface':
+      return (
+        <>
+          {value.name}
+          {value.state && <span className="muted"> ({value.state})</span>}
+        </>
+      );
+    case 'verdict':
+      return <span className={`verdict verdict-${value.tone}`}>{value.text}</span>;
+    case 'link':
+      return <Link to={value.href}>{value.text} →</Link>;
+  }
+}
+
+// The expanded body: a triage explainer, description, every known signal
+// (typed), any sibling issues on the same subject, timing, and (if acked)
 // who/when. Shared by the mobile card and the desktop detail row.
-function IssueDetail({ issue }: { issue: Issue }) {
+function IssueDetail({
+  issue,
+  related,
+  onOpenRelated,
+}: {
+  issue: Issue;
+  related: Issue[];
+  onOpenRelated: (key: string) => void;
+}) {
+  const explain = explainKind(issue.kind);
   return (
     <>
+      {explain && <p className="issue-explain">{explain}</p>}
       <p style={{ margin: '4px 0 8px' }}>{issue.description}</p>
       <dl className="iface-detail">
         {issue.fqdn && (
@@ -49,12 +127,34 @@ function IssueDetail({ issue }: { issue: Issue }) {
             <dd>{issue.subjectLabel}</dd>
           </>
         )}
-        {issue.detail.map(([label, value]) => (
-          <Fragment key={label}>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
+        {issue.detail.map((row, i) => (
+          <Fragment key={`${row.label}-${i}`}>
+            <dt>{row.label}</dt>
+            <dd>
+              <DetailValue value={row.value} />
+            </dd>
           </Fragment>
         ))}
+        {related.length > 0 && (
+          <>
+            <dt>related</dt>
+            <dd className="issue-related">
+              {related.map((r) => (
+                <button
+                  key={r.issueKey}
+                  className="related-chip"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenRelated(r.issueKey);
+                  }}
+                >
+                  <HealthBadge severity={r.severity} label="⚠" />
+                  {r.title}
+                </button>
+              ))}
+            </dd>
+          </>
+        )}
         <dt>first seen</dt>
         <dd>{absolute(issue.firstSeen)} ({ago(issue.firstSeen)})</dd>
         <dt>last seen</dt>
@@ -87,6 +187,31 @@ export default function Issues() {
       else next.add(key);
       return next;
     });
+
+  // Open a sibling issue and bring it into view — lets the related-chips on one
+  // issue jump to the correlated one (e.g. the orphan behind a root mismatch).
+  const openIssue = (key: string) => {
+    setExpanded((prev) => new Set(prev).add(key));
+    requestAnimationFrame(() =>
+      document.getElementById(`issue-${key}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    );
+  };
+
+  // Sibling issues share a device and a subject (e.g. the same VLAN) but a
+  // different kind — the root-mismatch and orphan that describe one incident.
+  const relatedByKey = useMemo(() => {
+    const all = issues.data?.issues ?? [];
+    const map = new Map<string, Issue[]>();
+    for (const issue of all) {
+      if (!issue.fqdn) continue;
+      const subject = subjectOf(issue.issueKey);
+      const siblings = all.filter(
+        (o) => o.issueKey !== issue.issueKey && o.fqdn === issue.fqdn && subjectOf(o.issueKey) === subject
+      );
+      if (siblings.length > 0) map.set(issue.issueKey, siblings);
+    }
+    return map;
+  }, [issues.data]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['issues'] });
   const ack = useMutation({ mutationFn: api.ackIssue, onSuccess: invalidate });
@@ -129,7 +254,7 @@ export default function Issues() {
   const cardList = (list: Issue[]) => (
     <div className="item-list mobile-only">
       {list.map((issue) => (
-        <div key={issue.issueKey} className="item-card">
+        <div key={issue.issueKey} id={`issue-${issue.issueKey}`} className="item-card">
           <div className="item-title">
             <button className="detail-toggle" onClick={() => toggle(issue.issueKey)} aria-expanded={expanded.has(issue.issueKey)}>
               {issue.title} {expanded.has(issue.issueKey) ? '▾' : '▸'}
@@ -141,7 +266,9 @@ export default function Issues() {
             {issue.subjectLabel && <span>{issue.subjectLabel}</span>}
             <span className="muted">{ago(issue.firstSeen)}</span>
           </div>
-          {expanded.has(issue.issueKey) && <IssueDetail issue={issue} />}
+          {expanded.has(issue.issueKey) && (
+            <IssueDetail issue={issue} related={relatedByKey.get(issue.issueKey) ?? []} onOpenRelated={openIssue} />
+          )}
           <div className="actions">{actionButton(issue)}</div>
         </div>
       ))}
@@ -165,7 +292,7 @@ export default function Issues() {
         <tbody>
           {list.map((issue) => (
             <Fragment key={issue.issueKey}>
-              <tr>
+              <tr id={`issue-${issue.issueKey}`}>
                 <td>
                   <HealthBadge severity={issue.severity} label={issue.severity === 'bad' ? '⚠ critical' : '⚠ warning'} />
                 </td>
@@ -182,7 +309,7 @@ export default function Issues() {
               {expanded.has(issue.issueKey) && (
                 <tr className="vlan-detail-row">
                   <td colSpan={6}>
-                    <IssueDetail issue={issue} />
+                    <IssueDetail issue={issue} related={relatedByKey.get(issue.issueKey) ?? []} onOpenRelated={openIssue} />
                   </td>
                 </tr>
               )}

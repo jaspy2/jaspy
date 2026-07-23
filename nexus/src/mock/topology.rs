@@ -145,14 +145,17 @@ pub fn build() -> Topology {
             sys_descr: "Cisco IOS-XE Software (mock), Catalyst 9600 Switch",
             sw_rev: "17.9.4a",
             sensor_style: SensorStyle::Cisco,
-            stp_vlans: &[10, 20],
+            // core1 is the elected root for 10, 20 and 63. On VLAN 63 an
+            // access switch (a-01) reports a *superior*, off-fleet root — the
+            // stp-root-mismatch + stp-orphan demo (see object()).
+            stp_vlans: &[10, 20, 63],
             stp_style: StpStyle::Cisco,
             vlan_style: VlanStyle::Cisco,
             // A core switch trunks a lot of VLANs. This scattered set makes the
             // core1 uplinks carry ~14 tagged VLANs, exercising the device-detail
             // "N tagged VLANs" column summary (the full list stays in the
             // expandable per-interface detail).
-            vlans: &[1, 10, 20, 30, 40, 50, 100, 101, 102, 110, 200, 210, 300, 900, 999],
+            vlans: &[1, 10, 20, 30, 40, 50, 63, 100, 101, 102, 110, 200, 210, 300, 900, 999],
             interfaces: vec![
                 // The dist downlinks are 2×10G LACP bundles (Po1/Po2 below);
                 // both ends are monitored, so the far-end cross-checks run.
@@ -227,7 +230,10 @@ pub fn build() -> Topology {
         {
             // a-01 carries a healthy 2-member LACP bundle to an unmonitored
             // server (all members bundled, no warnings).
-            let mut a01 = access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco, &[10], StpStyle::Cisco);
+            // a-01 also runs STP on VLAN 63, where its uplink leads to dist1 —
+            // which does NOT run 63 — so its upstream is unresolved (orphan),
+            // and it reports a superior off-fleet root (root-mismatch).
+            let mut a01 = access_switch("access-hall-a-01", ("dist1", "Te1/1/2"), false, VlanStyle::Cisco, &[10, 63], StpStyle::Cisco);
             a01.interfaces.push(port_channel(5001, "Po1", "Port-channel1", "server bundle", 2000));
             a01.lags = vec![MockLag {
                 ifindex: 5001,
@@ -493,6 +499,14 @@ pub fn stp_role(dev: &MockDevice, iface: &MockInterface) -> &'static str {
 // base MAC, space-separated lowercase hex.
 pub fn bridge_id_spaced(priority: i64, dev_idx: usize) -> String {
     format!("{:02x} {:02x} {}", (priority >> 8) & 0xff, priority & 0xff, base_mac_spaced(dev_idx))
+}
+
+// A superior root (priority 4096 + vlan) advertised by a bridge that belongs
+// to no mock device — drives the stp-root-mismatch demo. The MAC deliberately
+// falls outside the mock's 02:00:00:00:1x:01 base-MAC space.
+pub fn off_fleet_root_bridge_id(vlan: i64) -> String {
+    let priority = 4096 + vlan;
+    format!("{:02x} {:02x} 5c e1 76 60 9b 00", (priority >> 8) & 0xff, priority & 0xff)
 }
 
 pub fn iface_up(iface: &MockInterface, elapsed: f64) -> bool {
@@ -1249,8 +1263,13 @@ impl Topology {
         if let Some(vlan) = vlan.filter(|v| dev.stp_style == StpStyle::Cisco && dev.stp_vlans.contains(v)) {
             // Tier by name: core 0, dist 4, access 8 — matches the per-port
             // path costs the STP tables report.
-            let root_cost = if dev.name == "core1" { 0 } else if dev.name.starts_with("dist") { 4 } else { 8 };
+            // a-01 on VLAN 63 hears a superior root (priority 4096) from an
+            // unmonitored bridge upstream — jaspy elects core1 for the VLAN, so
+            // this reads as a root mismatch pinned (misleadingly) on a-01.
+            let off_fleet = dev.name == "access-hall-a-01" && vlan == 63;
+            let root_cost = if off_fleet { 60000 } else if dev.name == "core1" { 0 } else if dev.name.starts_with("dist") { 4 } else { 8 };
             return match object_id {
+                "BRIDGE-MIB::dot1dStpDesignatedRoot" if off_fleet => Some(json!(off_fleet_root_bridge_id(vlan))),
                 "BRIDGE-MIB::dot1dStpDesignatedRoot" => Some(json!(bridge_id_spaced(24576 + vlan, 0))),
                 "BRIDGE-MIB::dot1dStpRootCost" => Some(json!(root_cost)),
                 "BRIDGE-MIB::dot1dStpRootPort" => {
@@ -1768,6 +1787,21 @@ mod tests {
         let uplink_port = Topology::stp_ports(dist1).into_iter()
             .find(|(_, i)| i.alias.starts_with("uplink")).map(|(p, _)| p).unwrap();
         assert_eq!(topo.object(&dist1.fqdn(), Some(10), "BRIDGE-MIB::dot1dStpRootPort", 0.0).unwrap(), uplink_port);
+    }
+
+    #[test]
+    fn stp_vlan63_access_reports_superior_off_fleet_root() {
+        let topo = build();
+        // a-01 hears a superior (priority 4159) off-fleet root on VLAN 63,
+        // while core1 still elects itself — the root-mismatch demo. dist1 does
+        // not run 63, so a-01's uplink upstream is unresolved (orphan).
+        let a01 = "access-hall-a-01.mock.jaspy";
+        let root = topo.object(a01, Some(63), "BRIDGE-MIB::dot1dStpDesignatedRoot", 0.0).unwrap();
+        assert_eq!(root.as_str().unwrap(), "10 3f 5c e1 76 60 9b 00"); // priority 4159, off-fleet MAC
+        let core_root = topo.object("core1.mock.jaspy", Some(63), "BRIDGE-MIB::dot1dStpDesignatedRoot", 0.0).unwrap();
+        assert_eq!(core_root.as_str().unwrap(), format!("60 3f {}", base_mac_spaced(0))); // core1 elects itself
+        // dist1 does not participate in VLAN 63.
+        assert!(topo.object("dist1.mock.jaspy", Some(63), "BRIDGE-MIB::dot1dStpDesignatedRoot", 0.0).is_none());
     }
 
     #[test]
