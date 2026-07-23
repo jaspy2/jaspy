@@ -1,8 +1,8 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember } from '../api/types';
+import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, StpPort } from '../api/types';
 import { HealthBadge, PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import useLiveSocket from '../hooks/useLiveSocket';
 
@@ -117,10 +117,28 @@ function poeMeterColor(pct: number): string {
 
 // Device-wide PoE budget summary (one card per PSE group), with a utilization
 // meter. Shown only for PoE-capable devices.
+// A titled section whose body collapses when its heading is clicked. Starts
+// expanded; each section keeps its own open/closed state so they toggle
+// independently (desktop and mobile alike).
+function Section({ title, suffix, children }: { title: string; suffix?: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section>
+      <h2 className="section-head">
+        <button className="section-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          <span className="section-caret" aria-hidden="true">{open ? '▾' : '▸'}</span>
+          {title}
+        </button>
+        {suffix}
+      </h2>
+      {open && children}
+    </section>
+  );
+}
+
 function PoeBudgetSummary({ budgets }: { budgets: PoeBudget[] }) {
   return (
     <>
-      <h2>PoE budget</h2>
       {budgets.map((b) => (
         <div key={b.group} className="panel">
           <div className="kv">
@@ -454,6 +472,82 @@ function updateBody(device: Device, overrides: Partial<DeviceUpdate>): DeviceUpd
   };
 }
 
+// --- Column sorting -------------------------------------------------------
+// Both detail tables sort the same way as the Devices list: click a header to
+// sort, click again to flip direction. The sort key extracts a comparable
+// value; a null value always sorts last regardless of direction.
+
+type IfaceSortKey = 'name' | 'state' | 'speed' | 'vlan' | 'tagged' | 'poe' | 'alias' | 'type' | 'connected';
+type StpSortKey = 'vlan' | 'interface' | 'role' | 'state' | 'enabled' | 'pathCost' | 'designatedCost' | 'priority' | 'forwardTransitions';
+
+// Comparator that keeps nulls last, sorts numbers numerically and strings with
+// natural (numeric-aware) ordering, then applies the direction.
+function makeCmp<T>(val: (t: T) => string | number | null, asc: boolean): (a: T, b: T) => number {
+  return (a, b) => {
+    const av = val(a);
+    const bv = val(b);
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    const base =
+      typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv), undefined, { numeric: true });
+    return asc ? base : -base;
+  };
+}
+
+function ifaceSortVal(i: Interface, key: IfaceSortKey): string | number | null {
+  switch (key) {
+    case 'name': return i.displayName ?? i.name ?? '';
+    case 'state': return i.up === false ? 0 : i.up === null ? 1 : 2; // down first
+    case 'speed': return i.speed;
+    case 'vlan': return i.nativeVlan;
+    case 'tagged': return i.taggedVlans?.length ?? 0;
+    case 'poe': return i.poe && i.poe.status === 'deliveringPower' ? i.poe.powerMw ?? 0 : null;
+    case 'alias': return i.alias ?? null;
+    case 'type': return i.interfaceType;
+    case 'connected': return i.connectedTo?.fqdn ?? (i.cdpNeighbor ? cdpNeighborText(i.cdpNeighbor) : null);
+  }
+}
+
+// The filter/label key for an interface. Mostly the raw ifType, except
+// propVirtual is split by name into port-channels (Po) and SVIs (VLAN) so those
+// can be filtered separately from the remaining virtual interfaces.
+function ifaceCategory(i: Interface): string {
+  if (i.interfaceType === 'propVirtual') {
+    const name = i.displayName ?? i.name ?? '';
+    if (/^Po/i.test(name)) return 'Po';
+    if (/^Vl/i.test(name)) return 'VLAN';
+  }
+  return i.interfaceType;
+}
+
+// Short chip labels; unknown categories show verbatim (so Po/VLAN pass through
+// unchanged). The full category is kept as the filter key and in the tooltip.
+const SHORT_IFTYPE: Record<string, string> = {
+  ethernetCsmacd: 'eth',
+  propVirtual: 'propV',
+  l2vlan: 'l2v',
+};
+function shortIfType(t: string): string {
+  return SHORT_IFTYPE[t] ?? t;
+}
+
+function stpSortVal(p: StpPort, key: StpSortKey): string | number | null {
+  switch (key) {
+    case 'vlan': return p.vlan;
+    case 'interface': return p.interfaceName ?? `port ${p.stpPortId}`;
+    case 'role': return p.role;
+    case 'state': return p.state;
+    case 'enabled': return p.enabled === null ? null : p.enabled ? 1 : 0;
+    case 'pathCost': return p.pathCost;
+    case 'designatedCost': return p.designatedCost;
+    case 'priority': return p.priority;
+    case 'forwardTransitions': return p.forwardTransitions;
+  }
+}
+
 export default function DeviceDetail() {
   const { fqdn = '' } = useParams();
   const navigate = useNavigate();
@@ -469,6 +563,33 @@ export default function DeviceDetail() {
       else next.add(id);
       return next;
     });
+
+  const [ifaceSort, setIfaceSort] = useState<IfaceSortKey>('name');
+  const [ifaceAsc, setIfaceAsc] = useState(true);
+  const onIfaceSort = (key: IfaceSortKey) => {
+    if (key === ifaceSort) setIfaceAsc(!ifaceAsc);
+    else { setIfaceSort(key); setIfaceAsc(true); }
+  };
+  const ifaceArrow = (key: IfaceSortKey) => (ifaceSort === key ? (ifaceAsc ? ' ▲' : ' ▼') : '');
+
+  // Interface categories the user has toggled off. VLAN SVIs are hidden by
+  // default — they're rarely what you're looking at on a device page.
+  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set(['VLAN']));
+  const toggleType = (t: string) =>
+    setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+
+  const [stpSort, setStpSort] = useState<StpSortKey>('vlan');
+  const [stpAsc, setStpAsc] = useState(true);
+  const onStpSort = (key: StpSortKey) => {
+    if (key === stpSort) setStpAsc(!stpAsc);
+    else { setStpSort(key); setStpAsc(true); }
+  };
+  const stpArrow = (key: StpSortKey) => (stpSort === key ? (stpAsc ? ' ▲' : ' ▼') : '');
 
   const detail = useQuery({
     queryKey: ['device', fqdn],
@@ -549,6 +670,39 @@ export default function DeviceDetail() {
   const portChannels = detail.data.portChannels ?? [];
   const sensors = entity.data?.sensors ?? [];
   const stp = entity.data?.stp ?? [];
+  const sortedInterfaces = [...interfaces].sort(makeCmp((i) => ifaceSortVal(i, ifaceSort), ifaceAsc));
+  const sortedStp = [...stp].sort(makeCmp((p) => stpSortVal(p, stpSort), stpAsc));
+
+  // Interface-type filter: one toggle per distinct ifType, alpha-sorted, with a
+  // per-type count. Hidden types drop out of both the mobile and desktop views.
+  const typeCounts = new Map<string, number>();
+  for (const i of interfaces) {
+    const cat = ifaceCategory(i);
+    typeCounts.set(cat, (typeCounts.get(cat) ?? 0) + 1);
+  }
+  const interfaceTypes = [...typeCounts.keys()].sort();
+  const visibleInterfaces = sortedInterfaces.filter((i) => !hiddenTypes.has(ifaceCategory(i)));
+  const ifaceCountLabel =
+    visibleInterfaces.length === interfaces.length
+      ? `${interfaces.length}`
+      : `${visibleInterfaces.length} of ${interfaces.length}`;
+  const typeFilter =
+    interfaceTypes.length > 1
+      ? interfaceTypes.map((t) => {
+          const on = !hiddenTypes.has(t);
+          return (
+            <button
+              key={t}
+              className={`chip ${on ? 'chip-on' : 'chip-off'}`}
+              aria-pressed={on}
+              onClick={() => toggleType(t)}
+              title={on ? `Hide ${t} interfaces` : `Show ${t} interfaces`}
+            >
+              {shortIfType(t)} ({typeCounts.get(t)})
+            </button>
+          );
+        })
+      : undefined;
   const entitypollerEnabled = system.data?.entitypollerEnabled === true;
   const vlanpollerEnabled = system.data?.vlanpollerEnabled === true;
 
@@ -596,8 +750,7 @@ export default function DeviceDetail() {
       </div>
 
       {portChannels.length > 0 && (
-        <>
-          <h2>Port-channels ({portChannels.length})</h2>
+        <Section title={`Port-channels (${portChannels.length})`}>
           {portChannels.map((po) => (
             <div key={po.ifindex} className="panel">
               <span className="item-title">
@@ -652,12 +805,32 @@ export default function DeviceDetail() {
               </div>
             </div>
           ))}
-        </>
+        </Section>
       )}
 
-      <h2>Interfaces ({interfaces.length})</h2>
+      <Section title={`Interfaces (${ifaceCountLabel})`} suffix={typeFilter}>
+      {/* On mobile the sortable table headers are hidden; offer sort here. */}
+      <div className="toolbar mobile-only">
+        <select
+          aria-label="Sort interfaces"
+          value={`${ifaceSort}:${ifaceAsc ? 'asc' : 'desc'}`}
+          onChange={(e) => {
+            const [key, dir] = e.target.value.split(':');
+            setIfaceSort(key as IfaceSortKey);
+            setIfaceAsc(dir === 'asc');
+          }}
+        >
+          <option value="name:asc">Name A–Z</option>
+          <option value="name:desc">Name Z–A</option>
+          <option value="state:asc">Down first</option>
+          <option value="speed:desc">Fastest first</option>
+          <option value="vlan:asc">VLAN</option>
+          <option value="poe:desc">Most PoE draw</option>
+          <option value="connected:asc">Connected to</option>
+        </select>
+      </div>
       <div className="item-list mobile-only">
-        {interfaces.map((iface) => (
+        {visibleInterfaces.map((iface) => (
           <div key={iface.id} className="item-card">
             <span className="item-title">
               <button className="detail-toggle" onClick={() => toggleDetail(iface.id)} aria-expanded={expandedDetail.has(iface.id)}>
@@ -708,19 +881,19 @@ export default function DeviceDetail() {
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>State</th>
-              <th>Speed</th>
-              <th>VLAN</th>
-              <th>Tagged VLANs</th>
-              <th>PoE</th>
-              <th>Alias</th>
-              <th>Type</th>
-              <th>Connected to</th>
+              <th className="sortable" onClick={() => onIfaceSort('name')}>Name{ifaceArrow('name')}</th>
+              <th className="sortable" onClick={() => onIfaceSort('state')}>State{ifaceArrow('state')}</th>
+              <th className="sortable" onClick={() => onIfaceSort('speed')}>Speed{ifaceArrow('speed')}</th>
+              <th className="sortable" onClick={() => onIfaceSort('vlan')}>VLAN{ifaceArrow('vlan')}</th>
+              <th className="sortable" onClick={() => onIfaceSort('tagged')}>Tagged VLANs{ifaceArrow('tagged')}</th>
+              <th className="sortable" onClick={() => onIfaceSort('poe')}>PoE{ifaceArrow('poe')}</th>
+              <th className="sortable" onClick={() => onIfaceSort('alias')}>Alias{ifaceArrow('alias')}</th>
+              <th className="sortable" onClick={() => onIfaceSort('type')}>Type{ifaceArrow('type')}</th>
+              <th className="sortable" onClick={() => onIfaceSort('connected')}>Connected to{ifaceArrow('connected')}</th>
             </tr>
           </thead>
           <tbody>
-            {interfaces.map((iface) => (
+            {visibleInterfaces.map((iface) => (
               <Fragment key={iface.id}>
                 <tr>
                   <td>
@@ -771,15 +944,19 @@ export default function DeviceDetail() {
           </tbody>
         </table>
       </div>
+      </Section>
 
-      {poeBudget.length > 0 && <PoeBudgetSummary budgets={poeBudget} />}
+      {poeBudget.length > 0 && (
+        <Section title="PoE budget">
+          <PoeBudgetSummary budgets={poeBudget} />
+        </Section>
+      )}
 
       {sensors.length > 0 && (
-        <>
-          <h2>
-            Sensors ({sensors.length})
-            <UpdatedAgo timestamps={sensors.map((s) => s.timestamp)} />
-          </h2>
+        <Section
+          title={`Sensors (${sensors.length})`}
+          suffix={<UpdatedAgo timestamps={sensors.map((s) => s.timestamp)} />}
+        >
           <div className="table-wrap">
             <table>
               <thead>
@@ -802,32 +979,31 @@ export default function DeviceDetail() {
               </tbody>
             </table>
           </div>
-        </>
+        </Section>
       )}
 
       {stp.length > 0 && (
-        <>
-          <h2>
-            STP ({stp.length})
-            <UpdatedAgo timestamps={stp.map((p) => p.timestamp)} />
-          </h2>
+        <Section
+          title={`STP (${stp.length})`}
+          suffix={<UpdatedAgo timestamps={stp.map((p) => p.timestamp)} />}
+        >
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>VLAN</th>
-                  <th>Interface</th>
-                  <th>Role</th>
-                  <th>State</th>
-                  <th className="hide-mobile">Enabled</th>
-                  <th className="hide-mobile">Path cost</th>
-                  <th className="hide-mobile">Designated cost</th>
-                  <th className="hide-mobile">Priority</th>
-                  <th className="hide-mobile">Fwd transitions</th>
+                  <th className="sortable" onClick={() => onStpSort('vlan')}>VLAN{stpArrow('vlan')}</th>
+                  <th className="sortable" onClick={() => onStpSort('interface')}>Interface{stpArrow('interface')}</th>
+                  <th className="sortable" onClick={() => onStpSort('role')}>Role{stpArrow('role')}</th>
+                  <th className="sortable" onClick={() => onStpSort('state')}>State{stpArrow('state')}</th>
+                  <th className="sortable hide-mobile" onClick={() => onStpSort('enabled')}>Enabled{stpArrow('enabled')}</th>
+                  <th className="sortable hide-mobile" onClick={() => onStpSort('pathCost')}>Path cost{stpArrow('pathCost')}</th>
+                  <th className="sortable hide-mobile" onClick={() => onStpSort('designatedCost')}>Designated cost{stpArrow('designatedCost')}</th>
+                  <th className="sortable hide-mobile" onClick={() => onStpSort('priority')}>Priority{stpArrow('priority')}</th>
+                  <th className="sortable hide-mobile" onClick={() => onStpSort('forwardTransitions')}>Fwd transitions{stpArrow('forwardTransitions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {stp.map((port) => (
+                {sortedStp.map((port) => (
                   <tr key={`${port.vlan}-${port.stpPortId}`}>
                     <td><Link to={`/stp?vlan=${port.vlan}`} title="Open the STP tree for this VLAN">{port.vlan}</Link></td>
                     <td className="wrap-mobile">{port.interfaceName ?? `port ${port.stpPortId}`}</td>
@@ -843,7 +1019,7 @@ export default function DeviceDetail() {
               </tbody>
             </table>
           </div>
-        </>
+        </Section>
       )}
 
       {sensors.length === 0 && stp.length === 0 && entitypollerEnabled && (

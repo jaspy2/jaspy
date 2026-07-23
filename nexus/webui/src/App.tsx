@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { NavLink, Route, Routes, useMatch } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api/client';
 import Dashboard from './pages/Dashboard';
@@ -26,6 +26,8 @@ const NAV = [
 export default function App() {
   const [navOpen, setNavOpen] = useState(false);
   const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary, refetchInterval: 10000 });
+  const deviceMatch = useMatch('/devices/:fqdn');
+  const deviceFqdn = deviceMatch?.params.fqdn;
 
   return (
     <div className="app">
@@ -33,7 +35,16 @@ export default function App() {
         <button className="hamburger" onClick={() => setNavOpen(!navOpen)} aria-label="Toggle navigation">
           ☰
         </button>
-        <span className="brand">jaspy</span>
+        <span className="brand" title={deviceFqdn ?? 'jaspy'}>
+          {deviceFqdn ? (
+            <>
+              <span className="brand-prefix hide-mobile">jaspy — </span>
+              {deviceFqdn}
+            </>
+          ) : (
+            'jaspy'
+          )}
+        </span>
         <span className="event-name">{summary.data?.eventName ?? 'no event'}</span>
         <span className="spacer" />
         {summary.data && (

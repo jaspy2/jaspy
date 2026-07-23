@@ -70,7 +70,8 @@ body {
   top: 0;
   z-index: 10;
 }
-.brand { font-weight: 700; font-size: 16px; letter-spacing: 0.5px; }
+.brand { font-weight: 700; font-size: 16px; letter-spacing: 0.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-prefix { color: var(--muted); font-weight: 700; }
 .event-name { color: var(--muted); border-left: 1px solid var(--border); padding-left: 12px; }
 .spacer { flex: 1; }
 .header-badges { display: flex; gap: 6px; }
@@ -122,6 +123,22 @@ h1 {
   overflow-wrap: anywhere; /* long device fqdns on narrow screens */
 }
 h2 { font-size: 16px; margin: 24px 0 10px; }
+/* Collapsible section heading: the h2 stays a heading; its title becomes a
+   toggle button that keeps the heading's weight/size and adds a caret. */
+h2.section-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+button.section-toggle {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+button.section-toggle:hover { color: var(--accent); }
+.section-caret { font-size: inherit; color: var(--muted); width: 0.9em; }
 a { color: var(--accent); }
 
 /* Cards */
@@ -322,6 +339,23 @@ button.health-toggle:hover:not(:disabled) { text-decoration: underline; }
   cursor: pointer;
 }
 .related-chip:hover { background: var(--muted-bg); }
+
+/* Interface type filter: toggle chips. "On" is a filled accent chip; "off"
+   (the type is hidden) is muted and struck through so the state reads at a
+   glance. */
+.chip {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip-on { background: var(--accent); color: #fff; border-color: transparent; }
+.chip-off { background: transparent; color: var(--muted); text-decoration: line-through; }
+.chip:hover:not(:disabled) { filter: brightness(1.1); }
+.chip-off:hover { filter: none; background: var(--muted-bg); }
 .iface-detail-heading {
   color: var(--muted);
   font-size: 12px;
