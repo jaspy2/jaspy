@@ -301,6 +301,7 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
     let vlan_label = format!("VLAN {}", vlan);
     let subject = format!("vlan{}", vlan);
     let mut out = Vec::new();
+    let stp_tree_link = link_row("spanning tree", format!("VLAN {} tree", vlan), format!("/stp?vlan={}", vlan));
 
     for flag in tree.flags.iter() {
         // Flags are "code" or "code:<fqdn>" (multiple-root-ports).
@@ -309,7 +310,7 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
             None => (flag.as_str(), None),
         };
         let device = flag_fqdn.clone().unwrap_or_default();
-        let (severity, title, description) = match code {
+        let (mut severity, title, description) = match code {
             "no-root" => (SEV_BAD, "STP: no root bridge", format!("VLAN {} has STP nodes but no elected root bridge", vlan)),
             "multiple-roots" => (SEV_BAD, "STP: multiple roots", format!("VLAN {} has more than one root bridge", vlan)),
             "cycle" => (SEV_BAD, "STP: cycle", format!("VLAN {} spanning tree contains a cycle", vlan)),
@@ -320,6 +321,18 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
             ),
             _ => (SEV_WARN, "STP anomaly", format!("VLAN {}: {}", vlan, flag)),
         };
+        // Enrich "multiple roots" with the competing claims and whether they
+        // are actually connected. Roots that share no path are most likely
+        // independent segments, not a fault — downgrade those to a warning.
+        let detail = match (code, tree.multiple_roots_detail.as_ref()) {
+            ("multiple-roots", Some(d)) => {
+                if d.adjacent == Some(false) {
+                    severity = SEV_WARN;
+                }
+                multiple_roots_detail(d, &stp_tree_link, vlan)
+            }
+            _ => vec![pair("vlan", vlan.to_string()), pair("flag", flag.clone())],
+        };
         out.push(DerivedIssue {
             fqdn: device.clone(),
             hostname: hostname_of(&device),
@@ -329,11 +342,9 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
             title: title.to_string(),
             description,
             subject_label: Some(vlan_label.clone()),
-            detail: vec![pair("vlan", vlan.to_string()), pair("flag", flag.clone())],
+            detail,
         });
     }
-
-    let stp_tree_link = link_row("spanning tree", format!("VLAN {} tree", vlan), format!("/stp?vlan={}", vlan));
 
     for node in tree.nodes.iter() {
         let host = hostname_of(&node.fqdn);
@@ -413,6 +424,59 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
 // their bridge priorities, whether the reported root is even monitored, and a
 // verdict on which claim STP would actually elect — everything an admin needs
 // to triage without leaving the Issues page.
+// The expanded detail for a "multiple roots" flag: each bridge claiming root
+// (with its bridge ID, and the preferred/lowest marked), whether the claimants
+// are actually connected, and a grounded verdict — so the admin can tell a real
+// split brain from independently-monitored segments.
+fn multiple_roots_detail(d: &json::ApiStpMultipleRootsDetail, stp_tree_link: &ApiIssueDetail, vlan: i64) -> Vec<ApiIssueDetail> {
+    let mut detail = Vec::new();
+    for claim in d.roots.iter() {
+        detail.push(ApiIssueDetail {
+            label: if claim.preferred { "claimed root (preferred)".to_string() } else { "claimed root".to_string() },
+            value: ApiIssueDetailValue::StpRoot {
+                fqdn: claim.fqdn.clone(),
+                hostname: claim.hostname.clone(),
+                mac: claim.mac.clone(),
+                priority: claim.priority,
+                preferred: claim.preferred,
+            },
+        });
+    }
+    match (d.adjacent, d.connecting_link.as_ref()) {
+        (Some(true), Some(link)) => {
+            detail.push(pair(
+                "roots connected",
+                format!("{} {} ↔ {} {}", hostname_of(&link.a_fqdn), link.a_interface, hostname_of(&link.b_fqdn), link.b_interface),
+            ));
+            detail.push(verdict_row(
+                "verdict",
+                format!("these roots share a link but have not converged — check that VLAN {} is trunked on it and BPDUs pass both ways (loop / black-hole risk)", vlan),
+                "bad",
+            ));
+        }
+        (Some(true), None) => {
+            detail.push(verdict_row(
+                "verdict",
+                "the claimed roots share a path in the topology but spanning tree has not unified them (loop / black-hole risk)",
+                "bad",
+            ));
+        }
+        (Some(false), _) => {
+            detail.push(pair("roots connected", "no monitored link between them"));
+            detail.push(verdict_row(
+                "verdict",
+                "no path between these roots in the discovered topology — most likely independent L2 segments jaspy monitors separately, not a fault",
+                "neutral",
+            ));
+        }
+        (None, _) => {
+            detail.push(verdict_row("verdict", "could not determine whether these roots are connected", "neutral"));
+        }
+    }
+    detail.push(stp_tree_link.clone());
+    detail
+}
+
 fn root_mismatch_detail(node: &json::ApiStpNode, stp_tree_link: &ApiIssueDetail) -> Vec<ApiIssueDetail> {
     let mut detail = Vec::new();
     let Some(d) = node.root_mismatch_detail.as_ref() else {
@@ -816,6 +880,7 @@ mod tests {
             ],
             blocked_links: vec![],
             flags: vec!["no-root".to_string(), "multiple-root-ports:core1.example.com".to_string()],
+            multiple_roots_detail: None,
         };
         let issues = stp_tree_issues(&tree);
         let by_kind: HashMap<&str, &DerivedIssue> = issues.iter().map(|i| (i.kind.as_str(), i)).collect();
@@ -891,7 +956,7 @@ mod tests {
     }
 
     fn tree_with_node(node: json::ApiStpNode) -> json::ApiStpTree {
-        json::ApiStpTree { vlan: 63, roots: vec!["core.example.com".to_string()], nodes: vec![node], blocked_links: vec![], flags: vec![] }
+        json::ApiStpTree { vlan: 63, roots: vec!["core.example.com".to_string()], nodes: vec![node], blocked_links: vec![], flags: vec![], multiple_roots_detail: None }
     }
 
     #[test]
@@ -946,6 +1011,56 @@ mod tests {
             assert_eq!(issues[0].kind, "stp-root-mismatch", "superior={:?} monitored={}", superior, monitored);
             assert_eq!(issues[0].severity, SEV_BAD);
         }
+    }
+
+    fn multiple_roots_tree(adjacent: Option<bool>) -> json::ApiStpTree {
+        json::ApiStpTree {
+            vlan: 10,
+            roots: vec!["a.example.com".to_string(), "b.example.com".to_string()],
+            nodes: vec![],
+            blocked_links: vec![],
+            flags: vec!["multiple-roots".to_string()],
+            multiple_roots_detail: Some(json::ApiStpMultipleRootsDetail {
+                roots: vec![
+                    json::ApiStpRootClaim { fqdn: "b.example.com".to_string(), hostname: "b".to_string(), mac: Some("00:00:00:00:00:0b".to_string()), priority: Some(24586), preferred: true },
+                    json::ApiStpRootClaim { fqdn: "a.example.com".to_string(), hostname: "a".to_string(), mac: Some("00:00:00:00:00:0a".to_string()), priority: Some(28682), preferred: false },
+                ],
+                adjacent,
+                connecting_link: match adjacent {
+                    Some(true) => Some(json::ApiStpLinkEnds { a_fqdn: "a.example.com".to_string(), a_interface: "Te1/0/12".to_string(), b_fqdn: "b.example.com".to_string(), b_interface: "Te1/1/8".to_string() }),
+                    _ => None,
+                },
+            }),
+        }
+    }
+
+    #[test]
+    fn multiple_roots_connected_is_critical_with_evidence() {
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(true)));
+        let issue = &issues[0];
+        assert_eq!(issue.kind, "stp-flag:multiple-roots");
+        assert_eq!(issue.severity, SEV_BAD); // connected roots → real split brain
+        // Both claimants are listed, and exactly one is marked preferred.
+        let claims: Vec<_> = issue.detail.iter().filter_map(|d| match &d.value {
+            ApiIssueDetailValue::StpRoot { hostname, preferred, .. } => Some((hostname.as_str(), *preferred)),
+            _ => None,
+        }).collect();
+        assert_eq!(claims.len(), 2);
+        assert_eq!(claims.iter().filter(|(_, p)| *p).count(), 1);
+        // The preferred one is the lower bridge ID (b, priority 24586), shown first.
+        assert_eq!(claims[0], ("b", true));
+        // The connecting link is surfaced.
+        assert!(issue.detail.iter().any(|d| d.label == "roots connected"));
+        assert_eq!(verdict_tone(issue), Some("bad"));
+    }
+
+    #[test]
+    fn multiple_roots_disjoint_is_downgraded_to_warn() {
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(false)));
+        let issue = &issues[0];
+        assert_eq!(issue.kind, "stp-flag:multiple-roots");
+        assert_eq!(issue.severity, SEV_WARN); // no path between roots → likely separate segments
+        assert_eq!(verdict_tone(issue), Some("neutral"));
     }
 
     #[test]

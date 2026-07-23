@@ -5,8 +5,8 @@
 // active tree. Ports with role alternate/backUp are the links STP blocks.
 use crate::collectors::poller::SNMPBotResultEntryObjectValue;
 use crate::models::json::{
-    ApiInterfaceConnection, ApiStpBlockedLink, ApiStpBridge, ApiStpNode, ApiStpPort, ApiStpTree,
-    WeathermapBase,
+    ApiInterfaceConnection, ApiStpBlockedLink, ApiStpBridge, ApiStpLinkEnds, ApiStpMultipleRootsDetail,
+    ApiStpNode, ApiStpPort, ApiStpRootClaim, ApiStpTree, WeathermapBase,
 };
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -167,6 +167,31 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
         .map(|m| normalize_mac(m))
         .collect();
 
+    // Evidence for a "multiple-roots" flag: each claimant's bridge ID, which
+    // one STP would elect (lowest), and whether the claimants are actually
+    // connected (a real split brain) or disjoint (likely separate segments).
+    let multiple_roots_detail = if roots.len() > 1 {
+        let mut claims: Vec<ApiStpRootClaim> = roots.iter().map(|fqdn| {
+            let reported = inputs.bridges.get(fqdn).and_then(|bs| bs.iter().find(|b| b.vlan == vlan));
+            ApiStpRootClaim {
+                fqdn: fqdn.clone(),
+                hostname: fqdn.split('.').next().unwrap_or(fqdn).to_string(),
+                mac: reported.and_then(|b| b.root_mac.as_ref()).map(|m| normalize_mac(m)),
+                priority: reported.and_then(|b| b.root_priority),
+                preferred: false,
+            }
+        }).collect();
+        // Lowest bridge ID (priority, then MAC) wins; unknown priority sorts last.
+        claims.sort_by(|a, b| bridge_id_key(a).cmp(&bridge_id_key(b)));
+        if let Some(first) = claims.first_mut() {
+            first.preferred = true;
+        }
+        let (adjacent, connecting_link) = roots_adjacency(inputs, &roots);
+        Some(ApiStpMultipleRootsDetail { roots: claims, adjacent, connecting_link })
+    } else {
+        None
+    };
+
     // Cycle guard: a node whose parent chain loops back on itself is part of
     // a cycle; demote the cycle members (and only them) to orphan. Nodes
     // whose chain merely leads *into* a cycle keep their parent — after the
@@ -317,7 +342,51 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
         }
     }
 
-    ApiStpTree { vlan, roots, nodes, blocked_links, flags }
+    ApiStpTree { vlan, roots, nodes, blocked_links, flags, multiple_roots_detail }
+}
+
+// Sort key for a root claim: lowest bridge ID wins (priority first, MAC to
+// break ties). Unknown priority sorts last so a claim with data is preferred.
+fn bridge_id_key(claim: &ApiStpRootClaim) -> (i64, String) {
+    (claim.priority.unwrap_or(i64::MAX), claim.mac.clone().unwrap_or_default())
+}
+
+// Whether any two claimed roots are directly linked in the discovered topology,
+// and the link joining the first such pair. A direct edge means the roots share
+// a physical path (a genuine split brain); none found means they are most
+// likely independent segments. (Direct edges only for now; multi-hop paths are
+// a future refinement.)
+fn roots_adjacency(inputs: &StpInputs, roots: &[String]) -> (Option<bool>, Option<ApiStpLinkEnds>) {
+    for (i, a) in roots.iter().enumerate() {
+        for b in roots.iter().skip(i + 1) {
+            if let Some(dev) = inputs.topology.devices.get(a) {
+                for iface in dev.interfaces.values() {
+                    if let Some(conn) = iface.connected_to.as_ref() {
+                        if &conn.fqdn == b {
+                            return (Some(true), Some(ApiStpLinkEnds {
+                                a_fqdn: a.clone(), a_interface: iface.name.clone(),
+                                b_fqdn: b.clone(), b_interface: conn.interface.clone(),
+                            }));
+                        }
+                    }
+                }
+            }
+            // Links are recorded one-directionally, so also look from b's side.
+            if let Some(dev) = inputs.topology.devices.get(b) {
+                for iface in dev.interfaces.values() {
+                    if let Some(conn) = iface.connected_to.as_ref() {
+                        if &conn.fqdn == a {
+                            return (Some(true), Some(ApiStpLinkEnds {
+                                a_fqdn: a.clone(), a_interface: conn.interface.clone(),
+                                b_fqdn: b.clone(), b_interface: iface.name.clone(),
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    (Some(false), None)
 }
 
 // ---------------------------------------------------------------------------
@@ -555,6 +624,43 @@ mod tests {
         let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
         assert_eq!(tree.roots, vec!["core.x", "leaf-b.x"]);
         assert!(tree.flags.contains(&"multiple-roots".to_string()));
+    }
+
+    #[test]
+    fn multiple_roots_detail_lists_claims_and_adjacency() {
+        // Two self-rooting bridges, each reporting itself as root.
+        let mut ports = HashMap::new();
+        ports.insert("sw-a.x".to_string(), vec![port(10, "designated", "forwarding", 1, "a1", 0)]);
+        ports.insert("sw-b.x".to_string(), vec![port(10, "designated", "forwarding", 1, "b1", 0)]);
+        let mut bridges = HashMap::new();
+        bridges.insert("sw-a.x".to_string(), vec![bridge_prio(10, "00:00:00:00:00:aa", 100, 0)]);
+        bridges.insert("sw-b.x".to_string(), vec![bridge_prio(10, "00:00:00:00:00:bb", 200, 0)]);
+        let mut base_macs = HashMap::new();
+        base_macs.insert("sw-a.x".to_string(), Some("00:00:00:00:00:aa".to_string()));
+        base_macs.insert("sw-b.x".to_string(), Some("00:00:00:00:00:bb".to_string()));
+
+        // Adjacent: a directly linked to b → real split brain.
+        let mut devices = HashMap::new();
+        let (fa, da) = topo_device("sw-a.x", &[(1, "a1", Some(("sw-b.x", "b1")))]);
+        let (fb, db) = topo_device("sw-b.x", &[(1, "b1", Some(("sw-a.x", "a1")))]);
+        devices.insert(fa, da);
+        devices.insert(fb, db);
+        let topology = WeathermapBase { devices };
+        let tree = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &topology, lag_members: &HashMap::new() }, 10);
+        let d = tree.multiple_roots_detail.as_ref().unwrap();
+        assert_eq!(d.roots.len(), 2);
+        // Preferred = the lower bridge ID (priority 100), listed first.
+        assert_eq!(d.roots[0].hostname, "sw-a");
+        assert!(d.roots[0].preferred);
+        assert!(!d.roots[1].preferred);
+        assert_eq!(d.adjacent, Some(true));
+        assert!(d.connecting_link.is_some());
+
+        // Disjoint: same bridges, empty topology → not adjacent, no link.
+        let tree2 = build_stp_tree(&StpInputs { ports: &ports, bridges: &bridges, base_macs: &base_macs, topology: &WeathermapBase { devices: HashMap::new() }, lag_members: &HashMap::new() }, 10);
+        let d2 = tree2.multiple_roots_detail.as_ref().unwrap();
+        assert_eq!(d2.adjacent, Some(false));
+        assert!(d2.connecting_link.is_none());
     }
 
     #[test]

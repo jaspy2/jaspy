@@ -53,7 +53,7 @@ function explainKind(kind: string): string | null {
       return 'A PoE power supply is not operational — ports it feeds cannot deliver power.';
   }
   if (kind.startsWith('stp-flag:multiple-roots'))
-    return 'More than one bridge claims to be the VLAN root — a split spanning tree. The two halves are not exchanging BPDUs, so traffic between them may loop or black-hole.';
+    return 'Two or more bridges each believe they are this VLAN’s root, so spanning tree has not converged to a single tree. Whether that is dangerous depends on whether they share a path — the claimed roots and their connectivity are below.';
   if (kind.startsWith('stp-flag:no-root'))
     return 'The VLAN has spanning-tree nodes but no elected root bridge — an incomplete or partitioned view.';
   if (kind.startsWith('stp-flag:cycle'))
@@ -92,6 +92,15 @@ function DetailValue({ value }: { value: IssueDetailValue }) {
       return <span className={`verdict verdict-${value.tone}`}>{value.text}</span>;
     case 'link':
       return <Link to={value.href}>{value.text} →</Link>;
+    case 'stpRoot':
+      return (
+        <>
+          <Link to={`/devices/${encodeURIComponent(value.fqdn)}`}>{value.hostname || value.fqdn}</Link>
+          {value.priority !== null && <> · priority {value.priority}</>}
+          {value.mac && <> · <span className="mono">{value.mac}</span></>}
+          {value.preferred && <span className="badge badge-ok" style={{ marginLeft: 8 }}>STP would elect this</span>}
+        </>
+      );
   }
 }
 

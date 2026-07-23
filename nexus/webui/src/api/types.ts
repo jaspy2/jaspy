@@ -382,12 +382,34 @@ export interface StpBlockedLink {
   connectedTo: InterfaceConnection | null;
 }
 
+export interface StpRootClaim {
+  fqdn: string;
+  hostname: string;
+  mac: string | null;
+  priority: number | null;
+  preferred: boolean;
+}
+
+export interface StpLinkEnds {
+  aFqdn: string;
+  aInterface: string;
+  bFqdn: string;
+  bInterface: string;
+}
+
+export interface StpMultipleRootsDetail {
+  roots: StpRootClaim[];
+  adjacent: boolean | null;
+  connectingLink: StpLinkEnds | null;
+}
+
 export interface StpTree {
   vlan: number;
   roots: string[];
   nodes: StpNode[];
   blockedLinks: StpBlockedLink[];
   flags: string[];
+  multipleRootsDetail?: StpMultipleRootsDetail | null;
 }
 
 // PUT/POST body for device create/update (nexus NewDevice).
@@ -426,7 +448,8 @@ export type IssueDetailValue =
   | { type: 'device'; fqdn: string; hostname: string }
   | { type: 'interface'; name: string; state: string | null }
   | { type: 'verdict'; text: string; tone: 'good' | 'bad' | 'warn' | 'neutral' }
-  | { type: 'link'; text: string; href: string };
+  | { type: 'link'; text: string; href: string }
+  | { type: 'stpRoot'; fqdn: string; hostname: string; mac: string | null; priority: number | null; preferred: boolean };
 
 export interface IssueDetail {
   label: string;

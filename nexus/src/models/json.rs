@@ -443,6 +443,44 @@ pub struct ApiStpBlockedLink {
     pub connected_to: Option<ApiInterfaceConnection>,
 }
 
+// One bridge that claims to be a VLAN's root (a monitored node with no root
+// port). Part of the "multiple roots" evidence.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpRootClaim {
+    pub fqdn: String,
+    pub hostname: String,
+    pub mac: Option<String>,
+    pub priority: Option<i64>,
+    // The lowest bridge ID among the claims — the root STP would elect if the
+    // bridges converged.
+    pub preferred: bool,
+}
+
+// The link joining two claimed roots, when they are directly connected.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpLinkEnds {
+    pub a_fqdn: String,
+    pub a_interface: String,
+    pub b_fqdn: String,
+    pub b_interface: String,
+}
+
+// Evidence for the "multiple-roots" flag: who claims root, which claim wins,
+// and whether the claimants can actually reach each other (which distinguishes
+// a real split brain from independently-monitored segments).
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpMultipleRootsDetail {
+    pub roots: Vec<ApiStpRootClaim>,
+    // Whether the claimed roots share a path in the discovered topology (a
+    // direct link, for now). None when it can't be determined.
+    pub adjacent: Option<bool>,
+    // The link joining two of the roots, when directly connected.
+    pub connecting_link: Option<ApiStpLinkEnds>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiStpTree {
@@ -453,6 +491,9 @@ pub struct ApiStpTree {
     // Structural anomalies: "no-root", "multiple-roots", "cycle",
     // "multiple-root-ports:<fqdn>".
     pub flags: Vec<String>,
+    // Evidence behind a "multiple-roots" flag; present only when it fires.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multiple_roots_detail: Option<ApiStpMultipleRootsDetail>,
 }
 
 // GET /api/v1/stp: which VLANs have STP data, for the page's VLAN selector.
@@ -795,6 +836,10 @@ pub enum ApiIssueDetailValue {
     Verdict { text: String, tone: String },
     // A hyperlink (e.g. to the STP tree for the affected VLAN).
     Link { text: String, href: String },
+    // A bridge claiming to be a VLAN root, with its bridge ID; `preferred`
+    // marks the lowest ID (the one STP would actually elect). Rendered as a
+    // device link followed by the priority/MAC.
+    StpRoot { fqdn: String, hostname: String, mac: Option<String>, priority: Option<i64>, preferred: bool },
 }
 
 // A single label/value row in an issue's expanded detail.

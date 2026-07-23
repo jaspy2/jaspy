@@ -147,8 +147,9 @@ pub fn build() -> Topology {
             sensor_style: SensorStyle::Cisco,
             // core1 is the elected root for 10, 20 and 63. On VLAN 63 an
             // access switch (a-01) reports a *superior*, off-fleet root — the
-            // stp-root-mismatch + stp-orphan demo (see object()).
-            stp_vlans: &[10, 20, 63],
+            // stp-root-mismatch + stp-orphan demo (see object()). On VLAN 30 it
+            // shares the root with dist1 (a directly-linked split brain).
+            stp_vlans: &[10, 20, 30, 63],
             stp_style: StpStyle::Cisco,
             vlan_style: VlanStyle::Cisco,
             // A core switch trunks a lot of VLANs. This scattered set makes the
@@ -182,10 +183,11 @@ pub fn build() -> Topology {
             sys_descr: "Cisco IOS-XE Software (mock), Catalyst 9500 Switch",
             sw_rev: "17.9.4a",
             sensor_style: SensorStyle::Cisco,
-            stp_vlans: &[10],
+            // Also runs VLAN 30, where it self-roots against core1 (split brain).
+            stp_vlans: &[10, 30],
             stp_style: StpStyle::Cisco,
             vlan_style: VlanStyle::Cisco,
-            vlans: &[1, 10],
+            vlans: &[1, 10, 30],
             interfaces: vec![
                 uplink(10101, "Te1/1/1", "TenGigabitEthernet1/1/1", "uplink core1", 10000, ("core1", "Te1/0/1")),
                 uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "downlink hall a 01", 10000, ("access-hall-a-01", "Te1/1/1")),
@@ -834,7 +836,14 @@ impl Topology {
                 let mut entries = Vec::new();
                 for vlan in dev.stp_vlans.iter() {
                     for (bridge_port, iface) in Self::stp_ports(dev) {
-                        let role = stp_role(dev, iface);
+                        // VLAN 30 split-brain demo: dist1 refuses to defer, so
+                        // its uplink is designated (not root) — it self-roots
+                        // alongside core1, which it is directly linked to.
+                        let role = if dev.name == "dist1" && *vlan == 30 {
+                            "designated"
+                        } else {
+                            stp_role(dev, iface)
+                        };
                         entries.push(entry(
                             json!({
                                 "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleInstanceIndex": vlan,
@@ -1295,11 +1304,17 @@ impl Topology {
             // unmonitored bridge upstream — jaspy elects core1 for the VLAN, so
             // this reads as a root mismatch pinned (misleadingly) on a-01.
             let off_fleet = dev.name == "access-hall-a-01" && vlan == 63;
-            let root_cost = if off_fleet { 60000 } else if dev.name == "core1" { 0 } else if dev.name.starts_with("dist") { 4 } else { 8 };
+            // VLAN 30 split-brain: dist1 self-roots (reports its own bridge id,
+            // cost 0, no root port) while core1 also roots the VLAN — and the
+            // two are directly linked, so it is a genuine (critical) split brain.
+            let self_root = dev.name == "dist1" && vlan == 30;
+            let root_cost = if self_root { 0 } else if off_fleet { 60000 } else if dev.name == "core1" { 0 } else if dev.name.starts_with("dist") { 4 } else { 8 };
             return match object_id {
                 "BRIDGE-MIB::dot1dStpDesignatedRoot" if off_fleet => Some(json!(off_fleet_root_bridge_id(vlan))),
+                "BRIDGE-MIB::dot1dStpDesignatedRoot" if self_root => Some(json!(bridge_id_spaced(24576 + vlan, dev_idx))),
                 "BRIDGE-MIB::dot1dStpDesignatedRoot" => Some(json!(bridge_id_spaced(24576 + vlan, 0))),
                 "BRIDGE-MIB::dot1dStpRootCost" => Some(json!(root_cost)),
+                "BRIDGE-MIB::dot1dStpRootPort" if self_root => Some(json!(0)),
                 "BRIDGE-MIB::dot1dStpRootPort" => {
                     let root_port = Self::stp_ports(dev)
                         .into_iter()
@@ -1833,6 +1848,33 @@ mod tests {
     }
 
     #[test]
+    fn stp_vlan30_is_a_directly_linked_split_brain() {
+        let topo = build();
+        // On VLAN 30 both core1 and dist1 report themselves as root (cost 0,
+        // no root port) — a split brain. They are directly linked (Po1), so it
+        // is the genuine, critical case.
+        let core_root = topo.object("core1.mock.jaspy", Some(30), "BRIDGE-MIB::dot1dStpDesignatedRoot", 0.0).unwrap();
+        assert_eq!(core_root.as_str().unwrap(), format!("60 1e {}", base_mac_spaced(0))); // 24606, core1 mac
+        let dist_root = topo.object("dist1.mock.jaspy", Some(30), "BRIDGE-MIB::dot1dStpDesignatedRoot", 0.0).unwrap();
+        assert_eq!(dist_root.as_str().unwrap(), format!("60 1e {}", base_mac_spaced(1))); // 24606, dist1 mac
+        assert_eq!(topo.object("dist1.mock.jaspy", Some(30), "BRIDGE-MIB::dot1dStpRootCost", 0.0).unwrap(), 0);
+        assert_eq!(topo.object("dist1.mock.jaspy", Some(30), "BRIDGE-MIB::dot1dStpRootPort", 0.0).unwrap(), 0);
+        // dist1's VLAN 30 role table has no root port (all designated) → it
+        // computes as a root, not a child.
+        let dist1 = topo.devices.iter().find(|d| d.name == "dist1").unwrap();
+        let roles = topo.table(&dist1.fqdn(), None, "CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleTable", 0.0).unwrap();
+        let vlan30_roles: Vec<_> = roles.entries.iter()
+            .filter(|e| e.index.get("CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleInstanceIndex").copied() == Some(30))
+            .filter_map(|e| match e.objects.get("CISCO-STP-EXTENSIONS-MIB::stpxRSTPPortRoleValue") {
+                Some(SNMPBotResultEntryObjectValue::Str(s)) => Some(s.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(!vlan30_roles.is_empty());
+        assert!(vlan30_roles.iter().all(|r| *r != "root"), "dist1 vlan30 should self-root: {:?}", vlan30_roles);
+    }
+
+    #[test]
     fn cdp_table_reports_off_fleet_phones_on_access_ports() {
         let topo = build();
         // An access switch reports IP phones (SEP…) on its live desk ports —
@@ -1842,8 +1884,8 @@ mod tests {
         assert!(!cdp.entries.is_empty(), "access switch should report CDP phones");
         for e in cdp.entries.iter() {
             match e.objects.get("CISCO-CDP-MIB::cdpCacheDeviceId") {
-                Some(SNMPBotResultEntryObjectValue::Str(s)) => assert!(s.starts_with("SEP"), "device id {s}"),
-                other => panic!("expected a device id string, got {other:?}"),
+                Some(SNMPBotResultEntryObjectValue::Str(s)) => assert!(s.starts_with("SEP"), "device id {}", s),
+                _ => panic!("expected a CDP device id string"),
             }
         }
         // None of the phone ports are uplinks/LAG members.
