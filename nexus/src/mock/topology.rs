@@ -1115,8 +1115,36 @@ impl Topology {
                 }).collect();
                 Some(response(table_id, entries))
             }
-            // Valid-but-empty keeps the discovery log free of CDP noise.
-            "CISCO-CDP-MIB::cdpCacheTable" => Some(response(table_id, Vec::new())),
+            "CISCO-CDP-MIB::cdpCacheTable" => {
+                // Access switches see an IP phone on each live desk port. The
+                // phones are off-fleet (not crawled devices), so they never
+                // resolve to a monitored link — they exercise the "CDP neighbor
+                // as plain text" path on the device page.
+                let entries = if dev.name.starts_with("access-") {
+                    dev.interfaces.iter()
+                        .filter(|iface| {
+                            iface.peer.is_none()
+                                && iface.speed_mbps < 10000
+                                && !iface.name.starts_with("Po")
+                                && !dev.lags.iter().any(|lag| lag.members.contains(&iface.ifindex))
+                                && iface_up(iface, elapsed)
+                        })
+                        .map(|iface| entry(
+                            json!({
+                                "CISCO-CDP-MIB::cdpCacheIfIndex": iface.ifindex,
+                                "CISCO-CDP-MIB::cdpCacheDeviceIndex": 1,
+                            }),
+                            json!({
+                                "CISCO-CDP-MIB::cdpCacheDeviceId": format!("SEP{:012X}", 0x0011_0000_0000u64 + iface.ifindex as u64),
+                                "CISCO-CDP-MIB::cdpCacheDevicePort": "Port 1",
+                            }),
+                        ))
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                Some(response(table_id, entries))
+            }
             // LAG tables for the lagpoller. Cisco-style devices answer the
             // PAgP table with a row per physical port, all groups 0 — the
             // live C2960CX shape: pagpGroupIfIndex reports nothing for LACP
@@ -1802,6 +1830,30 @@ mod tests {
         assert_eq!(core_root.as_str().unwrap(), format!("60 3f {}", base_mac_spaced(0))); // core1 elects itself
         // dist1 does not participate in VLAN 63.
         assert!(topo.object("dist1.mock.jaspy", Some(63), "BRIDGE-MIB::dot1dStpDesignatedRoot", 0.0).is_none());
+    }
+
+    #[test]
+    fn cdp_table_reports_off_fleet_phones_on_access_ports() {
+        let topo = build();
+        // An access switch reports IP phones (SEP…) on its live desk ports —
+        // off-fleet neighbors that never resolve to a monitored device.
+        let a01 = topo.devices.iter().find(|d| d.name == "access-hall-a-01").unwrap();
+        let cdp = topo.table(&a01.fqdn(), None, "CISCO-CDP-MIB::cdpCacheTable", 0.0).unwrap();
+        assert!(!cdp.entries.is_empty(), "access switch should report CDP phones");
+        for e in cdp.entries.iter() {
+            match e.objects.get("CISCO-CDP-MIB::cdpCacheDeviceId") {
+                Some(SNMPBotResultEntryObjectValue::Str(s)) => assert!(s.starts_with("SEP"), "device id {s}"),
+                other => panic!("expected a device id string, got {other:?}"),
+            }
+        }
+        // None of the phone ports are uplinks/LAG members.
+        assert!(cdp.entries.iter().all(|e| {
+            let ifindex = e.index.get("CISCO-CDP-MIB::cdpCacheIfIndex").copied().unwrap_or(0);
+            a01.interfaces.iter().any(|i| i.ifindex == ifindex && i.peer.is_none())
+        }));
+        // The core (no access ports) reports no CDP.
+        let core = topo.devices.iter().find(|d| d.name == "core1").unwrap();
+        assert!(topo.table(&core.fqdn(), None, "CISCO-CDP-MIB::cdpCacheTable", 0.0).unwrap().entries.is_empty());
     }
 
     #[test]

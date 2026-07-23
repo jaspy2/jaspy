@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember } from '../api/types';
+import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember } from '../api/types';
 import { HealthBadge, PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import useLiveSocket from '../hooks/useLiveSocket';
 
@@ -20,6 +20,11 @@ const SENSOR_UNITS: Record<string, string> = {
   dBm: 'dBm',
   truthvalue: '',
 };
+
+// "deviceId:port" (or just deviceId) for a CDP neighbor rendered as text.
+function cdpNeighborText(n: CdpNeighbor): string {
+  return n.devicePort ? `${n.deviceId}:${n.devicePort}` : n.deviceId;
+}
 
 function formatSensorValue(value: number, valueType: string): string {
   const rounded = Math.round(value * 10) / 10;
@@ -365,6 +370,7 @@ function InterfaceDetail({ iface, names }: { iface: Interface; names: Map<number
   if (iface.alias) rows.push({ label: 'Alias', value: iface.alias });
   if (iface.description) rows.push({ label: 'Description', value: iface.description });
   if (iface.connectedTo) rows.push({ label: 'Connected to', value: `${iface.connectedTo.fqdn}:${iface.connectedTo.interface}` });
+  else if (iface.cdpNeighbor) rows.push({ label: 'CDP neighbor', value: cdpNeighborText(iface.cdpNeighbor) });
   rows.push({ label: 'Polling', value: iface.pollingEnabled === false ? 'disabled' : 'enabled' });
 
   return (
@@ -675,7 +681,7 @@ export default function DeviceDetail() {
               )}
               {iface.alias && <span>{iface.alias}</span>}
             </span>
-            {iface.connectedTo && (
+            {iface.connectedTo ? (
               <span className="item-sub">
                 <span>
                   →{' '}
@@ -685,7 +691,13 @@ export default function DeviceDetail() {
                   :{iface.connectedTo.interface}
                 </span>
               </span>
-            )}
+            ) : iface.cdpNeighbor ? (
+              <span className="item-sub">
+                <span title="CDP neighbor (not monitored by jaspy)">
+                  → {cdpNeighborText(iface.cdpNeighbor)} <span className="muted">(CDP)</span>
+                </span>
+              </span>
+            ) : null}
             {expandedDetail.has(iface.id) && (
               <InterfaceDetail iface={iface} names={vlanNames} />
             )}
@@ -738,6 +750,10 @@ export default function DeviceDetail() {
                         </Link>
                         :{iface.connectedTo.interface}
                       </>
+                    ) : iface.cdpNeighbor ? (
+                      <span title="CDP neighbor (not monitored by jaspy)">
+                        {cdpNeighborText(iface.cdpNeighbor)} <span className="muted">(CDP)</span>
+                      </span>
                     ) : (
                       '—'
                     )}

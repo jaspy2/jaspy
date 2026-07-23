@@ -27,6 +27,8 @@ pub struct NewInterface {
     pub alias: Option<String>,
     pub description: Option<String>,
     pub media: Option<String>,
+    pub cdp_device_id: Option<String>,
+    pub cdp_device_port: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Clone)]
@@ -113,6 +115,12 @@ pub struct Interface {
     // RJ45 port), "sfp" (empty SFP cage) or "sfp: <descr>" (populated
     // transceiver). None until discovery reads it. See collectors::entity_media.
     pub media: Option<String>,
+    // CDP neighbor as reported by CISCO-CDP-MIB::cdpCacheTable (remote device
+    // id and port). Kept even when the neighbor is not a monitored device, so
+    // the UI can show off-fleet neighbors as plain text. None until discovery
+    // reads it.
+    pub cdp_device_id: Option<String>,
+    pub cdp_device_port: Option<String>,
 }
 
 // Simple key/value store for runtime-mutable state that must survive restarts
@@ -731,13 +739,15 @@ mod tests {
         let mut conn = conn();
         let sw1 = Device::create(&new_device("sw1", None), &mut conn).unwrap();
         let sw2 = Device::create(&new_device("sw2", None), &mut conn).unwrap();
-        let if1 = Interface::create(&NewInterface {
+        let mut if1 = Interface::create(&NewInterface {
             index: 10101, interface_type: "ethernetCsmacd".to_string(), device_id: sw1.id,
             name: "Gi0/1".to_string(), alias: None, description: None, media: Some("copper".to_string()),
+            cdp_device_id: None, cdp_device_port: None,
         }, &mut conn).unwrap();
         let mut if2 = Interface::create(&NewInterface {
             index: 10101, interface_type: "ethernetCsmacd".to_string(), device_id: sw2.id,
             name: "Gi0/1".to_string(), alias: None, description: None, media: None,
+            cdp_device_id: None, cdp_device_port: None,
         }, &mut conn).unwrap();
 
         if2.connected_interface = Some(if1.id);
@@ -751,6 +761,14 @@ mod tests {
         // migration drift guard for it).
         assert_eq!(Interface::by_id(if1.id, &mut conn).unwrap().media.as_deref(), Some("copper"));
         assert_eq!(Interface::by_id(if2.id, &mut conn).unwrap().media, None);
+        // The CDP neighbor columns round-trip too (drift guard for them).
+        if1.cdp_device_id = Some("phone-42".to_string());
+        if1.cdp_device_port = Some("Port 1".to_string());
+        if1.update(&mut conn).unwrap();
+        let reloaded = Interface::by_id(if1.id, &mut conn).unwrap();
+        assert_eq!(reloaded.cdp_device_id.as_deref(), Some("phone-42"));
+        assert_eq!(reloaded.cdp_device_port.as_deref(), Some("Port 1"));
+        assert_eq!(Interface::by_id(if2.id, &mut conn).unwrap().cdp_device_id, None);
     }
 
     #[test]
@@ -805,6 +823,7 @@ mod tests {
         Interface::create(&NewInterface {
             index: 1, interface_type: "ethernetCsmacd".to_string(), device_id: device.id,
             name: "Gi0/1".to_string(), alias: None, description: None, media: None,
+            cdp_device_id: None, cdp_device_port: None,
         }, &mut conn).unwrap();
         ClientLocation::create(&NewClientLocation {
             device_id: device.id, ip_address: "10.0.0.1".to_string(),

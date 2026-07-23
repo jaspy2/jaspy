@@ -725,6 +725,13 @@ fn discovered_device_payload(sds: &DetectedDevice) -> Option<models::json::Disco
     let mut interfaces: HashMap<String, models::json::DiscoveredInterface> = HashMap::new();
     for iface in sds.interfaces.values() {
         let name = iface.if_name();
+        let (cdp_device_id, cdp_device_port) = match iface.cdp.as_ref() {
+            Some(cdp) => (
+                Some(cdp.device_id.clone()).filter(|s| !s.trim().is_empty()),
+                Some(cdp.device_port.clone()).filter(|s| !s.trim().is_empty()),
+            ),
+            None => (None, None),
+        };
         interfaces.insert(name.clone(), models::json::DiscoveredInterface {
             index: iface.ifindex as i32,
             interface_type: iface.iftype.clone().unwrap_or_else(|| "other".to_string()),
@@ -733,6 +740,8 @@ fn discovered_device_payload(sds: &DetectedDevice) -> Option<models::json::Disco
             alias: iface.alias.clone(),
             description: iface.descr.clone(),
             media: iface.media.clone(),
+            cdp_device_id,
+            cdp_device_port,
         });
     }
     Some(models::json::DiscoveredDevice {

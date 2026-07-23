@@ -1,0 +1,2 @@
+ALTER TABLE interfaces ADD COLUMN cdp_device_id VARCHAR DEFAULT NULL;
+ALTER TABLE interfaces ADD COLUMN cdp_device_port VARCHAR DEFAULT NULL;

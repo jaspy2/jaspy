@@ -155,6 +155,13 @@ export interface InterfaceConnection {
   interface: string;
 }
 
+// A CDP-reported neighbor whose far end is NOT a monitored device — shown as
+// plain text (never a link). Populated only when connectedTo is null.
+export interface CdpNeighbor {
+  deviceId: string;
+  devicePort: string | null;
+}
+
 export interface Interface {
   id: number;
   index: number;
@@ -166,6 +173,8 @@ export interface Interface {
   pollingEnabled: boolean | null;
   speedOverride: number | null;
   connectedTo: InterfaceConnection | null;
+  // CDP neighbor when the far end is not a monitored device; null otherwise.
+  cdpNeighbor: CdpNeighbor | null;
   up: boolean | null;
   speed: number | null;
   // Cumulative counters since the device's last counter reset: octets (bytes)

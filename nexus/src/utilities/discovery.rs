@@ -112,6 +112,13 @@ pub fn ingest_device(
                 if interface.media.is_some() {
                     updated_interface.media = interface.media.clone();
                 }
+                // Same for the CDP neighbor: only refresh it when this crawl
+                // saw one, so a transient cdpCacheTable failure keeps the last
+                // known neighbor rather than blanking the column.
+                if interface.cdp_device_id.is_some() {
+                    updated_interface.cdp_device_id = interface.cdp_device_id.clone();
+                    updated_interface.cdp_device_port = interface.cdp_device_port.clone();
+                }
                 match updated_interface.update(connection) {
                     Ok(_) => {},
                     Err(e) => {
@@ -129,6 +136,8 @@ pub fn ingest_device(
                     index: interface.index,
                     interface_type: interface.interface_type.clone(),
                     media: interface.media.clone(),
+                    cdp_device_id: interface.cdp_device_id.clone(),
+                    cdp_device_port: interface.cdp_device_port.clone(),
                 };
 
                 match models::dbo::Interface::create(&new_interface, connection) {

@@ -43,6 +43,13 @@ pub struct DiscoveredInterface {
     // Defaulted so older /dev payloads without the field still deserialize.
     #[serde(default)]
     pub media: Option<String>,
+    // CDP neighbor (CISCO-CDP-MIB) reported on this port — remote device id and
+    // port, kept even when the neighbor is off-fleet. Additive: defaulted so
+    // older /dev payloads still deserialize.
+    #[serde(default)]
+    pub cdp_device_id: Option<String>,
+    #[serde(default)]
+    pub cdp_device_port: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -241,6 +248,10 @@ pub struct ApiInterface {
     pub polling_enabled: Option<bool>,
     pub speed_override: Option<i32>,
     pub connected_to: Option<ApiInterfaceConnection>,
+    // CDP-reported neighbor for a port whose far end is NOT a monitored device
+    // (so connected_to is null). Shown as plain text, never a link. Additive.
+    #[serde(default)]
+    pub cdp_neighbor: Option<ApiCdpNeighbor>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
     // Cumulative counters since the device's last counter reset (octets =
@@ -331,6 +342,15 @@ pub struct ApiInterfaceHealth {
 pub struct ApiInterfaceConnection {
     pub fqdn: String,
     pub interface: String,
+}
+
+// A CDP-reported neighbor that is not a monitored jaspy device. Carries the
+// raw CISCO-CDP-MIB device id and (optional) remote port, for display as text.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiCdpNeighbor {
+    pub device_id: String,
+    pub device_port: Option<String>,
 }
 
 // A VLAN known on the device (vtpVlanTable / dot1qVlanStaticTable), for

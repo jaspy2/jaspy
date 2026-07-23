@@ -312,6 +312,15 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
                 interface: peer.name(),
             }
         }).or_else(|| reverse_links.get(&interface.id).cloned());
+        // Surface a CDP neighbor only when the far end is not a monitored device
+        // (no resolved link): then it renders as plain text instead of a link.
+        let cdp_neighbor = match (&connected_to, &interface.cdp_device_id) {
+            (None, Some(device_id)) if !device_id.trim().is_empty() => Some(models::json::ApiCdpNeighbor {
+                device_id: device_id.clone(),
+                device_port: interface.cdp_device_port.clone().filter(|s| !s.trim().is_empty()),
+            }),
+            _ => None,
+        };
         let (up, speed) = live.get(&interface.index).cloned().unwrap_or((None, None));
         let (in_octets, out_octets, in_errors, out_errors, out_discards) =
             octets.get(&interface.index).cloned().unwrap_or((None, None, None, None, None));
@@ -330,6 +339,7 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             polling_enabled: interface.polling_enabled,
             speed_override: interface.speed_override,
             connected_to: connected_to,
+            cdp_neighbor: cdp_neighbor,
             up: up,
             speed: speed,
             in_octets: in_octets,
