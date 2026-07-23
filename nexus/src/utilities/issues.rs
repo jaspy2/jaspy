@@ -326,7 +326,14 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
         // independent segments, not a fault — downgrade those to a warning.
         let detail = match (code, tree.multiple_roots_detail.as_ref()) {
             ("multiple-roots", Some(d)) => {
-                if d.adjacent == Some(false) {
+                // Critical only when the roots genuinely share a VLAN path (a
+                // link carrying the VLAN on both ends) yet still disagree — a
+                // real convergence failure. An asymmetric trunk, a link that
+                // doesn't carry the VLAN, or no link at all is isolation, not a
+                // loop: downgrade to a warning.
+                let shared_vlan_path = d.adjacent == Some(true)
+                    && d.connecting_link.as_ref().map(|l| l.a_has_vlan && l.b_has_vlan).unwrap_or(false);
+                if !shared_vlan_path {
                     severity = SEV_WARN;
                 }
                 multiple_roots_detail(d, &stp_tree_link, vlan)
@@ -444,24 +451,32 @@ fn multiple_roots_detail(d: &json::ApiStpMultipleRootsDetail, stp_tree_link: &Ap
     }
     match (d.adjacent, d.connecting_link.as_ref()) {
         (Some(true), Some(link)) => {
-            detail.push(pair(
-                "roots connected",
-                format!("{} {} ↔ {} {}", hostname_of(&link.a_fqdn), link.a_interface, hostname_of(&link.b_fqdn), link.b_interface),
-            ));
-            detail.push(verdict_row(
-                "verdict",
-                format!("these roots share a link but have not converged — check that VLAN {} is trunked on it and BPDUs pass both ways (loop / black-hole risk)", vlan),
-                "bad",
-            ));
+            let a = format!("{} {}", hostname_of(&link.a_fqdn), link.a_interface);
+            let b = format!("{} {}", hostname_of(&link.b_fqdn), link.b_interface);
+            detail.push(pair("roots connected", format!("{} ↔ {}", a, b)));
+            match (link.a_has_vlan, link.b_has_vlan) {
+                (true, true) => detail.push(verdict_row(
+                    "verdict",
+                    format!("VLAN {} is on both ends of this link yet the bridges have not converged — a real spanning-tree failure (loop / black-hole risk). Check BPDU flow across the link.", vlan),
+                    "bad",
+                )),
+                (false, false) => detail.push(verdict_row(
+                    "verdict",
+                    format!("the roots are linked but VLAN {} is on neither end of that link — they are separate VLAN {} segments, not a shared tree (not a loop)", vlan, vlan),
+                    "neutral",
+                )),
+                // Asymmetric trunk: VLAN present on one end only.
+                (a_ok, _) => {
+                    let (present, missing) = if a_ok { (&a, &b) } else { (&b, &a) };
+                    detail.push(verdict_row(
+                        "verdict",
+                        format!("asymmetric trunk — VLAN {} is allowed on {} but not on {}, so the two roots cannot merge. Add VLAN {} to {}, or ignore if the split is intentional.", vlan, present, missing, vlan, missing),
+                        "warn",
+                    ));
+                }
+            }
         }
-        (Some(true), None) => {
-            detail.push(verdict_row(
-                "verdict",
-                "the claimed roots share a path in the topology but spanning tree has not unified them (loop / black-hole risk)",
-                "bad",
-            ));
-        }
-        (Some(false), _) => {
+        (Some(false), _) | (Some(true), None) => {
             detail.push(pair("roots connected", "no monitored link between them"));
             detail.push(verdict_row(
                 "verdict",
@@ -1013,7 +1028,7 @@ mod tests {
         }
     }
 
-    fn multiple_roots_tree(adjacent: Option<bool>) -> json::ApiStpTree {
+    fn multiple_roots_tree(adjacent: Option<bool>, a_has_vlan: bool, b_has_vlan: bool) -> json::ApiStpTree {
         json::ApiStpTree {
             vlan: 10,
             roots: vec!["a.example.com".to_string(), "b.example.com".to_string()],
@@ -1027,7 +1042,7 @@ mod tests {
                 ],
                 adjacent,
                 connecting_link: match adjacent {
-                    Some(true) => Some(json::ApiStpLinkEnds { a_fqdn: "a.example.com".to_string(), a_interface: "Te1/0/12".to_string(), b_fqdn: "b.example.com".to_string(), b_interface: "Te1/1/8".to_string() }),
+                    Some(true) => Some(json::ApiStpLinkEnds { a_fqdn: "a.example.com".to_string(), a_interface: "Te1/0/12".to_string(), a_has_vlan, b_fqdn: "b.example.com".to_string(), b_interface: "Te1/1/8".to_string(), b_has_vlan }),
                     _ => None,
                 },
             }),
@@ -1035,28 +1050,43 @@ mod tests {
     }
 
     #[test]
-    fn multiple_roots_connected_is_critical_with_evidence() {
-        let issues = stp_tree_issues(&multiple_roots_tree(Some(true)));
+    fn multiple_roots_shared_vlan_path_is_critical_with_evidence() {
+        // VLAN on both ends of the link → genuine convergence failure → bad.
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, true));
         let issue = &issues[0];
         assert_eq!(issue.kind, "stp-flag:multiple-roots");
-        assert_eq!(issue.severity, SEV_BAD); // connected roots → real split brain
-        // Both claimants are listed, and exactly one is marked preferred.
+        assert_eq!(issue.severity, SEV_BAD);
+        // Both claimants listed, exactly one preferred, the lower bridge ID first.
         let claims: Vec<_> = issue.detail.iter().filter_map(|d| match &d.value {
             ApiIssueDetailValue::StpRoot { hostname, preferred, .. } => Some((hostname.as_str(), *preferred)),
             _ => None,
         }).collect();
         assert_eq!(claims.len(), 2);
         assert_eq!(claims.iter().filter(|(_, p)| *p).count(), 1);
-        // The preferred one is the lower bridge ID (b, priority 24586), shown first.
         assert_eq!(claims[0], ("b", true));
-        // The connecting link is surfaced.
         assert!(issue.detail.iter().any(|d| d.label == "roots connected"));
         assert_eq!(verdict_tone(issue), Some("bad"));
     }
 
     #[test]
+    fn multiple_roots_asymmetric_trunk_is_warn_and_names_the_gap() {
+        // VLAN on one end only → asymmetric trunk → warn, naming the port.
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, false));
+        let issue = &issues[0];
+        assert_eq!(issue.severity, SEV_WARN);
+        assert_eq!(verdict_tone(issue), Some("warn"));
+        let verdict = issue.detail.iter().find(|d| d.label == "verdict").unwrap();
+        if let ApiIssueDetailValue::Verdict { text, .. } = &verdict.value {
+            assert!(text.contains("asymmetric trunk"));
+            assert!(text.contains("Te1/1/8")); // the end missing the VLAN (b)
+        } else {
+            panic!("expected a verdict");
+        }
+    }
+
+    #[test]
     fn multiple_roots_disjoint_is_downgraded_to_warn() {
-        let issues = stp_tree_issues(&multiple_roots_tree(Some(false)));
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(false), false, false));
         let issue = &issues[0];
         assert_eq!(issue.kind, "stp-flag:multiple-roots");
         assert_eq!(issue.severity, SEV_WARN); // no path between roots → likely separate segments

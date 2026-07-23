@@ -70,6 +70,18 @@ impl VlanStore {
         self.devices.get(fqdn).cloned().unwrap_or_default()
     }
 
+    // Per-device, per-ifIndex membership as (native, tagged) tuples — the shape
+    // the STP tree builder needs to test whether a link carries a VLAN, without
+    // coupling it to this collector's types.
+    pub fn membership_map(&self) -> HashMap<String, HashMap<i64, (Option<i64>, Vec<i64>)>> {
+        self.devices.iter().map(|(fqdn, dev)| {
+            let ifaces = dev.interfaces.iter()
+                .map(|(ifindex, v)| (*ifindex, (v.native_vlan, v.tagged_vlans.clone())))
+                .collect();
+            (fqdn.clone(), ifaces)
+        }).collect()
+    }
+
     // Network-wide inventory for GET /api/v1/vlans: every VLAN known on any
     // device (named or referenced by a port), with the per-device name and
     // port usage. `names` collects the distinct names across devices — more

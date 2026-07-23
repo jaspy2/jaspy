@@ -747,6 +747,7 @@ mod tests {
                 base_macs: &base_macs,
                 topology: &WeathermapBase { devices: HashMap::new() },
                 lag_members: &HashMap::new(),
+                vlan_members: &HashMap::new(),
             },
             100,
         );

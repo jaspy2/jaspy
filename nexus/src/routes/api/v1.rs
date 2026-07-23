@@ -555,6 +555,7 @@ pub fn stp_tree(
     entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
     cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
     lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
 ) -> Json<models::json::ApiStpTree> {
     let (ports, bridges) = match entity_metrics.inner().lock() {
         Ok(store) => store.network_stp(),
@@ -564,12 +565,14 @@ pub fn stp_tree(
     let base_macs = device_base_macs(&mut connection);
     // Aggregate STP ports (port-channels) resolve adjacency via their members.
     let lag_members = lag_store.inner().lock().map(|store| store.lag_members()).unwrap_or_default();
+    let vlan_members = vlan_store.inner().lock().map(|store| store.membership_map()).unwrap_or_default();
     let inputs = crate::utilities::stp::StpInputs {
         ports: &ports,
         bridges: &bridges,
         base_macs: &base_macs,
         topology: &topology,
         lag_members: &lag_members,
+        vlan_members: &vlan_members,
     };
     Json(crate::utilities::stp::build_stp_tree(&inputs, vlan))
 }
@@ -595,6 +598,7 @@ pub fn collect_issues(
     imds: &Arc<Mutex<utilities::imds::IMDS>>,
     entity_metrics: &Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>,
     lag_store: &Arc<Mutex<crate::collectors::lagpoller::LagStore>>,
+    vlan_store: &Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>,
     cache_controller: &Arc<Mutex<utilities::cache::CacheController>>,
 ) -> Vec<crate::utilities::issues::DerivedIssue> {
     use crate::utilities::issues;
@@ -636,6 +640,7 @@ pub fn collect_issues(
         let topology = crate::routes::dev::weathermap::cached_topology_data(connection, cache_controller);
         let base_macs = device_base_macs(connection);
         let lag_members = lag_store.lock().map(|store| store.lag_members()).unwrap_or_default();
+        let vlan_members = vlan_store.lock().map(|store| store.membership_map()).unwrap_or_default();
         let vlans: std::collections::BTreeSet<i64> = stp_ports.values().flatten().map(|p| p.vlan).collect();
         for vlan in vlans {
             let inputs = crate::utilities::stp::StpInputs {
@@ -644,6 +649,7 @@ pub fn collect_issues(
                 base_macs: &base_macs,
                 topology: &topology,
                 lag_members: &lag_members,
+                vlan_members: &vlan_members,
             };
             let tree = crate::utilities::stp::build_stp_tree(&inputs, vlan);
             out.extend(issues::stp_tree_issues(&tree));
@@ -722,10 +728,11 @@ pub fn issues(
     imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
     entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
     lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
     cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
     tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>,
 ) -> Json<models::json::ApiIssuesResponse> {
-    let derived = collect_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), cache_controller.inner());
+    let derived = collect_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), vlan_store.inner(), cache_controller.inner());
     let now = utilities::tools::get_time_msecs();
     let (tracked, known_keys) = match tracker.inner().lock() {
         Ok(mut t) => {
@@ -785,11 +792,12 @@ pub fn issue_ack(
     imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
     entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
     lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
     cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
     tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>,
 ) -> Result<Json<models::dbo::IssueAck>, (rocket::http::Status, Json<models::json::ApiError>)> {
     let req = body.into_inner();
-    let derived = collect_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), cache_controller.inner());
+    let derived = collect_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), vlan_store.inner(), cache_controller.inner());
     let now = utilities::tools::get_time_msecs();
     let first_seen = match tracker.inner().lock() {
         Ok(mut t) => {

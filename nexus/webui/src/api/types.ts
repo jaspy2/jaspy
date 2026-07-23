@@ -393,8 +393,10 @@ export interface StpRootClaim {
 export interface StpLinkEnds {
   aFqdn: string;
   aInterface: string;
+  aHasVlan: boolean;
   bFqdn: string;
   bInterface: string;
+  bHasVlan: boolean;
 }
 
 export interface StpMultipleRootsDetail {

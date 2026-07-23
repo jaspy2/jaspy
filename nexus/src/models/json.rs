@@ -457,14 +457,18 @@ pub struct ApiStpRootClaim {
     pub preferred: bool,
 }
 
-// The link joining two claimed roots, when they are directly connected.
+// The link joining two claimed roots, when they are directly connected, plus
+// whether each end actually carries the VLAN (native or tagged). A link with
+// the VLAN on only one end is an asymmetric trunk — the roots cannot merge.
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiStpLinkEnds {
     pub a_fqdn: String,
     pub a_interface: String,
+    pub a_has_vlan: bool,
     pub b_fqdn: String,
     pub b_interface: String,
+    pub b_has_vlan: bool,
 }
 
 // Evidence for the "multiple-roots" flag: who claims root, which claim wins,

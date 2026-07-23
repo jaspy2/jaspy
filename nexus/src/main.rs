@@ -60,6 +60,7 @@ fn issue_scan_worker(
     imds: Arc<Mutex<utilities::imds::IMDS>>,
     entity_metrics: Arc<Mutex<collectors::entitypoller::EntityMetricsStore>>,
     lag_store: Arc<Mutex<collectors::lagpoller::LagStore>>,
+    vlan_store: Arc<Mutex<collectors::vlanpoller::VlanStore>>,
     cache_controller: Arc<Mutex<utilities::cache::CacheController>>,
     tracker: Arc<Mutex<utilities::issues::IssueTracker>>,
 ) {
@@ -73,7 +74,7 @@ fn issue_scan_worker(
         if counter == 0 {
             match pool.get() {
                 Ok(mut conn) => {
-                    let derived = routes::api::v1::collect_issues(&mut *conn, &imds, &entity_metrics, &lag_store, &cache_controller);
+                    let derived = routes::api::v1::collect_issues(&mut *conn, &imds, &entity_metrics, &lag_store, &vlan_store, &cache_controller);
                     let now = utilities::tools::get_time_msecs();
                     if let Ok(mut tracker) = tracker.lock() {
                         tracker.reconcile(now, derived);
@@ -383,10 +384,11 @@ async fn server_main() {
         let imds_collector = imds.clone();
         let entity_collector = entity_metrics.clone();
         let lag_collector = lag_store.clone();
+        let vlan_collector = vlan_store.clone();
         let cache_collector = cache_controller.clone();
         let tracker_collector = issue_tracker.clone();
         std::thread::spawn(move || {
-            issue_scan_worker(running_collector, imds_collector, entity_collector, lag_collector, cache_collector, tracker_collector);
+            issue_scan_worker(running_collector, imds_collector, entity_collector, lag_collector, vlan_collector, cache_collector, tracker_collector);
         })
     };
 
