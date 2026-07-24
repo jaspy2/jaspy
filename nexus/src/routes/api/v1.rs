@@ -486,6 +486,19 @@ fn device_base_macs(connection: &mut db::AnyConnection) -> std::collections::Has
 // cheap: the device with STP ports on the vlan but no root-role port; when
 // that is ambiguous, fall back to matching the devices' reported root bridge
 // MAC against discovery's base_mac records.
+// Pick the winning root MAC from a vote tally: highest vote count, ties broken
+// by lowest MAC. The tie-break mirrors STP's own lowest-bridge-id rule and,
+// crucially, makes the result deterministic — a plain `max_by_key` over a
+// HashMap resolves ties by iteration order, which is randomized per process, so
+// a split-brain VLAN (two switches each claiming root, one vote apiece) would
+// otherwise report an arbitrary, run-to-run-varying root.
+fn elect_majority_mac(votes: std::collections::HashMap<String, usize>) -> Option<String> {
+    votes
+        .into_iter()
+        .max_by(|(mac_a, count_a), (mac_b, count_b)| count_a.cmp(count_b).then_with(|| mac_b.cmp(mac_a)))
+        .map(|(mac, _)| mac)
+}
+
 #[get("/stp")]
 pub fn stp_summary(
     mut connection: db::JaspyDB,
@@ -530,7 +543,7 @@ pub fn stp_summary(
                         *votes.entry(normalize_mac(mac)).or_default() += 1;
                     }
                 }
-                votes.into_iter().max_by_key(|(_, count)| *count).and_then(|(mac, _)| fqdn_by_mac.get(&mac).cloned())
+                elect_majority_mac(votes).and_then(|mac| fqdn_by_mac.get(&mac).cloned())
             }
         };
         let vlan_bridges: Vec<_> = bridges.values().flatten().filter(|b| b.vlan == vlan).collect();
@@ -1316,6 +1329,35 @@ mod tests {
         // Empty / whitespace-only hostname is rejected.
         assert!(validated_device_identity("", "event.example").is_err());
         assert!(validated_device_identity("   ", "event.example").is_err());
+    }
+
+    #[test]
+    fn elect_majority_mac_picks_highest_count() {
+        let votes = std::collections::HashMap::from([
+            ("aabbccddee02".to_string(), 3),
+            ("aabbccddee01".to_string(), 1),
+        ]);
+        assert_eq!(elect_majority_mac(votes), Some("aabbccddee02".to_string()));
+    }
+
+    #[test]
+    fn elect_majority_mac_breaks_ties_by_lowest_mac_deterministically() {
+        // Split brain: two roots, one vote each. The lowest MAC must win, the
+        // same way every time regardless of HashMap iteration order — run the
+        // election repeatedly on freshly-built maps to catch order dependence.
+        for _ in 0..100 {
+            let votes = std::collections::HashMap::from([
+                ("aabbccddee02".to_string(), 1),
+                ("aabbccddee01".to_string(), 1),
+                ("aabbccddee03".to_string(), 1),
+            ]);
+            assert_eq!(elect_majority_mac(votes), Some("aabbccddee01".to_string()));
+        }
+    }
+
+    #[test]
+    fn elect_majority_mac_empty_is_none() {
+        assert_eq!(elect_majority_mac(std::collections::HashMap::new()), None);
     }
 
     #[test]

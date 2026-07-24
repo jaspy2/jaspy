@@ -1420,10 +1420,14 @@ fn mock_mode_serves_network(db: DbHarness) {
     assert_eq!(b01["depth"], 2);
     assert_eq!(b01["parent"], "dist2.mock.jaspy");
 
-    // The summary lists both vlans with core1 as root.
+    // The summary lists every STP VLAN in the fleet: 10/20 plus the enriched
+    // demo VLANs 30 (core1+dist1 split brain) and 63 (superior off-fleet root).
     let stp_summary = nexus.get_json("/api/v1/stp");
     let vlans: Vec<i64> = stp_summary.as_array().unwrap().iter().map(|s| s["vlan"].as_i64().unwrap()).collect();
-    assert_eq!(vlans, vec![10, 20]);
+    assert_eq!(vlans, vec![10, 20, 30, 63]);
+    // core1 is the elected root on all of them. On the VLAN 30 split brain the
+    // vote ties (core1 and dist1 each claim root); the lowest-MAC tie-break
+    // resolves it to core1 deterministically (see elect_majority_mac).
     assert!(stp_summary.as_array().unwrap().iter().all(|s| s["rootFqdn"] == "core1.mock.jaspy"), "summary: {}", stp_summary);
 
     // Seeder: client locations attached to the access switches + event name.
