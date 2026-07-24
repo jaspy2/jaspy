@@ -289,6 +289,11 @@ Topics:
   Includes backlog.
 - `device:{fqdn}` — msgbus events for one device (see `models/events.rs`);
   live-only, no backlog.
+- `devices` — every device's events on one connection (same frames as
+  `device:{fqdn}`, merged); live-only, no backlog.
+
+Full protocol reference (frame shapes, event types, delivery semantics,
+reconnect guidance, client examples): [`docs/WEBSOCKET.md`](../docs/WEBSOCKET.md).
 
 ---
 
