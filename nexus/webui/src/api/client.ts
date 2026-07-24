@@ -5,6 +5,7 @@ import type {
   DeviceEntity,
   DeviceUpdate,
   DiscoveryConfig,
+  DiscoveryRunRequest,
   EnvVar,
   DiscoveryStatus,
   EventInfo,
@@ -72,6 +73,13 @@ export const api = {
     }),
   runDiscovery: () =>
     request<DiscoveryStatus>('/api/v1/discovery/run', { method: 'POST', body: '{}' }),
+  // Discover just one device (no neighbor crawl); runs on its own lane so it is
+  // never rejected by, and never blocks, a full topology run in progress.
+  runSingleDeviceDiscovery: (fqdn: string) =>
+    request<DiscoveryStatus>('/api/v1/discovery/run', {
+      method: 'POST',
+      body: JSON.stringify({ rootDevice: fqdn, singleDevice: true } satisfies DiscoveryRunRequest),
+    }),
   pollVlans: (fqdn: string) =>
     request<void>(`/api/v1/devices/${encodeURIComponent(fqdn)}/vlans/poll`, { method: 'POST' }),
   vlans: () => request<VlanSummary[]>('/api/v1/vlans'),

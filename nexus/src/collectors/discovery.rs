@@ -40,6 +40,11 @@ pub struct DiscoveryControl {
     pub status: models::json::DiscoveryStatus,
     pub trigger_requested: bool,
     pub trigger_overrides: Option<models::json::DiscoveryRunRequest>,
+    // Pending single-device run requests. Deliberately separate from the
+    // trigger_requested/status.running full-run flags: the supervisor drains
+    // this queue and dispatches each request on its own detached worker, so a
+    // single-device run is never rejected by, and never blocks, the full crawl.
+    pub single_device_queue: Vec<models::json::DiscoveryRunRequest>,
 }
 
 impl DiscoveryControl {
@@ -49,6 +54,7 @@ impl DiscoveryControl {
             status: models::json::DiscoveryStatus::default(),
             trigger_requested: false,
             trigger_overrides: None,
+            single_device_queue: Vec::new(),
         }
     }
 
@@ -67,7 +73,20 @@ struct RunParams {
     remap: HashMap<String, String>,
     topology_stable: bool,
     skip_dns: bool,
-    trigger: &'static str, // "manual" | "periodic", for log lines only
+    trigger: &'static str, // "manual" | "periodic" | "single-device", for log lines only
+    // Single-device run: discover only `root_device`, do not enqueue neighbors
+    // and do not touch link topology (see discover_device / perform_discovery_run).
+    single_device: bool,
+}
+
+// Config fields a single-device worker needs, snapshotted under the control
+// lock at dispatch time so the detached worker doesn't hold the lock.
+#[derive(Clone)]
+struct SingleDeviceConfig {
+    dns_domains: Vec<String>,
+    ignore: Vec<String>,
+    remap: HashMap<String, String>,
+    community: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -779,20 +798,24 @@ fn discover_device(shared: Arc<CrawlShared>, device_fqdn: String) {
         return;
     }
 
-    // Gather resolvable, non-ignored neighbor fqdns before handing sds over.
+    // Gather resolvable, non-ignored neighbor fqdns before handing sds over. A
+    // single-device run skips this entirely: it discovers only the named device
+    // and must not crawl outward.
     let mut tmp_discovered_neighbors: Vec<String> = Vec::new();
-    for iface in sds.interfaces.values() {
-        for lldp in iface.lldp.iter() {
-            if let Some(fqdn) = try_resolve(lldp.rem_sys_name.trim(), &shared.params) {
-                if !tmp_discovered_neighbors.contains(&fqdn) && !shared.params.ignore.contains(&fqdn) {
-                    tmp_discovered_neighbors.push(fqdn);
+    if !shared.params.single_device {
+        for iface in sds.interfaces.values() {
+            for lldp in iface.lldp.iter() {
+                if let Some(fqdn) = try_resolve(lldp.rem_sys_name.trim(), &shared.params) {
+                    if !tmp_discovered_neighbors.contains(&fqdn) && !shared.params.ignore.contains(&fqdn) {
+                        tmp_discovered_neighbors.push(fqdn);
+                    }
                 }
             }
-        }
-        if let Some(ref cdp) = iface.cdp {
-            if let Some(fqdn) = try_resolve(cdp.device_id.trim(), &shared.params) {
-                if !tmp_discovered_neighbors.contains(&fqdn) && !shared.params.ignore.contains(&fqdn) {
-                    tmp_discovered_neighbors.push(fqdn);
+            if let Some(ref cdp) = iface.cdp {
+                if let Some(fqdn) = try_resolve(cdp.device_id.trim(), &shared.params) {
+                    if !tmp_discovered_neighbors.contains(&fqdn) && !shared.params.ignore.contains(&fqdn) {
+                        tmp_discovered_neighbors.push(fqdn);
+                    }
                 }
             }
         }
@@ -1047,15 +1070,22 @@ fn perform_discovery_run(
         }
     };
     let detected = &state.detected;
-    let links = build_connections(detected, &params);
-    let links_found: u64 = links.values().map(|m| m.len() as u64).sum();
-
-    for device in detected.values() {
-        let payload = link_info_payload(device, &links, detected, params.topology_stable);
-        if let Ok(mut conn) = pool.get() {
-            utilities::discovery::ingest_links(&mut *conn, cache_controller, &payload);
+    // A single-device run has only the one device in `detected`, so it can
+    // resolve no link peers; running ingest_links for it would, when
+    // topology_stable is false, *clear* that device's real links (see
+    // utilities::discovery::ingest_links). Skip link reconciliation entirely.
+    let links_found: u64 = if params.single_device {
+        0
+    } else {
+        let links = build_connections(detected, &params);
+        for device in detected.values() {
+            let payload = link_info_payload(device, &links, detected, params.topology_stable);
+            if let Ok(mut conn) = pool.get() {
+                utilities::discovery::ingest_links(&mut *conn, cache_controller, &payload);
+            }
         }
-    }
+        links.values().map(|m| m.len() as u64).sum()
+    };
 
     // A failed root means the crawl never got anywhere — surface that as the
     // run's error instead of a silent "finished, 0 devices".
@@ -1134,7 +1164,74 @@ fn next_run_params(snmp: &Arc<SnmpSource>, skip_dns: bool, control: &Arc<Mutex<D
         topology_stable: overrides.as_ref().and_then(|o| o.topology_stable).unwrap_or(control.config.topology_stable),
         skip_dns: skip_dns,
         trigger: trigger,
+        single_device: false,
     })
+}
+
+// SNMP community for a single-device run: the device's own stored community
+// wins (it is authoritative for that device), then an explicit request
+// override, then the crawl-seed config community. None => nothing usable.
+fn single_device_community(device_row: Option<&str>, override_: Option<&str>, config: Option<&str>) -> Option<String> {
+    device_row.or(override_).or(config).map(|s| s.to_string())
+}
+
+// Execute one queued single-device request. Runs on a detached worker so it is
+// independent of the full-crawl lane; it deliberately does NOT write the global
+// DiscoveryStatus (that belongs to the full run). Errors are logged only.
+fn run_single_device(
+    snmp: Arc<SnmpSource>,
+    pool: db::Pool,
+    msgbus: Arc<Mutex<MessageBus>>,
+    cache_controller: Arc<Mutex<CacheController>>,
+    config: SingleDeviceConfig,
+    req: models::json::DiscoveryRunRequest,
+    skip_dns: bool,
+) {
+    let root_device = match req.root_device.clone() {
+        Some(r) => r,
+        None => {
+            dlog!("[discovery] single-device run missing root_device; ignoring");
+            return;
+        }
+    };
+
+    let device_community = match pool.get() {
+        Ok(mut conn) => models::dbo::Device::find_by_fqdn(&mut *conn, &root_device).and_then(|d| d.snmp_community),
+        Err(_) => None,
+    };
+    let community = match single_device_community(
+        device_community.as_deref(),
+        req.community.as_deref(),
+        config.community.as_deref(),
+    ) {
+        Some(c) => c,
+        None => {
+            dlog!("[discovery] [{}] single-device run: no SNMP community (device/override/config all empty); skipping", root_device);
+            return;
+        }
+    };
+
+    let params = RunParams {
+        snmp: snmp,
+        root_device: root_device.clone(),
+        community: community,
+        dns_domains: req.dns_domains.clone().unwrap_or(config.dns_domains),
+        ignore: config.ignore,
+        remap: config.remap,
+        // Single-device runs must never clear the device's links (see
+        // perform_discovery_run); force stable regardless of request/config.
+        topology_stable: true,
+        skip_dns: skip_dns,
+        trigger: "single-device",
+        single_device: true,
+    };
+
+    dlog!("[discovery] starting single-device run (device={})", root_device);
+    let result = perform_discovery_run(params, &pool, &msgbus, &cache_controller);
+    match result.error {
+        Some(error) => dlog!("[discovery] single-device run [{}] failed after {:.1}s: {}", root_device, result.duration_secs, error),
+        None => dlog!("[discovery] single-device run [{}] finished in {:.1}s: {} device(s), {} failed", root_device, result.duration_secs, result.devices_found, result.devices_failed),
+    }
 }
 
 #[cfg(test)]
@@ -1161,6 +1258,7 @@ mod tests {
             topology_stable: false,
             skip_dns: true,
             trigger: "manual",
+            single_device: false,
         }
     }
 
@@ -1698,6 +1796,7 @@ mod tests {
                 community: Some("private".to_string()),
                 dns_domains: None,
                 topology_stable: Some(true),
+                single_device: None,
             });
         }
         let params = next_run_params(&test_snmp(), true, &control).unwrap();
@@ -1760,6 +1859,53 @@ mod tests {
         control.lock().unwrap().status.last_finished = Some(utilities::tools::get_time() - 11.0);
         assert!(next_run_params(&test_snmp(), true, &control).is_some());
     }
+
+    // --- single-device community resolution ---
+
+    #[test]
+    fn single_device_community_prefers_device_row() {
+        // Device's own community wins over an explicit override and the config.
+        assert_eq!(
+            single_device_community(Some("dev"), Some("override"), Some("cfg")),
+            Some("dev".to_string())
+        );
+    }
+
+    #[test]
+    fn single_device_community_falls_back_to_override_then_config() {
+        assert_eq!(
+            single_device_community(None, Some("override"), Some("cfg")),
+            Some("override".to_string())
+        );
+        assert_eq!(single_device_community(None, None, Some("cfg")), Some("cfg".to_string()));
+    }
+
+    #[test]
+    fn single_device_community_none_when_all_empty() {
+        assert_eq!(single_device_community(None, None, None), None);
+    }
+
+    #[test]
+    fn single_device_request_queues_without_touching_full_run_flags() {
+        // A single-device request must not set trigger_requested / running; the
+        // route enqueues it instead. This mirrors what the HTTP handler does.
+        let control = control_with(configured());
+        {
+            let mut c = control.lock().unwrap();
+            c.status.running = true; // a full run is in progress
+            c.single_device_queue.push(models::json::DiscoveryRunRequest {
+                root_device: Some("leaf.example.com".to_string()),
+                community: None,
+                dns_domains: None,
+                topology_stable: None,
+                single_device: Some(true),
+            });
+        }
+        let c = control.lock().unwrap();
+        assert_eq!(c.single_device_queue.len(), 1);
+        assert!(!c.trigger_requested); // full-run trigger untouched
+        assert!(c.status.running); // full run still marked running, undisturbed
+    }
 }
 
 pub fn run(
@@ -1774,6 +1920,36 @@ pub fn run(
     let skip_dns = std::env::var("JASPY_DISCOVERY_SKIP_DNS").map(|v| v == "1" || v == "true").unwrap_or(false);
 
     while running.load(atomic::Ordering::Relaxed) {
+        // Single-device lane: drain any queued requests (snapshotting the config
+        // they need under the same lock) and dispatch each on its own detached
+        // worker. These run concurrently with the full crawl below — the only
+        // shared throttle is the global SNMP in-flight cap.
+        let single_device_jobs: Vec<(models::json::DiscoveryRunRequest, SingleDeviceConfig)> =
+            match control.lock() {
+                Ok(mut c) if !c.single_device_queue.is_empty() => {
+                    let snapshot = SingleDeviceConfig {
+                        dns_domains: c.config.dns_domains.clone(),
+                        ignore: c.config.ignore.clone(),
+                        remap: c.config.remap.clone(),
+                        community: c.config.community.clone(),
+                    };
+                    std::mem::take(&mut c.single_device_queue)
+                        .into_iter()
+                        .map(|req| (req, snapshot.clone()))
+                        .collect()
+                }
+                _ => Vec::new(),
+            };
+        for (req, snapshot) in single_device_jobs {
+            let snmp = snmp.clone();
+            let pool = pool.clone();
+            let msgbus = msgbus.clone();
+            let cache_controller = cache_controller.clone();
+            thread::spawn(move || {
+                run_single_device(snmp, pool, msgbus, cache_controller, snapshot, req, skip_dns);
+            });
+        }
+
         if let Some(params) = next_run_params(&snmp, skip_dns, &control) {
             dlog!("[discovery] starting {} run (root={}, stable={})", params.trigger, params.root_device, params.topology_stable);
             let result = perform_discovery_run(params, &pool, &msgbus, &cache_controller);

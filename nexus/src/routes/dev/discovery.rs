@@ -42,6 +42,21 @@ pub fn discovery_run(
 ) -> Result<(Status, Json<models::json::DiscoveryStatus>), (Status, Json<models::json::ApiError>)> {
     let overrides = run_json.map(|j| j.into_inner());
     if let Ok(mut control) = control.inner().lock() {
+        // Single-device lane: enqueue and return immediately. It does NOT
+        // consult or set the full-run flags, so it is neither rejected by nor
+        // blocks a periodic/manual crawl in progress. The community is resolved
+        // from the device's own record at dispatch time, so only root_device is
+        // required here.
+        if overrides.as_ref().and_then(|o| o.single_device).unwrap_or(false) {
+            let has_root = overrides.as_ref().and_then(|o| o.root_device.clone()).is_some();
+            if !has_root {
+                return Err((Status::BadRequest, Json(models::json::ApiError {
+                    error: "single-device discovery requires a rootDevice (the device fqdn) in the request body".to_string(),
+                })));
+            }
+            control.single_device_queue.push(overrides.unwrap());
+            return Ok((Status::Accepted, Json(control.status_dto())));
+        }
         if control.status.running || control.trigger_requested {
             return Err((Status::Conflict, Json(models::json::ApiError {
                 error: "a discovery run is already in progress".to_string(),

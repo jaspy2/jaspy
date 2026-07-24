@@ -618,6 +618,64 @@ fn discovery_engine_crawls_and_links(db: DbHarness) {
     }
 }
 
+// A single-device run discovers ONLY the named device: it creates that device's
+// interfaces but must not crawl to its LLDP/CDP neighbors, and it must be
+// accepted (202) rather than gated by the full-run guard.
+e2e_both!(discovery_single_device_skips_neighbor_crawl);
+fn discovery_single_device_skips_neighbor_crawl(db: DbHarness) {
+    let mock = SnmpbotMock::start();
+    let broker = MqttBroker::start();
+
+    // sw1 announces sw2 as an LLDP + CDP neighbor; a single-device run of sw1
+    // must NOT reach sw2.
+    stub_discovery_device(&mock, "sw1.test.example", "01", Some("sw2"), Some("sw2.test.example"));
+    stub_discovery_device(&mock, "sw2.test.example", "02", Some("sw1"), None);
+
+    let nexus = Nexus::builder(db.db_url())
+        .snmpbot(&mock.url())
+        .mqtt(&broker.server())
+        .start();
+
+    let resp = nexus.post_json("/dev/discovery/run", &json!({
+        "rootDevice": "sw1.test.example",
+        "community": COMMUNITY,
+        "dnsDomains": ["test.example"],
+        "singleDevice": true
+    }));
+    assert_eq!(resp.status().as_u16(), 202, "single-device trigger should be accepted");
+
+    // Single-device runs execute on their own lane and deliberately do NOT
+    // update the global discovery status, so wait on the DB result instead.
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        n: i64,
+    }
+    assert!(
+        wait_until(Duration::from_secs(20), || {
+            let rows: Vec<CountRow> = query_rows(&mut db.conn(),
+                "select count(*) as n from interfaces i join devices d on d.id = i.device_id where d.name = 'sw1'");
+            rows.first().map(|r| r.n >= 2).unwrap_or(false)
+        }),
+        "single-device run should create sw1's interfaces; log: {}", nexus.log()
+    );
+
+    // Only sw1 exists — sw2 (its neighbor) was never crawled — and no link was
+    // drawn (link reconciliation is skipped for single-device runs).
+    let mut conn = db.conn();
+    let devices: Vec<DiscDeviceRow> = query_rows(
+        &mut conn,
+        "select name, base_mac, os_info, device_type, software_version from devices order by name",
+    );
+    let names: Vec<&str> = devices.iter().map(|d| d.name.as_str()).collect();
+    assert_eq!(names, vec!["sw1"], "only the single device should exist; got {:?}", names);
+    assert_eq!(devices[0].device_type.as_deref(), Some("WS-C2960X-24"));
+    assert!(
+        link_peer(&mut conn, "sw1", "GigabitEthernet0/1").is_none(),
+        "single-device run must not record links"
+    );
+}
+
 e2e_both!(discovery_root_failure_sets_last_error);
 fn discovery_root_failure_sets_last_error(db: DbHarness) {
     let mock = SnmpbotMock::start();

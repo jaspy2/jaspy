@@ -37,6 +37,16 @@ export interface DiscoveryConfig {
   intervalSecs: number;
 }
 
+// POST /api/v1/discovery/run body (all optional overrides). singleDevice=true
+// discovers just rootDevice on its own non-blocking lane (no neighbor crawl).
+export interface DiscoveryRunRequest {
+  rootDevice?: string;
+  community?: string;
+  dnsDomains?: string[];
+  topologyStable?: boolean;
+  singleDevice?: boolean;
+}
+
 // GET /api/v1/system — effective feature configuration + connection state.
 export interface PerfStats {
   devicePolls: number;

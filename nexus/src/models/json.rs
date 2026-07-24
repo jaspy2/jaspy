@@ -105,6 +105,10 @@ pub struct DiscoveryRunRequest {
     pub community: Option<String>,
     pub dns_domains: Option<Vec<String>>,
     pub topology_stable: Option<bool>,
+    // When true, discover only `root_device` and do NOT crawl its neighbors.
+    // Single-device runs execute on their own lane (see collectors::discovery),
+    // so they neither block nor are blocked by the periodic/manual full crawl.
+    pub single_device: Option<bool>,
 }
 
 // --- /api/v1 DTOs (web admin UI) ---
