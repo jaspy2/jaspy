@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { Device } from '../api/types';
 import { HealthBadge, PollingBadge, UpBadge } from '../components/StatusBadge';
@@ -14,28 +14,10 @@ function lastPollText(secs: number | null): string {
 
 export default function Devices() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const devices = useQuery({ queryKey: ['devices'], queryFn: api.devices, refetchInterval: 10000 });
   const [filter, setFilter] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('fqdn');
   const [sortAsc, setSortAsc] = useState(true);
-  const [queuedFor, setQueuedFor] = useState<string | null>(null);
-
-  // Single-device discovery runs on its own non-blocking lane and returns 202
-  // ("queued"); it finishes in a few seconds, so nudge a refetch shortly after
-  // rather than waiting on the 10s poll. Not gated on the global discovery
-  // "running" flag — that's the whole point of the separate lane.
-  const runDiscovery = useMutation({
-    mutationFn: (fqdn: string) => api.runSingleDeviceDiscovery(fqdn),
-    onSuccess: (_data, fqdn) => {
-      setQueuedFor(fqdn);
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['devices'] });
-        setQueuedFor((current) => (current === fqdn ? null : current));
-      }, 4000);
-    },
-  });
-  const discoveryPending = (fqdn: string) => runDiscovery.isPending && runDiscovery.variables === fqdn;
 
   const rows = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -107,8 +89,6 @@ export default function Devices() {
         <span className="muted">{rows.length} devices</span>
       </div>
       {devices.isError && <p className="error">Failed to load devices: {String(devices.error)}</p>}
-      {queuedFor && <p className="ok">Discovery queued for {queuedFor}…</p>}
-      {runDiscovery.isError && <p className="error">{String(runDiscovery.error)}</p>}
 
       <div className="item-list mobile-only">
         {rows.map((d) => (
@@ -131,18 +111,6 @@ export default function Devices() {
               <span>polled {lastPollText(d.secondsSinceLastPoll)}</span>
               {d.pollingEnabled === false && <span className="badge badge-warn">polling off</span>}
             </span>
-            <div className="actions">
-              <button
-                className="secondary"
-                disabled={discoveryPending(d.fqdn)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  runDiscovery.mutate(d.fqdn);
-                }}
-              >
-                {discoveryPending(d.fqdn) ? 'Running…' : 'Run discovery'}
-              </button>
-            </div>
           </div>
         ))}
         {rows.length === 0 && !devices.isLoading && (
@@ -161,7 +129,6 @@ export default function Devices() {
               <th>Polling</th>
               <th className="sortable" onClick={() => onSort('lastPoll')}>Last poll{arrow('lastPoll')}</th>
               <th className="sortable" onClick={() => onSort('interfaceCount')}>Interfaces{arrow('interfaceCount')}</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -177,23 +144,11 @@ export default function Devices() {
                 <td><PollingBadge enabled={d.pollingEnabled} /></td>
                 <td>{lastPollText(d.secondsSinceLastPoll)}</td>
                 <td>{d.interfaceCount}</td>
-                <td>
-                  <button
-                    className="secondary"
-                    disabled={discoveryPending(d.fqdn)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      runDiscovery.mutate(d.fqdn);
-                    }}
-                  >
-                    {discoveryPending(d.fqdn) ? 'Running…' : 'Run discovery'}
-                  </button>
-                </td>
               </tr>
             ))}
             {rows.length === 0 && !devices.isLoading && (
               <tr>
-                <td colSpan={8} className="muted">
+                <td colSpan={7} className="muted">
                   No devices. Run discovery to populate the inventory.
                 </td>
               </tr>

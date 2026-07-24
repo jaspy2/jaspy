@@ -660,6 +660,17 @@ export default function DeviceDetail() {
     },
   });
 
+  // Single-device discovery runs on its own non-blocking lane and returns 202
+  // ("queued"); it finishes in a few seconds, so nudge a refetch shortly after
+  // rather than waiting on the poll. Not gated on the global discovery
+  // "running" flag — that's the whole point of the separate lane.
+  const runDiscovery = useMutation({
+    mutationFn: () => api.runSingleDeviceDiscovery(fqdn),
+    onSuccess: () => {
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['device', fqdn] }), 4000);
+    },
+  });
+
   if (detail.isLoading) return <p>Loading…</p>;
   if (detail.isError || !detail.data) return <p className="error">Failed to load {fqdn}: {String(detail.error)}</p>;
 
@@ -731,6 +742,9 @@ export default function DeviceDetail() {
               Poll VLANs now
             </button>
           )}
+          <button onClick={() => runDiscovery.mutate()} disabled={runDiscovery.isPending}>
+            {runDiscovery.isPending ? 'Running…' : 'Run discovery'}
+          </button>
           {!confirmDelete ? (
             <button className="danger" onClick={() => setConfirmDelete(true)}>
               Delete device…
@@ -743,8 +757,11 @@ export default function DeviceDetail() {
               <button onClick={() => setConfirmDelete(false)}>Cancel</button>
             </>
           )}
-          {(togglePolling.isError || deleteDevice.isError || pollVlans.isError) && (
-            <span className="error">{String(togglePolling.error ?? deleteDevice.error ?? pollVlans.error)}</span>
+          {runDiscovery.isSuccess && !runDiscovery.isPending && (
+            <span className="ok">Discovery queued…</span>
+          )}
+          {(togglePolling.isError || deleteDevice.isError || pollVlans.isError || runDiscovery.isError) && (
+            <span className="error">{String(togglePolling.error ?? deleteDevice.error ?? pollVlans.error ?? runDiscovery.error)}</span>
           )}
         </div>
       </div>
