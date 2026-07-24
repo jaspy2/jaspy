@@ -49,6 +49,8 @@ export const api = {
   device: (fqdn: string) => request<DeviceDetail>(`/api/v1/devices/${encodeURIComponent(fqdn)}`),
   deviceEntity: (fqdn: string) =>
     request<DeviceEntity>(`/api/v1/devices/${encodeURIComponent(fqdn)}/entity`),
+  createDevice: (body: DeviceUpdate) =>
+    request<Device>('/api/v1/devices', { method: 'POST', body: JSON.stringify(body) }),
   updateDevice: (fqdn: string, body: DeviceUpdate) =>
     request<Device>(`/api/v1/devices/${encodeURIComponent(fqdn)}`, {
       method: 'PUT',

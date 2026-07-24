@@ -918,20 +918,57 @@ pub fn device_vlan_poll(
     }
 }
 
+// Validate + normalize a manually submitted device identity. A device is keyed
+// by (name, dns_domain), so both must be present; the "add device" form feeds a
+// single FQDN split on its first dot, so a bare hostname (no domain) lands here
+// with an empty dns_domain and is rejected. Kept pure so it's unit-testable.
+pub(crate) fn validated_device_identity(name: &str, dns_domain: &str) -> Result<(String, String), String> {
+    let name = name.trim();
+    let dns_domain = dns_domain.trim();
+    if name.is_empty() || dns_domain.is_empty() {
+        return Err("device requires a fully-qualified name (hostname.domain)".to_string());
+    }
+    Ok((name.to_string(), dns_domain.to_string()))
+}
+
 // Create/update/delete mirror the /dev/device handlers (device.rs) including
 // their event semantics, so the UI API is self-contained for later auth.
+//
+// Manual add (the Discovery page "add device" form) returns typed errors so the
+// UI can explain a rejection: 400 = malformed identity, 409 = already exists,
+// 500 = insert failed.
 #[post("/devices", data = "<device_json>")]
-pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::json::ApiDevice>> {
-    if let Ok(created_device) = models::dbo::Device::create(&device_json, &mut connection) {
-        let device_fqdn = format!("{}.{}", created_device.name, created_device.dns_domain);
-        if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
-        let event = models::events::Event::device_created_event(&device_fqdn);
-        if let Ok(ref mut msgbus) = msgbus.lock() {
-            msgbus.event(event);
-        }
-        return Some(Json(api_device(&mut connection, imds, &created_device)));
+pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Result<Json<models::json::ApiDevice>, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let api_err = |status: rocket::http::Status, error: String| (status, Json(models::json::ApiError { error }));
+
+    let mut new_device = device_json.into_inner();
+    let (name, dns_domain) = validated_device_identity(&new_device.name, &new_device.dns_domain)
+        .map_err(|e| api_err(rocket::http::Status::BadRequest, e))?;
+    new_device.name = name;
+    new_device.dns_domain = dns_domain;
+
+    if models::dbo::Device::find_by_hostname_and_domain_name(&mut connection, &new_device.name, &new_device.dns_domain).is_some() {
+        return Err(api_err(
+            rocket::http::Status::Conflict,
+            format!("device already exists: {}.{}", new_device.name, new_device.dns_domain),
+        ));
     }
-    None
+
+    match models::dbo::Device::create(&new_device, &mut connection) {
+        Ok(created_device) => {
+            let device_fqdn = format!("{}.{}", created_device.name, created_device.dns_domain);
+            if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
+            let event = models::events::Event::device_created_event(&device_fqdn);
+            if let Ok(ref mut msgbus) = msgbus.lock() {
+                msgbus.event(event);
+            }
+            Ok(Json(api_device(&mut connection, imds, &created_device)))
+        }
+        Err(e) => Err(api_err(
+            rocket::http::Status::InternalServerError,
+            format!("failed to create device: {}", e),
+        )),
+    }
 }
 
 #[put("/devices/<device_fqdn>", data = "<device_json>")]
@@ -1266,6 +1303,20 @@ pub fn ws_logs(ws: rocket_ws::WebSocket, topic: &str) -> rocket_ws::Channel<'sta
 mod tests {
     use super::*;
     use std::net::IpAddr;
+
+    #[test]
+    fn validated_device_identity_trims_and_requires_both_parts() {
+        // Happy path: trims surrounding whitespace on both parts.
+        assert_eq!(
+            validated_device_identity("  sw1 ", " event.example "),
+            Ok(("sw1".to_string(), "event.example".to_string()))
+        );
+        // A bare hostname (FQDN with no dot) arrives with an empty domain.
+        assert!(validated_device_identity("sw1", "").is_err());
+        // Empty / whitespace-only hostname is rejected.
+        assert!(validated_device_identity("", "event.example").is_err());
+        assert!(validated_device_identity("   ", "event.example").is_err());
+    }
 
     #[test]
     fn device_ips_dedupe_and_order_v4_first() {

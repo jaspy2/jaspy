@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatTimestamp } from '../api/client';
-import type { DiscoveryConfig } from '../api/types';
+import type { DeviceUpdate, DiscoveryConfig } from '../api/types';
 import LiveLog from '../components/LiveLog';
 
 interface FormState {
@@ -50,6 +51,27 @@ function fromForm(form: FormState): DiscoveryConfig {
   };
 }
 
+// The add-device form takes a single FQDN; the backend keys devices on
+// (name, dnsDomain), so split on the first dot. Returns null when the input
+// isn't a usable FQDN (empty, no domain part, or a trailing dot) so the submit
+// button can stay disabled.
+export function newDeviceBody(fqdn: string, community: string): DeviceUpdate | null {
+  const trimmed = fqdn.trim();
+  const dot = trimmed.indexOf('.');
+  if (dot <= 0 || dot === trimmed.length - 1) return null;
+  const snmp = community.trim();
+  return {
+    name: trimmed.slice(0, dot),
+    dnsDomain: trimmed.slice(dot + 1),
+    snmpCommunity: snmp.length > 0 ? snmp : null,
+    baseMac: null,
+    pollingEnabled: null,
+    osInfo: null,
+    deviceType: null,
+    softwareVersion: null,
+  };
+}
+
 export default function Discovery() {
   const queryClient = useQueryClient();
   const config = useQuery({ queryKey: ['discovery-config'], queryFn: api.discoveryConfig });
@@ -84,12 +106,67 @@ export default function Discovery() {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => (f ? { ...f, [key]: value } : f));
 
+  // Manual "add device by FQDN" form.
+  const [addFqdn, setAddFqdn] = useState('');
+  const [addCommunity, setAddCommunity] = useState('');
+  const addDevice = useMutation({
+    mutationFn: (body: DeviceUpdate) => api.createDevice(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+      queryClient.invalidateQueries({ queryKey: ['summary'] });
+      setAddFqdn('');
+      setAddCommunity('');
+    },
+  });
+  const addBody = newDeviceBody(addFqdn, addCommunity);
+
   const s = status.data;
   const configReady = Boolean(config.data?.rootDevice && config.data?.community);
 
   return (
     <>
       <h1>Discovery</h1>
+
+      <h2>Add device</h2>
+      <div className="panel">
+        <form
+          className="form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (addBody) addDevice.mutate(addBody);
+          }}
+        >
+          <label>
+            Device FQDN
+            <input
+              value={addFqdn}
+              onChange={(e) => setAddFqdn(e.target.value)}
+              placeholder="firewall1.event.example"
+            />
+          </label>
+          <label>
+            SNMP community (optional)
+            <input
+              value={addCommunity}
+              onChange={(e) => setAddCommunity(e.target.value)}
+              placeholder="public"
+            />
+          </label>
+          <span className="muted">
+            Added devices are polled like any other. Without a community the device is
+            only ICMP up/down monitored; its interfaces populate once discovery reaches it.
+          </span>
+          <div className="actions">
+            <button type="submit" disabled={!addBody || addDevice.isPending}>Add device</button>
+            {addDevice.isSuccess && addDevice.data && (
+              <span className="ok">
+                Added <Link to={`/devices/${encodeURIComponent(addDevice.data.fqdn)}`}>{addDevice.data.fqdn}</Link>.
+              </span>
+            )}
+            {addDevice.isError && <span className="error">{String(addDevice.error)}</span>}
+          </div>
+        </form>
+      </div>
 
       <h2>Status</h2>
       <div className="panel">
