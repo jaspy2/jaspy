@@ -111,6 +111,15 @@ pub struct MockDevice {
     pub lags: Vec<MockLag>,
     // PoE, for PSE-capable access switches; None on non-PoE devices.
     pub poe: Option<MockPoe>,
+    // Whether the device publishes its own LLDP local-system data
+    // (lldpLocChassisId + lldpLocPortTable) and a BRIDGE-MIB base address —
+    // the sources discovery derives base_mac from, and the loc-port table it
+    // uses to map LLDP neighbors onto local interfaces. FortiOS-style firewalls
+    // (fw1) leave lldpLocalSystemData empty and aren't bridges, so they expose
+    // none of these, yet still advertise neighbors in lldpRemTable. Setting this
+    // false models that quirk: it exercises discovery's
+    // lldpRemLocalPortNum==ifIndex fallback and yields a null base_mac.
+    pub exposes_lldp_local: bool,
 }
 
 impl MockDevice {
@@ -145,6 +154,7 @@ pub fn build() -> Topology {
     let devices = vec![
         MockDevice {
             name: "core1",
+            exposes_lldp_local: true,
             model: "C9606R",
             sys_descr: "Cisco IOS-XE Software (mock), Catalyst 9600 Switch",
             sw_rev: "17.9.4a",
@@ -183,6 +193,7 @@ pub fn build() -> Topology {
         },
         MockDevice {
             name: "dist1",
+            exposes_lldp_local: true,
             model: "C9500-24Y4C",
             sys_descr: "Cisco IOS-XE Software (mock), Catalyst 9500 Switch",
             sw_rev: "17.9.4a",
@@ -215,6 +226,7 @@ pub fn build() -> Topology {
         },
         MockDevice {
             name: "dist2",
+            exposes_lldp_local: true,
             model: "C9500-24Y4C",
             sys_descr: "Cisco IOS-XE Software (mock), Catalyst 9500 Switch",
             sw_rev: "17.6.5",
@@ -310,6 +322,7 @@ pub fn build() -> Topology {
         },
         MockDevice {
             name: "wlc1",
+            exposes_lldp_local: true,
             model: "AIR-CT5520-K9",
             sys_descr: "Cisco 5520 Series Wireless LAN Controller (mock)",
             sw_rev: "8.10.185.0",
@@ -326,6 +339,9 @@ pub fn build() -> Topology {
         },
         MockDevice {
             name: "fw1",
+            // FortiOS: advertises LLDP neighbors but no lldpLocalSystemData and
+            // no BRIDGE-MIB — see exposes_lldp_local on MockDevice.
+            exposes_lldp_local: false,
             model: "FGT-900D",
             sys_descr: "Mock firewall appliance",
             sw_rev: "7.2.8",
@@ -380,6 +396,7 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
     }
     MockDevice {
         name,
+        exposes_lldp_local: true,
         model: "C9300-48P",
         sys_descr: "Cisco IOS-XE Software (mock), Catalyst 9300 Switch",
         sw_rev: "17.6.5",
@@ -1114,6 +1131,12 @@ impl Topology {
                 Some(response(table_id, entries))
             }
             "LLDP-MIB::lldpLocPortTable" => {
+                // FortiOS-style firewalls leave lldpLocalSystemData empty: the
+                // table exists but walks to nothing. Discovery must still map
+                // this device's rem-table neighbors via the ifIndex fallback.
+                if !dev.exposes_lldp_local {
+                    return Some(response(table_id, Vec::new()));
+                }
                 let entries = dev.interfaces.iter().map(|iface| {
                     entry(
                         json!({"LLDP-MIB::lldpLocPortNum": iface.ifindex}),
@@ -1358,8 +1381,11 @@ impl Topology {
         }
         match object_id {
             "SNMPv2-MIB::sysDescr" => Some(json!(dev.sys_descr)),
-            "BRIDGE-MIB::dot1dBaseBridgeAddress" => Some(json!(base_mac_spaced(dev_idx))),
-            "LLDP-MIB::lldpLocChassisId" => Some(json!(base_mac_spaced(dev_idx))),
+            // A FortiOS-style firewall (exposes_lldp_local = false) is not a
+            // bridge and publishes no LLDP local chassis id, so both are absent
+            // and discovery leaves its base_mac null.
+            "BRIDGE-MIB::dot1dBaseBridgeAddress" if dev.exposes_lldp_local => Some(json!(base_mac_spaced(dev_idx))),
+            "LLDP-MIB::lldpLocChassisId" if dev.exposes_lldp_local => Some(json!(base_mac_spaced(dev_idx))),
             _ => None,
         }
     }
@@ -1616,6 +1642,21 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn firewall_advertises_neighbors_without_local_lldp_data() {
+        // fw1 models FortiOS: lldpRemTable is populated but lldpLocPortTable
+        // walks to nothing and there is no lldpLocChassisId — the exact shape
+        // that exercises discovery's lldpRemLocalPortNum==ifIndex fallback.
+        let topo = build();
+        let fw = topo.devices.iter().find(|d| d.name == "fw1").unwrap();
+        assert!(!fw.exposes_lldp_local);
+        let loc = topo.table(&fw.fqdn(), None, "LLDP-MIB::lldpLocPortTable", 0.0).unwrap();
+        assert!(loc.entries.is_empty(), "firewall must expose an empty lldpLocPortTable");
+        let rem = topo.table(&fw.fqdn(), None, "LLDP-MIB::lldpRemTable", 0.0).unwrap();
+        assert!(!rem.entries.is_empty(), "firewall must still advertise LLDP neighbors");
+        assert!(topo.object(&fw.fqdn(), None, "LLDP-MIB::lldpLocChassisId", 0.0).is_none());
     }
 
     #[test]
@@ -1994,11 +2035,17 @@ mod tests {
     fn objects_answer_for_every_device() {
         let topo = build();
         for (idx, dev) in topo.devices.iter().enumerate() {
-            let mac = topo.object(&dev.fqdn(), None, "BRIDGE-MIB::dot1dBaseBridgeAddress", 0.0).unwrap();
-            assert_eq!(mac.as_str().unwrap(), base_mac_spaced(idx));
             assert!(topo.object(&dev.fqdn(), None, "SNMPv2-MIB::sysDescr", 0.0).is_some());
-            assert!(topo.object(&dev.fqdn(), None, "LLDP-MIB::lldpLocChassisId", 0.0).is_some());
             assert!(topo.object(&dev.fqdn(), None, "NO-SUCH-MIB::thing", 0.0).is_none());
+            if dev.exposes_lldp_local {
+                let mac = topo.object(&dev.fqdn(), None, "BRIDGE-MIB::dot1dBaseBridgeAddress", 0.0).unwrap();
+                assert_eq!(mac.as_str().unwrap(), base_mac_spaced(idx));
+                assert!(topo.object(&dev.fqdn(), None, "LLDP-MIB::lldpLocChassisId", 0.0).is_some());
+            } else {
+                // FortiOS-style firewall: neither base_mac source is present.
+                assert!(topo.object(&dev.fqdn(), None, "BRIDGE-MIB::dot1dBaseBridgeAddress", 0.0).is_none());
+                assert!(topo.object(&dev.fqdn(), None, "LLDP-MIB::lldpLocChassisId", 0.0).is_none());
+            }
         }
         assert!(topo.object("ghost.mock.jaspy", None, "SNMPv2-MIB::sysDescr", 0.0).is_none());
     }

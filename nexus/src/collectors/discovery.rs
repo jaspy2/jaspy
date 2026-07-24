@@ -481,6 +481,7 @@ impl DetectedDevice {
     }
 
     fn handle_lldp_rem_table(&mut self, entries: &Vec<SNMPBotResultEntry>) {
+        let mut used_portnum_fallback = false;
         for entry in entries.iter() {
             let lldp_index = match entry.index.get("LLDP-MIB::lldpRemLocalPortNum") {
                 Some(v) => *v,
@@ -488,7 +489,23 @@ impl DetectedDevice {
             };
             let mut target_ifindex = match self.lldp_index_to_interface.get(&lldp_index) {
                 Some(v) => *v,
-                None => continue,
+                // No lldpLocPortTable entry for this port. Some agents (notably
+                // FortiOS) populate lldpRemTable but leave lldpLocalSystemData
+                // — including lldpLocPortTable — empty, so the loc-port map was
+                // never built for it. lldpRemLocalPortNum shares the
+                // lldpLocPortNum number space, which on these agents is the
+                // ifIndex, so fall back to it directly when it names a real
+                // interface. Mirrors the existing "lldp-id == ifindex" guess
+                // used for the macAddress vendor bug; still drops the entry if
+                // the port number isn't a real ifIndex.
+                None => {
+                    if self.interfaces.contains_key(&lldp_index) {
+                        used_portnum_fallback = true;
+                        lldp_index
+                    } else {
+                        continue;
+                    }
+                }
             };
             // `.0` subinterface aliasing: report the neighbor on the parent.
             if let Some(iface) = self.interfaces.get(&target_ifindex) {
@@ -514,6 +531,9 @@ impl DetectedDevice {
             if let Some(iface) = self.interfaces.get_mut(&target_ifindex) {
                 iface.lldp.push(neighbor);
             }
+        }
+        if used_portnum_fallback {
+            dlog!("[discovery] [{}] LLDP: no lldpLocPortTable; mapped remote neighbor(s) via lldpRemLocalPortNum==ifIndex", self.fqdn);
         }
     }
 
@@ -1575,6 +1595,60 @@ mod tests {
         )]);
         assert!(device.interfaces[&10].lldp.is_empty());
         assert_eq!(device.interfaces[&4].lldp.len(), 1);
+    }
+
+    #[test]
+    fn lldp_rem_table_falls_back_to_portnum_as_ifindex_when_loc_table_absent() {
+        // FortiOS case: lldpRemTable is populated but lldpLocPortTable is empty,
+        // so lldp_index_to_interface is never built. lldpRemLocalPortNum equals
+        // the ifIndex, so the neighbor must still attach to the right interface.
+        let mut device = device_with_ifaces("fw1.example.com", &[(7, "port1"), (8, "port2")]);
+        assert!(device.lldp_index_to_interface.is_empty());
+        device.handle_lldp_rem_table(&vec![
+            entry(
+                json!({"LLDP-MIB::lldpRemLocalPortNum": 7}),
+                json!({"LLDP-MIB::lldpRemSysName": "sw2.example.com", "LLDP-MIB::lldpRemChassisId": "5c 5a c7 f3 ad 00",
+                       "LLDP-MIB::lldpRemPortId": "Gi1/0/47", "LLDP-MIB::lldpRemPortIdSubtype": "interfaceName"}),
+            ),
+            entry(
+                json!({"LLDP-MIB::lldpRemLocalPortNum": 8}),
+                json!({"LLDP-MIB::lldpRemSysName": "sw2.example.com", "LLDP-MIB::lldpRemPortId": "Gi1/0/48",
+                       "LLDP-MIB::lldpRemPortIdSubtype": "interfaceName"}),
+            ),
+        ]);
+        assert_eq!(device.interfaces[&7].lldp.len(), 1);
+        assert_eq!(device.interfaces[&7].lldp[0].rem_sys_name, "sw2.example.com");
+        assert_eq!(device.interfaces[&7].lldp[0].rem_port_id, "Gi1/0/47");
+        assert_eq!(device.interfaces[&8].lldp.len(), 1);
+        assert_eq!(device.interfaces[&8].lldp[0].rem_port_id, "Gi1/0/48");
+    }
+
+    #[test]
+    fn lldp_rem_table_portnum_fallback_drops_unknown_ifindex() {
+        // The fallback only maps port numbers that are real ifIndexes; a stray
+        // port number with no matching interface is still dropped, so we never
+        // fabricate a neighbor on an interface that doesn't exist.
+        let mut device = device_with_ifaces("fw1.example.com", &[(7, "port1")]);
+        device.handle_lldp_rem_table(&vec![entry(
+            json!({"LLDP-MIB::lldpRemLocalPortNum": 42}),
+            json!({"LLDP-MIB::lldpRemSysName": "sw2.example.com"}),
+        )]);
+        assert!(device.interfaces[&7].lldp.is_empty());
+    }
+
+    #[test]
+    fn lldp_rem_table_prefers_loc_port_mapping_over_portnum_fallback() {
+        // When lldpLocPortTable *did* map the port (normal switches), that
+        // mapping wins even if the raw port number also happens to be a valid
+        // ifIndex — the fallback must not override an explicit mapping.
+        let mut device = device_with_ifaces("sw1.example.com", &[(1, "Eth1"), (100, "Eth100")]);
+        device.lldp_index_to_interface.insert(100, 1);
+        device.handle_lldp_rem_table(&vec![entry(
+            json!({"LLDP-MIB::lldpRemLocalPortNum": 100}),
+            json!({"LLDP-MIB::lldpRemSysName": "sw2.example.com"}),
+        )]);
+        assert_eq!(device.interfaces[&1].lldp.len(), 1);
+        assert!(device.interfaces[&100].lldp.is_empty());
     }
 
     // --- link resolution lookups ---
