@@ -370,11 +370,22 @@ for scraping.
   `jaspy_interface_unicast_packets`, `jaspy_interface_multicast_packets`,
   `jaspy_interface_broadcast_packets`, `jaspy_interface_errors`,
   `jaspy_interface_discards`, `jaspy_interface_speed`, plus entitypoller
-  sensor/STP metrics.
+  sensor/STP/PoE metrics.
 - `GET /dev/metrics/perf` — internal hot-path performance counters.
 
 Interface series are labelled `fqdn`, `hostname`, `name`, `interfaceType`,
 `neighbors`, and `direction` (`rx`/`tx`) for the directional counters.
+
+PoE series come from the entitypoller (POWER-ETHERNET-MIB + Cisco extension).
+Per-port series are labelled `fqdn`, `hostname`, `name`, `interface_id`:
+`jaspy_poe_port_admin_enabled` (0/1), `jaspy_poe_port_status` (numeric:
+1 disabled, 2 searching, 3 deliveringPower, 4 fault, 5 test, 6 otherFault,
+0 other), `jaspy_poe_port_class` (0–4), and — Cisco extension only —
+`jaspy_poe_port_power_watts` (real-time draw), `jaspy_poe_port_allocated_watts`,
+`jaspy_poe_port_max_drawn_watts`. Switch-wide budget series are labelled `fqdn`,
+`hostname`, `pse_group`: `jaspy_poe_budget_total_watts`,
+`jaspy_poe_budget_consumed_watts`, `jaspy_poe_budget_oper_on` (0/1), and
+`jaspy_poe_budget_threshold_percent` (omitted when unset).
 
 ---
 

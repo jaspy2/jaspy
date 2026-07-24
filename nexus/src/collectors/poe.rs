@@ -47,6 +47,22 @@ impl PoeStatus {
         }
     }
 
+    // Numeric encoding for the Prometheus `jaspy_poe_port_status` sample
+    // (numeric-only, like the STP state/role metrics; the string form is
+    // recoverable via as_str). 0 is the catch-all so a new/unknown status
+    // never collides with a defined code.
+    pub fn as_numeric(self) -> i64 {
+        match self {
+            PoeStatus::Disabled => 1,
+            PoeStatus::Searching => 2,
+            PoeStatus::Delivering => 3,
+            PoeStatus::Fault => 4,
+            PoeStatus::Test => 5,
+            PoeStatus::OtherFault => 6,
+            PoeStatus::Other => 0,
+        }
+    }
+
     // Stable slug for the API/UI (camelCase to match the SNMP enum names the
     // rest of the codebase surfaces verbatim).
     pub fn as_str(self) -> &'static str {
@@ -214,6 +230,17 @@ mod tests {
 
     fn parse(fixture: &str) -> SNMPBotResponse {
         serde_json::from_str(fixture).unwrap()
+    }
+
+    #[test]
+    fn status_numeric_encoding_is_stable() {
+        assert_eq!(PoeStatus::Disabled.as_numeric(), 1);
+        assert_eq!(PoeStatus::Searching.as_numeric(), 2);
+        assert_eq!(PoeStatus::Delivering.as_numeric(), 3);
+        assert_eq!(PoeStatus::Fault.as_numeric(), 4);
+        assert_eq!(PoeStatus::Test.as_numeric(), 5);
+        assert_eq!(PoeStatus::OtherFault.as_numeric(), 6);
+        assert_eq!(PoeStatus::Other.as_numeric(), 0);
     }
 
     #[test]

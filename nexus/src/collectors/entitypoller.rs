@@ -813,6 +813,131 @@ mod tests {
             "jaspy_stp_bridge_root_priority{fqdn=\"sw1.example.com\",hostname=\"sw1\",root_mac=\"aa:bb:cc:dd:ee:ff\",vlan=\"100\"} 33068 7"
         );
     }
+
+    // --- PoE metrics ---
+
+    fn poe_test_device() -> EntityDevice {
+        // Interface map keyed by name and description, both -> (name, id), as
+        // load_devices builds it. Interface id 501 resolves to a name; others
+        // don't (exercises the empty-name fallback).
+        let mut interfaces: HashMap<String, (String, i32)> = HashMap::new();
+        interfaces.insert("GigabitEthernet0/1".to_string(), ("GigabitEthernet0/1".to_string(), 501));
+        interfaces.insert("uplink to core".to_string(), ("GigabitEthernet0/1".to_string(), 501));
+        EntityDevice {
+            hostname: "sw1".to_string(),
+            fqdn: DEV.to_string(),
+            community: "testcomm".to_string(),
+            vendor: Vendor::Cisco,
+            interfaces,
+        }
+    }
+
+    fn find<'a>(metrics: &'a [LabeledMetric], name: &str) -> &'a LabeledMetric {
+        metrics.iter().find(|m| m.name == name).expect(name)
+    }
+
+    #[test]
+    fn poe_metrics_per_port_cisco_full() {
+        use crate::collectors::poe::{InterfacePoe, PoeStatus};
+        let mut poe = HashMap::new();
+        poe.insert(501, InterfacePoe {
+            admin_enabled: true,
+            status: PoeStatus::Delivering,
+            class: Some(4),
+            power_mw: Some(4578),
+            allocated_mw: Some(15400),
+            max_drawn_mw: Some(5229),
+            priority: Some("low".to_string()),
+            ent_phy_index: Some(1005),
+        });
+        let metrics = poe_metrics(&poe_test_device(), &poe, &[], 7);
+
+        // Label set + ordering locked via the always-present admin gauge.
+        assert_eq!(
+            find(&metrics, "jaspy_poe_port_admin_enabled").as_text(),
+            "jaspy_poe_port_admin_enabled{fqdn=\"sw1.example.com\",hostname=\"sw1\",interface_id=\"501\",name=\"GigabitEthernet0/1\"} 1 7"
+        );
+        assert_eq!(find(&metrics, "jaspy_poe_port_status").value.as_i64(), 3);
+        assert_eq!(find(&metrics, "jaspy_poe_port_class").value.as_i64(), 4);
+        // Cisco milliwatts scaled to watts.
+        assert_eq!(find(&metrics, "jaspy_poe_port_power_watts").value.as_f64(), 4578.0 / 1000.0);
+        assert_eq!(find(&metrics, "jaspy_poe_port_allocated_watts").value.as_f64(), 15400.0 / 1000.0);
+        assert_eq!(find(&metrics, "jaspy_poe_port_max_drawn_watts").value.as_f64(), 5229.0 / 1000.0);
+    }
+
+    #[test]
+    fn poe_metrics_standards_only_port_omits_watts_and_class() {
+        use crate::collectors::poe::{InterfacePoe, PoeStatus};
+        let mut poe = HashMap::new();
+        poe.insert(501, InterfacePoe {
+            admin_enabled: false,
+            status: PoeStatus::Searching,
+            class: None,
+            power_mw: None,
+            allocated_mw: None,
+            max_drawn_mw: None,
+            priority: None,
+            ent_phy_index: None,
+        });
+        let metrics = poe_metrics(&poe_test_device(), &poe, &[], 1);
+        let names: HashSet<&str> = metrics.iter().map(|m| m.name.as_str()).collect();
+        assert!(names.contains("jaspy_poe_port_admin_enabled"));
+        assert!(names.contains("jaspy_poe_port_status"));
+        assert!(!names.contains("jaspy_poe_port_class"));
+        assert!(!names.contains("jaspy_poe_port_power_watts"));
+        assert!(!names.contains("jaspy_poe_port_allocated_watts"));
+        assert!(!names.contains("jaspy_poe_port_max_drawn_watts"));
+        assert_eq!(find(&metrics, "jaspy_poe_port_admin_enabled").value.as_i64(), 0);
+        assert_eq!(find(&metrics, "jaspy_poe_port_status").value.as_i64(), 2); // searching
+    }
+
+    #[test]
+    fn poe_metrics_unresolved_interface_id_leaves_name_empty() {
+        use crate::collectors::poe::{InterfacePoe, PoeStatus};
+        let mut poe = HashMap::new();
+        poe.insert(999, InterfacePoe {
+            admin_enabled: true,
+            status: PoeStatus::Delivering,
+            class: Some(3),
+            power_mw: Some(1000),
+            allocated_mw: None,
+            max_drawn_mw: None,
+            priority: None,
+            ent_phy_index: None,
+        });
+        let metrics = poe_metrics(&poe_test_device(), &poe, &[], 1);
+        let m = find(&metrics, "jaspy_poe_port_power_watts");
+        assert_eq!(m.labels.get("name").map(String::as_str), Some(""));
+        assert_eq!(m.labels.get("interface_id").map(String::as_str), Some("999"));
+    }
+
+    #[test]
+    fn poe_metrics_budget_group_full() {
+        use crate::collectors::poe::PoeBudget;
+        let budget = vec![PoeBudget { group: 1, total_w: 124, consumed_w: 10, oper_on: true, threshold_pct: Some(80) }];
+        let metrics = poe_metrics(&poe_test_device(), &HashMap::new(), &budget, 9);
+        assert_eq!(
+            find(&metrics, "jaspy_poe_budget_total_watts").as_text(),
+            "jaspy_poe_budget_total_watts{fqdn=\"sw1.example.com\",hostname=\"sw1\",pse_group=\"1\"} 124 9"
+        );
+        assert_eq!(find(&metrics, "jaspy_poe_budget_consumed_watts").value.as_i64(), 10);
+        assert_eq!(find(&metrics, "jaspy_poe_budget_oper_on").value.as_i64(), 1);
+        assert_eq!(find(&metrics, "jaspy_poe_budget_threshold_percent").value.as_i64(), 80);
+    }
+
+    #[test]
+    fn poe_metrics_budget_unset_threshold_omitted_and_oper_off() {
+        use crate::collectors::poe::PoeBudget;
+        let budget = vec![PoeBudget { group: 2, total_w: 60, consumed_w: 0, oper_on: false, threshold_pct: None }];
+        let metrics = poe_metrics(&poe_test_device(), &HashMap::new(), &budget, 1);
+        assert!(!metrics.iter().any(|m| m.name == "jaspy_poe_budget_threshold_percent"));
+        assert_eq!(find(&metrics, "jaspy_poe_budget_oper_on").value.as_i64(), 0);
+    }
+
+    #[test]
+    fn poe_metrics_empty_when_no_poe() {
+        assert!(poe_metrics(&poe_test_device(), &HashMap::new(), &[], 1).is_empty());
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1171,6 +1296,75 @@ fn entity_phys_names(snmp: &SnmpSource, host: &String) -> HashMap<i64, String> {
         }
     }
     names
+}
+
+// Build Prometheus samples from the decoded PoE state. Pure (no I/O), like the
+// poe.rs decoders, so the label/units mapping is unit-tested from
+// InterfacePoe/PoeBudget values; the run loop calls get_poe then appends these
+// to the device's metric vec so render() emits them alongside sensors/STP. The
+// Cisco per-port watts are milliwatts (scaled to watts here); the vendor-neutral
+// pethMainPse budget is already in watts.
+fn poe_metrics(
+    device: &EntityDevice,
+    poe: &HashMap<i32, crate::collectors::poe::InterfacePoe>,
+    budget: &[crate::collectors::poe::PoeBudget],
+    timestamp: u64,
+) -> Vec<LabeledMetric> {
+    let mut out: Vec<LabeledMetric> = Vec::new();
+
+    // db interface id -> interface name. device.interfaces is keyed by both name
+    // and description, each pointing at the same (name, id); invert it once.
+    let mut name_by_id: HashMap<i32, String> = HashMap::new();
+    for (_, (name, id)) in device.interfaces.iter() {
+        name_by_id.entry(*id).or_insert_with(|| name.clone());
+    }
+
+    let base_labels = |extra: &[(&str, String)]| -> HashMap<String, String> {
+        let mut labels: HashMap<String, String> = HashMap::new();
+        labels.insert("fqdn".to_string(), device.fqdn.clone());
+        labels.insert("hostname".to_string(), device.hostname.clone());
+        for (key, value) in extra {
+            labels.insert(key.to_string(), value.clone());
+        }
+        labels
+    };
+    let mut push = |out: &mut Vec<LabeledMetric>, name: &str, value: MetricValue, labels: &HashMap<String, String>| {
+        out.push(LabeledMetric::new(&name.to_string(), value, labels, timestamp));
+    };
+
+    // Per-port samples. Watts are Cisco-extension only (None on standards-only
+    // devices), so those rows are skipped when absent rather than reported as 0.
+    for (iface_id, port) in poe.iter() {
+        let name = name_by_id.get(iface_id).cloned().unwrap_or_default();
+        let labels = base_labels(&[("name", name), ("interface_id", iface_id.to_string())]);
+        push(&mut out, "jaspy_poe_port_admin_enabled", MetricValue::Int64(if port.admin_enabled { 1 } else { 0 }), &labels);
+        push(&mut out, "jaspy_poe_port_status", MetricValue::Int64(port.status.as_numeric()), &labels);
+        if let Some(class) = port.class {
+            push(&mut out, "jaspy_poe_port_class", MetricValue::Int64(class), &labels);
+        }
+        if let Some(mw) = port.power_mw {
+            push(&mut out, "jaspy_poe_port_power_watts", MetricValue::Float64(mw as f64 / 1000.0), &labels);
+        }
+        if let Some(mw) = port.allocated_mw {
+            push(&mut out, "jaspy_poe_port_allocated_watts", MetricValue::Float64(mw as f64 / 1000.0), &labels);
+        }
+        if let Some(mw) = port.max_drawn_mw {
+            push(&mut out, "jaspy_poe_port_max_drawn_watts", MetricValue::Float64(mw as f64 / 1000.0), &labels);
+        }
+    }
+
+    // Switch-wide budget, one set of samples per PSE group.
+    for group in budget.iter() {
+        let labels = base_labels(&[("pse_group", group.group.to_string())]);
+        push(&mut out, "jaspy_poe_budget_total_watts", MetricValue::Int64(group.total_w), &labels);
+        push(&mut out, "jaspy_poe_budget_consumed_watts", MetricValue::Int64(group.consumed_w), &labels);
+        push(&mut out, "jaspy_poe_budget_oper_on", MetricValue::Int64(if group.oper_on { 1 } else { 0 }), &labels);
+        if let Some(pct) = group.threshold_pct {
+            push(&mut out, "jaspy_poe_budget_threshold_percent", MetricValue::Int64(pct), &labels);
+        }
+    }
+
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -1608,6 +1802,11 @@ pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, di
                 get_stp(&snmp, &device, &stp_sources, &mut metrics);
             }
             get_poe(&snmp, &device, &mut poe, &mut poe_budget);
+            // Emit PoE as Prometheus samples too (the store also keeps the
+            // structured poe/poe_budget for the /api/v1 overlay). Appended to
+            // the same vec so render() picks them up; decode_entity ignores the
+            // jaspy_poe_* names.
+            metrics.extend(poe_metrics(&device, &poe, &poe_budget, tools::get_time_msecs()));
             if let Ok(mut store) = store.lock() {
                 store.replace_device(device.fqdn.clone(), metrics);
                 store.set_media(device.fqdn.clone(), media);
