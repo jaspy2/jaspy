@@ -98,6 +98,8 @@ pub fn prepare() -> MockGuard {
     // network and ingesting devices + links through the real engine.
     default_env("JASPY_DISCOVERY_INTERVAL_SECS", "300");
     default_env("JASPY_DISCOVERY_SKIP_DNS", "1");
+    // Demo the Megaexcel integration: nav link + per-device "Open in Megaexcel".
+    default_env("JASPY_MEGAEXCEL_URL", "https://megaexcel.arenius.fi");
     default_env("ROCKET_ADDRESS", "127.0.0.1");
     // ROCKET_PORT stays at rocket's default 8000 — the webui dev proxy target.
 

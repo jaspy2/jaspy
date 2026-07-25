@@ -28,6 +28,10 @@ Environment=ROCKET_PORT=8000
 # In-process poller collector (formerly the standalone jaspy-poller service).
 Environment=JASPY_SNMPBOT_URL=http://127.0.0.1:8286/
 Environment=JASPY_POLL_LOOP_MSECS=10000
+# Megaexcel integration base URL. When set, the web UI shows a Megaexcel link in
+# the nav and an "Open in Megaexcel" button on each device page (.../entity/<name>).
+# Unset or comment out to hide the integration entirely.
+Environment=JASPY_MEGAEXCEL_URL=https://megaexcel.arenius.fi
 ExecStart=/usr/lib/jaspy/jaspy-nexus
 
 [Install]

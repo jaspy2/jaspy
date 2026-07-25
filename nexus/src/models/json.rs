@@ -191,6 +191,8 @@ pub struct ApiSystemStatus {
     pub discovery_periodic_enabled: bool,
     pub discovery_interval_secs: u64,
     pub weathermap_dir: Option<String>,
+    #[serde(default)]
+    pub megaexcel_url: Option<String>,
 }
 
 // GET /api/v1/system/env: one JASPY_* environment variable and its (redacted)

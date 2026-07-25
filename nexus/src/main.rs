@@ -501,6 +501,14 @@ async fn server_main() {
     let weathermap_dir = std::env::var("JASPY_WEATHERMAP_DIR").unwrap_or_else(|_| "/var/lib/jaspy/weathermap".to_string());
     let weathermap_dir_present = std::path::Path::new(&weathermap_dir).is_dir();
 
+    // Megaexcel integration base URL (e.g. https://megaexcel.arenius.fi). When
+    // set, the web UI shows Megaexcel links in the nav and on each device page;
+    // when unset/blank the integration is hidden entirely. Trailing slash is
+    // trimmed so the UI can append paths cleanly.
+    let megaexcel_url = std::env::var("JASPY_MEGAEXCEL_URL").ok()
+        .map(|s| s.trim().trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty());
+
     // Effective feature configuration for GET /api/v1/system.
     let system_info = models::internal::SystemInfo {
         snmpbot_url: snmpbot_url.clone(),
@@ -521,6 +529,7 @@ async fn server_main() {
         lagpoller_enabled: enable_lagpoller,
         lagpoller_interval_msecs: lagpoller_interval_msecs,
         weathermap_dir: if weathermap_dir_present { Some(weathermap_dir.clone()) } else { None },
+        megaexcel_url,
         db_url: db::redacted_db_url(&std::env::var("JASPY_DB_URL").unwrap_or_default()),
         db_backend: db::backend_kind(&std::env::var("JASPY_DB_URL").unwrap_or_default()).as_str().to_string(),
     };

@@ -97,6 +97,7 @@ export interface SystemStatus {
   discoveryPeriodicEnabled: boolean;
   discoveryIntervalSecs: number;
   weathermapDir: string | null;
+  megaexcelUrl: string | null; // integration base URL; null disables the links
 }
 
 export interface EnvVar {

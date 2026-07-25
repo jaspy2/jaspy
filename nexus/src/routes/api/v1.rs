@@ -1166,6 +1166,7 @@ pub fn system_status(
         discovery_periodic_enabled: discovery_periodic_enabled,
         discovery_interval_secs: discovery_interval_secs,
         weathermap_dir: system.weathermap_dir.clone(),
+        megaexcel_url: system.megaexcel_url.clone(),
     })
 }
 

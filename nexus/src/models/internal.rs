@@ -21,6 +21,7 @@ pub struct SystemInfo {
     pub lagpoller_enabled: bool,
     pub lagpoller_interval_msecs: u64,
     pub weathermap_dir: Option<String>,
+    pub megaexcel_url: Option<String>, // integration base URL; None disables
     pub db_url: String, // password redacted
     pub db_backend: String, // "postgresql" | "sqlite"
 }

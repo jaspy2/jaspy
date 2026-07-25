@@ -716,6 +716,10 @@ export default function DeviceDetail() {
       : undefined;
   const entitypollerEnabled = system.data?.entitypollerEnabled === true;
   const vlanpollerEnabled = system.data?.vlanpollerEnabled === true;
+  // Megaexcel entity page keys off the device's short name (fqdn without the
+  // domain suffix), e.g. "ticket-sw2.asm.fi" -> ".../entity/ticket-sw2".
+  const megaexcelUrl = system.data?.megaexcelUrl ?? null;
+  const megaexcelDeviceUrl = megaexcelUrl ? `${megaexcelUrl}/entity/${device.fqdn.split('.')[0]}` : null;
 
   return (
     <>
@@ -745,6 +749,11 @@ export default function DeviceDetail() {
           <button onClick={() => runDiscovery.mutate()} disabled={runDiscovery.isPending}>
             {runDiscovery.isPending ? 'Running…' : 'Run discovery'}
           </button>
+          {megaexcelDeviceUrl && (
+            <a className="button" href={megaexcelDeviceUrl} target="_blank" rel="noreferrer">
+              Open in Megaexcel ↗
+            </a>
+          )}
           {!confirmDelete ? (
             <button className="danger" onClick={() => setConfirmDelete(true)}>
               Delete device…

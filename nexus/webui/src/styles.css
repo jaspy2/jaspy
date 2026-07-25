@@ -205,7 +205,7 @@ textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   white-space: pre-wrap;
 }
 
-button {
+button, a.button {
   background: var(--accent);
   color: var(--accent-text);
   border: none;
@@ -215,7 +215,9 @@ button {
   cursor: pointer;
   touch-action: manipulation; /* no double-tap zoom delay on touch devices */
 }
-button:hover:not(:disabled) { filter: brightness(1.1); }
+/* Anchors styled as buttons (e.g. external "Open in …" links) shed link chrome. */
+a.button { display: inline-block; text-decoration: none; }
+button:hover:not(:disabled), a.button:hover { filter: brightness(1.1); }
 button:disabled { opacity: 0.5; cursor: default; }
 button.danger { background: var(--danger); }
 /* Low-emphasis action (e.g. un-acknowledge): outlined, not filled. */
@@ -488,7 +490,7 @@ button.detail-toggle:hover:not(:disabled) { text-decoration: underline; }
   /* iOS zooms the page when a focused input's font-size is below 16px. */
   input, select { font-size: 16px; }
   /* Comfortable touch targets */
-  button { padding: 10px 16px; }
+  button, a.button { padding: 10px 16px; }
   .nav-link { padding: 12px 14px; }
 
   th, td { padding: 8px 10px; }

@@ -26,6 +26,8 @@ const NAV = [
 export default function App() {
   const [navOpen, setNavOpen] = useState(false);
   const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary, refetchInterval: 10000 });
+  const system = useQuery({ queryKey: ['system'], queryFn: api.system });
+  const megaexcelUrl = system.data?.megaexcelUrl ?? null;
   const deviceMatch = useMatch('/devices/:fqdn');
   const deviceFqdn = deviceMatch?.params.fqdn;
 
@@ -71,9 +73,14 @@ export default function App() {
               {item.label}
             </NavLink>
           ))}
-          <a className="nav-link" href="/weathermap/" target="_blank" rel="noreferrer">
+          <a className="nav-link" href="https://mobydick.netcrew.fi/wmap/" target="_blank" rel="noreferrer">
             Weathermap ↗
           </a>
+          {megaexcelUrl && (
+            <a className="nav-link" href={`${megaexcelUrl}/auth?I=kissa123`} target="_blank" rel="noreferrer">
+              Megaexcel ↗
+            </a>
+          )}
         </nav>
         <main className="content">
           <Routes>
