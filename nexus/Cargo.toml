@@ -11,6 +11,10 @@ config = { version = "0.15", default-features = false, features = ["yaml"] }
 rocket = { version = "0.5.1", features = ["json"] }
 # WebSocket support for Rocket (live log streaming to the web UI).
 rocket_ws = "0.1"
+# gzip/brotli response compression fairing. nexus serves the web UI and JSON API
+# directly (no reverse proxy in the deb/k8s deployments), so compression happens
+# here or nowhere; brotli shrinks the ~290 KB JS bundle by ~70%.
+rocket_async_compression = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 diesel = { version = "2.2", features = ["postgres", "sqlite", "returning_clauses_for_sqlite_3_35", "r2d2"] }

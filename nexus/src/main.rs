@@ -644,7 +644,10 @@ async fn server_main() {
         .manage(issue_tracker.clone())
         .manage(runtime_info.clone())
         .manage(system_info)
-        .manage(msgbus.clone());
+        .manage(msgbus.clone())
+        // gzip/brotli-compress responses per the request's Accept-Encoding.
+        // Attached last so it sees the final body of every route (UI + API).
+        .attach(rocket_async_compression::Compression::fairing());
 
     // Serve the existing PIXI weathermap statics when present (replaces the
     // apache2 DocumentRoot; config.js can now use relative /dev/weathermap).
