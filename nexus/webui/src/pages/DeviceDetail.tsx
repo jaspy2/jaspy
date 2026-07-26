@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, StpPort } from '../api/types';
 import { HealthBadge, PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
+import ActionMenu from '../components/ActionMenu';
 import useLiveSocket from '../hooks/useLiveSocket';
 
 // ENTITY-SENSOR-MIB value types -> display units. Unknown types fall back to
@@ -738,26 +739,37 @@ export default function DeviceDetail() {
           <span>Polling</span><span><PollingBadge enabled={device.pollingEnabled} /></span>
         </div>
         <div className="actions">
-          <button onClick={() => togglePolling.mutate(device)} disabled={togglePolling.isPending}>
-            {device.pollingEnabled === false ? 'Enable polling' : 'Disable polling'}
-          </button>
           {vlanpollerEnabled && (
             <button onClick={() => pollVlans.mutate()} disabled={pollVlans.isPending}>
               Poll VLANs now
             </button>
           )}
-          <button onClick={() => runDiscovery.mutate()} disabled={runDiscovery.isPending}>
-            {runDiscovery.isPending ? 'Running…' : 'Run discovery'}
-          </button>
           {megaexcelDeviceUrl && (
             <a className="button" href={megaexcelDeviceUrl} target="_blank" rel="noreferrer">
               Open in Megaexcel ↗
             </a>
           )}
           {!confirmDelete ? (
-            <button className="danger" onClick={() => setConfirmDelete(true)}>
-              Delete device…
-            </button>
+            <ActionMenu
+              label="More"
+              items={[
+                {
+                  label: device.pollingEnabled === false ? 'Enable polling' : 'Disable polling',
+                  onClick: () => togglePolling.mutate(device),
+                  disabled: togglePolling.isPending,
+                },
+                {
+                  label: runDiscovery.isPending ? 'Running…' : 'Run discovery',
+                  onClick: () => runDiscovery.mutate(),
+                  disabled: runDiscovery.isPending,
+                },
+                {
+                  label: 'Delete device…',
+                  onClick: () => setConfirmDelete(true),
+                  danger: true,
+                },
+              ]}
+            />
           ) : (
             <>
               <button className="danger" onClick={() => deleteDevice.mutate()} disabled={deleteDevice.isPending}>

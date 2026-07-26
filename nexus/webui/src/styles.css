@@ -259,6 +259,39 @@ button.secondary { background: transparent; color: var(--accent); border: 1px so
 button.secondary:hover:not(:disabled) { filter: none; background: var(--muted-bg); }
 
 .actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+/* Overflow menu (ActionMenu): a trigger button with a popover list, used to keep
+   rarely-used / destructive device actions out of the main row. */
+.action-menu { position: relative; display: inline-block; }
+.action-menu__popover {
+  position: absolute;
+  /* Anchor to the trigger's left edge so it opens rightward: "More" sits at the
+     left of the actions row, and right-anchoring ran the menu off the left of a
+     narrow (mobile) viewport. */
+  left: 0;
+  top: calc(100% + 4px);
+  min-width: 180px;
+  max-width: calc(100vw - 32px);
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.action-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  border-radius: 5px;
+  padding: 10px 14px;
+}
+.action-menu__item:hover:not(:disabled) { filter: none; background: var(--muted-bg); }
+.action-menu__item--danger { color: var(--danger); }
 .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .toolbar input[type='search'] { min-width: 280px; }
 
