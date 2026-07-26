@@ -1262,6 +1262,19 @@ pub fn system_env() -> Json<Vec<models::json::ApiEnvVar>> {
 // Topics: "discovery" (run log lines, {"ts":..,"line":".."}) and
 // "device:<fqdn>" (msgbus events for that device, models/events.rs JSON,
 // live-only — no backlog).
+// A client's application-level liveness probe: it sends {"type":"ping"} and
+// expects {"type":"pong"} back. Returns the reply frame for a ping, or None for
+// any other frame (which we ignore). Kept pure so it is unit-testable without a
+// live socket.
+fn pong_reply(client_frame: &str) -> Option<&'static str> {
+    match serde_json::from_str::<serde_json::Value>(client_frame) {
+        Ok(value) if value.get("type").and_then(|t| t.as_str()) == Some("ping") => {
+            Some("{\"type\":\"pong\"}")
+        },
+        _ => None,
+    }
+}
+
 #[get("/ws/logs/<topic>")]
 pub fn ws_logs(ws: rocket_ws::WebSocket, topic: &str) -> rocket_ws::Channel<'static> {
     let topic = topic.to_string();
@@ -1299,10 +1312,20 @@ pub fn ws_logs(ws: rocket_ws::WebSocket, topic: &str) -> rocket_ws::Channel<'sta
                         Err(RecvError::Closed) => break,
                     }
                 },
-                // We never act on client messages; polling the read side is
-                // how we notice the peer went away (None/Err = closed).
+                // Polling the read side is how we notice the peer went away
+                // (None/Err = closed). The one message we act on is an
+                // application-level ping: a woken tab sends {"type":"ping"} to
+                // prove the connection is alive end-to-end (its readyState can
+                // still say OPEN over a dead TCP link), and we answer "pong".
                 incoming = stream.next() => {
                     match incoming {
+                        Some(Ok(rocket_ws::Message::Text(text))) => {
+                            if let Some(pong) = pong_reply(&text) {
+                                if stream.send(rocket_ws::Message::Text(pong.to_string())).await.is_err() {
+                                    break;
+                                }
+                            }
+                        },
                         Some(Ok(_)) => {},
                         _ => break,
                     }
@@ -1330,6 +1353,20 @@ mod tests {
         // Empty / whitespace-only hostname is rejected.
         assert!(validated_device_identity("", "event.example").is_err());
         assert!(validated_device_identity("   ", "event.example").is_err());
+    }
+
+    #[test]
+    fn pong_reply_answers_only_ping_frames() {
+        // A ping gets a pong.
+        assert_eq!(pong_reply(r#"{"type":"ping"}"#), Some(r#"{"type":"pong"}"#));
+        // Extra fields are tolerated (forward-compatible client).
+        assert_eq!(pong_reply(r#"{"type":"ping","id":7}"#), Some(r#"{"type":"pong"}"#));
+        // Anything else is ignored.
+        assert_eq!(pong_reply(r#"{"type":"pong"}"#), None);
+        assert_eq!(pong_reply(r#"{"type":"other"}"#), None);
+        assert_eq!(pong_reply("{}"), None);
+        assert_eq!(pong_reply("not json"), None);
+        assert_eq!(pong_reply(""), None);
     }
 
     #[test]

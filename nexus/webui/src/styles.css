@@ -75,6 +75,40 @@ body {
 .event-name { color: var(--muted); border-left: 1px solid var(--border); padding-left: 12px; }
 .spacer { flex: 1; }
 .header-badges { display: flex; gap: 6px; }
+
+/* Live-connection indicator: a colored dot in the topbar. Green = up to date,
+   amber (pulsing) = reconnecting, red = offline. A 32px tap target; click to
+   force a resync. */
+.sync {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.sync:hover { background: var(--muted-bg); }
+.sync-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--muted);
+  box-shadow: 0 0 0 2px var(--panel);
+  transition: background 0.2s ease;
+}
+.sync--live .sync-dot { background: var(--ok); }
+.sync--connecting .sync-dot { background: var(--warn); animation: sync-pulse 1s ease-in-out infinite; }
+.sync--down .sync-dot { background: var(--bad); }
+@keyframes sync-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 .hamburger {
   display: none;
   background: none;

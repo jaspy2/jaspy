@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Route, Routes, useMatch } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api/client';
+import useLiveSocket from './hooks/useLiveSocket';
+import SyncIndicator from './components/SyncIndicator';
 import Dashboard from './pages/Dashboard';
 import Devices from './pages/Devices';
 import DeviceDetail from './pages/DeviceDetail';
@@ -31,6 +33,45 @@ export default function App() {
   const deviceMatch = useMatch('/devices/:fqdn');
   const deviceFqdn = deviceMatch?.params.fqdn;
 
+  // App-wide live connection: subscribe to the fleet-wide device-event feed and
+  // surface its state as the topbar indicator. Every device change invalidates
+  // the app-wide views, and every genuine reconnect refetches everything — so
+  // after a tab refocus or device wake the user never sees data that silently
+  // went stale while the socket was dead.
+  const queryClient = useQueryClient();
+  const hasConnected = useRef(false);
+  const [resyncSignal, setResyncSignal] = useState(0);
+  const { status } = useLiveSocket('devices', {
+    onMessage: (data) => {
+      const event = data as { eventType?: string };
+      if (!event?.eventType) return;
+      queryClient.invalidateQueries({ queryKey: ['summary'] });
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+    },
+    onOpen: () => {
+      // The first connect already has fresh data from page load; only a genuine
+      // reconnect needs a blanket refetch to cover pushes missed while down.
+      if (hasConnected.current) queryClient.invalidateQueries();
+      hasConnected.current = true;
+    },
+    reconnectSignal: resyncSignal,
+  });
+
+  // Detect a server restart (redeploy): stateId is derived from the server's
+  // startup time, so a change means we reconnected to a fresh generation whose
+  // frontend assets may differ — hard-reload to avoid running stale code.
+  const lastStateId = useRef<number | null>(null);
+  const stateId = summary.data?.stateId;
+  useEffect(() => {
+    if (stateId == null) return;
+    if (lastStateId.current === null) {
+      lastStateId.current = stateId;
+      return;
+    }
+    if (lastStateId.current !== stateId) window.location.reload();
+  }, [stateId]);
+
   return (
     <div className="app">
       <header className="topbar">
@@ -58,6 +99,7 @@ export default function App() {
             )}
           </span>
         )}
+        <SyncIndicator status={status} onResync={() => setResyncSignal((n) => n + 1)} />
       </header>
       <div className="body">
         {navOpen && <div className="backdrop" onClick={() => setNavOpen(false)} />}
