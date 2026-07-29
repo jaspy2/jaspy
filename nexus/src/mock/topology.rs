@@ -1178,10 +1178,14 @@ impl Topology {
                 Some(response(table_id, entries))
             }
             "CISCO-CDP-MIB::cdpCacheTable" => {
-                // Access switches see an IP phone on each live desk port. The
-                // phones are off-fleet (not crawled devices), so they never
-                // resolve to a monitored link — they exercise the "CDP neighbor
-                // as plain text" path on the device page.
+                // Access switches see an IP phone on some live desk ports (the
+                // odd ifIndexes); the even ones model plain PCs that announce no
+                // CDP/LLDP. The phones are off-fleet (not crawled devices), so
+                // they never resolve to a monitored link — they exercise the
+                // "CDP neighbor as plain text" path on the device page, and the
+                // phone/PC split lets the issues page demonstrate that
+                // interface-health warnings are suppressed on neighbour-less
+                // access ports but kept on neighboured ones.
                 let entries = if dev.name.starts_with("access-") {
                     dev.interfaces.iter()
                         .filter(|iface| {
@@ -1189,6 +1193,7 @@ impl Topology {
                                 && iface.speed_mbps < 10000
                                 && !iface.name.starts_with("Po")
                                 && !dev.lags.iter().any(|lag| lag.members.contains(&iface.ifindex))
+                                && iface.ifindex % 2 == 1
                                 && iface_up(iface, elapsed)
                         })
                         .map(|iface| entry(
@@ -2002,10 +2007,11 @@ mod tests {
                 _ => panic!("expected a CDP device id string"),
             }
         }
-        // None of the phone ports are uplinks/LAG members.
+        // Phones sit only on the odd-ifIndex desk ports (even ports model plain
+        // PCs with no CDP/LLDP), and none are uplinks/LAG members.
         assert!(cdp.entries.iter().all(|e| {
             let ifindex = e.index.get("CISCO-CDP-MIB::cdpCacheIfIndex").copied().unwrap_or(0);
-            a01.interfaces.iter().any(|i| i.ifindex == ifindex && i.peer.is_none())
+            ifindex % 2 == 1 && a01.interfaces.iter().any(|i| i.ifindex == ifindex && i.peer.is_none())
         }));
         // The core (no access ports) reports no CDP.
         let core = topo.devices.iter().find(|d| d.name == "core1").unwrap();

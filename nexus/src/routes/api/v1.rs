@@ -618,9 +618,49 @@ pub fn collect_issues(
     cache_controller: &Arc<Mutex<utilities::cache::CacheController>>,
 ) -> Vec<crate::utilities::issues::DerivedIssue> {
     use crate::utilities::issues;
+    use std::collections::{HashMap, HashSet};
     let now = utilities::tools::get_time_msecs();
     let devices = models::dbo::Device::all(connection);
     let mut out: Vec<issues::DerivedIssue> = Vec::new();
+
+    // Interface-health issues are only raised on "infrastructure" ports — a
+    // port-channel member OR a port with a discovered CDP/LLDP neighbour.
+    // Access/edge ports (neither) are silenced: their flaps/errors are end-host
+    // noise. Computed here, before the IMDS lock, so it uses the same
+    // lag_store-then-connection order as the rest and never nests under imds.
+    let lag_members = lag_store.lock().map(|s| s.lag_members()).unwrap_or_default();
+    let mut infra_ports: HashMap<String, HashSet<i32>> = HashMap::new();
+    for device in devices.iter() {
+        let fqdn = format!("{}.{}", device.name, device.dns_domain);
+        let interfaces = device.interfaces(connection);
+        let ids: Vec<i32> = interfaces.iter().map(|i| i.id).collect();
+        // Interface ids a monitored neighbour points at (links are stored
+        // one-directionally), mirroring the /devices reverse-link union.
+        let mut reverse: HashSet<i32> = HashSet::new();
+        for remote in models::dbo::Interface::pointing_at(connection, &ids) {
+            for t in [remote.connected_interface, remote.virtual_connection] {
+                if let Some(t) = t {
+                    if ids.contains(&t) {
+                        reverse.insert(t);
+                    }
+                }
+            }
+        }
+        let dev_lag = lag_members.get(&fqdn);
+        let mut set = HashSet::new();
+        for iface in interfaces.iter() {
+            let idx = iface.index;
+            let is_lag = dev_lag.map_or(false, |aggs| aggs.values().any(|m| m.contains(&(idx as i64))));
+            let has_link = iface.connected_interface.is_some()
+                || iface.virtual_connection.is_some()
+                || reverse.contains(&iface.id);
+            let has_cdp = iface.cdp_device_id.as_deref().map_or(false, |s| !s.trim().is_empty());
+            if is_lag || has_link || has_cdp {
+                set.insert(idx);
+            }
+        }
+        infra_ports.insert(fqdn, set);
+    }
 
     // --- Device down + per-interface health (one IMDS lock) ---
     if let Ok(imds_guard) = imds.lock() {
@@ -637,10 +677,12 @@ pub fn collect_issues(
                 if let Some(issue) = issues::device_down_issue(&fqdn, up, ssp) {
                     out.push(issue);
                 }
+                let infra = infra_ports.get(&fqdn);
                 for (ifindex, name) in names.iter() {
                     if let Some(summary) = imds_guard.interface_health(&fqdn, *ifindex, now) {
                         let health = api_interface_health(summary);
-                        out.extend(issues::interface_health_issues(&fqdn, *ifindex, name, &health));
+                        let is_infra = infra.map_or(false, |s| s.contains(ifindex));
+                        out.extend(issues::interface_health_issues(&fqdn, *ifindex, name, &health, is_infra));
                     }
                 }
             }

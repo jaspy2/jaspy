@@ -209,8 +209,14 @@ pub fn poe_budget_issues(fqdn: &str, budgets: &[crate::collectors::poe::PoeBudge
 // Splits a tripped interface-health summary into one issue per active signal
 // (so each can be acknowledged independently). Nothing is emitted when the
 // summary's severity is None (no signal crossed its configured threshold).
-pub fn interface_health_issues(fqdn: &str, ifindex: i32, iface_name: &str, h: &json::ApiInterfaceHealth) -> Vec<DerivedIssue> {
-    if h.severity.is_none() {
+//
+// `is_infrastructure_port` gates the whole thing: an access/edge port (no
+// port-channel membership and no discovered CDP/LLDP neighbour) is silenced
+// entirely — its flaps/errors/discards are end-host noise, not a fleet problem,
+// and they otherwise drown out the issues that matter. The caller decides the
+// flag; see collect_issues.
+pub fn interface_health_issues(fqdn: &str, ifindex: i32, iface_name: &str, h: &json::ApiInterfaceHealth, is_infrastructure_port: bool) -> Vec<DerivedIssue> {
+    if !is_infrastructure_port || h.severity.is_none() {
         return Vec::new();
     }
     let host = hostname_of(fqdn);
@@ -948,11 +954,11 @@ mod tests {
 
     #[test]
     fn healthy_interface_yields_nothing() {
-        assert!(interface_health_issues("sw1.example.com", 1, "Gi1/0/1", &health(None)).is_empty());
+        assert!(interface_health_issues("sw1.example.com", 1, "Gi1/0/1", &health(None), true).is_empty());
     }
 
-    #[test]
-    fn interface_signals_split_into_one_issue_each() {
+    // A fully tripped health summary used by several tests below.
+    fn all_signals_tripped() -> json::ApiInterfaceHealth {
         let mut h = health(Some("bad"));
         h.flap_count = 3;
         h.last_flap_secs_ago = Some(12);
@@ -962,7 +968,13 @@ mod tests {
         h.peak_utilization_pct = Some(95.0);
         h.speed_change_count = 1;
         h.last_speed_change = Some((Some(1000), 100));
-        let issues = interface_health_issues("sw1.example.com", 10001, "Gi1/0/1", &h);
+        h
+    }
+
+    #[test]
+    fn interface_signals_split_into_one_issue_each() {
+        let h = all_signals_tripped();
+        let issues = interface_health_issues("sw1.example.com", 10001, "Gi1/0/1", &h, true);
         let kinds: HashSet<&str> = issues.iter().map(|i| i.kind.as_str()).collect();
         assert!(kinds.contains("iface-flapping"));
         assert!(kinds.contains("iface-errors"));
@@ -978,10 +990,18 @@ mod tests {
     }
 
     #[test]
+    fn access_port_health_is_suppressed() {
+        // Same tripped signals, but a non-infrastructure port (no LAG, no
+        // CDP/LLDP neighbour): every signal is silenced as end-host noise.
+        let h = all_signals_tripped();
+        assert!(interface_health_issues("sw1.example.com", 10001, "Gi1/0/1", &h, false).is_empty());
+    }
+
+    #[test]
     fn stale_interface_is_bad() {
         let mut h = health(Some("bad"));
         h.stale = true;
-        let issues = interface_health_issues("sw1.example.com", 1, "Gi1", &h);
+        let issues = interface_health_issues("sw1.example.com", 1, "Gi1", &h, true);
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].kind, "iface-stale");
         assert_eq!(issues[0].severity, SEV_BAD);
