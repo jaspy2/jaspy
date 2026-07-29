@@ -255,12 +255,21 @@ export default function Issues() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['issues'] });
   // The issue whose Acknowledge form is currently open, plus its in-progress
   // note text. Clicking Acknowledge opens the form rather than acking straight
-  // away, so an admin can record why a known condition is expected.
+  // away, so an admin can record why a known condition is expected. The form
+  // opens in the full-width detail panel below the row (not in the action
+  // cell), so the Acknowledge button itself never moves.
   const [ackingKey, setAckingKey] = useState<string | null>(null);
   const [ackNote, setAckNote] = useState('');
   const closeAckForm = () => {
     setAckingKey(null);
     setAckNote('');
+  };
+  const openAckForm = (key: string) => {
+    setAckNote('');
+    setAckingKey(key);
+    requestAnimationFrame(() =>
+      document.getElementById(`issue-${key}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    );
   };
   const ack = useMutation({
     mutationFn: api.ackIssue,
@@ -270,7 +279,36 @@ export default function Issues() {
     },
   });
   const unack = useMutation({ mutationFn: api.unackIssue, onSuccess: invalidate });
-  const pending = ack.isPending || unack.isPending;
+
+  // Mass-acknowledge: a selection mode over the Active list. The backend has no
+  // batch endpoint, so acking many issues fans out one api.ackIssue call each.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const exitSelect = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+  const toggleSelected = (key: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const massAck = useMutation({
+    mutationFn: async (keys: string[]) => {
+      const results = await Promise.allSettled(
+        keys.map((k) => api.ackIssue({ issueKey: k, note: null }))
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed) throw new Error(`${failed} of ${keys.length} could not be acknowledged`);
+    },
+    onSuccess: () => {
+      exitSelect();
+      invalidate();
+    },
+  });
+  const pending = ack.isPending || unack.isPending || massAck.isPending;
 
   const { active, acknowledged } = useMemo(() => {
     const all = issues.data?.issues ?? [];
@@ -280,7 +318,15 @@ export default function Issues() {
     };
   }, [issues.data]);
 
+  // Select-all reflects the current Active list; toggling clears or fills it.
+  const allSelected = active.length > 0 && active.every((i) => selected.has(i.issueKey));
+  const toggleSelectAll = () =>
+    setSelected(allSelected ? new Set() : new Set(active.map((i) => i.issueKey)));
+
+  // The action for one issue's row/card. During mass-acknowledge selection the
+  // per-row actions are hidden — the selection bar owns the acking.
   const actionButton = (issue: Issue) => {
+    if (selecting) return null;
     if (issue.acknowledged)
       return (
         <button
@@ -295,34 +341,19 @@ export default function Issues() {
         </button>
       );
 
+    // While the reason form is open the same button becomes the confirm action,
+    // so it stays put and there is no second Acknowledge button in the panel.
     if (ackingKey === issue.issueKey)
       return (
-        <form
-          className="ack-form"
-          onClick={(e) => e.stopPropagation()}
-          onSubmit={(e) => {
-            e.preventDefault();
-            const note = ackNote.trim();
-            ack.mutate({ issueKey: issue.issueKey, note: note || null });
+        <button
+          disabled={pending}
+          onClick={(e) => {
+            e.stopPropagation();
+            ack.mutate({ issueKey: issue.issueKey, note: ackNote.trim() || null });
           }}
         >
-          <textarea
-            className="ack-note"
-            rows={4}
-            autoFocus
-            placeholder="Optional reason — why is this expected? (e.g. transit links intentionally left unconnected while the event is inactive)"
-            value={ackNote}
-            onChange={(e) => setAckNote(e.target.value)}
-          />
-          <div className="ack-form-actions">
-            <button type="submit" disabled={pending}>
-              {pending ? 'Acknowledging…' : 'Acknowledge'}
-            </button>
-            <button type="button" className="secondary" disabled={pending} onClick={closeAckForm}>
-              Cancel
-            </button>
-          </div>
-        </form>
+          {ack.isPending ? 'Confirming…' : 'Confirm'}
+        </button>
       );
 
     return (
@@ -330,8 +361,7 @@ export default function Issues() {
         disabled={pending}
         onClick={(e) => {
           e.stopPropagation();
-          setAckNote('');
-          setAckingKey(issue.issueKey);
+          openAckForm(issue.issueKey);
         }}
       >
         Acknowledge
@@ -339,8 +369,27 @@ export default function Issues() {
     );
   };
 
+  // The reason field, shown inside the full-width detail panel below the issue.
+  // The Confirm action lives in the row's action cell (see actionButton); here
+  // we only render the textarea and, at its right end, the Cancel button.
+  const ackForm = () => (
+    <div className="ack-form" onClick={(e) => e.stopPropagation()}>
+      <textarea
+        className="ack-note"
+        rows={4}
+        autoFocus
+        placeholder="Optional reason — why is this expected? (e.g. transit links intentionally left unconnected while the event is inactive)"
+        value={ackNote}
+        onChange={(e) => setAckNote(e.target.value)}
+      />
+      <button type="button" className="secondary" disabled={pending} onClick={closeAckForm}>
+        Cancel
+      </button>
+    </div>
+  );
+
   // Mobile: a card per issue that expands inline.
-  const cardList = (list: Issue[]) => (
+  const cardList = (list: Issue[], selectable: boolean) => (
     <div className="item-list mobile-only">
       {list.map((issue) => (
         <div key={issue.issueKey} id={`issue-${issue.issueKey}`} className="item-card">
@@ -349,6 +398,15 @@ export default function Issues() {
               {issue.title} {expanded.has(issue.issueKey) ? '▾' : '▸'}
             </button>
             <HealthBadge severity={issue.severity} label={issue.severity === 'bad' ? '⚠ critical' : '⚠ warning'} />
+            {selectable && (
+              <input
+                type="checkbox"
+                className="select-box"
+                checked={selected.has(issue.issueKey)}
+                onChange={() => toggleSelected(issue.issueKey)}
+                aria-label={`Select ${issue.title}`}
+              />
+            )}
           </div>
           <div className="item-sub">
             <span>{deviceCell(issue)}</span>
@@ -359,63 +417,81 @@ export default function Issues() {
           {expanded.has(issue.issueKey) && (
             <IssueDetail issue={issue} related={relatedByKey.get(issue.issueKey) ?? []} onOpenRelated={openIssue} />
           )}
-          <div className="actions">{actionButton(issue)}</div>
+          {ackingKey === issue.issueKey && ackForm()}
+          {!selecting && <div className="actions">{actionButton(issue)}</div>}
         </div>
       ))}
     </div>
   );
 
   // Desktop: a table whose rows expand into a full-width detail row.
-  const table = (list: Issue[]) => (
-    <div className="table-wrap desktop-only">
-      <table>
-        <thead>
-          <tr>
-            <th>Severity</th>
-            <th>Device</th>
-            <th>Affected</th>
-            <th>Issue</th>
-            <th>Age</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.map((issue) => (
-            <Fragment key={issue.issueKey}>
-              <tr id={`issue-${issue.issueKey}`}>
-                <td>
-                  <HealthBadge severity={issue.severity} label={issue.severity === 'bad' ? '⚠ critical' : '⚠ warning'} />
-                </td>
-                <td>{deviceCell(issue)}</td>
-                <td className="wrap-mobile">{issue.subjectLabel ?? <span className="muted">—</span>}</td>
-                <td>
-                  <button className="detail-toggle" onClick={() => toggle(issue.issueKey)} aria-expanded={expanded.has(issue.issueKey)}>
-                    {issue.title} {expanded.has(issue.issueKey) ? '▾' : '▸'}
-                  </button>
-                  {issue.acknowledged && issue.note && <div className="issue-note-inline">{issue.note}</div>}
-                </td>
-                <td className="muted" title={absolute(issue.firstSeen)}>{ago(issue.firstSeen)}</td>
-                <td>{actionButton(issue)}</td>
-              </tr>
-              {expanded.has(issue.issueKey) && (
-                <tr className="vlan-detail-row">
-                  <td colSpan={6}>
-                    <IssueDetail issue={issue} related={relatedByKey.get(issue.issueKey) ?? []} onOpenRelated={openIssue} />
+  // In selection mode the trailing action cell holds the checkbox instead of
+  // the button, so the row's columns stay exactly where they are.
+  const table = (list: Issue[], selectable: boolean) => (
+      <div className="table-wrap desktop-only">
+        <table>
+          <thead>
+            <tr>
+              <th>Severity</th>
+              <th>Device</th>
+              <th>Affected</th>
+              <th>Issue</th>
+              <th>Age</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((issue) => (
+              <Fragment key={issue.issueKey}>
+                <tr id={`issue-${issue.issueKey}`}>
+                  <td>
+                    <HealthBadge severity={issue.severity} label={issue.severity === 'bad' ? '⚠ critical' : '⚠ warning'} />
+                  </td>
+                  <td>{deviceCell(issue)}</td>
+                  <td className="wrap-mobile">{issue.subjectLabel ?? <span className="muted">—</span>}</td>
+                  <td>
+                    <button className="detail-toggle" onClick={() => toggle(issue.issueKey)} aria-expanded={expanded.has(issue.issueKey)}>
+                      {issue.title} {expanded.has(issue.issueKey) ? '▾' : '▸'}
+                    </button>
+                    {issue.acknowledged && issue.note && <div className="issue-note-inline">{issue.note}</div>}
+                  </td>
+                  <td className="muted" title={absolute(issue.firstSeen)}>{ago(issue.firstSeen)}</td>
+                  <td className="select-cell">
+                    {selectable ? (
+                      <input
+                        type="checkbox"
+                        className="select-box"
+                        checked={selected.has(issue.issueKey)}
+                        onChange={() => toggleSelected(issue.issueKey)}
+                        aria-label={`Select ${issue.title}`}
+                      />
+                    ) : (
+                      actionButton(issue)
+                    )}
                   </td>
                 </tr>
-              )}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+                {(expanded.has(issue.issueKey) || ackingKey === issue.issueKey) && (
+                  <tr className="vlan-detail-row">
+                    <td colSpan={6}>
+                      {ackingKey === issue.issueKey && ackForm()}
+                      {expanded.has(issue.issueKey) && (
+                        <IssueDetail issue={issue} related={relatedByKey.get(issue.issueKey) ?? []} onOpenRelated={openIssue} />
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
 
-  const section = (list: Issue[], emptyText: string) =>
+  const section = (list: Issue[], emptyText: string, selectable = false) =>
     list.length === 0 ? <p className="muted">{emptyText}</p> : (
       <>
-        {cardList(list)}
-        {table(list)}
+        {cardList(list, selectable)}
+        {table(list, selectable)}
       </>
     );
 
@@ -428,15 +504,47 @@ export default function Issues() {
         condition clears and later recurs.
       </p>
       {issues.isError && <p className="error">Failed to load issues: {String(issues.error)}</p>}
-      {(ack.isError || unack.isError) && (
-        <p className="error">{String(ack.error ?? unack.error)}</p>
+      {(ack.isError || unack.isError || massAck.isError) && (
+        <p className="error">{String(ack.error ?? unack.error ?? massAck.error)}</p>
       )}
 
-      <h2>
-        Active{' '}
-        {active.length > 0 && <span className="badge badge-bad">{active.length}</span>}
-      </h2>
-      {section(active, issues.isLoading ? 'Loading…' : 'No active issues — the fleet is healthy. 🎉')}
+      <div className="section-head">
+        <h2>
+          Active{' '}
+          {active.length > 0 && <span className="badge badge-bad">{active.length}</span>}
+        </h2>
+        {active.length > 0 && !selecting && (
+          <button className="secondary" onClick={() => setSelecting(true)}>
+            Mass acknowledge
+          </button>
+        )}
+      </div>
+      {selecting && (
+        <div className="mass-ack-bar">
+          <label className="mass-ack-count">
+            <input
+              type="checkbox"
+              className="select-box"
+              checked={allSelected}
+              onChange={toggleSelectAll}
+              aria-label="Select all active issues"
+            />
+            {selected.size} selected
+          </label>
+          <div className="mass-ack-actions">
+            <button
+              disabled={selected.size === 0 || massAck.isPending}
+              onClick={() => massAck.mutate([...selected])}
+            >
+              {massAck.isPending ? 'Acknowledging…' : `Acknowledge (${selected.size}) issues`}
+            </button>
+            <button className="secondary" disabled={massAck.isPending} onClick={exitSelect}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {section(active, issues.isLoading ? 'Loading…' : 'No active issues — the fleet is healthy. 🎉', selecting)}
 
       <h2 style={{ marginTop: 24 }}>
         Acknowledged{' '}

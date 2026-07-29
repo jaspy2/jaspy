@@ -226,10 +226,38 @@ input:focus,
 select:focus,
 textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
-/* Inline reason form shown when acknowledging an issue. */
-.ack-form { display: flex; flex-direction: column; gap: 8px; min-width: 320px; }
-.ack-note { width: 100%; box-sizing: border-box; min-height: 5.5em; }
-.ack-form-actions { display: flex; gap: 8px; }
+/* Reason field shown when acknowledging an issue. It lives in the full-width
+   detail panel below the row (so opening it never shifts the action cell). The
+   textarea grows to fill the row; Cancel sits at its right end, directly under
+   the Confirm button in the action cell above. */
+.ack-form { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.ack-note { flex: 1; box-sizing: border-box; min-height: 5.5em; }
+
+/* A section heading paired with a right-aligned action (e.g. Mass acknowledge). */
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* The selection bar shown while mass-acknowledging active issues. */
+.mass-ack-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--muted-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.mass-ack-count { display: flex; align-items: center; gap: 8px; }
+.mass-ack-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Per-issue selection checkboxes. In the desktop table the checkbox reuses the
+   trailing action cell (so columns don't move); on a mobile card it pulls to the
+   right end of the title row. */
+.select-cell { white-space: nowrap; }
+.select-box { width: 16px; height: 16px; cursor: pointer; }
+.item-title .select-box { margin-left: auto; flex-shrink: 0; }
 
 /* The acknowledgement reason, shown inline under an acknowledged issue's title. */
 .issue-note-inline {
