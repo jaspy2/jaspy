@@ -103,6 +103,34 @@ function DetailValue({ value }: { value: IssueDetailValue }) {
           {value.preferred && <span className="badge badge-ok" style={{ marginLeft: 8 }}>STP would elect this</span>}
         </>
       );
+    case 'member':
+      return (
+        <>
+          <span className="mono">{value.name}</span>
+          {value.state && (
+            <span className={`badge badge-${value.state === 'up' ? 'ok' : 'bad'}`} style={{ marginLeft: 8 }}>
+              {value.state}
+            </span>
+          )}
+          {value.speed !== null && <span className="muted"> · {value.speed} Mb/s</span>}
+          {value.media && <span className="muted"> · {value.media}</span>}
+          {value.peer ? (
+            <>
+              {' · ↔ '}
+              <Link to={`/devices/${encodeURIComponent(value.peer.fqdn)}`}>
+                {value.peer.fqdn}
+                {value.peer.interface ? `:${value.peer.interface}` : ''}
+              </Link>
+            </>
+          ) : value.cdp ? (
+            <span className="muted">
+              {' · ↔ '}
+              {value.cdp.deviceId}
+              {value.cdp.devicePort ? `:${value.cdp.devicePort}` : ''} (CDP)
+            </span>
+          ) : null}
+        </>
+      );
   }
 }
 

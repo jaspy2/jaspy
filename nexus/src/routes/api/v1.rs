@@ -391,7 +391,10 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
                 ifindex: *member,
                 name: member_interface.map(|i| i.name.clone()),
                 up: member_interface.and_then(|i| i.up),
+                speed: member_interface.and_then(|i| i.speed).map(|s| s as i64),
+                media: member_interface.and_then(|i| i.media.clone()),
                 connected_to: member_interface.and_then(|i| i.connected_to.clone()),
+                cdp_neighbor: member_interface.and_then(|i| i.cdp_neighbor.clone()),
                 actor_state: state.actor_state.clone(),
                 partner_state: state.partner_state.clone(),
                 partner_port: state.partner_port,
@@ -699,27 +702,50 @@ pub fn collect_issues(
             continue;
         }
         let interfaces = device.interfaces(connection);
-        // Live per-interface oper status (ifindex -> up), so the down-uplink
-        // verdict can tell a physically-down member from one that is merely
-        // failing to bundle.
-        let member_up: std::collections::HashMap<i64, Option<bool>> = imds
+        // Live optic/media overlay (db interface id -> media) so member detail
+        // can show the SFP/transceiver, falling back to the persisted column.
+        let media_overlay = match entity_metrics.lock() {
+            Ok(store) => store.media_for(&fqdn),
+            Err(_) => std::collections::HashMap::new(),
+        };
+        // Live per-interface oper status + speed (ifindex -> (up, Mb/s)), so the
+        // down-uplink verdict can tell a physically-down member from one that is
+        // merely failing to bundle, and member detail can show link speed.
+        let member_live: std::collections::HashMap<i64, (Option<bool>, Option<i64>)> = imds
             .lock()
             .ok()
             .and_then(|g| g.get_device(&fqdn).map(|dm| {
-                dm.interfaces.iter().map(|(idx, m)| (*idx as i64, m.up)).collect()
+                dm.interfaces
+                    .iter()
+                    .map(|(idx, m)| (*idx as i64, (m.up, m.speed_override.or(m.speed).map(|s| s as i64))))
+                    .collect()
             }))
             .unwrap_or_default();
         for (agg, group) in device_lags.groups.iter() {
+            // Resolved link peer per member (fqdn + far-end interface name), so
+            // member detail can render a device link. Keyed by member ifIndex.
+            let member_conn: std::collections::HashMap<i64, models::json::ApiInterfaceConnection> = group
+                .members
+                .keys()
+                .filter_map(|member| {
+                    let iface = interfaces.iter().find(|i| i.index as i64 == *member)?;
+                    let peer = iface.peer_interface(connection)?;
+                    let peer_device = peer.device(connection);
+                    Some((*member, models::json::ApiInterfaceConnection {
+                        fqdn: format!("{}.{}", peer_device.name, peer_device.dns_domain),
+                        interface: peer.name(),
+                    }))
+                })
+                .collect();
             let meta: std::collections::HashMap<i64, crate::collectors::lagpoller::MemberMeta> = group
                 .members
                 .keys()
                 .filter_map(|member| {
                     interfaces.iter().find(|i| i.index as i64 == *member).map(|i| {
-                        let peer_fqdn = i.peer_interface(connection).map(|peer| {
-                            let peer_device = peer.device(connection);
-                            format!("{}.{}", peer_device.name, peer_device.dns_domain)
-                        });
-                        (*member, crate::collectors::lagpoller::MemberMeta { name: i.name.clone(), connected_to_fqdn: peer_fqdn })
+                        (*member, crate::collectors::lagpoller::MemberMeta {
+                            name: i.name.clone(),
+                            connected_to_fqdn: member_conn.get(member).map(|c| c.fqdn.clone()),
+                        })
                     })
                 })
                 .collect();
@@ -738,13 +764,28 @@ pub fn collect_issues(
             let agg_name = interfaces.iter().find(|i| i.index as i64 == *agg).map(|i| i.name.clone());
             let members = group.members.iter().map(|(member, state)| {
                 let member_interface = interfaces.iter().find(|i| i.index as i64 == *member);
+                let connected_to = member_conn.get(member).cloned();
+                // Raw CDP neighbor only when the far end is not a monitored
+                // device (no resolved link) — mirrors the /devices rule.
+                let cdp_neighbor = match (&connected_to, member_interface) {
+                    (None, Some(i)) => match &i.cdp_device_id {
+                        Some(device_id) if !device_id.trim().is_empty() => Some(models::json::ApiCdpNeighbor {
+                            device_id: device_id.clone(),
+                            device_port: i.cdp_device_port.clone().filter(|s| !s.trim().is_empty()),
+                        }),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                let (up, speed) = member_live.get(member).copied().unwrap_or((None, None));
                 models::json::ApiPortChannelMember {
                     ifindex: *member,
                     name: member_interface.map(|i| i.name.clone()),
-                    up: member_up.get(member).copied().flatten(),
-                    connected_to: meta.get(member).and_then(|m| m.connected_to_fqdn.clone()).map(|fqdn| {
-                        models::json::ApiInterfaceConnection { fqdn, interface: String::new() }
-                    }),
+                    up,
+                    speed,
+                    media: member_interface.and_then(|i| media_overlay.get(&i.id).cloned().or_else(|| i.media.clone())),
+                    connected_to,
+                    cdp_neighbor,
                     actor_state: state.actor_state.clone(),
                     partner_state: state.partner_state.clone(),
                     partner_port: state.partner_port,

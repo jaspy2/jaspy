@@ -254,8 +254,14 @@ pub fn build() -> Topology {
                     discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false,
                 },
                 port_channel(5001, "Po1", "Port-channel1", "uplink core1 port-channel", 20000),
+                // Single-member SFP+ port-channel to wlc1 (mirrors wlc1 Po1):
+                // one healthy link, so the only warning is single-member.
+                port_channel(5002, "Po2", "Port-channel2", "single-member wlc uplink (SFP+)", 10000),
             ],
-            lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[], down_members: &[10105] }],
+            lags: vec![
+                MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[], down_members: &[10105] },
+                MockLag { ifindex: 5002, members: &[10104], partner_mac: "", defaulted_members: &[], down_members: &[] },
+            ],
             poe: None,
         },
         {
@@ -333,8 +339,13 @@ pub fn build() -> Topology {
             vlans: &[],
             interfaces: vec![
                 uplink(1, "Te0/0/1", "TenGigE0/0/1", "uplink dist2", 10000, ("dist2", "Te1/1/4")),
+                // A single SFP+ link built as a port-channel — the common
+                // "one-member Po" the single-member Issue is about. dist2 mirrors
+                // it (Po2 below), so the bundle is symmetric and the only warning
+                // is single-member.
+                port_channel(5001, "Po1", "Port-channel1", "single-member uplink dist2 (SFP+)", 10000),
             ],
-            lags: Vec::new(),
+            lags: vec![MockLag { ifindex: 5001, members: &[1], partner_mac: "", defaulted_members: &[], down_members: &[] }],
             poe: None,
         },
         MockDevice {
@@ -1552,6 +1563,27 @@ mod tests {
             lagpoller::port_channel_warnings(group, &meta_for("dist2", group), &peer_lags),
             vec!["member-not-bundled:Te1/1/5".to_string()],
             "the down uplink shows as an unbundled member (issues.rs upgrades this to a link-down verdict)"
+        );
+
+        // wlc1 Po1 <-> dist2 Po2: a symmetric single-member SFP+ bundle. Each end
+        // has exactly one healthy member wired to the other, so the far-end
+        // cross-check passes (matching member count) and the only warning is
+        // single-member — the demo data for the enriched single-member Issue.
+        let wlc1_lags = decode("wlc1.mock.jaspy");
+        peer_lags.insert("wlc1.mock.jaspy".to_string(), wlc1_lags.clone());
+        let group = &wlc1_lags.groups[&5001];
+        assert_eq!(group.members.len(), 1, "wlc1 Po1 is a single-member SFP+ uplink");
+        assert_eq!(
+            lagpoller::port_channel_warnings(group, &meta_for("wlc1", group), &peer_lags),
+            vec!["single-member".to_string()],
+            "a healthy symmetric single-member bundle warns only single-member"
+        );
+        let group = &dist2_lags.groups[&5002];
+        assert_eq!(group.members.len(), 1, "dist2 Po2 mirrors wlc1's single member");
+        assert_eq!(
+            lagpoller::port_channel_warnings(group, &meta_for("dist2", group), &peer_lags),
+            vec!["single-member".to_string()],
+            "the mirrored far end also warns only single-member"
         );
     }
 

@@ -343,7 +343,7 @@ pub struct ApiInterfaceHealth {
 }
 
 // Link peer of an interface; structured so the UI can link to the device.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiInterfaceConnection {
     pub fqdn: String,
@@ -352,7 +352,7 @@ pub struct ApiInterfaceConnection {
 
 // A CDP-reported neighbor that is not a monitored jaspy device. Carries the
 // raw CISCO-CDP-MIB device id and (optional) remote port, for display as text.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiCdpNeighbor {
     pub device_id: String,
@@ -598,7 +598,15 @@ pub struct ApiPortChannelMember {
     pub ifindex: i64,
     pub name: Option<String>,
     pub up: Option<bool>,
+    // Live negotiated speed in Mb/s (ifHighSpeed / override), when known.
+    pub speed: Option<i64>,
+    // Physical media/form-factor from ENTITY-MIB (see collectors::entity_media):
+    // "copper", "sfp" (empty cage) or "sfp: <descr>" (populated transceiver).
+    pub media: Option<String>,
     pub connected_to: Option<ApiInterfaceConnection>,
+    // Raw CDP neighbor, for links whose far end is not a monitored device (so
+    // `connected_to` is unresolved) — rendered as plain text.
+    pub cdp_neighbor: Option<ApiCdpNeighbor>,
     // IEEE 802.1AX LacpState bit names; empty for members that are configured
     // but not running LACP (mode "on", or link down).
     pub actor_state: Vec<String>,
@@ -850,6 +858,18 @@ pub enum ApiIssueDetailValue {
     // marks the lowest ID (the one STP would actually elect). Rendered as a
     // device link followed by the priority/MAC.
     StpRoot { fqdn: String, hostname: String, mac: Option<String>, priority: Option<i64>, preferred: bool },
+    // A port-channel member interface with its physical facts: oper `state`
+    // ("up"/"down"), negotiated `speed` in Mb/s, optic/`media` string, and the
+    // link's far end — either a resolved `peer` (device link) or a raw `cdp`
+    // neighbor. Used to enumerate a port-channel's members in an issue's detail.
+    Member {
+        name: String,
+        state: Option<String>,
+        speed: Option<i64>,
+        media: Option<String>,
+        peer: Option<ApiInterfaceConnection>,
+        cdp: Option<ApiCdpNeighbor>,
+    },
 }
 
 // A single label/value row in an issue's expanded detail.

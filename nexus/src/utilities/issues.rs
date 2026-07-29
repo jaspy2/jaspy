@@ -50,6 +50,25 @@ fn iface_row(k: &str, name: String, state: Option<String>) -> ApiIssueDetail {
     ApiIssueDetail { label: k.to_string(), value: ApiIssueDetailValue::Interface { name, state } }
 }
 
+// A port-channel member row: interface name plus its physical facts (oper
+// state, speed, optic/media) and the link's far end (resolved peer device or a
+// raw CDP neighbor). Built from an ApiPortChannelMember.
+fn member_row(k: &str, m: &json::ApiPortChannelMember) -> ApiIssueDetail {
+    let name = m.name.clone().unwrap_or_else(|| format!("ifIndex {}", m.ifindex));
+    let state = m.up.map(|up| if up { "up".to_string() } else { "down".to_string() });
+    ApiIssueDetail {
+        label: k.to_string(),
+        value: ApiIssueDetailValue::Member {
+            name,
+            state,
+            speed: m.speed,
+            media: m.media.clone(),
+            peer: m.connected_to.clone(),
+            cdp: m.cdp_neighbor.clone(),
+        },
+    }
+}
+
 fn verdict_row(k: &str, text: impl Into<String>, tone: &str) -> ApiIssueDetail {
     ApiIssueDetail { label: k.to_string(), value: ApiIssueDetailValue::Verdict { text: text.into(), tone: tone.to_string() } }
 }
@@ -708,10 +727,26 @@ pub fn port_channel_issues(
         let mut detail = vec![
             pair("port-channel", agg_name.clone()),
             pair("protocol", pc.protocol.clone()),
-            pair("warning", warning.clone()),
         ];
-        if let Some(s) = suffix.as_ref() {
-            detail.push(pair("detail", s.clone()));
+        if code == "single-member" {
+            // A one-member port-channel is often a deliberate single SFP+
+            // uplink; jaspy cannot see the intended member count, so this is a
+            // heads-up rather than a definite fault. Enumerate the member(s)
+            // with their physical facts (speed, optic, link status, neighbor)
+            // so an operator can judge at a glance whether a link is missing.
+            detail.push(verdict_row(
+                "verdict",
+                "only one member in this port-channel — normal for a single SFP+ uplink, but a missing second member would look the same. Check the member(s) below.",
+                "neutral",
+            ));
+            for m in pc.members.iter() {
+                detail.push(member_row("member", m));
+            }
+        } else {
+            detail.push(pair("warning", warning.clone()));
+            if let Some(s) = suffix.as_ref() {
+                detail.push(pair("detail", s.clone()));
+            }
         }
         issues.push(DerivedIssue {
             fqdn: fqdn.to_string(),
@@ -1199,7 +1234,10 @@ mod tests {
             ifindex,
             name: Some(name.to_string()),
             up,
+            speed: None,
+            media: None,
             connected_to: peer_fqdn.map(|f| json::ApiInterfaceConnection { fqdn: f.to_string(), interface: String::new() }),
+            cdp_neighbor: None,
             actor_state: vec![],
             partner_state: vec![],
             partner_port: None,
@@ -1227,6 +1265,57 @@ mod tests {
         assert_eq!(notb.severity, SEV_BAD);
         assert_eq!(notb.subject, "5001:Te1/0/1");
         assert_eq!(notb.issue_key(), "dist1.example.com|lag:member-not-bundled|5001:Te1/0/1");
+    }
+
+    #[test]
+    fn single_member_issue_lists_member_physical_facts() {
+        // The single-member detail should enumerate each member with its speed,
+        // optic, oper status and resolved neighbor — not just the bare code.
+        let member = json::ApiPortChannelMember {
+            ifindex: 10107,
+            name: Some("Gi0/7".to_string()),
+            up: Some(true),
+            speed: Some(10000),
+            media: Some("sfp: SFP-10GBase-LR".to_string()),
+            connected_to: Some(json::ApiInterfaceConnection {
+                fqdn: "gw1.example.com".to_string(),
+                interface: "Te1/0/1".to_string(),
+            }),
+            cdp_neighbor: None,
+            actor_state: vec!["synchronization".to_string(), "collecting".to_string(), "distributing".to_string()],
+            partner_state: vec![],
+            partner_port: None,
+            bundled: true,
+        };
+        let pc = json::ApiPortChannel {
+            ifindex: 5001,
+            name: Some("Po1".to_string()),
+            up: Some(true),
+            protocol: "lacp".to_string(),
+            partner_system_id: None,
+            members: vec![member],
+            warnings: vec!["single-member".to_string()],
+        };
+        let issues = port_channel_issues("sw1.example.com", &pc, &HashMap::new());
+        let single = issues.iter().find(|i| i.kind == "lag:single-member").expect("a single-member issue");
+        let (name, state, speed, media, peer) = single
+            .detail
+            .iter()
+            .find_map(|d| match &d.value {
+                ApiIssueDetailValue::Member { name, state, speed, media, peer, .. } => {
+                    Some((name.clone(), state.clone(), *speed, media.clone(), peer.clone()))
+                }
+                _ => None,
+            })
+            .expect("a member detail row");
+        assert_eq!(name, "Gi0/7");
+        assert_eq!(state.as_deref(), Some("up"));
+        assert_eq!(speed, Some(10000));
+        assert_eq!(media.as_deref(), Some("sfp: SFP-10GBase-LR"));
+        assert_eq!(peer.map(|p| p.interface), Some("Te1/0/1".to_string()));
+        // A neutral heads-up (single member is often an intentional SFP+ uplink).
+        assert_eq!(single.severity, SEV_WARN);
+        assert_eq!(verdict_tone(single), Some("neutral"));
     }
 
     #[test]

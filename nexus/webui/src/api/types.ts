@@ -253,7 +253,10 @@ export interface PortChannelMember {
   ifindex: number;
   name: string | null;
   up: boolean | null;
+  speed: number | null; // negotiated speed in Mb/s
+  media: string | null; // optic/form-factor: "copper" | "sfp" | "sfp: <descr>"
   connectedTo: InterfaceConnection | null;
+  cdpNeighbor: CdpNeighbor | null; // raw neighbor when connectedTo is null
   // IEEE 802.1AX LacpState bit names; empty when the member is configured
   // but not running LACP (mode "on", or link down).
   actorState: string[];
@@ -462,7 +465,16 @@ export type IssueDetailValue =
   | { type: 'interface'; name: string; state: string | null }
   | { type: 'verdict'; text: string; tone: 'good' | 'bad' | 'warn' | 'neutral' }
   | { type: 'link'; text: string; href: string }
-  | { type: 'stpRoot'; fqdn: string; hostname: string; mac: string | null; priority: number | null; preferred: boolean };
+  | { type: 'stpRoot'; fqdn: string; hostname: string; mac: string | null; priority: number | null; preferred: boolean }
+  | {
+      type: 'member';
+      name: string;
+      state: string | null; // "up" | "down"
+      speed: number | null; // Mb/s
+      media: string | null; // "copper" | "sfp" | "sfp: <descr>"
+      peer: InterfaceConnection | null; // resolved link
+      cdp: CdpNeighbor | null; // raw neighbor when the far end is unmonitored
+    };
 
 export interface IssueDetail {
   label: string;
