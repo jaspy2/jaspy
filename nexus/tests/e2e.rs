@@ -373,7 +373,7 @@ fn lagpoller_port_channels_in_device_detail(db: DbHarness) {
         "interfaces": {
             "GigabitEthernet0/1": {"index":10101,"interfaceType":"ethernetCsmacd","displayName":null,"name":"GigabitEthernet0/1","alias":null,"description":"GigabitEthernet0/1"},
             "GigabitEthernet0/2": {"index":10102,"interfaceType":"ethernetCsmacd","displayName":null,"name":"GigabitEthernet0/2","alias":null,"description":"GigabitEthernet0/2"},
-            "Port-channel1": {"index":5001,"interfaceType":"ieee8023adLag","displayName":null,"name":"Port-channel1","alias":null,"description":"Port-channel1"}
+            "Port-channel1": {"index":5001,"interfaceType":"ieee8023adLag","displayName":null,"name":"Port-channel1","alias":"uplink to core","description":"Port-channel1"}
         }
     }));
 
@@ -389,6 +389,7 @@ fn lagpoller_port_channels_in_device_detail(db: DbHarness) {
     let po = &detail["portChannels"][0];
     assert_eq!(po["ifindex"], 5001);
     assert_eq!(po["name"], "Port-channel1");
+    assert_eq!(po["alias"], "uplink to core");
     assert_eq!(po["protocol"], "lacp");
     assert_eq!(po["partnerSystemId"], "aa:bb:cc:dd:ee:02");
     let members = po["members"].as_array().unwrap();

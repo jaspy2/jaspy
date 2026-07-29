@@ -268,6 +268,7 @@ export interface PortChannelMember {
 export interface PortChannel {
   ifindex: number;
   name: string | null;
+  alias: string | null; // operator description of the aggregate (ifAlias)
   up: boolean | null;
   protocol: string; // "lacp" | "pagp" | "static"
   partnerSystemId: string | null;

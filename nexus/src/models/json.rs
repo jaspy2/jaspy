@@ -585,6 +585,10 @@ pub struct ApiPoeBudget {
 pub struct ApiPortChannel {
     pub ifindex: i64,
     pub name: Option<String>, // interface name of the aggregate, if known
+    // Operator-configured description of the aggregate (IF-MIB::ifAlias on the
+    // aggregate interface); null when unset. Additive: default-deserialized.
+    #[serde(default)]
+    pub alias: Option<String>,
     pub up: Option<bool>,
     pub protocol: String, // "lacp" | "pagp" | "static"
     pub partner_system_id: Option<String>,

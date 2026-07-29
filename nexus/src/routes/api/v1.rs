@@ -404,6 +404,7 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         port_channels.push(models::json::ApiPortChannel {
             ifindex: *agg,
             name: agg_interface.map(|i| i.name.clone()),
+            alias: agg_interface.and_then(|i| i.alias.clone()),
             up: agg_interface.and_then(|i| i.up),
             protocol: group.protocol.clone(),
             partner_system_id: group.partner_system_id.clone(),
@@ -837,6 +838,7 @@ pub fn collect_issues(
             let pc = models::json::ApiPortChannel {
                 ifindex: *agg,
                 name: agg_name,
+                alias: None, // unused by issue derivation
                 up: None,
                 protocol: group.protocol.clone(),
                 partner_system_id: group.partner_system_id.clone(),

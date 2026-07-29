@@ -1270,6 +1270,7 @@ mod tests {
         let pc = json::ApiPortChannel {
             ifindex: 5001,
             name: Some("Po1".to_string()),
+            alias: None,
             up: Some(true),
             protocol: "lacp".to_string(),
             partner_system_id: None,
@@ -1310,6 +1311,7 @@ mod tests {
         let pc = json::ApiPortChannel {
             ifindex: 5001,
             name: Some("Po1".to_string()),
+            alias: None,
             up: Some(true),
             protocol: "lacp".to_string(),
             partner_system_id: None,
@@ -1346,6 +1348,7 @@ mod tests {
         let pc = json::ApiPortChannel {
             ifindex: 5001,
             name: Some("Po1".to_string()),
+            alias: None,
             up: Some(true),
             protocol: "lacp".to_string(),
             partner_system_id: None,
@@ -1389,6 +1392,7 @@ mod tests {
         let pc = json::ApiPortChannel {
             ifindex: 5001,
             name: Some("Po1".to_string()),
+            alias: None,
             up: Some(false),
             protocol: "lacp".to_string(),
             partner_system_id: None,
@@ -1415,6 +1419,7 @@ mod tests {
         let pc = json::ApiPortChannel {
             ifindex: 5001,
             name: Some("Po1".to_string()),
+            alias: None,
             up: Some(true),
             protocol: "lacp".to_string(),
             partner_system_id: None,

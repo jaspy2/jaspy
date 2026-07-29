@@ -795,6 +795,7 @@ export default function DeviceDetail() {
                 <span>{po.name ?? `ifIndex ${po.ifindex}`}</span>
                 <UpBadge up={po.up} />
                 <span className={`badge ${po.protocol === 'lacp' ? 'badge-ok' : 'badge-warn'}`}>{po.protocol}</span>
+                {po.alias && <span className="muted">{po.alias}</span>}
                 {po.partnerSystemId && <span className="muted">partner {po.partnerSystemId}</span>}
               </span>
               {po.warnings.length > 0 && (
