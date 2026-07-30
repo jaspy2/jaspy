@@ -837,9 +837,10 @@ pub fn collect_issues(
                 }
             }
             let warnings = crate::collectors::lagpoller::port_channel_warnings(group, &meta, &peer_lags);
-            if warnings.is_empty() {
-                continue;
-            }
+            // No early-out on empty warnings: port_channel_issues also derives
+            // issues from member state alone (a down member, or a speed
+            // mismatch), which a healthy LACP bundle reports no warning for.
+            // It returns nothing for a genuinely healthy aggregate.
             let agg_name = interfaces.iter().find(|i| i.index as i64 == *agg).map(|i| i.name.clone());
             let members = group.members.iter().map(|(member, state)| {
                 let member_interface = interfaces.iter().find(|i| i.index as i64 == *member);

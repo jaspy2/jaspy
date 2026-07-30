@@ -63,6 +63,8 @@ function explainKind(kind: string): string | null {
       return 'A PoE power supply is not operational — ports it feeds cannot deliver power.';
     case 'lag:member-link-down':
       return 'One member of this LACP uplink bundle is physically down while another is still up — the uplink keeps working but has lost its redundancy. The verdict below names the most likely loose cable end.';
+    case 'lag:speed-mismatch':
+      return 'Members of this port-channel are up but running at different link speeds — usually a faulty cable or a duplex/auto-negotiation fault forcing one leg to a lower speed. The bundle still forms, but throughput is capped and traffic hashes unevenly. Check the slow member’s cabling and port settings.';
   }
   if (kind.startsWith('stp-flag:multiple-roots'))
     return 'Two or more bridges each believe they are this VLAN’s root, so spanning tree has not converged to a single tree. Whether that is dangerous depends on whether they share a path — the claimed roots and their connectivity are below.';

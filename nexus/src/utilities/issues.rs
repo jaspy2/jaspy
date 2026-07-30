@@ -60,6 +60,7 @@ pub fn issue_type_catalog() -> Vec<IssueTypeInfo> {
         IssueTypeInfo { kind: "stp-root-mismatch", category: "stp", title: "STP root mismatch", description: "Devices disagree about a VLAN's root bridge." },
         IssueTypeInfo { kind: "stp-orphan", category: "stp", title: "STP orphan", description: "A device has a root port whose upstream neighbour is unresolved." },
         IssueTypeInfo { kind: "lag:member-link-down", category: "lag", title: "Port-channel: uplink member down", description: "A port-channel has a member link down while others still carry traffic." },
+        IssueTypeInfo { kind: "lag:speed-mismatch", category: "lag", title: "Port-channel: member speed mismatch", description: "A port-channel's up members negotiated different link speeds — often a faulty cable forcing one leg down to a lower speed." },
         IssueTypeInfo { kind: "lag:not-lacp", category: "lag", title: "Port-channel: not running LACP", description: "A port-channel is negotiated with PAgP or static mode instead of LACP." },
         IssueTypeInfo { kind: "lag:single-member", category: "lag", title: "Port-channel: has only one member", description: "A port-channel has only one member (may be an intentional single uplink)." },
         IssueTypeInfo { kind: "lag:member-no-lacp-partner", category: "lag", title: "Port-channel: member has no LACP partner", description: "A port-channel member is not seeing an LACP partner." },
@@ -781,6 +782,58 @@ pub fn port_channel_issues(
         });
     }
 
+    // Speed mismatch: two or more members that are up but negotiated to
+    // different link speeds. The classic cause is a faulty cable (or a
+    // duplex/auto-negotiation fault) forcing one leg of an N×1G bundle down to
+    // 100M — the bundle still forms, but throughput is capped and traffic
+    // hashes onto legs of unequal capacity. Reported as an error because it is
+    // a silent physical fault that degrades a link people believe is at full
+    // speed. Only up members with a known positive speed are compared.
+    let member_speeds: Vec<(String, i64)> = pc
+        .members
+        .iter()
+        .filter(|m| m.up == Some(true))
+        .filter_map(|m| {
+            m.speed
+                .filter(|s| *s > 0)
+                .map(|s| (m.name.clone().unwrap_or_else(|| m.ifindex.to_string()), s))
+        })
+        .collect();
+    if member_speeds.len() >= 2 {
+        let distinct: HashSet<i64> = member_speeds.iter().map(|(_, s)| *s).collect();
+        if distinct.len() >= 2 {
+            let min = distinct.iter().min().copied().unwrap_or(0);
+            let max = distinct.iter().max().copied().unwrap_or(0);
+            let mut detail = vec![
+                verdict_row(
+                    "verdict",
+                    format!(
+                        "{} bundles members running at different link speeds ({} Mb/s vs {} Mb/s). A port-channel should aggregate identical-speed links; a member negotiated below the others is almost always a faulty cable or a duplex/auto-negotiation fault. The slow leg caps throughput and traffic hashes unevenly — check the {} Mb/s member's cabling and port settings.",
+                        agg_name, max, min, min
+                    ),
+                    "bad",
+                ),
+                pair("port-channel", agg_name.clone()),
+                pair("protocol", pc.protocol.clone()),
+            ];
+            for m in pc.members.iter() {
+                detail.push(member_row("member", m));
+            }
+            issues.push(DerivedIssue {
+                fqdn: fqdn.to_string(),
+                hostname: host.clone(),
+                kind: "lag:speed-mismatch".to_string(),
+                // One per aggregate; the ifindex keeps the key stable.
+                subject: format!("{}:speed", pc.ifindex),
+                severity: SEV_BAD.to_string(),
+                title: "Port-channel: member speed mismatch".to_string(),
+                description: format!("{} {} has members at different link speeds ({}–{} Mb/s)", host, agg_name, min, max),
+                subject_label: Some(agg_name.clone()),
+                detail,
+            });
+        }
+    }
+
     for warning in pc.warnings.iter() {
         // Warnings are "code" or "code:<detail>" (member name or protocol).
         let (code, suffix) = match warning.split_once(':') {
@@ -1393,6 +1446,56 @@ mod tests {
         assert_eq!(notb.severity, SEV_BAD);
         assert_eq!(notb.subject, "5001:Te1/0/1");
         assert_eq!(notb.issue_key(), "dist1.example.com|lag:member-not-bundled|5001:Te1/0/1");
+    }
+
+    #[test]
+    fn port_channel_members_at_different_speeds_is_an_error() {
+        let mk = |ifindex: i64, name: &str, up: Option<bool>, speed: Option<i64>| {
+            let mut m = pc_member(ifindex, name, up, true, None);
+            m.speed = speed;
+            m
+        };
+        let pc = |members: Vec<json::ApiPortChannelMember>| json::ApiPortChannel {
+            ifindex: 5001,
+            name: Some("Po1".to_string()),
+            alias: None,
+            up: Some(true),
+            protocol: "lacp".to_string(),
+            partner_system_id: None,
+            members,
+            warnings: vec![],
+        };
+
+        // Two up members at different speeds (the faulty-cable scenario) → one
+        // error, keyed per aggregate, naming both speeds.
+        let issues = port_channel_issues(
+            "sw1.example.com",
+            &pc(vec![mk(10101, "Te1/0/1", Some(true), Some(1000)), mk(10105, "Te1/0/5", Some(true), Some(100))]),
+            &HashMap::new(),
+        );
+        let mismatch = issues.iter().find(|i| i.kind == "lag:speed-mismatch").expect("a speed-mismatch issue");
+        assert_eq!(mismatch.severity, SEV_BAD);
+        assert_eq!(mismatch.subject, "5001:speed");
+        assert_eq!(mismatch.issue_key(), "sw1.example.com|lag:speed-mismatch|5001:speed");
+        assert!(mismatch.description.contains("100") && mismatch.description.contains("1000"));
+        assert_eq!(verdict_tone(mismatch), Some("bad"));
+
+        // Identical speeds → no issue.
+        let issues = port_channel_issues(
+            "sw1.example.com",
+            &pc(vec![mk(10101, "Te1/0/1", Some(true), Some(1000)), mk(10105, "Te1/0/5", Some(true), Some(1000))]),
+            &HashMap::new(),
+        );
+        assert!(!issues.iter().any(|i| i.kind == "lag:speed-mismatch"));
+
+        // Only up members with a known speed are compared: a down/speed-unknown
+        // member leaves a single comparable member, so no mismatch is raised.
+        let issues = port_channel_issues(
+            "sw1.example.com",
+            &pc(vec![mk(10101, "Te1/0/1", Some(true), Some(1000)), mk(10105, "Te1/0/5", Some(false), None)]),
+            &HashMap::new(),
+        );
+        assert!(!issues.iter().any(|i| i.kind == "lag:speed-mismatch"));
     }
 
     #[test]

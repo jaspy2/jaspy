@@ -265,8 +265,10 @@ pub fn build() -> Topology {
             poe: None,
         },
         {
-            // a-01 carries a healthy 2-member LACP bundle to an unmonitored
-            // server (all members bundled, no warnings).
+            // a-01 carries a 2-member LACP bundle to an unmonitored server. Both
+            // members bundle fine (no LACP warning), but one has negotiated down
+            // to 100M while its sibling runs at 1G — the classic faulty-cable
+            // asymmetry, surfaced as the lag:speed-mismatch error.
             // a-01 also runs STP on VLAN 63, where its uplink leads to dist1 —
             // which does NOT run 63 — so its upstream is unresolved (orphan),
             // and it reports a superior off-fleet root (root-mismatch).
@@ -279,6 +281,8 @@ pub fn build() -> Topology {
                 defaulted_members: &[],
                 down_members: &[],
             }];
+            // The degraded bundle leg: Gi1/0/2 fell back to 100M (faulty cable).
+            set_iface(&mut a01, 10202, |i| i.speed_mbps = 100);
             // Simulated faults (non-LAG, up ports): a congested port dropping
             // ~200 discards/s and a flaky-cable port taking ~5 input errors/s.
             set_iface(&mut a01, 10204, |i| i.discard_rate = 200);

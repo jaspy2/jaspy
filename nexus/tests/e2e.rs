@@ -1444,6 +1444,20 @@ fn mock_mode_serves_network(db: DbHarness) {
     // Devices report up (poller answered by the fake snmpbot).
     let summary = nexus.get_json("/api/v1/summary");
     assert!(summary["devicesUp"].as_u64().unwrap_or(0) >= 7, "summary: {}", summary);
+
+    // access-hall-a-01's server bundle has a 1G and a degraded 100M member, so
+    // the fleet issue derivation raises the lag:speed-mismatch error for it —
+    // even though the bundle reports no LACP warning.
+    assert!(
+        wait_until(Duration::from_secs(30), || {
+            nexus.get_json("/api/v1/issues")["issues"]
+                .as_array()
+                .map(|a| a.iter().any(|i| i["kind"] == "lag:speed-mismatch" && i["fqdn"] == "access-hall-a-01.mock.jaspy"))
+                .unwrap_or(false)
+        }),
+        "expected a lag:speed-mismatch issue on access-hall-a-01; log:\n{}",
+        nexus.log()
+    );
 }
 
 // ---------------------------------------------------------------------------
