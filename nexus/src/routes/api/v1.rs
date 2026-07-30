@@ -641,7 +641,37 @@ pub fn stp_tree(
         lag_members: &lag_members,
         vlan_members: &vlan_members,
     };
-    Json(crate::utilities::stp::build_stp_tree(&inputs, vlan))
+    let mut tree = crate::utilities::stp::build_stp_tree(&inputs, vlan);
+    // Fold in the operator's "expected roots" baseline: annotate acknowledged
+    // roots and clear the multiple-roots flag when only one unacknowledged root
+    // remains, so the page's badge and evidence match the /issues derivation.
+    let expected = expected_roots_for_vlan(&mut connection, vlan);
+    if let Some(detail) = tree.multiple_roots_detail.as_mut() {
+        let unacked = crate::utilities::stp::apply_expected_roots(detail, &expected);
+        if unacked <= 1 {
+            tree.flags.retain(|f| f != "multiple-roots");
+        }
+    }
+    Json(tree)
+}
+
+// The expected-root baseline for one VLAN as a fqdn -> optional-note map, the
+// shape utilities::stp::apply_expected_roots and issues::stp_tree_issues expect.
+fn expected_roots_for_vlan(connection: &mut db::AnyConnection, vlan: i64) -> std::collections::HashMap<String, Option<String>> {
+    models::dbo::StpExpectedRoot::all(connection)
+        .into_iter()
+        .filter(|r| r.vlan == vlan)
+        .map(|r| (r.root_fqdn, r.note))
+        .collect()
+}
+
+// The whole baseline grouped by VLAN, for the fleet-wide issue derivation.
+fn expected_roots_by_vlan(connection: &mut db::AnyConnection) -> std::collections::HashMap<i64, std::collections::HashMap<String, Option<String>>> {
+    let mut out: std::collections::HashMap<i64, std::collections::HashMap<String, Option<String>>> = std::collections::HashMap::new();
+    for r in models::dbo::StpExpectedRoot::all(connection) {
+        out.entry(r.vlan).or_default().insert(r.root_fqdn, r.note);
+    }
+    out
 }
 
 // Network-wide VLAN inventory (id, per-device names, port usage), straight
@@ -806,6 +836,10 @@ pub fn collect_issues(
     if !stp_ports.is_empty() {
         let topology = crate::routes::dev::weathermap::cached_topology_data(connection, cache_controller);
         let base_macs = device_base_macs(connection);
+        // Operator-acknowledged "expected roots": VLANs with a known extra root
+        // only alert when more than one *unacknowledged* root remains.
+        let expected_roots = expected_roots_by_vlan(connection);
+        let no_expected = std::collections::HashMap::new();
         let lag_members = lag_store.lock().map(|store| store.lag_members()).unwrap_or_default();
         let vlan_members = vlan_store.lock().map(|store| store.membership_map()).unwrap_or_default();
         let vlans: std::collections::BTreeSet<i64> = stp_ports.values().flatten().map(|p| p.vlan).collect();
@@ -825,7 +859,8 @@ pub fn collect_issues(
                     .and_modify(|d| *d = (*d).min(node.depth))
                     .or_insert(node.depth);
             }
-            out.extend(issues::stp_tree_issues(&tree));
+            let expected = expected_roots.get(&vlan).unwrap_or(&no_expected);
+            out.extend(issues::stp_tree_issues(&tree, expected));
         }
     }
 
@@ -1124,6 +1159,107 @@ pub fn issue_unack(
             error: format!("failed to remove acknowledgement: {}", e),
         }))),
     }
+}
+
+// POST /api/v1/stp/expected-roots: mark one root of a VLAN as a known/expected
+// separate tree. The "STP: multiple roots" issue then only fires while more
+// than one *unacknowledged* root remains. 409 if the fqdn is not currently a
+// computed root of the VLAN (nothing meaningful to acknowledge — mirrors
+// issue_ack), which also guards against typos and stale entries.
+#[post("/stp/expected-roots", data = "<body>")]
+pub fn stp_expected_root_add(
+    body: Json<models::json::ApiStpExpectedRootRequest>,
+    mut connection: db::JaspyDB,
+    entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+    lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
+) -> Result<Json<models::dbo::StpExpectedRoot>, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let req = body.into_inner();
+    let tree = build_vlan_stp_tree(&mut connection, req.vlan, entity_metrics.inner(), cache_controller.inner(), lag_store.inner(), vlan_store.inner());
+    if !tree.roots.iter().any(|r| r == &req.root_fqdn) {
+        return Err((rocket::http::Status::Conflict, Json(models::json::ApiError {
+            error: format!("{} is not currently a root of VLAN {}", req.root_fqdn, req.vlan),
+        })));
+    }
+    // Snapshot the bridge MAC (display/debug only) from the multiple-roots
+    // evidence, if present.
+    let root_mac = tree.multiple_roots_detail.as_ref()
+        .and_then(|d| d.roots.iter().find(|c| c.fqdn == req.root_fqdn))
+        .and_then(|c| c.mac.clone());
+    let expected = models::dbo::StpExpectedRoot {
+        vlan: req.vlan,
+        root_fqdn: req.root_fqdn.clone(),
+        root_mac,
+        acked_at: utilities::tools::get_time_msecs() as i64,
+        acked_by: None,
+        note: req.note.clone(),
+    };
+    if let Err(e) = expected.upsert(&mut connection) {
+        return Err((rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+            error: format!("failed to persist expected root: {} (are the migrations up to date?)", e),
+        })));
+    }
+    // The suppression is applied at issue-derivation time; drop the cache so the
+    // change shows on the next /issues read instead of up to one TTL later.
+    invalidate_issue_cache(cache_controller.inner());
+    Ok(Json(expected))
+}
+
+// POST /api/v1/stp/expected-roots/remove: un-mark a root. Idempotent.
+#[post("/stp/expected-roots/remove", data = "<body>")]
+pub fn stp_expected_root_remove(
+    body: Json<models::json::ApiStpExpectedRootRequest>,
+    mut connection: db::JaspyDB,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+) -> Result<rocket::http::Status, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let req = body.into_inner();
+    match models::dbo::StpExpectedRoot::delete(&mut connection, req.vlan, &req.root_fqdn) {
+        Ok(_) => {
+            invalidate_issue_cache(cache_controller.inner());
+            Ok(rocket::http::Status::Ok)
+        }
+        Err(e) => Err((rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+            error: format!("failed to remove expected root: {}", e),
+        }))),
+    }
+}
+
+// Drop the shared issue-list cache so a mutation shows on the next read instead
+// of up to one TTL later.
+fn invalidate_issue_cache(cache_controller: &Arc<Mutex<utilities::cache::CacheController>>) {
+    if let Ok(cc) = cache_controller.lock() {
+        cc.invalidate_issues_cache();
+    }
+}
+
+// Build one VLAN's STP tree from the in-memory stores + cached topology (the
+// same assembly as the /stp/<vlan> route), for the expected-root guard.
+fn build_vlan_stp_tree(
+    connection: &mut db::JaspyDB,
+    vlan: i64,
+    entity_metrics: &Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>,
+    cache_controller: &Arc<Mutex<utilities::cache::CacheController>>,
+    lag_store: &Arc<Mutex<crate::collectors::lagpoller::LagStore>>,
+    vlan_store: &Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>,
+) -> models::json::ApiStpTree {
+    let (ports, bridges) = match entity_metrics.lock() {
+        Ok(store) => store.network_stp(),
+        Err(_) => Default::default(),
+    };
+    let topology = crate::routes::dev::weathermap::cached_topology_data(connection, cache_controller);
+    let base_macs = device_base_macs(connection);
+    let lag_members = lag_store.lock().map(|store| store.lag_members()).unwrap_or_default();
+    let vlan_members = vlan_store.lock().map(|store| store.membership_map()).unwrap_or_default();
+    let inputs = crate::utilities::stp::StpInputs {
+        ports: &ports,
+        bridges: &bridges,
+        base_macs: &base_macs,
+        topology: &topology,
+        lag_members: &lag_members,
+        vlan_members: &vlan_members,
+    };
+    crate::utilities::stp::build_stp_tree(&inputs, vlan)
 }
 
 // The catalog of known issue types, each tagged with its current suppression

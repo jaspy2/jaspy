@@ -18,6 +18,27 @@ struct SeedClient {
     port_info: &'static str,
 }
 
+// A VLAN root pre-marked as an expected/known separate tree, so the per-root
+// STP acknowledgement is demoable out of the box (see StpExpectedRoot).
+struct SeedExpectedRoot {
+    vlan: i64,
+    device: &'static str, // bare mock device name
+    note: &'static str,
+}
+
+// dist1 self-roots VLAN 30 against core1 (a directly-linked split brain — see
+// topology.rs). Acknowledging it leaves core1 as the single legitimate root, so
+// /stp?vlan=30 shows dist1 badged "expected" and the "STP: multiple roots" issue
+// stays cleared until the ack is removed (which brings the issue back — the
+// interactive half of the demo).
+fn seed_expected_roots() -> Vec<SeedExpectedRoot> {
+    vec![SeedExpectedRoot {
+        vlan: 30,
+        device: "dist1",
+        note: "dist1 self-roots by design (leftover) — known split, not in prod",
+    }]
+}
+
 // Hand-laid weathermap layout: firewall on top, then core, dist, access rows.
 // Only seeded where no position exists yet (a persisted JASPY_DB_URL keeps
 // whatever the developer dragged).
@@ -70,6 +91,29 @@ fn run(db_url: &str) {
     // Event name for the UI header; mirrors PUT /api/v1/event.
     let event_json = serde_json::json!({"name": "Mock Event"}).to_string();
     let _ = models::dbo::Setting::set(&mut connection, "event", &event_json);
+
+    // Expected-root acknowledgements don't depend on the discovery crawl (they
+    // key on VLAN + fqdn), so seed them upfront. Only when absent, so a removal
+    // via the UI sticks across restarts on a persisted JASPY_DB_URL.
+    let existing: std::collections::HashSet<(i64, String)> = models::dbo::StpExpectedRoot::all(&mut connection)
+        .into_iter()
+        .map(|r| (r.vlan, r.root_fqdn))
+        .collect();
+    for seed in seed_expected_roots() {
+        let root_fqdn = format!("{}.{}", seed.device, topology::DOMAIN);
+        if existing.contains(&(seed.vlan, root_fqdn.clone())) {
+            continue;
+        }
+        let expected = models::dbo::StpExpectedRoot {
+            vlan: seed.vlan,
+            root_fqdn,
+            root_mac: None,
+            acked_at: crate::utilities::tools::get_time_msecs() as i64,
+            acked_by: Some("mock".to_string()),
+            note: Some(seed.note.to_string()),
+        };
+        let _ = expected.upsert(&mut connection);
+    }
 
     // Wait for the discovery crawl to ingest devices, then insert each client
     // and device position once. Bounded wait: ~5 minutes.
@@ -167,6 +211,20 @@ mod tests {
             assert!(names.contains(dev.name), "device {} has no seeded position", dev.name);
         }
         assert_eq!(positions.len(), topo.devices.len(), "position seed references unknown devices");
+    }
+
+    #[test]
+    fn seed_expected_roots_reference_stp_running_devices() {
+        let topo = topology::build();
+        for seed in seed_expected_roots() {
+            let dev = topo.devices.iter().find(|d| d.name == seed.device)
+                .unwrap_or_else(|| panic!("expected-root seed references unknown device {}", seed.device));
+            assert!(
+                dev.stp_vlans.contains(&seed.vlan),
+                "device {} does not run STP on VLAN {} (expected-root seed is stale)",
+                seed.device, seed.vlan,
+            );
+        }
     }
 
     #[test]

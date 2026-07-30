@@ -17,6 +17,7 @@ import type {
   ResetResult,
   StpTree,
   StpVlanSummary,
+  StpExpectedRootRequest,
   PerfStats,
   Summary,
   SystemStatus,
@@ -87,6 +88,10 @@ export const api = {
   vlans: () => request<VlanSummary[]>('/api/v1/vlans'),
   stp: () => request<StpVlanSummary[]>('/api/v1/stp'),
   stpTree: (vlan: number) => request<StpTree>(`/api/v1/stp/${vlan}`),
+  markExpectedRoot: (body: StpExpectedRootRequest) =>
+    request<void>('/api/v1/stp/expected-roots', { method: 'POST', body: JSON.stringify(body) }),
+  unmarkExpectedRoot: (body: StpExpectedRootRequest) =>
+    request<void>('/api/v1/stp/expected-roots/remove', { method: 'POST', body: JSON.stringify(body) }),
   issues: () => request<IssuesResponse>('/api/v1/issues'),
   ackIssue: (body: IssueAckRequest) =>
     request<Issue>('/api/v1/issues/ack', { method: 'POST', body: JSON.stringify(body) }),

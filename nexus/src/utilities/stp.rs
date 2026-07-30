@@ -183,6 +183,8 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
                 mac: reported.and_then(|b| b.root_mac.as_ref()).map(|m| normalize_mac(m)),
                 priority: reported.and_then(|b| b.root_priority),
                 preferred: false,
+                expected: false,
+                note: None,
             }
         }).collect();
         // Lowest bridge ID (priority, then MAC) wins; unknown priority sorts last.
@@ -349,6 +351,35 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
     ApiStpTree { vlan, roots, nodes, blocked_links, flags, multiple_roots_detail }
 }
 
+// Annotate each root claim with whether the operator has marked it as an
+// expected/known separate tree (from StpExpectedRoot), and return how many
+// roots remain *unacknowledged*. The "multiple roots" condition is only a real
+// issue when this count is > 1: acknowledging the leftover root(s) leaves a
+// single legitimate root, while a genuinely new/unexpected root keeps the count
+// above one and re-alerts. `expected` maps root fqdn -> optional note for one
+// VLAN. Pure over the tree data so both the /stp route and the issue derivation
+// share one rule.
+pub fn apply_expected_roots(
+    detail: &mut ApiStpMultipleRootsDetail,
+    expected: &HashMap<String, Option<String>>,
+) -> usize {
+    let mut unacknowledged = 0;
+    for claim in detail.roots.iter_mut() {
+        match expected.get(&claim.fqdn) {
+            Some(note) => {
+                claim.expected = true;
+                claim.note = note.clone();
+            }
+            None => {
+                claim.expected = false;
+                claim.note = None;
+                unacknowledged += 1;
+            }
+        }
+    }
+    unacknowledged
+}
+
 // Sort key for a root claim: lowest bridge ID wins (priority first, MAC to
 // break ties). Unknown priority sorts last so a claim with data is preferred.
 fn bridge_id_key(claim: &ApiStpRootClaim) -> (i64, String) {
@@ -427,6 +458,44 @@ fn iface_has_vlan(inputs: &StpInputs, fqdn: &str, ifindex: Option<i64>, vlan: i6
 mod tests {
     use super::*;
     use crate::models::json::{WeathermapDevice, WeathermapDeviceInterface, WeathermapDeviceInterfaceConnectedTo};
+
+    fn claim(fqdn: &str) -> ApiStpRootClaim {
+        ApiStpRootClaim {
+            fqdn: fqdn.to_string(),
+            hostname: fqdn.split('.').next().unwrap_or(fqdn).to_string(),
+            mac: None,
+            priority: None,
+            preferred: false,
+            expected: false,
+            note: None,
+        }
+    }
+
+    #[test]
+    fn apply_expected_roots_annotates_and_counts() {
+        let mut detail = ApiStpMultipleRootsDetail {
+            roots: vec![claim("prod.example.com"), claim("leftover.example.com")],
+            adjacent: None,
+            connecting_link: None,
+        };
+        let expected: HashMap<String, Option<String>> =
+            vec![("leftover.example.com".to_string(), Some("known leftover".to_string()))].into_iter().collect();
+
+        let unacked = apply_expected_roots(&mut detail, &expected);
+        assert_eq!(unacked, 1); // only the production root remains unacknowledged
+
+        let prod = detail.roots.iter().find(|c| c.fqdn == "prod.example.com").unwrap();
+        assert!(!prod.expected);
+        assert_eq!(prod.note, None);
+        let leftover = detail.roots.iter().find(|c| c.fqdn == "leftover.example.com").unwrap();
+        assert!(leftover.expected);
+        assert_eq!(leftover.note.as_deref(), Some("known leftover"));
+
+        // No acknowledgements → every root counts.
+        let unacked_none = apply_expected_roots(&mut detail, &HashMap::new());
+        assert_eq!(unacked_none, 2);
+        assert!(detail.roots.iter().all(|c| !c.expected));
+    }
 
     fn port(vlan: i64, role: &str, state: &str, ifindex: i64, ifname: &str, cost: i64) -> ApiStpPort {
         ApiStpPort {

@@ -415,6 +415,10 @@ export interface StpRootClaim {
   mac: string | null;
   priority: number | null;
   preferred: boolean;
+  // The operator has marked this root as a known/expected separate tree for the
+  // VLAN, so it no longer counts toward the "multiple roots" alert.
+  expected?: boolean;
+  note?: string | null;
 }
 
 export interface StpLinkEnds {
@@ -542,4 +546,11 @@ export interface IssueType {
 
 export interface IssueTypeRequest {
   kind: string;
+}
+
+// POST body for marking/unmarking a VLAN root as an expected separate tree.
+export interface StpExpectedRootRequest {
+  vlan: number;
+  rootFqdn: string;
+  note?: string | null;
 }

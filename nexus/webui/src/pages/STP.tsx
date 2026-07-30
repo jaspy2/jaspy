@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
-import type { StpNode, StpTree } from '../api/types';
+import type { StpNode, StpRootClaim, StpTree } from '../api/types';
 import { StpStateBadge } from '../components/StatusBadge';
 
 // Recent topology change threshold: STP churn within this window gets a badge.
@@ -128,6 +128,39 @@ export default function STP() {
 
   const stpEnabled = system.data?.entitypollerEnabled !== false && system.data?.entitypollerStpEnabled !== false;
 
+  // Competing root claims (present whenever the VLAN has/had more than one
+  // computed root), and the fqdns marked as expected/known separate trees.
+  const rootClaims = tree.data?.multipleRootsDetail?.roots ?? [];
+  const expectedFqdns = new Set(rootClaims.filter((r) => r.expected).map((r) => r.fqdn));
+
+  // Marking a root as expected takes an optional note; the form opens inline
+  // under that root. Removing the mark is a one-click action.
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['stp'] });
+    if (vlan !== null) queryClient.invalidateQueries({ queryKey: ['stp', vlan] });
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+  };
+  const [markingFqdn, setMarkingFqdn] = useState<string | null>(null);
+  const [markNote, setMarkNote] = useState('');
+  const closeMarkForm = () => {
+    setMarkingFqdn(null);
+    setMarkNote('');
+  };
+  const mark = useMutation({
+    mutationFn: (body: { rootFqdn: string; note: string | null }) =>
+      api.markExpectedRoot({ vlan: vlan!, rootFqdn: body.rootFqdn, note: body.note }),
+    onSuccess: () => {
+      closeMarkForm();
+      invalidate();
+    },
+  });
+  const unmark = useMutation({
+    mutationFn: (rootFqdn: string) => api.unmarkExpectedRoot({ vlan: vlan!, rootFqdn }),
+    onSuccess: invalidate,
+  });
+  const rootPending = mark.isPending || unmark.isPending;
+
   return (
     <>
       <h1>STP</h1>
@@ -162,6 +195,80 @@ export default function STP() {
         </p>
       )}
 
+      {vlan !== null && rootClaims.length > 1 && (
+        <>
+          <h2>Roots — VLAN {vlan}</h2>
+          <p className="muted">
+            This VLAN has more than one computed root. If a split is by design (e.g. a leftover
+            bridge that is intentionally its own root), mark that root as <em>expected</em> — it stops
+            counting toward the “multiple roots” alert, while a genuinely new or unexpected root still
+            re-alerts on its own.
+          </p>
+          <div className="table-wrap">
+            <table>
+              <tbody>
+                {rootClaims.map((claim: StpRootClaim) => (
+                  <tr key={claim.fqdn}>
+                    <td className="wrap-mobile">
+                      <DeviceLink fqdn={claim.fqdn} />
+                      {claim.preferred && (
+                        <span className="badge badge-ok" style={{ marginLeft: 8 }} title="Lowest bridge ID — the root STP would elect if the bridges converged">
+                          STP would elect this
+                        </span>
+                      )}
+                      {claim.expected && (
+                        <span className="badge badge-muted" style={{ marginLeft: 8 }} title="Acknowledged as a known/expected separate tree">
+                          expected
+                        </span>
+                      )}
+                      {claim.expected && claim.note && (
+                        <div className="muted" style={{ marginTop: 4 }}>{claim.note}</div>
+                      )}
+                      {markingFqdn === claim.fqdn && (
+                        <div className="ack-form" style={{ marginTop: 8 }}>
+                          <textarea
+                            className="ack-note"
+                            rows={3}
+                            autoFocus
+                            placeholder="Optional reason — why is this root expected? (e.g. leftover bridge, not in production)"
+                            value={markNote}
+                            onChange={(e) => setMarkNote(e.target.value)}
+                          />
+                          <button type="button" disabled={rootPending} onClick={() => mark.mutate({ rootFqdn: claim.fqdn, note: markNote.trim() || null })}>
+                            Confirm
+                          </button>
+                          <button type="button" className="secondary" disabled={rootPending} onClick={closeMarkForm}>
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                    <td className="hide-mobile muted">
+                      {claim.mac ?? '—'}
+                      {claim.priority != null && ` · prio ${claim.priority}`}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {claim.expected ? (
+                        <button type="button" className="secondary" disabled={rootPending} onClick={() => unmark.mutate(claim.fqdn)}>
+                          Remove
+                        </button>
+                      ) : markingFqdn !== claim.fqdn ? (
+                        <button type="button" className="secondary" disabled={rootPending} onClick={() => { setMarkNote(''); setMarkingFqdn(claim.fqdn); }}>
+                          Mark as expected root
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {(mark.isError || unmark.isError) && (
+            <p className="error">{String((mark.error ?? unmark.error) as Error)}</p>
+          )}
+        </>
+      )}
+
       {vlan !== null && nodes.length > 0 && (
         <>
           <h2>Tree — VLAN {vlan}</h2>
@@ -184,6 +291,7 @@ export default function STP() {
                       {node.depth > 0 && <span className="muted">└ </span>}
                       <DeviceLink fqdn={node.fqdn} />
                       {node.depth === 0 && !node.orphan && <span className="badge badge-ok" style={{ marginLeft: 8 }}>root</span>}
+                      {expectedFqdns.has(node.fqdn) && <span className="badge badge-muted" style={{ marginLeft: 8 }} title="Acknowledged as a known/expected separate tree — not counted toward the multiple-roots alert">expected root</span>}
                       {node.orphan && <span className="badge badge-warn" style={{ marginLeft: 8 }} title="Upstream could not be resolved from the link topology">orphan</span>}
                       {node.rootMismatch && (() => {
                         // A superior, off-fleet reported root is the benign

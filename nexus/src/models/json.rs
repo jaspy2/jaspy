@@ -474,6 +474,13 @@ pub struct ApiStpRootClaim {
     // The lowest bridge ID among the claims — the root STP would elect if the
     // bridges converged.
     pub preferred: bool,
+    // The operator has marked this root as a known/expected separate tree for
+    // the VLAN (see StpExpectedRoot). Set by the route layer, not build_stp_tree.
+    #[serde(default)]
+    pub expected: bool,
+    // Note from the acknowledgement, when expected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 // The link joining two claimed roots, when they are directly connected, plus
@@ -529,6 +536,17 @@ pub struct ApiStpVlanSummary {
     pub blocked_port_count: i64,
     pub topology_changes: Option<i64>,
     pub time_since_topology_change_secs: Option<i64>,
+}
+
+// POST /api/v1/stp/expected-roots (and .../remove): mark or unmark one root of
+// a VLAN as a known/expected separate tree.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiStpExpectedRootRequest {
+    pub vlan: i64,
+    pub root_fqdn: String,
+    #[serde(default)]
+    pub note: Option<String>,
 }
 
 // GET /api/v1/vlans: network-wide VLAN inventory aggregated across every

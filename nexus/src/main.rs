@@ -612,6 +612,8 @@ async fn server_main() {
                 routes::api::v1::vlans,
                 routes::api::v1::stp_summary,
                 routes::api::v1::stp_tree,
+                routes::api::v1::stp_expected_root_add,
+                routes::api::v1::stp_expected_root_remove,
                 routes::api::v1::issues,
                 routes::api::v1::issue_ack,
                 routes::api::v1::issue_unack,

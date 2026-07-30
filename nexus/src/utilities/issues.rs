@@ -531,7 +531,7 @@ pub fn err_disabled_issue(
 // Structural spanning-tree anomalies for one VLAN's computed tree. Routine
 // blocked (alternate/backup) ports are deliberately NOT issues — blocking is
 // STP working correctly; only genuine anomalies are surfaced.
-pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
+pub fn stp_tree_issues(tree: &json::ApiStpTree, expected_roots: &HashMap<String, Option<String>>) -> Vec<DerivedIssue> {
     let vlan = tree.vlan;
     let vlan_label = format!("VLAN {}", vlan);
     let subject = format!("vlan{}", vlan);
@@ -561,6 +561,16 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
         // independent segments, not a fault — downgrade those to a warning.
         let detail = match (code, tree.multiple_roots_detail.as_ref()) {
             ("multiple-roots", Some(d)) => {
+                // Subtract roots the operator has marked as expected/known
+                // separate trees. Only alert when more than one *unacknowledged*
+                // root remains — acknowledging the leftover leaves a single
+                // legitimate root, while a genuinely new/unexpected root keeps
+                // the count above one and re-alerts on its own.
+                let mut annotated = d.clone();
+                let unacked = crate::utilities::stp::apply_expected_roots(&mut annotated, expected_roots);
+                if unacked <= 1 {
+                    continue;
+                }
                 // Critical only when the roots genuinely share a VLAN path (a
                 // link carrying the VLAN on both ends) yet still disagree — a
                 // real convergence failure. An asymmetric trunk, a link that
@@ -571,7 +581,7 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
                 if !shared_vlan_path {
                     severity = SEV_WARN;
                 }
-                multiple_roots_detail(d, &stp_tree_link, vlan)
+                multiple_roots_detail(&annotated, &stp_tree_link, vlan)
             }
             _ => vec![pair("vlan", vlan.to_string()), pair("flag", flag.clone())],
         };
@@ -1464,7 +1474,7 @@ mod tests {
             flags: vec!["no-root".to_string(), "multiple-root-ports:core1.example.com".to_string()],
             multiple_roots_detail: None,
         };
-        let issues = stp_tree_issues(&tree);
+        let issues = stp_tree_issues(&tree, &HashMap::new());
         let by_kind: HashMap<&str, &DerivedIssue> = issues.iter().map(|i| (i.kind.as_str(), i)).collect();
         assert_eq!(by_kind["stp-flag:no-root"].severity, SEV_BAD);
         assert_eq!(by_kind["stp-flag:no-root"].fqdn, ""); // vlan-level
@@ -1556,19 +1566,19 @@ mod tests {
     #[test]
     fn root_mismatch_verdict_tone_by_scenario() {
         // Superior + off-fleet → warn (unmonitored upstream, the common case).
-        let warn = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), false)));
+        let warn = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), false)), &HashMap::new());
         assert_eq!(verdict_tone(&warn[0]), Some("warn"));
 
         // Superior + monitored → bad (real split-brain between two fleet bridges).
-        let bad = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), true)));
+        let bad = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), true)), &HashMap::new());
         assert_eq!(verdict_tone(&bad[0]), Some("bad"));
 
         // Reported root is weaker → neutral (stale/partitioned data on this node).
-        let neutral = stp_tree_issues(&tree_with_node(mismatch_node(Some(false), false)));
+        let neutral = stp_tree_issues(&tree_with_node(mismatch_node(Some(false), false)), &HashMap::new());
         assert_eq!(verdict_tone(&neutral[0]), Some("neutral"));
 
         // Priority unknown → no verdict at all (never guess which is superior).
-        let unknown = stp_tree_issues(&tree_with_node(mismatch_node(None, false)));
+        let unknown = stp_tree_issues(&tree_with_node(mismatch_node(None, false)), &HashMap::new());
         assert_eq!(verdict_tone(&unknown[0]), None);
     }
 
@@ -1577,7 +1587,7 @@ mod tests {
         // The mobydick tele-sw1 case: reported root is superior AND off-fleet →
         // a warn "root not monitored", not a critical mismatch, and no blame on
         // the reporting device.
-        let issues = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), false)));
+        let issues = stp_tree_issues(&tree_with_node(mismatch_node(Some(true), false)), &HashMap::new());
         assert_eq!(issues[0].kind, "stp-unmonitored-root");
         assert_eq!(issues[0].severity, SEV_WARN);
         assert!(issues[0].description.contains("not monitored"));
@@ -1589,7 +1599,7 @@ mod tests {
         // A superior *monitored* root, or a weaker reported root, is a genuine
         // fault → the critical stp-root-mismatch is preserved.
         for (superior, monitored) in [(Some(true), true), (Some(false), false), (None, false)] {
-            let issues = stp_tree_issues(&tree_with_node(mismatch_node(superior, monitored)));
+            let issues = stp_tree_issues(&tree_with_node(mismatch_node(superior, monitored)), &HashMap::new());
             assert_eq!(issues[0].kind, "stp-root-mismatch", "superior={:?} monitored={}", superior, monitored);
             assert_eq!(issues[0].severity, SEV_BAD);
         }
@@ -1604,8 +1614,8 @@ mod tests {
             flags: vec!["multiple-roots".to_string()],
             multiple_roots_detail: Some(json::ApiStpMultipleRootsDetail {
                 roots: vec![
-                    json::ApiStpRootClaim { fqdn: "b.example.com".to_string(), hostname: "b".to_string(), mac: Some("00:00:00:00:00:0b".to_string()), priority: Some(24586), preferred: true },
-                    json::ApiStpRootClaim { fqdn: "a.example.com".to_string(), hostname: "a".to_string(), mac: Some("00:00:00:00:00:0a".to_string()), priority: Some(28682), preferred: false },
+                    json::ApiStpRootClaim { fqdn: "b.example.com".to_string(), hostname: "b".to_string(), mac: Some("00:00:00:00:00:0b".to_string()), priority: Some(24586), preferred: true, expected: false, note: None },
+                    json::ApiStpRootClaim { fqdn: "a.example.com".to_string(), hostname: "a".to_string(), mac: Some("00:00:00:00:00:0a".to_string()), priority: Some(28682), preferred: false, expected: false, note: None },
                 ],
                 adjacent,
                 connecting_link: match adjacent {
@@ -1619,7 +1629,7 @@ mod tests {
     #[test]
     fn multiple_roots_shared_vlan_path_is_critical_with_evidence() {
         // VLAN on both ends of the link → genuine convergence failure → bad.
-        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, true));
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, true), &HashMap::new());
         let issue = &issues[0];
         assert_eq!(issue.kind, "stp-flag:multiple-roots");
         assert_eq!(issue.severity, SEV_BAD);
@@ -1638,7 +1648,7 @@ mod tests {
     #[test]
     fn multiple_roots_asymmetric_trunk_is_warn_and_names_the_gap() {
         // VLAN on one end only → asymmetric trunk → warn, naming the port.
-        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, false));
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, false), &HashMap::new());
         let issue = &issues[0];
         assert_eq!(issue.severity, SEV_WARN);
         assert_eq!(verdict_tone(issue), Some("warn"));
@@ -1653,11 +1663,76 @@ mod tests {
 
     #[test]
     fn multiple_roots_disjoint_is_downgraded_to_warn() {
-        let issues = stp_tree_issues(&multiple_roots_tree(Some(false), false, false));
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(false), false, false), &HashMap::new());
         let issue = &issues[0];
         assert_eq!(issue.kind, "stp-flag:multiple-roots");
         assert_eq!(issue.severity, SEV_WARN); // no path between roots → likely separate segments
         assert_eq!(verdict_tone(issue), Some("neutral"));
+    }
+
+    fn expected_map(entries: &[(&str, Option<&str>)]) -> HashMap<String, Option<String>> {
+        entries.iter().map(|(f, n)| (f.to_string(), n.map(String::from))).collect()
+    }
+
+    fn three_roots_tree() -> json::ApiStpTree {
+        json::ApiStpTree {
+            vlan: 503,
+            roots: vec!["a.example.com".to_string(), "b.example.com".to_string(), "c.example.com".to_string()],
+            nodes: vec![],
+            blocked_links: vec![],
+            flags: vec!["multiple-roots".to_string()],
+            multiple_roots_detail: Some(json::ApiStpMultipleRootsDetail {
+                roots: vec![
+                    json::ApiStpRootClaim { fqdn: "a.example.com".to_string(), hostname: "a".to_string(), mac: Some("00:00:00:00:00:0a".to_string()), priority: Some(24586), preferred: true, expected: false, note: None },
+                    json::ApiStpRootClaim { fqdn: "b.example.com".to_string(), hostname: "b".to_string(), mac: Some("00:00:00:00:00:0b".to_string()), priority: Some(28682), preferred: false, expected: false, note: None },
+                    json::ApiStpRootClaim { fqdn: "c.example.com".to_string(), hostname: "c".to_string(), mac: Some("00:00:00:00:00:0c".to_string()), priority: Some(32778), preferred: false, expected: false, note: None },
+                ],
+                adjacent: Some(false),
+                connecting_link: None,
+            }),
+        }
+    }
+
+    fn has_multiple_roots(issues: &[DerivedIssue]) -> bool {
+        issues.iter().any(|i| i.kind == "stp-flag:multiple-roots")
+    }
+
+    #[test]
+    fn multiple_roots_with_one_expected_root_is_suppressed() {
+        // Two roots, one acknowledged as a known leftover → one unacknowledged
+        // root remains → the "multiple roots" issue is not emitted.
+        let expected = expected_map(&[("a.example.com", Some("leftover, not in prod"))]);
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, true), &expected);
+        assert!(!has_multiple_roots(&issues));
+    }
+
+    #[test]
+    fn multiple_roots_all_expected_is_suppressed() {
+        let expected = expected_map(&[("a.example.com", None), ("b.example.com", None)]);
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, true), &expected);
+        assert!(!has_multiple_roots(&issues));
+    }
+
+    #[test]
+    fn multiple_roots_expected_fqdn_not_a_root_has_no_effect() {
+        // An acknowledgement whose fqdn is not currently a root does nothing:
+        // both real roots stay unacknowledged and the issue still fires.
+        let expected = expected_map(&[("ghost.example.com", Some("stale"))]);
+        let issues = stp_tree_issues(&multiple_roots_tree(Some(true), true, true), &expected);
+        assert!(has_multiple_roots(&issues));
+    }
+
+    #[test]
+    fn three_roots_one_expected_still_alerts() {
+        // Acknowledging one of three roots still leaves two unacknowledged → the
+        // issue re-alerts, so a genuinely new/unexpected root is never masked.
+        let expected = expected_map(&[("a.example.com", Some("known"))]);
+        let issues = stp_tree_issues(&three_roots_tree(), &expected);
+        assert!(has_multiple_roots(&issues));
+        // But dropping to a single unacknowledged root suppresses it.
+        let expected2 = expected_map(&[("a.example.com", None), ("b.example.com", None)]);
+        let issues2 = stp_tree_issues(&three_roots_tree(), &expected2);
+        assert!(!has_multiple_roots(&issues2));
     }
 
     fn pc_member(ifindex: i64, name: &str, up: Option<bool>, bundled: bool, peer_fqdn: Option<&str>) -> json::ApiPortChannelMember {

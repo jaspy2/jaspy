@@ -1,4 +1,4 @@
-use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations,settings,issue_acks};
+use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations,settings,issue_acks,stp_expected_roots};
 use diesel;
 use crate::db::AnyConnection;
 use diesel::prelude::*;
@@ -222,6 +222,59 @@ impl IssueAck {
             }
         }
         Ok(removed)
+    }
+}
+
+// A per-VLAN root the operator has marked as an expected/known separate tree
+// (e.g. a leftover bridge that is intentionally its own root). The
+// "STP: multiple roots" issue only fires when more than one *unacknowledged*
+// root remains — see utilities/issues.rs::stp_tree_issues. Identity is
+// (vlan, root_fqdn); unlike IssueAck these rows are intentional config and are
+// NOT garbage-collected, so the acknowledgement survives the root disappearing
+// and later returning.
+#[derive(Serialize, Deserialize, Queryable, Insertable, Identifiable, AsChangeset, Clone, Debug)]
+#[diesel(table_name = stp_expected_roots, primary_key(vlan, root_fqdn))]
+#[serde(rename_all = "camelCase")]
+pub struct StpExpectedRoot {
+    pub vlan: i64,
+    pub root_fqdn: String,
+    pub root_mac: Option<String>,
+    pub acked_at: i64,
+    pub acked_by: Option<String>,
+    pub note: Option<String>,
+}
+
+impl StpExpectedRoot {
+    pub fn all(connection: &mut AnyConnection) -> Vec<StpExpectedRoot> {
+        stp_expected_roots::table.load::<StpExpectedRoot>(connection).unwrap_or_default()
+    }
+
+    // Upsert: re-marking an already-expected root (e.g. to update the note or
+    // the MAC snapshot) overwrites in place. ON CONFLICT is not expressible
+    // through the MultiConnection enum; dispatch per backend like Setting::set.
+    pub fn upsert(&self, connection: &mut AnyConnection) -> Result<usize, diesel::result::Error> {
+        crate::with_backend!(connection, |conn| {
+            diesel::insert_into(stp_expected_roots::table)
+                .values(self)
+                .on_conflict((stp_expected_roots::vlan, stp_expected_roots::root_fqdn))
+                .do_update()
+                .set((
+                    stp_expected_roots::root_mac.eq(&self.root_mac),
+                    stp_expected_roots::acked_at.eq(self.acked_at),
+                    stp_expected_roots::acked_by.eq(&self.acked_by),
+                    stp_expected_roots::note.eq(&self.note),
+                ))
+                .execute(conn)
+        })
+    }
+
+    pub fn delete(connection: &mut AnyConnection, vlan: i64, root_fqdn: &str) -> Result<usize, diesel::result::Error> {
+        diesel::delete(
+            stp_expected_roots::table
+                .filter(stp_expected_roots::vlan.eq(vlan))
+                .filter(stp_expected_roots::root_fqdn.eq(root_fqdn)),
+        )
+        .execute(connection)
     }
 }
 
@@ -717,6 +770,45 @@ mod tests {
             vec!["other.test.example|device-down|".to_string()].into_iter().collect();
         assert_eq!(IssueAck::delete_orphans(&mut conn, &active).unwrap(), 1);
         assert!(IssueAck::all(&mut conn).is_empty());
+    }
+
+    #[test]
+    fn stp_expected_root_roundtrip() {
+        let mut conn = conn();
+        assert!(StpExpectedRoot::all(&mut conn).is_empty());
+
+        let expected = StpExpectedRoot {
+            vlan: 503,
+            root_fqdn: "asm-gw1.asm.fi".to_string(),
+            root_mac: Some("00:11:22:33:44:55".to_string()),
+            acked_at: 1000,
+            acked_by: None,
+            note: Some("leftover, not in prod".to_string()),
+        };
+        expected.upsert(&mut conn).unwrap();
+        let rows = StpExpectedRoot::all(&mut conn);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].vlan, 503);
+        assert_eq!(rows[0].root_fqdn, "asm-gw1.asm.fi");
+
+        // Upsert on the same (vlan, root_fqdn) overwrites in place (note/MAC).
+        let mut updated = expected.clone();
+        updated.note = Some("still a leftover".to_string());
+        updated.acked_at = 2000;
+        updated.upsert(&mut conn).unwrap();
+        let rows = StpExpectedRoot::all(&mut conn);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].note.as_deref(), Some("still a leftover"));
+
+        // Same fqdn on a different VLAN is a distinct row (composite key).
+        let other = StpExpectedRoot { vlan: 504, ..expected.clone() };
+        other.upsert(&mut conn).unwrap();
+        assert_eq!(StpExpectedRoot::all(&mut conn).len(), 2);
+
+        assert_eq!(StpExpectedRoot::delete(&mut conn, 503, "asm-gw1.asm.fi").unwrap(), 1);
+        let rows = StpExpectedRoot::all(&mut conn);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].vlan, 504);
     }
 
     #[test]
