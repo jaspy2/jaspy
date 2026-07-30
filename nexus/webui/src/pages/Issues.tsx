@@ -45,6 +45,35 @@ function subjectOf(issueKey: string): string {
   return parts.length >= 3 ? parts.slice(2).join('|') : '';
 }
 
+// Column sort for the issue table. Mirrors the makeCmp idiom used on the
+// Devices / DeviceDetail pages (null-last, numeric-aware string compare).
+type IssueSortKey = 'severity' | 'device' | 'affected' | 'issue' | 'age';
+
+function makeCmp<T>(val: (t: T) => string | number | null, asc: boolean): (a: T, b: T) => number {
+  return (a, b) => {
+    const av = val(a);
+    const bv = val(b);
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    const base =
+      typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv), undefined, { numeric: true });
+    return asc ? base : -base;
+  };
+}
+
+function issueSortVal(i: Issue, key: IssueSortKey): string | number | null {
+  switch (key) {
+    case 'severity': return i.severity === 'bad' ? 0 : 1; // criticals first when ascending
+    case 'device': return i.fqdn ? i.hostname || i.fqdn : null; // network-level (no fqdn) sorts last
+    case 'affected': return i.subjectLabel ?? null;
+    case 'issue': return i.title;
+    case 'age': return i.firstSeen; // ascending = oldest onset first
+  }
+}
+
 // One-line "what this means / how to triage" per issue kind. Keeps the raw
 // signal rows below it self-explanatory for an on-call admin.
 function explainKind(kind: string): string | null {
@@ -360,13 +389,28 @@ export default function Issues() {
   });
   const pending = ack.isPending || unack.isPending || massAck.isPending;
 
+  // Column sort. Default: severity (criticals first). A stable sort keeps the
+  // API's first_seen-desc order within a column, so equal-severity rows read
+  // newest-first.
+  const [sortKey, setSortKey] = useState<IssueSortKey>('severity');
+  const [sortAsc, setSortAsc] = useState(true);
+  const onSort = (key: IssueSortKey) => {
+    if (key === sortKey) setSortAsc(!sortAsc);
+    else {
+      setSortKey(key);
+      setSortAsc(true);
+    }
+  };
+  const arrow = (key: IssueSortKey) => (sortKey === key ? (sortAsc ? ' ▲' : ' ▼') : '');
+
   const { active, acknowledged } = useMemo(() => {
+    const cmp = makeCmp((i: Issue) => issueSortVal(i, sortKey), sortAsc);
     const all = (issues.data?.issues ?? []).filter((i) => !selectedKind || i.kind === selectedKind);
     return {
-      active: all.filter((i) => !i.acknowledged),
-      acknowledged: all.filter((i) => i.acknowledged),
+      active: all.filter((i) => !i.acknowledged).sort(cmp),
+      acknowledged: all.filter((i) => i.acknowledged).sort(cmp),
     };
-  }, [issues.data, selectedKind]);
+  }, [issues.data, selectedKind, sortKey, sortAsc]);
 
   // Select-all reflects the current Active list; toggling clears or fills it.
   const allSelected = active.length > 0 && active.every((i) => selected.has(i.issueKey));
@@ -482,11 +526,11 @@ export default function Issues() {
         <table>
           <thead>
             <tr>
-              <th>Severity</th>
-              <th>Device</th>
-              <th>Affected</th>
-              <th>Issue</th>
-              <th>Age</th>
+              <th className="sortable" onClick={() => onSort('severity')}>Severity{arrow('severity')}</th>
+              <th className="sortable" onClick={() => onSort('device')}>Device{arrow('device')}</th>
+              <th className="sortable" onClick={() => onSort('affected')}>Affected{arrow('affected')}</th>
+              <th className="sortable" onClick={() => onSort('issue')}>Issue{arrow('issue')}</th>
+              <th className="sortable" onClick={() => onSort('age')}>Age{arrow('age')}</th>
               <th></th>
             </tr>
           </thead>
@@ -558,6 +602,25 @@ export default function Issues() {
       {(ack.isError || unack.isError || massAck.isError || suppress.isError || unsuppress.isError) && (
         <p className="error">{String(ack.error ?? unack.error ?? massAck.error ?? suppress.error ?? unsuppress.error)}</p>
       )}
+
+      {/* Desktop sorts via the column headers; mobile hides them, so offer sort here. */}
+      <div className="toolbar mobile-only">
+        <select
+          aria-label="Sort issues"
+          value={`${sortKey}:${sortAsc ? 'asc' : 'desc'}`}
+          onChange={(e) => {
+            const [key, dir] = e.target.value.split(':');
+            setSortKey(key as IssueSortKey);
+            setSortAsc(dir === 'asc');
+          }}
+        >
+          <option value="severity:asc">Critical first</option>
+          <option value="device:asc">Device A–Z</option>
+          <option value="issue:asc">Issue A–Z</option>
+          <option value="age:desc">Newest first</option>
+          <option value="age:asc">Oldest first</option>
+        </select>
+      </div>
 
       {selectedKind && (
         <div className="issue-filter-active">
