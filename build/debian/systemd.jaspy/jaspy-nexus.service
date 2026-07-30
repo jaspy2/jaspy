@@ -3,6 +3,10 @@ Description=jaspy-nexus
 After=network.target postgresql.service
 
 [Service]
+# The embedded SNMP client opens a UDP socket per session; polling the full
+# fleet concurrently bursts well past the 1024 default soft limit and drops
+# polls with "Too many open files". Raise it (hard cap is far higher).
+LimitNOFILE=65536
 Type=simple
 User=jaspy
 Group=jaspy
@@ -26,7 +30,8 @@ Environment=ROCKET_PORT=8000
 #Environment=JASPY_ENABLE_TRAP_RECEIVER=true
 #Environment=JASPY_TRAP_BIND_ADDRESS=0.0.0.0:162
 # In-process poller collector (formerly the standalone jaspy-poller service).
-Environment=JASPY_SNMPBOT_URL=http://127.0.0.1:8286/
+#Environment=JASPY_SNMPBOT_URL=http://127.0.0.1:8286/
+Environment=JASPY_SNMP_MODE=embedded
 Environment=JASPY_POLL_LOOP_MSECS=10000
 # Megaexcel integration base URL. When set, the web UI shows a Megaexcel link in
 # the nav and an "Open in Megaexcel" button on each device page (.../entity/<name>).
