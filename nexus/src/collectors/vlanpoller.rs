@@ -112,6 +112,22 @@ impl VlanStore {
             ApiVlanSummary { id, names, devices }
         }).collect()
     }
+
+    // Distinct, sorted names per VLAN id across every device — the id -> name
+    // resolver for views keyed by VLAN number (STP page, STP issues). One name
+    // means the network agrees; more than one means the switches disagree (same
+    // conflict model as network_vlans / the Vlans page). Empty names are skipped.
+    pub fn vlan_names(&self) -> HashMap<i64, Vec<String>> {
+        let mut by_id: HashMap<i64, std::collections::BTreeSet<String>> = HashMap::new();
+        for device in self.devices.values() {
+            for (id, name) in device.names.iter() {
+                if !name.is_empty() {
+                    by_id.entry(*id).or_default().insert(name.clone());
+                }
+            }
+        }
+        by_id.into_iter().map(|(id, names)| (id, names.into_iter().collect())).collect()
+    }
 }
 
 // Poll-now queue: fqdns stay in `pending` from the POST until their triggered
@@ -832,6 +848,21 @@ mod tests {
         let v999 = vlans.iter().find(|v| v.id == 999).unwrap();
         assert_eq!(v999.devices.len(), 1);
         assert_eq!((v999.devices[0].native_ports, v999.devices[0].tagged_ports), (0, 0));
+    }
+
+    #[test]
+    fn vlan_names_resolves_id_to_distinct_sorted_names() {
+        let mut store = VlanStore::new();
+        store.replace_device("a.example.com".to_string(), device(&[], &[(10, "users"), (300, "Mgmt")]));
+        store.replace_device("b.example.com".to_string(), device(&[], &[(10, "users"), (300, "management")]));
+
+        let names = store.vlan_names();
+        // Agreed name dedupes to one entry.
+        assert_eq!(names.get(&10).cloned(), Some(vec!["users".to_string()]));
+        // Disagreement surfaces as multiple entries, sorted.
+        assert_eq!(names.get(&300).cloned(), Some(vec!["Mgmt".to_string(), "management".to_string()]));
+        // Unknown id → no entry.
+        assert!(names.get(&999).is_none());
     }
 
     #[test]

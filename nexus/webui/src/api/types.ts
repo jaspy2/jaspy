@@ -366,6 +366,8 @@ export interface StpVlanSummary {
   blockedPortCount: number;
   topologyChanges: number | null;
   timeSinceTopologyChangeSecs: number | null;
+  // Distinct VLAN names across switches; >1 means they disagree. Empty if unnamed.
+  names: string[];
 }
 
 // GET /api/v1/stp/<vlan> — the computed active spanning tree. Nodes are in
@@ -442,6 +444,8 @@ export interface StpTree {
   nodes: StpNode[];
   blockedLinks: StpBlockedLink[];
   flags: string[];
+  // Distinct VLAN names across switches; >1 means they disagree. Empty if unnamed.
+  names: string[];
   multipleRootsDetail?: StpMultipleRootsDetail | null;
 }
 

@@ -557,6 +557,7 @@ fn elect_majority_mac(votes: std::collections::HashMap<String, usize>) -> Option
 pub fn stp_summary(
     mut connection: db::JaspyDB,
     entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
 ) -> Json<Vec<models::json::ApiStpVlanSummary>> {
     use crate::utilities::stp::normalize_mac;
 
@@ -564,6 +565,7 @@ pub fn stp_summary(
         Ok(store) => store.network_stp(),
         Err(_) => Default::default(),
     };
+    let vlan_names = vlan_store.inner().lock().map(|s| s.vlan_names()).unwrap_or_default();
     let base_macs = device_base_macs(&mut connection);
     let fqdn_by_mac: std::collections::HashMap<String, String> = base_macs
         .iter()
@@ -608,6 +610,7 @@ pub fn stp_summary(
             blocked_port_count: blocked_port_count,
             topology_changes: vlan_bridges.iter().filter_map(|b| b.topology_changes).max(),
             time_since_topology_change_secs: vlan_bridges.iter().filter_map(|b| b.time_since_topology_change_secs).min(),
+            names: vlan_names.get(&vlan).cloned().unwrap_or_default(),
         }
     }).collect();
     Json(summaries)
@@ -642,6 +645,9 @@ pub fn stp_tree(
         vlan_members: &vlan_members,
     };
     let mut tree = crate::utilities::stp::build_stp_tree(&inputs, vlan);
+    // Join in the VLAN's name(s) for display (the STP data itself has none).
+    tree.names = vlan_store.inner().lock().map(|s| s.vlan_names()).unwrap_or_default()
+        .remove(&vlan).unwrap_or_default();
     // Fold in the operator's "expected roots" baseline: annotate acknowledged
     // roots and clear the multiple-roots flag when only one unacknowledged root
     // remains, so the page's badge and evidence match the /issues derivation.
@@ -841,7 +847,9 @@ pub fn collect_issues(
         let expected_roots = expected_roots_by_vlan(connection);
         let no_expected = std::collections::HashMap::new();
         let lag_members = lag_store.lock().map(|store| store.lag_members()).unwrap_or_default();
-        let vlan_members = vlan_store.lock().map(|store| store.membership_map()).unwrap_or_default();
+        let (vlan_members, mut vlan_names) = vlan_store.lock()
+            .map(|store| (store.membership_map(), store.vlan_names()))
+            .unwrap_or_default();
         let vlans: std::collections::BTreeSet<i64> = stp_ports.values().flatten().map(|p| p.vlan).collect();
         for vlan in vlans {
             let inputs = crate::utilities::stp::StpInputs {
@@ -852,7 +860,10 @@ pub fn collect_issues(
                 lag_members: &lag_members,
                 vlan_members: &vlan_members,
             };
-            let tree = crate::utilities::stp::build_stp_tree(&inputs, vlan);
+            let mut tree = crate::utilities::stp::build_stp_tree(&inputs, vlan);
+            // Join the VLAN name(s) onto the tree so the issue labels can show
+            // them (stp_tree_issues reads tree.names).
+            tree.names = vlan_names.remove(&vlan).unwrap_or_default();
             for node in tree.nodes.iter() {
                 root_depth
                     .entry(node.fqdn.clone())

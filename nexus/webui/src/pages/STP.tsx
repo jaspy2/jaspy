@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api } from '../api/client';
+import { api, vlanNameLabel } from '../api/client';
 import type { StpNode, StpRootClaim, StpTree } from '../api/types';
 import { StpStateBadge } from '../components/StatusBadge';
 
@@ -133,6 +133,16 @@ export default function STP() {
   const rootClaims = tree.data?.multipleRootsDetail?.roots ?? [];
   const expectedFqdns = new Set(rootClaims.filter((r) => r.expected).map((r) => r.fqdn));
 
+  // The selected VLAN's name(s) for headings/prose. More than one name means the
+  // switches disagree — shown joined with a "name mismatch" badge next to headings.
+  const vlanName = vlanNameLabel(tree.data?.names ?? []);
+  const nameConflict = (tree.data?.names ?? []).length > 1;
+  const mismatchBadge = nameConflict ? (
+    <span className="badge badge-warn" style={{ marginLeft: 8 }} title="This VLAN is named differently on different switches">
+      name mismatch
+    </span>
+  ) : null;
+
   // Marking a root as expected takes an optional note; the form opens inline
   // under that root. Removing the mark is a one-click action.
   const queryClient = useQueryClient();
@@ -173,11 +183,14 @@ export default function STP() {
           VLAN{' '}
           <select value={vlan ?? ''} onChange={(e) => setParam('vlan', e.target.value)}>
             {vlan === null && <option value="">—</option>}
-            {vlans.map((s) => (
-              <option key={s.vlan} value={s.vlan}>
-                {s.vlan} ({s.nodeCount} switches)
-              </option>
-            ))}
+            {vlans.map((s) => {
+              const name = vlanNameLabel(s.names);
+              return (
+                <option key={s.vlan} value={s.vlan}>
+                  {s.vlan}{name ? ` · ${name}` : ''} ({s.nodeCount} switches)
+                </option>
+              );
+            })}
           </select>
         </label>
         {flags.map((flag) => (
@@ -197,7 +210,7 @@ export default function STP() {
 
       {vlan !== null && rootClaims.length > 1 && (
         <>
-          <h2>Roots — VLAN {vlan}</h2>
+          <h2>Roots — VLAN {vlan}{vlanName && ` · ${vlanName}`}{mismatchBadge}</h2>
           <p className="muted">
             This VLAN has more than one computed root. If a split is by design (e.g. a leftover
             bridge that is intentionally its own root), mark that root as <em>expected</em> — it stops
@@ -271,7 +284,7 @@ export default function STP() {
 
       {vlan !== null && nodes.length > 0 && (
         <>
-          <h2>Tree — VLAN {vlan}</h2>
+          <h2>Tree — VLAN {vlan}{vlanName && ` · ${vlanName}`}{mismatchBadge}</h2>
           <div className="table-wrap">
             <table>
               <thead>
@@ -368,7 +381,7 @@ export default function STP() {
           )}
 
           <h2>Path</h2>
-          <p className="muted">The route frames take between two switches on VLAN {vlan}.</p>
+          <p className="muted">The route frames take between two switches on VLAN {vlan}{vlanName && ` (${vlanName})`}.</p>
           <div className="toolbar">
             <label>
               From{' '}
@@ -422,7 +435,7 @@ export default function STP() {
         </>
       )}
       {vlan !== null && nodes.length === 0 && !tree.isLoading && vlans.length > 0 && (
-        <p className="muted">No STP data for VLAN {vlan}.</p>
+        <p className="muted">No STP data for VLAN {vlan}{vlanName && ` (${vlanName})`}.</p>
       )}
     </>
   );

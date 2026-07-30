@@ -116,6 +116,15 @@ export function formatTimestamp(secs: number | null): string {
   return new Date(secs * 1000).toLocaleString();
 }
 
+// A VLAN's display name from the distinct per-switch names: the single agreed
+// name, every conflicting variant joined when switches disagree, or null when
+// nothing names it. Callers show a "name mismatch" badge when names.length > 1.
+export function vlanNameLabel(names: string[]): string | null {
+  if (names.length === 0) return null;
+  if (names.length === 1) return names[0];
+  return names.join(' / ');
+}
+
 export function formatUptime(startupTime: number): string {
   const total = Math.max(0, Math.floor(Date.now() / 1000 - startupTime));
   const d = Math.floor(total / 86400);

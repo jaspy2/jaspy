@@ -1083,9 +1083,11 @@ export default function DeviceDetail() {
                 </tr>
               </thead>
               <tbody>
-                {sortedStp.map((port) => (
+                {sortedStp.map((port) => {
+                  const vlanName = vlanNames.get(port.vlan);
+                  return (
                   <tr key={`${port.vlan}-${port.stpPortId}`}>
-                    <td><Link to={`/stp?vlan=${port.vlan}`} title="Open the STP tree for this VLAN">{port.vlan}</Link></td>
+                    <td><Link to={`/stp?vlan=${port.vlan}`} title={vlanName ? `VLAN ${port.vlan} · ${vlanName} — open STP tree` : 'Open the STP tree for this VLAN'}>{port.vlan}</Link></td>
                     <td className="wrap-mobile">{port.interfaceName ?? `port ${port.stpPortId}`}</td>
                     <td>{port.role}</td>
                     <td><StpStateBadge state={port.state} /></td>
@@ -1095,7 +1097,8 @@ export default function DeviceDetail() {
                     <td className="hide-mobile">{port.priority}</td>
                     <td className="hide-mobile">{port.forwardTransitions}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

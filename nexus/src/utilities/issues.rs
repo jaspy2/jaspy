@@ -533,10 +533,16 @@ pub fn err_disabled_issue(
 // STP working correctly; only genuine anomalies are surfaced.
 pub fn stp_tree_issues(tree: &json::ApiStpTree, expected_roots: &HashMap<String, Option<String>>) -> Vec<DerivedIssue> {
     let vlan = tree.vlan;
-    let vlan_label = format!("VLAN {}", vlan);
+    // Append the VLAN name to the compact labels when the switches agree on a
+    // single name; stay id-only when unnamed or when they disagree (ambiguous).
+    let name_suffix = match tree.names.as_slice() {
+        [name] => format!(" ({})", name),
+        _ => String::new(),
+    };
+    let vlan_label = format!("VLAN {}{}", vlan, name_suffix);
     let subject = format!("vlan{}", vlan);
     let mut out = Vec::new();
-    let stp_tree_link = link_row("spanning tree", format!("VLAN {} tree", vlan), format!("/stp?vlan={}", vlan));
+    let stp_tree_link = link_row("spanning tree", format!("VLAN {}{} tree", vlan, name_suffix), format!("/stp?vlan={}", vlan));
 
     for flag in tree.flags.iter() {
         // Flags are "code" or "code:<fqdn>" (multiple-root-ports).
@@ -1472,6 +1478,7 @@ mod tests {
             ],
             blocked_links: vec![],
             flags: vec!["no-root".to_string(), "multiple-root-ports:core1.example.com".to_string()],
+            names: vec![],
             multiple_roots_detail: None,
         };
         let issues = stp_tree_issues(&tree, &HashMap::new());
@@ -1548,7 +1555,7 @@ mod tests {
     }
 
     fn tree_with_node(node: json::ApiStpNode) -> json::ApiStpTree {
-        json::ApiStpTree { vlan: 63, roots: vec!["core.example.com".to_string()], nodes: vec![node], blocked_links: vec![], flags: vec![], multiple_roots_detail: None }
+        json::ApiStpTree { vlan: 63, roots: vec!["core.example.com".to_string()], nodes: vec![node], blocked_links: vec![], flags: vec![], names: vec![], multiple_roots_detail: None }
     }
 
     #[test]
@@ -1612,6 +1619,7 @@ mod tests {
             nodes: vec![],
             blocked_links: vec![],
             flags: vec!["multiple-roots".to_string()],
+            names: vec![],
             multiple_roots_detail: Some(json::ApiStpMultipleRootsDetail {
                 roots: vec![
                     json::ApiStpRootClaim { fqdn: "b.example.com".to_string(), hostname: "b".to_string(), mac: Some("00:00:00:00:00:0b".to_string()), priority: Some(24586), preferred: true, expected: false, note: None },
@@ -1624,6 +1632,27 @@ mod tests {
                 },
             }),
         }
+    }
+
+    #[test]
+    fn vlan_name_enriches_subject_label_only_when_agreed() {
+        // A single agreed name is appended to the "Affected" label and the tree link.
+        let mut tree = multiple_roots_tree(Some(true), true, true);
+        tree.names = vec!["esports".to_string()];
+        let issue = &stp_tree_issues(&tree, &HashMap::new())[0];
+        assert_eq!(issue.subject_label.as_deref(), Some("VLAN 10 (esports)"));
+        assert!(issue.detail.iter().any(|d| matches!(&d.value,
+            ApiIssueDetailValue::Link { text, .. } if text == "VLAN 10 (esports) tree")));
+
+        // No name → id only.
+        let mut bare = multiple_roots_tree(Some(true), true, true);
+        bare.names = vec![];
+        assert_eq!(stp_tree_issues(&bare, &HashMap::new())[0].subject_label.as_deref(), Some("VLAN 10"));
+
+        // Disagreement (>1 name) → id only, never an ambiguous label.
+        let mut conflict = multiple_roots_tree(Some(true), true, true);
+        conflict.names = vec!["esports".to_string(), "gaming".to_string()];
+        assert_eq!(stp_tree_issues(&conflict, &HashMap::new())[0].subject_label.as_deref(), Some("VLAN 10"));
     }
 
     #[test]
@@ -1681,6 +1710,7 @@ mod tests {
             nodes: vec![],
             blocked_links: vec![],
             flags: vec!["multiple-roots".to_string()],
+            names: vec![],
             multiple_roots_detail: Some(json::ApiStpMultipleRootsDetail {
                 roots: vec![
                     json::ApiStpRootClaim { fqdn: "a.example.com".to_string(), hostname: "a".to_string(), mac: Some("00:00:00:00:00:0a".to_string()), priority: Some(24586), preferred: true, expected: false, note: None },

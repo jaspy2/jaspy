@@ -348,7 +348,8 @@ pub fn build_stp_tree(inputs: &StpInputs, vlan: i64) -> ApiStpTree {
         }
     }
 
-    ApiStpTree { vlan, roots, nodes, blocked_links, flags, multiple_roots_detail }
+    // names are joined in by the route/issue layer (this fn has no VlanStore).
+    ApiStpTree { vlan, roots, nodes, blocked_links, flags, names: Vec::new(), multiple_roots_detail }
 }
 
 // Annotate each root claim with whether the operator has marked it as an

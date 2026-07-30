@@ -521,6 +521,11 @@ pub struct ApiStpTree {
     // Structural anomalies: "no-root", "multiple-roots", "cycle",
     // "multiple-root-ports:<fqdn>".
     pub flags: Vec<String>,
+    // Distinct VLAN names across devices (joined from the vlanpoller store, not
+    // computed here). One entry = agreed name; more than one = the switches
+    // disagree. Empty when unnamed. Set by the route/issue layer, not build_stp_tree.
+    #[serde(default)]
+    pub names: Vec<String>,
     // Evidence behind a "multiple-roots" flag; present only when it fires.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub multiple_roots_detail: Option<ApiStpMultipleRootsDetail>,
@@ -536,6 +541,9 @@ pub struct ApiStpVlanSummary {
     pub blocked_port_count: i64,
     pub topology_changes: Option<i64>,
     pub time_since_topology_change_secs: Option<i64>,
+    // Distinct VLAN names across devices (see ApiStpTree.names).
+    #[serde(default)]
+    pub names: Vec<String>,
 }
 
 // POST /api/v1/stp/expected-roots (and .../remove): mark or unmark one root of
