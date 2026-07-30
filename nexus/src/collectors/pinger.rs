@@ -1,17 +1,26 @@
 // In-process ICMP up/down collector (formerly the `jaspy-pinger` binary).
-// Ported near-verbatim from pinger/src/main.rs; per-device state changes are
-// written directly into IMDS (`report_device`) rather than PUT to
-// /dev/device/monitor. The cross-process `state_id` resync is dropped (it only
-// existed to detect a nexus restart from a separate process); worker lifetime
-// now simply tracks the monitored device set. Requires CAP_NET_RAW.
+// Per-device reachability changes are written directly into IMDS
+// (`report_device`). Requires CAP_NET_RAW.
+//
+// The fleet is pinged by a small pool of `workers` shard threads
+// (JASPY_PINGER_WORKERS, default 4) rather than one thread per device. Each
+// worker owns a disjoint shard of devices (by `shard_of`) and, once per tick,
+// pings its whole shard from a SINGLE liboping instance — liboping shares one
+// socket-pair per address family across all hosts added to an instance, so a
+// shard of N hosts costs ~1 socket, not N. This replaces the old model that
+// built a fresh instance (a raw ICMP socket + DNS lookup) per device per second
+// across ~200 threads, which exhausted file descriptors under load
+// ("ping instance creation error: Too many open files"). Workers start staggered
+// so their sends spread across the interval instead of firing as one burst.
 extern crate oping;
 
 use crate::models;
 use crate::db;
 use crate::utilities::imds::IMDS;
 use crate::utilities::tools;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, atomic, mpsc};
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
+use std::sync::{Arc, Mutex, atomic};
 use std::thread;
 use std::time;
 
@@ -19,12 +28,6 @@ const PING_LOOP_MSECS: u64 = 1000;
 const PING_TIMEOUT: f64 = 1.0;
 const PING_HYST_LOOP_MSECS: u64 = 100;
 const PING_HYST_LIMIT: u8 = 10;
-
-struct PingThreadInfo {
-    thd: thread::JoinHandle<()>,
-    running: Arc<atomic::AtomicBool>,
-    finished_signal: mpsc::Receiver<bool>,
-}
 
 struct PingAccountingInfo {
     responsive: Option<bool>,
@@ -53,220 +56,273 @@ fn report_up(pool: &db::Pool, imds: &Arc<Mutex<IMDS>>, host: &String, up: bool) 
     }
 }
 
-fn pinger_prepare_instance(host: &String) -> Result<oping::Ping, oping::PingError> {
-    let mut oping_instance = oping::Ping::new();
-    oping_instance.set_timeout(PING_TIMEOUT)?;
-    oping_instance.add_host(host.as_str())?;
-    return Ok(oping_instance);
-}
-
-fn pinger_handle_host_drop(pool: &db::Pool, imds: &Arc<Mutex<IMDS>>, host: &String, ping_accounting_info: &mut PingAccountingInfo) {
-    let responsive;
-    match ping_accounting_info.responsive {
-        Some(value) => { responsive = value; },
-        None => {
-            // Initial state is down!
-            ping_accounting_info.responsive = Some(false);
-            report_up(pool, imds, host, false);
-            return;
-        }
-    }
-    if !responsive {
-        ping_accounting_info.hysteresis_responsive = 0;
-        ping_accounting_info.hysteresis_unresponsive = 0;
-        return;
-    } else {
-        ping_accounting_info.hysteresis_responsive = 0;
-    }
-    ping_accounting_info.hysteresis_unresponsive += 1;
-    if ping_accounting_info.hysteresis_unresponsive >= PING_HYST_LIMIT {
-        ping_accounting_info.responsive = Some(false);
-        report_up(pool, imds, host, false);
-        println!("[{}] -> DOWN", host);
-    } else {
-        println!("[{}] <hyst> not responding ({}/{})", host, ping_accounting_info.hysteresis_unresponsive, PING_HYST_LIMIT);
-    }
-}
-
-fn pinger_handle_host_resp(pool: &db::Pool, imds: &Arc<Mutex<IMDS>>, host: &String, ping_accounting_info: &mut PingAccountingInfo) {
-    let responsive;
-    match ping_accounting_info.responsive {
-        Some(value) => { responsive = value; },
-        None => {
-            // Initial state is up!
-            ping_accounting_info.responsive = Some(true);
-            report_up(pool, imds, host, true);
-            return;
-        }
-    }
-    if responsive {
-        ping_accounting_info.hysteresis_responsive = 0;
-        ping_accounting_info.hysteresis_unresponsive = 0;
-        return;
-    } else {
-        ping_accounting_info.hysteresis_unresponsive = 0;
-    }
-    ping_accounting_info.hysteresis_responsive += 1;
-    if ping_accounting_info.hysteresis_responsive >= PING_HYST_LIMIT {
-        ping_accounting_info.responsive = Some(true);
-        report_up(pool, imds, host, true);
-        println!("[{}] -> OK", host);
-    } else {
-        println!("[{}] <hyst> responding ({}/{})", host, ping_accounting_info.hysteresis_responsive, PING_HYST_LIMIT);
-    }
-}
-
 fn is_responding(ping_item: &oping::PingItem) -> bool {
     if ping_item.dropped > 0 || ping_item.latency_ms < 0.0 { return false; }
     return true;
 }
 
-fn pinger_process_ping_result(pool: &db::Pool, imds: &Arc<Mutex<IMDS>>, host: &String, ping_accounting_info: &mut PingAccountingInfo, ping_item: oping::PingItem) {
-    if is_responding(&ping_item) {
-        pinger_handle_host_resp(pool, imds, host, ping_accounting_info);
-    } else {
-        pinger_handle_host_drop(pool, imds, host, ping_accounting_info);
-    }
+// Which worker owns a device. Stable within a run (DefaultHasher), so a device
+// stays on the same worker as the monitored set changes.
+fn shard_of(fqdn: &str, workers: usize) -> usize {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    fqdn.hash(&mut hasher);
+    (hasher.finish() % workers as u64) as usize
 }
 
-fn pinger_perform_ping(pool: &db::Pool, imds: &Arc<Mutex<IMDS>>, host: &String, ping_accounting_info: &mut PingAccountingInfo, oping_instance: oping::Ping) {
-    match oping_instance.send() {
-        Ok(oping_result) => {
-            if let Some(ping_result) = oping_result.last() {
-                pinger_process_ping_result(pool, imds, host, ping_accounting_info, ping_result);
+// Pure hysteresis step, replacing the old handle_host_resp/handle_host_drop pair.
+// Returns Some(new_up) when a reachability transition should be reported, else
+// None. Semantics preserved verbatim: the first observation of an unknown device
+// is reported immediately; otherwise a device only flips after PING_HYST_LIMIT
+// consecutive contrary observations, and any matching observation resets the
+// counters.
+fn advance_hysteresis(info: &mut PingAccountingInfo, responding: bool) -> Option<bool> {
+    match info.responsive {
+        None => {
+            info.responsive = Some(responding);
+            Some(responding)
+        }
+        Some(current) if current == responding => {
+            info.hysteresis_responsive = 0;
+            info.hysteresis_unresponsive = 0;
+            None
+        }
+        Some(_) => {
+            if responding {
+                info.hysteresis_unresponsive = 0;
+                info.hysteresis_responsive = info.hysteresis_responsive.saturating_add(1);
+                if info.hysteresis_responsive >= PING_HYST_LIMIT {
+                    info.responsive = Some(true);
+                    return Some(true);
+                }
+            } else {
+                info.hysteresis_responsive = 0;
+                info.hysteresis_unresponsive = info.hysteresis_unresponsive.saturating_add(1);
+                if info.hysteresis_unresponsive >= PING_HYST_LIMIT {
+                    info.responsive = Some(false);
+                    return Some(false);
+                }
             }
-        },
-        Err(e) => {
-            println!("[{}] ping error: {:?}", host, e);
+            None
         }
     }
 }
 
-fn ping_worker(pool: db::Pool, imds: Arc<Mutex<IMDS>>, fqdn: String, initial_up: Option<bool>, running: Arc<atomic::AtomicBool>, done: mpsc::Sender<bool>) {
-    let mut ping_accounting_info = PingAccountingInfo {
-        responsive: initial_up,
-        hysteresis_responsive: 0,
-        hysteresis_unresponsive: 0,
-    };
-    println!("[{}] start monitoring", fqdn);
+// Bring the accounting map in line with the current shard membership: drop
+// departed devices, and seed newcomers from IMDS's last-known `up` (matching the
+// old per-worker startup seed) so a restart doesn't re-announce every device.
+fn reconcile_accounting(accounting: &mut HashMap<String, PingAccountingInfo>, shard: &[String], imds: &Arc<Mutex<IMDS>>) {
+    let current: HashSet<&String> = shard.iter().collect();
+    accounting.retain(|fqdn, _| current.contains(fqdn));
+    for fqdn in shard {
+        if !accounting.contains_key(fqdn) {
+            let initial_up = if let Ok(ref imds_locked) = imds.lock() {
+                imds_locked.get_device(fqdn).and_then(|d| d.up)
+            } else {
+                None
+            };
+            accounting.insert(
+                fqdn.clone(),
+                PingAccountingInfo { responsive: initial_up, hysteresis_responsive: 0, hysteresis_unresponsive: 0 },
+            );
+        }
+    }
+}
+
+// Apply this tick's ping results to the accounting map and return the transitions
+// to report. A shard device absent from `responded` (add_host failed, or no
+// reply row) counts as not responding. Pure — unit-tested without sockets/IMDS.
+fn advance_shard(accounting: &mut HashMap<String, PingAccountingInfo>, shard: &[String], responded: &HashMap<String, bool>) -> Vec<(String, bool)> {
+    let mut reports = Vec::new();
+    for fqdn in shard {
+        let responding = responded.get(fqdn).copied().unwrap_or(false);
+        if let Some(info) = accounting.get_mut(fqdn) {
+            if let Some(new_up) = advance_hysteresis(info, responding) {
+                reports.push((fqdn.clone(), new_up));
+            }
+        }
+    }
+    reports
+}
+
+// Build a liboping instance with every shard host added (best-effort: a host
+// whose add_host fails — e.g. unresolvable — is simply omitted and will read as
+// not-responding this cycle). Returns the instance and the number of hosts added.
+fn build_shard_instance(shard: &[String]) -> Result<(oping::Ping, usize), oping::PingError> {
+    let mut ping = oping::Ping::new();
+    ping.set_timeout(PING_TIMEOUT)?;
+    let mut added = 0usize;
+    for fqdn in shard {
+        if ping.add_host(fqdn.as_str()).is_ok() {
+            added += 1;
+        }
+    }
+    Ok((ping, added))
+}
+
+fn ping_shard_worker(pool: db::Pool, imds: Arc<Mutex<IMDS>>, shard_id: usize, workers: usize, running: Arc<atomic::AtomicBool>) {
+    // Stagger workers across the interval so their sends don't align into one
+    // burst — with `workers` shards there are pings continuously in flight.
+    let offset = (shard_id as u64) * PING_LOOP_MSECS / (workers as u64);
+    if offset > 0 {
+        thread::sleep(time::Duration::from_millis(offset));
+    }
+    println!("[pinger] shard {}/{} start monitoring", shard_id, workers);
+    let mut accounting: HashMap<String, PingAccountingInfo> = HashMap::new();
+
     while running.load(atomic::Ordering::Relaxed) {
         let start = tools::get_time_msecs();
 
-        match pinger_prepare_instance(&fqdn) {
-            Ok(oping_instance) => {
-                pinger_perform_ping(&pool, &imds, &fqdn, &mut ping_accounting_info, oping_instance);
-            },
-            Err(e) => {
-                println!("[{}] ping instance creation error: {:?}", fqdn, e);
+        let shard: Vec<String> = load_device_fqdns(&pool)
+            .into_keys()
+            .filter(|fqdn| shard_of(fqdn, workers) == shard_id)
+            .collect();
+        reconcile_accounting(&mut accounting, &shard, &imds);
+
+        if !shard.is_empty() {
+            match build_shard_instance(&shard) {
+                Ok((ping, added)) if added > 0 => match ping.send() {
+                    Ok(results) => {
+                        let mut responded: HashMap<String, bool> = HashMap::new();
+                        for item in results {
+                            responded.insert(item.hostname.clone(), is_responding(&item));
+                        }
+                        for (fqdn, up) in advance_shard(&mut accounting, &shard, &responded) {
+                            report_up(&pool, &imds, &fqdn, up);
+                            println!("[{}] -> {}", fqdn, if up { "OK" } else { "DOWN" });
+                        }
+                    }
+                    // A local send failure (not a device-down signal) must not flap
+                    // the whole shard: log and leave accounting untouched this cycle.
+                    Err(e) => println!("[pinger] shard {} ping send error: {:?}", shard_id, e),
+                },
+                // Nothing resolved this cycle: skip the send.
+                Ok(_) => {}
+                Err(e) => println!("[pinger] shard {} ping instance creation error: {:?}", shard_id, e),
             }
         }
 
+        // Tick faster while any shard device is mid-hysteresis (confirming a flip).
+        let in_hyst = accounting.values().any(|i| i.hysteresis_responsive > 0 || i.hysteresis_unresponsive > 0);
+        let loop_time = if in_hyst { PING_HYST_LOOP_MSECS } else { PING_LOOP_MSECS };
         let diff = tools::get_time_msecs() - start;
-        let mut loop_time = PING_LOOP_MSECS;
-        if ping_accounting_info.hysteresis_responsive > 0 || ping_accounting_info.hysteresis_unresponsive > 0 {
-            loop_time = PING_HYST_LOOP_MSECS;
-        }
-        if diff <= loop_time {
+        if diff < loop_time {
             thread::sleep(time::Duration::from_millis(loop_time - diff));
         }
     }
-    let _ = done.send(true);
-    println!("[{}] stop monitoring", fqdn);
+    println!("[pinger] shard {}/{} stop monitoring", shard_id, workers);
 }
 
-fn check_if_worker_needed(pool: &db::Pool, imds: &Arc<Mutex<IMDS>>, devices: &HashMap<String, ()>, ping_workers: &mut HashMap<String, PingThreadInfo>) {
-    for (fqdn, _) in devices.iter() {
-        if ping_workers.contains_key(fqdn) {
-            continue;
-        }
-        // Seed the initial reachability state from IMDS, matching the old
-        // pinger which read `up` from GET /dev/device/monitor.
-        let initial_up = if let Ok(ref imds_locked) = imds.lock() {
-            imds_locked.get_device(fqdn).and_then(|d| d.up)
-        } else {
-            None
-        };
-        let worker_running = Arc::new(atomic::AtomicBool::new(true));
-        let running_worker = worker_running.clone();
-        let (tx, rx) = mpsc::channel();
+pub fn run(imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, workers: usize) {
+    let workers = workers.max(1);
+    println!("[pinger] starting in-process collector ({} shard workers)", workers);
+    let pool = db::connect();
+
+    let mut handles = Vec::new();
+    for shard_id in 0..workers {
         let pool_copy = pool.clone();
         let imds_copy = imds.clone();
-        let fqdn_copy = fqdn.clone();
-        ping_workers.insert(
-            fqdn.clone(),
-            PingThreadInfo {
-                thd: thread::spawn(move || {
-                    ping_worker(pool_copy, imds_copy, fqdn_copy, initial_up, running_worker, tx);
-                }),
-                running: worker_running,
-                finished_signal: rx,
-            },
-        );
-    }
-}
-
-fn check_expired_fqdn_workers(devices: &HashMap<String, ()>, ping_workers: &HashMap<String, PingThreadInfo>, expired_fqdns: &mut Vec<String>) {
-    for (fqdn, ping_worker) in ping_workers.iter() {
-        if devices.get(fqdn).is_none() {
-            ping_worker.running.store(false, atomic::Ordering::Relaxed);
-            expired_fqdns.push(fqdn.clone());
-        }
-    }
-}
-
-fn prepare_expired_fqdns_for_reap(ping_workers: &mut HashMap<String, PingThreadInfo>, expired_fqdns: &Vec<String>, reap_threads: &mut Vec<PingThreadInfo>) {
-    for expired_fqdn in expired_fqdns.iter() {
-        if let Some(ping_worker) = ping_workers.remove(expired_fqdn) {
-            reap_threads.push(ping_worker);
-        }
-    }
-}
-
-fn reap_finished_threads(reap_threads: &mut Vec<PingThreadInfo>) {
-    loop {
-        let mut reap = false;
-        let mut idx = 0;
-        for reap_thread in reap_threads.iter() {
-            match reap_thread.finished_signal.try_recv() {
-                Ok(_) => { reap = true; break; },
-                Err(mpsc::TryRecvError::Empty) => { idx += 1; },
-                Err(mpsc::TryRecvError::Disconnected) => { reap = true; break; },
-            }
-        }
-        if reap {
-            let reaped = reap_threads.swap_remove(idx);
-            let _ = reaped.thd.join();
-        } else {
-            break;
-        }
-    }
-}
-
-pub fn run(imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>) {
-    println!("[pinger] starting in-process collector");
-    let pool = db::connect();
-    let mut ping_workers: HashMap<String, PingThreadInfo> = HashMap::new();
-    let mut reap_threads: Vec<PingThreadInfo> = Vec::new();
-
-    while running.load(atomic::Ordering::Relaxed) {
-        let devices = load_device_fqdns(&pool);
-        let mut expired_fqdns: Vec<String> = Vec::new();
-        check_if_worker_needed(&pool, &imds, &devices, &mut ping_workers);
-        check_expired_fqdn_workers(&devices, &ping_workers, &mut expired_fqdns);
-        prepare_expired_fqdns_for_reap(&mut ping_workers, &expired_fqdns, &mut reap_threads);
-        reap_finished_threads(&mut reap_threads);
-        thread::sleep(time::Duration::from_millis(1000));
+        let running_copy = running.clone();
+        handles.push(thread::spawn(move || {
+            ping_shard_worker(pool_copy, imds_copy, shard_id, workers, running_copy);
+        }));
     }
 
-    // Graceful shutdown: signal and join every worker.
-    for (_fqdn, worker) in ping_workers.iter() {
-        worker.running.store(false, atomic::Ordering::Relaxed);
-    }
-    for (_fqdn, worker) in ping_workers.drain() {
-        let _ = worker.thd.join();
-    }
-    for worker in reap_threads.drain(..) {
-        let _ = worker.thd.join();
+    // Workers exit their loops when `running` clears; join them on shutdown.
+    for handle in handles {
+        let _ = handle.join();
     }
     println!("[pinger] collector stopped");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn info(responsive: Option<bool>) -> PingAccountingInfo {
+        PingAccountingInfo { responsive, hysteresis_responsive: 0, hysteresis_unresponsive: 0 }
+    }
+
+    #[test]
+    fn hysteresis_reports_initial_state_once() {
+        let mut i = info(None);
+        assert_eq!(advance_hysteresis(&mut i, true), Some(true)); // first observation reported
+        assert_eq!(i.responsive, Some(true));
+        assert_eq!(advance_hysteresis(&mut i, true), None); // stable afterwards
+        let mut d = info(None);
+        assert_eq!(advance_hysteresis(&mut d, false), Some(false));
+    }
+
+    #[test]
+    fn hysteresis_stable_state_is_noop_and_resets_counters() {
+        let mut i = info(Some(true));
+        i.hysteresis_unresponsive = 4; // pretend a few misses accumulated
+        assert_eq!(advance_hysteresis(&mut i, true), None);
+        assert_eq!(i.hysteresis_unresponsive, 0);
+        assert_eq!(i.hysteresis_responsive, 0);
+    }
+
+    #[test]
+    fn hysteresis_flips_exactly_at_limit() {
+        let mut i = info(Some(true));
+        for _ in 0..(PING_HYST_LIMIT - 1) {
+            assert_eq!(advance_hysteresis(&mut i, false), None); // still up, counting
+        }
+        assert_eq!(advance_hysteresis(&mut i, false), Some(false)); // flips on the LIMITth miss
+        assert_eq!(i.responsive, Some(false));
+    }
+
+    #[test]
+    fn hysteresis_bounce_resets_pending_flip() {
+        let mut i = info(Some(true));
+        for _ in 0..5 {
+            advance_hysteresis(&mut i, false);
+        }
+        assert_eq!(i.hysteresis_unresponsive, 5);
+        assert_eq!(advance_hysteresis(&mut i, true), None); // one recovery cancels the pending down
+        assert_eq!(i.hysteresis_unresponsive, 0);
+    }
+
+    #[test]
+    fn shard_of_is_deterministic_and_in_range() {
+        let fqdns = ["a.example.com", "b.example.com", "c.example.com", "org-sw7.asm.fi", "x"];
+        for w in [1usize, 2, 4, 8] {
+            for f in fqdns {
+                let s = shard_of(f, w);
+                assert!(s < w, "{} shard {} out of range for {} workers", f, s, w);
+                assert_eq!(s, shard_of(f, w), "shard_of must be deterministic");
+            }
+        }
+    }
+
+    #[test]
+    fn shard_of_spreads_across_workers() {
+        let workers = 4;
+        let mut seen = HashSet::new();
+        for n in 0..200 {
+            seen.insert(shard_of(&format!("dev{}.example.com", n), workers));
+        }
+        assert_eq!(seen.len(), workers, "a 200-device sample should hit every shard");
+    }
+
+    #[test]
+    fn advance_shard_missing_host_counts_as_not_responding() {
+        let mut acc = HashMap::new();
+        acc.insert("up.example.com".to_string(), info(Some(true)));
+        let shard = vec!["up.example.com".to_string()];
+        let responded: HashMap<String, bool> = HashMap::new(); // no reply row => down
+        let reports = advance_shard(&mut acc, &shard, &responded);
+        assert!(reports.is_empty()); // one miss doesn't flip yet
+        assert_eq!(acc["up.example.com"].hysteresis_unresponsive, 1);
+    }
+
+    #[test]
+    fn advance_shard_reports_new_device_up() {
+        let mut acc = HashMap::new();
+        acc.insert("new.example.com".to_string(), info(None));
+        let shard = vec!["new.example.com".to_string()];
+        let mut responded = HashMap::new();
+        responded.insert("new.example.com".to_string(), true);
+        let reports = advance_shard(&mut acc, &shard, &responded);
+        assert_eq!(reports, vec![("new.example.com".to_string(), true)]);
+    }
 }

@@ -249,6 +249,7 @@ async fn server_main() {
     let poll_loop_msecs = c.get_int("poll_loop_msecs").unwrap_or(10000) as u64;
     let enable_poller = c.get_bool("enable_poller").unwrap_or(true);
     let enable_pinger = c.get_bool("enable_pinger").unwrap_or(true);
+    let pinger_workers = c.get_int("pinger_workers").unwrap_or(4).max(1) as usize;
 
     // SNMP access mode: "snmpbot" (default; the external HTTP service) or
     // "embedded" (an in-process snmp2 v2c client + MIB registry). Selection is
@@ -523,7 +524,7 @@ async fn server_main() {
         let imds_collector = imds.clone();
         let running_collector = running.clone();
         Some(std::thread::spawn(move || {
-            collectors::pinger::run(imds_collector, running_collector);
+            collectors::pinger::run(imds_collector, running_collector, pinger_workers);
         }))
     } else {
         println!("[pinger] disabled via JASPY_ENABLE_PINGER");
