@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, StpPort } from '../api/types';
-import { ErrDisabledBadge, HealthBadge, PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
+import { ErrDisabledBadge, HealthBadge, PollingBadge, SnmpHealthBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import ActionMenu from '../components/ActionMenu';
 import useLiveSocket from '../hooks/useLiveSocket';
 
@@ -739,7 +739,7 @@ export default function DeviceDetail() {
   return (
     <>
       <h1>
-        {device.fqdn} <UpBadge up={device.up} />
+        {device.fqdn} <UpBadge up={device.up} /> <SnmpHealthBadge health={device.snmpHealth} />
       </h1>
       <div className="panel">
         <div className="kv">

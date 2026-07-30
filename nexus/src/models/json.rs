@@ -239,6 +239,21 @@ pub struct ApiDevice {
     // the device list can flag problem devices; null when all healthy. Additive.
     #[serde(default)]
     pub interface_health: Option<String>,
+    // Adaptive SNMP-polling health (embedded mode): present only when the device
+    // is slow (elevated timeout) or dead (unresponsive); null when normal.
+    #[serde(default)]
+    pub snmp_health: Option<ApiSnmpHealth>,
+}
+
+// Per-device SNMP transport health, surfaced on the device page. `status` is a
+// slug ("slow" | "dead"); the numeric fields give the learned socket timeout and
+// smoothed round-trip so the UI can show detail on hover.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiSnmpHealth {
+    pub status: String,
+    pub effective_timeout_ms: u64,
+    pub ewma_latency_ms: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize)]

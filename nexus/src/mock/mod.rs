@@ -114,6 +114,33 @@ pub fn prepare() -> MockGuard {
             .collect(),
     );
 
+    // Adaptive per-device SNMP timeout is driven by real socket timing, which
+    // the fake snmpbot doesn't produce; seed the registry directly so the device
+    // page's SNMP-health badge ("slow" / "not responding") is demoable in mock
+    // mode. Two non-root devices: one elevated, one collapsed to fast-fail.
+    {
+        let cfg = crate::snmp::embedded::AdaptCfg {
+            base_ms: 2000,
+            max_ms: 10000,
+            alpha: 0.3,
+            factor: 2.0,
+            margin_ms: 250,
+            backoff: 1.5,
+            backoff_add_ms: 500,
+            dead_streak: 3,
+            enabled: true,
+        };
+        let devices = topology::build().devices;
+        if let Some(d) = devices.get(1) {
+            // Slow-but-alive: learned ~2.8s RTT -> elevated ~6s timeout.
+            crate::snmp::embedded::seed_state(&d.fqdn(), topology::COMMUNITY, 161, &cfg, Some(2850.0), 6000, 0, false);
+        }
+        if let Some(d) = devices.get(2) {
+            // Unresponsive: collapsed to fast-fail.
+            crate::snmp::embedded::seed_state(&d.fqdn(), topology::COMMUNITY, 161, &cfg, None, 2000, 6, true);
+        }
+    }
+
     seed::spawn(std::env::var("JASPY_DB_URL").unwrap());
 
     let ui_port = std::env::var("ROCKET_PORT").unwrap_or_else(|_| "8000".to_string());

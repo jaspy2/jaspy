@@ -156,6 +156,63 @@ fn health_persist_worker(running: Arc<AtomicBool>, imds: Arc<Mutex<utilities::im
     }
 }
 
+// Persist the embedded client's learned per-device adaptive SNMP timeout state
+// every 60s so a known-slow switch reopens at its learned timeout after a
+// restart instead of re-ramping. Only rows whose effective timeout or dead flag
+// changed since the last flush are written.
+fn flush_snmp_state(pool: &db::Pool, snmp_port: u16, last: &mut std::collections::HashMap<String, (i64, bool)>) {
+    let mut conn = match pool.get() {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    let now = utilities::tools::get_time_msecs();
+    for device in models::dbo::Device::monitored(&mut *conn) {
+        let community = match device.snmp_community.as_deref() {
+            Some(c) => c,
+            None => continue,
+        };
+        let fqdn = format!("{}.{}", device.name, device.dns_domain);
+        let export = match snmp::embedded::export_state(&fqdn, community, snmp_port) {
+            Some(e) => e,
+            None => continue,
+        };
+        let dirty_key = (export.effective_ms as i64, export.dead);
+        if last.get(&fqdn) == Some(&dirty_key) {
+            continue; // unchanged since last flush
+        }
+        let row = models::dbo::DeviceSnmpState {
+            fqdn: fqdn.clone(),
+            ewma_ms: export.ewma_ms,
+            effective_ms: export.effective_ms as i64,
+            consec_timeouts: export.consec_timeouts as i32,
+            dead: export.dead,
+            updated_at: now as i64,
+        };
+        if row.upsert(&mut *conn).is_ok() {
+            last.insert(fqdn, dirty_key);
+        }
+    }
+}
+
+fn snmp_state_flush_worker(running: Arc<AtomicBool>, pool: db::Pool, snmp_port: u16) {
+    println!("[snmp-state] persisting adaptive SNMP timeout state every 60s");
+    let mut last: std::collections::HashMap<String, (i64, bool)> = std::collections::HashMap::new();
+    let mut counter = 0u64;
+    loop {
+        if !should_continue(&running) {
+            break;
+        }
+        if counter >= 60 {
+            flush_snmp_state(&pool, snmp_port, &mut last);
+            counter = 0;
+        } else {
+            counter += 1;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+    }
+    flush_snmp_state(&pool, snmp_port, &mut last); // final flush on shutdown
+}
+
 fn main() {
     // `jaspy-nexus trap-handler` (snmptrapd traphandle, formerly the
     // standalone jaspy-snmptrapd-reader binary) must run outside the tokio
@@ -200,6 +257,22 @@ async fn server_main() {
     let snmp_timeout_ms = c.get_int("snmp_timeout_ms").unwrap_or(2000) as u64;
     let snmp_retries = c.get_int("snmp_retries").unwrap_or(2) as u32;
     let snmp_bulk_max_repetitions = c.get_int("snmp_bulk_max_repetitions").unwrap_or(20) as u32;
+    // Adaptive per-device SNMP timeout (embedded mode): learn a per-device
+    // socket timeout so slow (high-CPU) switches whose replies exceed
+    // snmp_timeout_ms still get polled, while fast/dead devices stay cheap.
+    // snmp_timeout_ms is the floor, snmp_timeout_max_ms the ceiling. Set
+    // JASPY_SNMP_ADAPTIVE_TIMEOUT=false to pin to the fixed floor (rollback).
+    let snmp_adapt = snmp::embedded::AdaptCfg {
+        base_ms: snmp_timeout_ms,
+        max_ms: (c.get_int("snmp_timeout_max_ms").unwrap_or(10000) as u64).max(snmp_timeout_ms),
+        alpha: c.get_float("snmp_timeout_alpha").unwrap_or(0.3),
+        factor: c.get_float("snmp_timeout_factor").unwrap_or(2.0),
+        margin_ms: c.get_int("snmp_timeout_margin_ms").unwrap_or(250) as u64,
+        backoff: c.get_float("snmp_timeout_backoff").unwrap_or(1.5),
+        backoff_add_ms: c.get_int("snmp_timeout_backoff_add_ms").unwrap_or(500) as u64,
+        dead_streak: c.get_int("snmp_timeout_dead_streak").unwrap_or(3).max(1) as u32,
+        enabled: c.get_bool("snmp_adaptive_timeout").unwrap_or(true),
+    };
     // UDP port for the embedded client. Default 161; the perf harness overrides
     // it (JASPY_SNMP_PORT) so a simulated fleet can run unprivileged. Ignored
     // for devices whose fqdn already carries an explicit `:port`.
@@ -237,9 +310,9 @@ async fn server_main() {
             let embedded = snmp::embedded::Embedded::new(
                 Arc::new(registry),
                 snmp_port,
-                std::time::Duration::from_millis(snmp_timeout_ms),
                 snmp_retries,
                 snmp_bulk_max_repetitions,
+                snmp_adapt,
             );
             Arc::new(snmp::SnmpSource::new(snmp::SnmpBackend::Embedded(embedded), snmp_max_inflight))
         }
@@ -384,6 +457,30 @@ async fn server_main() {
         }
         Err(e) => println!("[issues] could not seed tracker from persisted acks: {}", e),
     }
+    // Seed the adaptive SNMP timeout registry from persisted state so a
+    // known-slow switch opens at its learned timeout immediately (embedded mode
+    // only; the registry is unused otherwise).
+    if snmp_mode == "embedded" {
+        match pool.get() {
+            Ok(mut conn) => {
+                let states: std::collections::HashMap<String, models::dbo::DeviceSnmpState> = models::dbo::DeviceSnmpState::all(&mut *conn)
+                    .into_iter()
+                    .map(|s| (s.fqdn.clone(), s))
+                    .collect();
+                for device in models::dbo::Device::monitored(&mut *conn) {
+                    let community = match device.snmp_community.as_deref() {
+                        Some(c) => c,
+                        None => continue,
+                    };
+                    let fqdn = format!("{}.{}", device.name, device.dns_domain);
+                    if let Some(st) = states.get(&fqdn) {
+                        snmp::embedded::seed_state(&fqdn, community, snmp_port, &snmp_adapt, st.ewma_ms, st.effective_ms as u64, st.consec_timeouts as u32, st.dead);
+                    }
+                }
+            }
+            Err(e) => println!("[snmp-state] could not seed adaptive timeouts: {}", e),
+        }
+    }
     // Keep the tracker warm even when nobody is viewing the Issues page, so
     // onset times and recurrence detection stay accurate.
     let issue_scan_thread = {
@@ -500,6 +597,15 @@ async fn server_main() {
         let path = path.clone();
         std::thread::spawn(move || health_persist_worker(running_collector, imds_collector, path))
     });
+
+    // Persist adaptive per-device SNMP timeouts (embedded mode only).
+    let snmp_state_flush_thread = if snmp_mode == "embedded" {
+        let running_collector = running.clone();
+        let pool_flush = pool.clone();
+        Some(std::thread::spawn(move || snmp_state_flush_worker(running_collector, pool_flush, snmp_port)))
+    } else {
+        None
+    };
 
     let runtime_info : Arc<Mutex<models::internal::RuntimeInfo>> = Arc::new(Mutex::new(models::internal::RuntimeInfo::new()));
 
@@ -684,6 +790,7 @@ async fn server_main() {
     let _ = discovery_thread.join();
     let _ = issue_scan_thread.join();
     if let Some(health_persist_thread) = health_persist_thread { let _ = health_persist_thread.join(); }
+    if let Some(snmp_state_flush_thread) = snmp_state_flush_thread { let _ = snmp_state_flush_thread.join(); }
     // Final dump so a graceful shutdown never loses the last minute of state.
     if let Some(path) = health_state_path.as_ref() { dump_health(&imds, path); }
 }

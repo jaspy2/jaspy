@@ -209,6 +209,13 @@ fn api_device(connection: &mut db::AnyConnection, imds: &State<Arc<Mutex<utiliti
         Ok(imds) => imds.device_health(&fqdn, utilities::tools::get_time_msecs()).map(|s| s.as_str().to_string()),
         Err(_) => None,
     };
+    // Adaptive SNMP-polling health from the embedded client's registry (empty in
+    // snmpbot mode, and None unless this device is slow/dead).
+    let snmp_health = device.snmp_community.as_deref().and_then(|c| crate::snmp::embedded::snmp_health_for(&fqdn, c)).map(|h| models::json::ApiSnmpHealth {
+        status: h.status.to_string(),
+        effective_timeout_ms: h.effective_timeout_ms,
+        ewma_latency_ms: h.ewma_latency_ms,
+    });
     models::json::ApiDevice {
         id: device.id,
         fqdn: fqdn.clone(),
@@ -224,6 +231,7 @@ fn api_device(connection: &mut db::AnyConnection, imds: &State<Arc<Mutex<utiliti
         seconds_since_last_poll: seconds_since_last_poll,
         interface_count: device.interfaces(connection).len() as u64,
         interface_health: interface_health,
+        snmp_health: snmp_health,
     }
 }
 

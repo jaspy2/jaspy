@@ -1,3 +1,19 @@
+import type { SnmpHealth } from '../api/types';
+
+// Adaptive SNMP-polling health: "slow" (badge-warn) when the learned socket
+// timeout is elevated, "not responding" (badge-bad) when the device collapsed to
+// fast-fail. The effective timeout / smoothed RTT are surfaced on hover. Renders
+// nothing when the device polls normally.
+export function SnmpHealthBadge({ health }: { health: SnmpHealth | null | undefined }) {
+  if (!health) return null;
+  const secs = (health.effectiveTimeoutMs / 1000).toFixed(1);
+  if (health.status === 'dead') {
+    return <span className="badge badge-bad" title={`SNMP not responding (timeout ${secs}s)`}>SNMP down</span>;
+  }
+  const rtt = health.ewmaLatencyMs != null ? `, avg ${Math.round(health.ewmaLatencyMs)}ms` : '';
+  return <span className="badge badge-warn" title={`SNMP slow: timeout raised to ${secs}s${rtt}`}>SNMP slow</span>;
+}
+
 export function UpBadge({ up }: { up: boolean | null }) {
   if (up === true) return <span className="badge badge-ok">up</span>;
   if (up === false) return <span className="badge badge-bad">down</span>;

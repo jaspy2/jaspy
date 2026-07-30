@@ -1,4 +1,4 @@
-use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations,settings,issue_acks,stp_expected_roots};
+use crate::schema::{devices,interfaces,weathermap_device_infos,client_locations,settings,issue_acks,stp_expected_roots,device_snmp_state};
 use diesel;
 use crate::db::AnyConnection;
 use diesel::prelude::*;
@@ -695,6 +695,46 @@ impl WeathermapDeviceInfo {
     }
 }
 
+// Persisted per-device adaptive SNMP timeout state (see snmp::embedded). Keyed
+// by fqdn (the device's primary polling session); seeded into the in-memory
+// registry at startup and flushed back on an interval so learned timeouts
+// survive restarts.
+#[derive(Queryable, Insertable, Identifiable, AsChangeset, Clone, Debug)]
+#[diesel(table_name = device_snmp_state, primary_key(fqdn))]
+pub struct DeviceSnmpState {
+    pub fqdn: String,
+    pub ewma_ms: Option<f64>,
+    pub effective_ms: i64,
+    pub consec_timeouts: i32,
+    pub dead: bool,
+    pub updated_at: i64,
+}
+
+impl DeviceSnmpState {
+    pub fn all(connection: &mut AnyConnection) -> Vec<DeviceSnmpState> {
+        device_snmp_state::table.load::<DeviceSnmpState>(connection).unwrap_or_default()
+    }
+
+    // Upsert one device's state. ON CONFLICT is not expressible through the
+    // MultiConnection enum; dispatch per backend like Setting::set/IssueAck::upsert.
+    pub fn upsert(&self, connection: &mut AnyConnection) -> Result<usize, diesel::result::Error> {
+        crate::with_backend!(connection, |conn| {
+            diesel::insert_into(device_snmp_state::table)
+                .values(self)
+                .on_conflict(device_snmp_state::fqdn)
+                .do_update()
+                .set((
+                    device_snmp_state::ewma_ms.eq(self.ewma_ms),
+                    device_snmp_state::effective_ms.eq(self.effective_ms),
+                    device_snmp_state::consec_timeouts.eq(self.consec_timeouts),
+                    device_snmp_state::dead.eq(self.dead),
+                    device_snmp_state::updated_at.eq(self.updated_at),
+                ))
+                .execute(conn)
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -726,6 +766,36 @@ mod tests {
             device_type: Some("T-1000".to_string()),
             software_version: Some("1.0".to_string()),
         }
+    }
+
+    #[test]
+    fn device_snmp_state_upsert_roundtrip() {
+        // Round-trips every column (drift guard for the device_snmp_state
+        // migration pair) and exercises the ON CONFLICT upsert dispatch.
+        let mut conn = conn();
+        assert!(DeviceSnmpState::all(&mut conn).is_empty());
+        let row = DeviceSnmpState {
+            fqdn: "sw1.test.example".to_string(),
+            ewma_ms: Some(1800.5),
+            effective_ms: 3850,
+            consec_timeouts: 0,
+            dead: false,
+            updated_at: 1_700_000_000_000,
+        };
+        assert_eq!(row.upsert(&mut conn).unwrap(), 1);
+        let all = DeviceSnmpState::all(&mut conn);
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].effective_ms, 3850);
+        assert_eq!(all[0].ewma_ms, Some(1800.5));
+        assert!(!all[0].dead);
+        // Upsert again with new values overwrites (still one row).
+        let updated = DeviceSnmpState { effective_ms: 2000, dead: true, ewma_ms: None, ..row };
+        updated.upsert(&mut conn).unwrap();
+        let all = DeviceSnmpState::all(&mut conn);
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].effective_ms, 2000);
+        assert!(all[0].dead);
+        assert_eq!(all[0].ewma_ms, None);
     }
 
     #[test]

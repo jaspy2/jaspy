@@ -68,5 +68,22 @@ pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, entity_metrics: 
 // without touching the IMDS lock.
 #[get("/perf")]
 pub fn metrics_perf() -> String {
-    utilities::perfstats::PERF.render()
+    let mut s = utilities::perfstats::PERF.render();
+    // Adaptive per-device timeout aggregates (embedded mode). Low cardinality:
+    // fleet-wide counts + the max effective timeout, no per-device series. Read
+    // from the embedded client's process-global registry at scrape time.
+    let (elevated, dead, max_eff_ms) = crate::snmp::embedded::adapt_aggregate();
+    s.push_str(&format!(
+        "# HELP jaspy_perf_snmp_devices_elevated Devices whose adaptive SNMP timeout is above the floor\n# TYPE jaspy_perf_snmp_devices_elevated gauge\njaspy_perf_snmp_devices_elevated {}\n",
+        elevated
+    ));
+    s.push_str(&format!(
+        "# HELP jaspy_perf_snmp_devices_dead Devices collapsed to fast-fail (unresponsive at the max timeout)\n# TYPE jaspy_perf_snmp_devices_dead gauge\njaspy_perf_snmp_devices_dead {}\n",
+        dead
+    ));
+    s.push_str(&format!(
+        "# HELP jaspy_perf_snmp_effective_timeout_max_ms Largest adaptive SNMP timeout across devices (ms)\n# TYPE jaspy_perf_snmp_effective_timeout_max_ms gauge\njaspy_perf_snmp_effective_timeout_max_ms {}\n",
+        max_eff_ms
+    ));
+    s
 }

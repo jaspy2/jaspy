@@ -134,6 +134,16 @@ export interface Device {
   // Worst per-interface health severity across the device ("warn"/"bad");
   // null when every interface is healthy.
   interfaceHealth: 'warn' | 'bad' | null;
+  // Adaptive SNMP-polling health (embedded mode); present only when the device
+  // is slow (elevated timeout) or unresponsive.
+  snmpHealth?: SnmpHealth | null;
+}
+
+// Per-device SNMP transport health for the device page.
+export interface SnmpHealth {
+  status: 'slow' | 'dead';
+  effectiveTimeoutMs: number;
+  ewmaLatencyMs: number | null;
 }
 
 // Per-interface health signals (utilities/health.rs), present only when a
