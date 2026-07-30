@@ -591,12 +591,66 @@ export default function Issues() {
 
   return (
     <>
-      <h1>Issues</h1>
+      {/* The manage/filter toggle rides on the same line as the title (right
+          side), so it costs no vertical space until expanded. */}
+      <div className="section-head">
+        <h1>Issues</h1>
+        <button
+          className="section-toggle"
+          onClick={() => setTypesOpen((o) => !o)}
+          aria-expanded={typesOpen}
+        >
+          Issue types (manage / filter){' '}
+          {suppressedCount > 0 && <span className="badge badge-muted">{suppressedCount} suppressed</span>}{' '}
+          {typesOpen ? '▾' : '▸'}
+        </button>
+      </div>
+      {typesOpen && (
+        <div className="panel issue-types-panel">
+          <div className="issue-types">
+            {issueTypes.isLoading && <p className="muted">Loading types…</p>}
+            {CATEGORY_ORDER.map((cat) => {
+              const list = typesByCategory.get(cat);
+              if (!list || list.length === 0) return null;
+              return (
+                <div key={cat} className="issue-type-group">
+                  <h3 className="issue-type-cat">{CATEGORY_LABEL[cat]}</h3>
+                  {list.map((t) => {
+                    const isFilter = selectedKind === t.kind;
+                    const count = countByKind.get(t.kind) ?? 0;
+                    return (
+                      <div key={t.kind} className={`issue-type-row ${t.suppressed ? 'suppressed' : ''}`}>
+                        <button
+                          className={`chip ${isFilter ? 'chip-on' : ''}`}
+                          title={t.description}
+                          disabled={t.suppressed}
+                          aria-pressed={isFilter}
+                          onClick={() => setSelectedKind(isFilter ? null : t.kind)}
+                        >
+                          {t.title}
+                        </button>
+                        <span className="issue-type-count muted">{t.suppressed ? '—' : count}</span>
+                        <button
+                          className="secondary issue-type-toggle"
+                          disabled={suppress.isPending || unsuppress.isPending}
+                          onClick={() => onToggleSuppress(t)}
+                        >
+                          {t.suppressed ? 'Suppressed — restore' : 'Suppress'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <p className="muted">
         Every problem currently detected across the fleet — device reachability, interface health, spanning
         tree and link aggregation. Acknowledge an issue to move it to the list below; it re-appears if the
-        condition clears and later recurs. Suppress an entire type from the panel below to hide it
-        everywhere.
+        condition clears and later recurs. Suppress an entire type from the Issue types panel (top right) to
+        hide it everywhere.
       </p>
       {issues.isError && <p className="error">Failed to load issues: {String(issues.error)}</p>}
       {(ack.isError || unack.isError || massAck.isError || suppress.isError || unsuppress.isError) && (
@@ -676,59 +730,6 @@ export default function Issues() {
         {acknowledged.length > 0 && <span className="badge badge-muted">{acknowledged.length}</span>}
       </h2>
       {section(acknowledged, 'Nothing acknowledged.')}
-
-      {/* Management/filter lives at the bottom, collapsed by default, so it
-          doesn't cost screen space when /issues is embedded in a dashboard. */}
-      <div className="panel issue-types-panel" style={{ marginTop: 24 }}>
-        <button
-          className="section-toggle"
-          onClick={() => setTypesOpen((o) => !o)}
-          aria-expanded={typesOpen}
-        >
-          Issue types (manage / filter){' '}
-          {suppressedCount > 0 && <span className="badge badge-muted">{suppressedCount} suppressed</span>}{' '}
-          {typesOpen ? '▾' : '▸'}
-        </button>
-        {typesOpen && (
-          <div className="issue-types">
-            {issueTypes.isLoading && <p className="muted">Loading types…</p>}
-            {CATEGORY_ORDER.map((cat) => {
-              const list = typesByCategory.get(cat);
-              if (!list || list.length === 0) return null;
-              return (
-                <div key={cat} className="issue-type-group">
-                  <h3 className="issue-type-cat">{CATEGORY_LABEL[cat]}</h3>
-                  {list.map((t) => {
-                    const isFilter = selectedKind === t.kind;
-                    const count = countByKind.get(t.kind) ?? 0;
-                    return (
-                      <div key={t.kind} className={`issue-type-row ${t.suppressed ? 'suppressed' : ''}`}>
-                        <button
-                          className={`chip ${isFilter ? 'chip-on' : ''}`}
-                          title={t.description}
-                          disabled={t.suppressed}
-                          aria-pressed={isFilter}
-                          onClick={() => setSelectedKind(isFilter ? null : t.kind)}
-                        >
-                          {t.title}
-                        </button>
-                        <span className="issue-type-count muted">{t.suppressed ? '—' : count}</span>
-                        <button
-                          className="secondary issue-type-toggle"
-                          disabled={suppress.isPending || unsuppress.isPending}
-                          onClick={() => onToggleSuppress(t)}
-                        >
-                          {t.suppressed ? 'Suppressed — restore' : 'Suppress'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </>
   );
 }
