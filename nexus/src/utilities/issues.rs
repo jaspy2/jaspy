@@ -175,12 +175,39 @@ pub struct DerivedIssue {
     pub description: String,
     pub subject_label: Option<String>,
     pub detail: Vec<ApiIssueDetail>,
+    // Set only when this issue is one end of a fault the /issues page should
+    // combine with the far end into a single row (see LINK_GROUPABLE). Both
+    // ends of the same link compute an identical key, so the frontend groups by
+    // it. `None` for everything else — the row stays single. Additive: it does
+    // not affect `issue_key`, so acking is still per-end.
+    pub group_key: Option<String>,
 }
 
 impl DerivedIssue {
     pub fn issue_key(&self) -> String {
         format!("{}|{}|{}", self.fqdn, self.kind, self.subject)
     }
+}
+
+// Interface-health kinds that describe a property of an inter-switch *link*
+// (rather than one port in isolation), so both ends independently detect them.
+// These are the kinds the /issues page combines into a single two-ended row.
+const LINK_GROUPABLE: &[&str] = &[
+    "iface-high-util",
+    "iface-flapping",
+    "iface-errors",
+    "iface-discards",
+    "iface-speed",
+];
+
+// Deterministic key shared by both ends of one link's fault: the kind plus the
+// two endpoints (each "<fqdn>|<iface>") sorted, so it is identical regardless
+// of which end computes it. Only meaningful when the far end is a monitored
+// peer (both ends are jaspy-managed and each raises its own issue).
+fn link_group_key(kind: &str, a_fqdn: &str, a_iface: &str, b_fqdn: &str, b_iface: &str) -> String {
+    let mut ends = [format!("{}|{}", a_fqdn, a_iface), format!("{}|{}", b_fqdn, b_iface)];
+    ends.sort();
+    format!("{}|{}<->{}", kind, ends[0], ends[1])
 }
 
 // --- Device ---------------------------------------------------------------
@@ -204,6 +231,7 @@ pub fn device_down_issue(fqdn: &str, up: Option<bool>, seconds_since_last_poll: 
         description: format!("{} is not responding", host),
         subject_label: None,
         detail,
+        group_key: None,
     })
 }
 
@@ -239,6 +267,7 @@ pub fn poe_budget_issues(fqdn: &str, budgets: &[crate::collectors::poe::PoeBudge
                 description: format!("{} PSE {} is not on", host, budget.group),
                 subject_label,
                 detail: vec![pair("state", "off")],
+                group_key: None,
             });
             continue;
         }
@@ -272,6 +301,7 @@ pub fn poe_budget_issues(fqdn: &str, budgets: &[crate::collectors::poe::PoeBudge
             description: format!("{} PSE {} at {}% of its power budget", host, budget.group, utilization),
             subject_label,
             detail,
+            group_key: None,
         });
     }
     out
@@ -316,6 +346,13 @@ pub fn interface_health_issues(
         description,
         subject_label: Some(iface_name.to_string()),
         detail,
+        // Combine with the far end only when this is a link-level fault AND the
+        // far end is a monitored peer (which raises its own matching issue). An
+        // unmonitored CDP/LLDP neighbour has no issue to pair with, so it stays
+        // a single-ended row.
+        group_key: connected_to.filter(|_| LINK_GROUPABLE.contains(&kind)).map(|peer| {
+            link_group_key(kind, fqdn, iface_name, &peer.fqdn, &peer.interface)
+        }),
     };
 
     let mut out = Vec::new();
@@ -483,6 +520,7 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
             description,
             subject_label: Some(vlan_label.clone()),
             detail,
+            group_key: None,
         });
     }
 
@@ -526,6 +564,7 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
                 description,
                 subject_label: Some(vlan_label.clone()),
                 detail: root_mismatch_detail(node, &stp_tree_link),
+                group_key: None,
             });
         }
         if node.orphan {
@@ -554,6 +593,7 @@ pub fn stp_tree_issues(tree: &json::ApiStpTree) -> Vec<DerivedIssue> {
                 description: format!("{} has a root port on VLAN {} but its upstream is unresolved", host, vlan),
                 subject_label: Some(vlan_label.clone()),
                 detail,
+                group_key: None,
             });
         }
     }
@@ -814,6 +854,7 @@ pub fn port_channel_issues(
             description: format!("{} {} {} member ({}) down", host, agg_name, count_word, names_joined),
             subject_label: Some(agg_name.clone()),
             detail,
+            group_key: None,
         });
     }
 
@@ -865,6 +906,7 @@ pub fn port_channel_issues(
                 description: format!("{} {} has members at different link speeds ({}–{} Mb/s)", host, agg_name, min, max),
                 subject_label: Some(agg_name.clone()),
                 detail,
+                group_key: None,
             });
         }
     }
@@ -926,6 +968,7 @@ pub fn port_channel_issues(
             description,
             subject_label: Some(agg_name.clone()),
             detail,
+            group_key: None,
         });
     }
     issues
@@ -1228,6 +1271,54 @@ mod tests {
             detail_text(flap, "neighbor (CDP/LLDP)"),
             Some("core-sw9 (Gi0/1)")
         );
+    }
+
+    #[test]
+    fn link_groupable_issues_share_a_group_key() {
+        // High utilization is a property of the link, so both ends detect it and
+        // each raises its own issue. The two must compute an identical group_key
+        // (so the /issues page combines them) while keeping distinct issue keys
+        // (so acking is still per-end).
+        let mut h = health(Some("warn"));
+        h.high_utilization = true;
+        h.peak_utilization_pct = Some(92.0);
+
+        let a_to_b = json::ApiInterfaceConnection { fqdn: "b.example.com".to_string(), interface: "Gi1/0/24".to_string() };
+        let side_a = interface_health_issues("a.example.com", 10001, "Gi1/0/1", &h, true, Some(&a_to_b), None);
+        let util_a = side_a.iter().find(|i| i.kind == "iface-high-util").unwrap();
+
+        // The far end sees the mirror image (its own port, peer = us).
+        let b_to_a = json::ApiInterfaceConnection { fqdn: "a.example.com".to_string(), interface: "Gi1/0/1".to_string() };
+        let side_b = interface_health_issues("b.example.com", 20002, "Gi1/0/24", &h, true, Some(&b_to_a), None);
+        let util_b = side_b.iter().find(|i| i.kind == "iface-high-util").unwrap();
+
+        assert!(util_a.group_key.is_some(), "a link-level issue with a monitored peer must be groupable");
+        assert_eq!(util_a.group_key, util_b.group_key, "both ends of a link must share a group key");
+        assert_ne!(util_a.issue_key(), util_b.issue_key(), "each end keeps its own ack key");
+    }
+
+    #[test]
+    fn unmonitored_far_end_is_not_grouped() {
+        // A CDP/LLDP neighbour jaspy does not poll raises no matching issue on
+        // the far end, so there is nothing to combine with — stays single-ended.
+        let mut h = health(Some("warn"));
+        h.high_utilization = true;
+        let cdp = json::ApiCdpNeighbor { device_id: "unmonitored-sw".to_string(), device_port: Some("Gi0/1".to_string()) };
+        let issues = interface_health_issues("a.example.com", 10001, "Gi1/0/1", &h, true, None, Some(&cdp));
+        let util = issues.iter().find(|i| i.kind == "iface-high-util").unwrap();
+        assert!(util.group_key.is_none());
+    }
+
+    #[test]
+    fn non_link_kinds_are_never_grouped() {
+        // "not polling" is a per-port/device condition, not a link property, so
+        // it is never combined even with a monitored peer.
+        let mut h = health(Some("bad"));
+        h.stale = true;
+        let peer = json::ApiInterfaceConnection { fqdn: "b.example.com".to_string(), interface: "Gi1/0/24".to_string() };
+        let issues = interface_health_issues("a.example.com", 10001, "Gi1/0/1", &h, true, Some(&peer), None);
+        let stale = issues.iter().find(|i| i.kind == "iface-stale").unwrap();
+        assert!(stale.group_key.is_none());
     }
 
     #[test]

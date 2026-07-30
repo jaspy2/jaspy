@@ -910,6 +910,10 @@ pub struct ApiIssue {
     pub subject_label: Option<String>,
     // All known signal detail for the expanded view (ordered typed rows).
     pub detail: Vec<ApiIssueDetail>,
+    // Set when this issue is one end of a link fault the /issues page combines
+    // with its far end into a single two-ended row; both ends share this key.
+    // null for issues that stay single-ended.
+    pub group_key: Option<String>,
     pub first_seen: u64, // epoch ms of the current occurrence's onset
     pub last_seen: u64,  // epoch ms it was last observed active
     pub acknowledged: bool,

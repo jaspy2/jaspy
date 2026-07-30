@@ -38,6 +38,32 @@ function deviceCell(issue: Issue) {
   return <Link to={`/devices/${encodeURIComponent(issue.fqdn)}`}>{issue.hostname || issue.fqdn}</Link>;
 }
 
+// The Device cell for a row: for a combined link fault, both ends as linked
+// hostnames joined by "↔"; for a single issue, the plain device cell.
+function rowDeviceCell(row: Row) {
+  if (row.members.length < 2) return deviceCell(row.primary);
+  return (
+    <span className="issue-link-ends">
+      {row.members.map((m, i) => (
+        <Fragment key={m.issueKey}>
+          {i > 0 && <span className="muted"> ↔ </span>}
+          <Link to={`/devices/${encodeURIComponent(m.fqdn)}`}>{m.hostname || m.fqdn}</Link>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+// A combined row acks both ends at once, so a mixed state is rare (only if one
+// end's occurrence changed between acks). Surface it quietly rather than
+// silently showing the row as active.
+function partialAckHint(row: Row) {
+  if (row.members.length < 2) return null;
+  const acked = row.members.filter((m) => m.acknowledged).length;
+  if (acked === 0 || acked === row.members.length) return null;
+  return <span className="muted"> · {acked}/{row.members.length} acked</span>;
+}
+
 // The subject portion of an issueKey ("<fqdn>|<kind>|<subject>"); used to find
 // sibling issues on the same sub-entity (e.g. the same VLAN).
 function subjectOf(issueKey: string): string {
@@ -64,13 +90,67 @@ function makeCmp<T>(val: (t: T) => string | number | null, asc: boolean): (a: T,
   };
 }
 
-function issueSortVal(i: Issue, key: IssueSortKey): string | number | null {
+// A row in the issue list: either a single issue, or the two ends of one
+// inter-switch link fault combined (issues sharing a groupKey). Grouping is a
+// /issues-page presentation over the flat API list — each end keeps its own
+// ack key, so acking a combined row fans out to every member.
+type Row = {
+  key: string; // the shared groupKey for a combined row, else the issueKey
+  members: Issue[]; // one, or the ends of a link (sorted by hostname)
+  primary: Issue; // representative for kind/title/explain (members share kind)
+};
+
+// Bucket a flat issue list into rows: issues with a groupKey combine (members
+// sorted by hostname so the "A ↔ B" label and the per-end detail read in the
+// same order); everything else is its own single-issue row. A group that ends
+// up with a single member (only one end tripped) reads exactly like a normal
+// single-device row.
+function buildRows(list: Issue[]): Row[] {
+  const groups = new Map<string, Issue[]>();
+  const rows: Row[] = [];
+  for (const issue of list) {
+    if (issue.groupKey) {
+      const arr = groups.get(issue.groupKey);
+      if (arr) arr.push(issue);
+      else groups.set(issue.groupKey, [issue]);
+    } else {
+      rows.push({ key: issue.issueKey, members: [issue], primary: issue });
+    }
+  }
+  for (const [key, members] of groups) {
+    members.sort((a, b) =>
+      (a.hostname || a.fqdn).localeCompare(b.hostname || b.fqdn, undefined, { numeric: true })
+    );
+    rows.push({ key, members, primary: members[0] });
+  }
+  return rows;
+}
+
+const rowSeverity = (r: Row): 'warn' | 'bad' => (r.members.some((m) => m.severity === 'bad') ? 'bad' : 'warn');
+const rowFirstSeen = (r: Row) => Math.min(...r.members.map((m) => m.firstSeen));
+const rowAcked = (r: Row) => r.members.every((m) => m.acknowledged);
+const rowKeys = (r: Row) => r.members.map((m) => m.issueKey);
+const isCombined = (r: Row) => r.members.length > 1;
+
+// "f04-sw1 ↔ rkh74-sw1" for a combined row; the single hostname otherwise.
+function rowDeviceLabel(r: Row): string {
+  if (!isCombined(r)) return r.primary.hostname || r.primary.fqdn || 'network';
+  return r.members.map((m) => m.hostname || m.fqdn).join(' ↔ ');
+}
+// "Gi1/0/1 ↔ Gi1/0/24" for a combined row; the single affected label otherwise.
+function rowAffectedLabel(r: Row): string | null {
+  if (!isCombined(r)) return r.primary.subjectLabel ?? null;
+  const parts = r.members.map((m) => m.subjectLabel).filter((s): s is string => !!s);
+  return parts.length ? parts.join(' ↔ ') : null;
+}
+
+function rowSortVal(r: Row, key: IssueSortKey): string | number | null {
   switch (key) {
-    case 'severity': return i.severity === 'bad' ? 0 : 1; // criticals first when ascending
-    case 'device': return i.fqdn ? i.hostname || i.fqdn : null; // network-level (no fqdn) sorts last
-    case 'affected': return i.subjectLabel ?? null;
-    case 'issue': return i.title;
-    case 'age': return i.firstSeen; // ascending = oldest onset first
+    case 'severity': return rowSeverity(r) === 'bad' ? 0 : 1; // criticals first when ascending
+    case 'device': return r.primary.fqdn ? rowDeviceLabel(r) : null; // network-level (no fqdn) sorts last
+    case 'affected': return rowAffectedLabel(r);
+    case 'issue': return r.primary.title;
+    case 'age': return rowFirstSeen(r); // ascending = oldest onset first
   }
 }
 
@@ -184,12 +264,16 @@ function IssueDetail({
   issue,
   related,
   onOpenRelated,
+  showExplain = true,
 }: {
   issue: Issue;
   related: Issue[];
   onOpenRelated: (key: string) => void;
+  // A combined row hoists the (shared) kind explainer above both ends, so the
+  // per-end detail suppresses it to avoid repeating the same paragraph twice.
+  showExplain?: boolean;
 }) {
-  const explain = explainKind(issue.kind);
+  const explain = showExplain ? explainKind(issue.kind) : null;
   return (
     <>
       {explain && <p className="issue-explain">{explain}</p>}
@@ -308,9 +392,19 @@ export default function Issues() {
       return next;
     });
 
+  // issueKey → the row key that renders it (its groupKey when combined, else
+  // the issueKey). Lets a related-chip resolve which (possibly combined) row to
+  // open and scroll to, since the DOM id and expanded-set are keyed by row.
+  const rowKeyOf = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const i of issues.data?.issues ?? []) m.set(i.issueKey, i.groupKey ?? i.issueKey);
+    return m;
+  }, [issues.data]);
+
   // Open a sibling issue and bring it into view — lets the related-chips on one
   // issue jump to the correlated one (e.g. the orphan behind a root mismatch).
-  const openIssue = (key: string) => {
+  const openIssue = (issueKey: string) => {
+    const key = rowKeyOf.get(issueKey) ?? issueKey;
     setExpanded((prev) => new Set(prev).add(key));
     requestAnimationFrame(() =>
       document.getElementById(`issue-${key}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -352,14 +446,28 @@ export default function Issues() {
       document.getElementById(`issue-${key}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     );
   };
+  // A combined row acks both ends together: one Confirm fans out an ack per
+  // member key with the same note (the backend has no batch endpoint). A single
+  // row just acks its one key. Un-acknowledge fans out the same way.
   const ack = useMutation({
-    mutationFn: api.ackIssue,
+    mutationFn: async ({ keys, note }: { keys: string[]; note: string | null }) => {
+      const results = await Promise.allSettled(keys.map((k) => api.ackIssue({ issueKey: k, note })));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed) throw new Error(`${failed} of ${keys.length} could not be acknowledged`);
+    },
     onSuccess: () => {
       closeAckForm();
       invalidate();
     },
   });
-  const unack = useMutation({ mutationFn: api.unackIssue, onSuccess: invalidate });
+  const unack = useMutation({
+    mutationFn: async (keys: string[]) => {
+      const results = await Promise.allSettled(keys.map((k) => api.unackIssue({ issueKey: k })));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed) throw new Error(`${failed} of ${keys.length} could not be un-acknowledged`);
+    },
+    onSuccess: invalidate,
+  });
 
   // Mass-acknowledge: a selection mode over the Active list. The backend has no
   // batch endpoint, so acking many issues fans out one api.ackIssue call each.
@@ -369,13 +477,6 @@ export default function Issues() {
     setSelecting(false);
     setSelected(new Set());
   };
-  const toggleSelected = (key: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
   const massAck = useMutation({
     mutationFn: async (keys: string[]) => {
       const results = await Promise.allSettled(
@@ -405,32 +506,47 @@ export default function Issues() {
   };
   const arrow = (key: IssueSortKey) => (sortKey === key ? (sortAsc ? ' ▲' : ' ▼') : '');
 
+  // Build rows first (combining the two ends of a link), then split into
+  // Active / Acknowledged. A combined row counts as acknowledged only when
+  // both ends are acked; a partially-acked group stays Active.
   const { active, acknowledged } = useMemo(() => {
-    const cmp = makeCmp((i: Issue) => issueSortVal(i, sortKey), sortAsc);
-    const all = (issues.data?.issues ?? []).filter((i) => !selectedKind || i.kind === selectedKind);
+    const cmp = makeCmp((r: Row) => rowSortVal(r, sortKey), sortAsc);
+    const rows = buildRows((issues.data?.issues ?? []).filter((i) => !selectedKind || i.kind === selectedKind));
     return {
-      active: all.filter((i) => !i.acknowledged).sort(cmp),
-      acknowledged: all.filter((i) => i.acknowledged).sort(cmp),
+      active: rows.filter((r) => !rowAcked(r)).sort(cmp),
+      acknowledged: rows.filter((r) => rowAcked(r)).sort(cmp),
     };
   }, [issues.data, selectedKind, sortKey, sortAsc]);
 
+  // Selection tracks issue keys (so mass-ack fans out per end). A row is
+  // selected when all its member keys are; toggling a row flips all of them.
+  const rowSelected = (r: Row) => rowKeys(r).every((k) => selected.has(k));
+  const toggleSelectedRow = (r: Row) => {
+    const keys = rowKeys(r);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (keys.every((k) => next.has(k))) keys.forEach((k) => next.delete(k));
+      else keys.forEach((k) => next.add(k));
+      return next;
+    });
+  };
   // Select-all reflects the current Active list; toggling clears or fills it.
-  const allSelected = active.length > 0 && active.every((i) => selected.has(i.issueKey));
+  const allSelected = active.length > 0 && active.every(rowSelected);
   const toggleSelectAll = () =>
-    setSelected(allSelected ? new Set() : new Set(active.map((i) => i.issueKey)));
+    setSelected(allSelected ? new Set() : new Set(active.flatMap(rowKeys)));
 
   // The action for one issue's row/card. During mass-acknowledge selection the
   // per-row actions are hidden — the selection bar owns the acking.
-  const actionButton = (issue: Issue) => {
+  const actionButton = (row: Row) => {
     if (selecting) return null;
-    if (issue.acknowledged)
+    if (rowAcked(row))
       return (
         <button
           className="secondary"
           disabled={pending}
           onClick={(e) => {
             e.stopPropagation();
-            unack.mutate({ issueKey: issue.issueKey });
+            unack.mutate(rowKeys(row));
           }}
         >
           Un-acknowledge
@@ -439,13 +555,13 @@ export default function Issues() {
 
     // While the reason form is open the same button becomes the confirm action,
     // so it stays put and there is no second Acknowledge button in the panel.
-    if (ackingKey === issue.issueKey)
+    if (ackingKey === row.key)
       return (
         <button
           disabled={pending}
           onClick={(e) => {
             e.stopPropagation();
-            ack.mutate({ issueKey: issue.issueKey, note: ackNote.trim() || null });
+            ack.mutate({ keys: rowKeys(row), note: ackNote.trim() || null });
           }}
         >
           {ack.isPending ? 'Confirming…' : 'Confirm'}
@@ -457,7 +573,7 @@ export default function Issues() {
         disabled={pending}
         onClick={(e) => {
           e.stopPropagation();
-          openAckForm(issue.issueKey);
+          openAckForm(row.key);
         }}
       >
         Acknowledge
@@ -484,46 +600,81 @@ export default function Issues() {
     </div>
   );
 
-  // Mobile: a card per issue that expands inline.
-  const cardList = (list: Issue[], selectable: boolean) => (
+  // The expanded body for a row. A single issue renders its detail as before; a
+  // combined link fault hoists the shared kind explainer, then stacks each end
+  // under a "hostname · port" sub-heading so both sides read at a glance.
+  const rowDetail = (row: Row) => {
+    if (row.members.length === 1) {
+      const m = row.primary;
+      return <IssueDetail issue={m} related={relatedByKey.get(m.issueKey) ?? []} onOpenRelated={openIssue} />;
+    }
+    const explain = explainKind(row.primary.kind);
+    return (
+      <div className="issue-group-detail">
+        {explain && <p className="issue-explain">{explain}</p>}
+        {row.members.map((m) => (
+          <div key={m.issueKey} className="issue-side">
+            <h4 className="issue-side-head">
+              <Link to={`/devices/${encodeURIComponent(m.fqdn)}`}>{m.hostname || m.fqdn}</Link>
+              {m.subjectLabel && <span className="muted"> · {m.subjectLabel}</span>}
+            </h4>
+            <IssueDetail
+              issue={m}
+              related={relatedByKey.get(m.issueKey) ?? []}
+              onOpenRelated={openIssue}
+              showExplain={false}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Mobile: a card per row (a single issue, or a combined link fault) that
+  // expands inline.
+  const cardList = (list: Row[], selectable: boolean) => (
     <div className="item-list mobile-only">
-      {list.map((issue) => (
-        <div key={issue.issueKey} id={`issue-${issue.issueKey}`} className="item-card">
+      {list.map((row) => {
+        const affected = rowAffectedLabel(row);
+        return (
+        <div key={row.key} id={`issue-${row.key}`} className="item-card">
           <div className="item-title">
-            <button className="detail-toggle" onClick={() => toggle(issue.issueKey)} aria-expanded={expanded.has(issue.issueKey)}>
-              {issue.title} {expanded.has(issue.issueKey) ? '▾' : '▸'}
+            <button className="detail-toggle" onClick={() => toggle(row.key)} aria-expanded={expanded.has(row.key)}>
+              {row.primary.title} {expanded.has(row.key) ? '▾' : '▸'}
             </button>
-            <HealthBadge severity={issue.severity} label={issue.severity === 'bad' ? '⚠ critical' : '⚠ warning'} />
+            {partialAckHint(row)}
+            <HealthBadge severity={rowSeverity(row)} label={rowSeverity(row) === 'bad' ? '⚠ critical' : '⚠ warning'} />
             {selectable && (
               <input
                 type="checkbox"
                 className="select-box"
-                checked={selected.has(issue.issueKey)}
-                onChange={() => toggleSelected(issue.issueKey)}
-                aria-label={`Select ${issue.title}`}
+                checked={rowSelected(row)}
+                onChange={() => toggleSelectedRow(row)}
+                aria-label={`Select ${row.primary.title}`}
               />
             )}
           </div>
           <div className="item-sub">
-            <span>{deviceCell(issue)}</span>
-            {issue.subjectLabel && <span>{issue.subjectLabel}</span>}
-            <span className="muted">{ago(issue.firstSeen)}</span>
+            <span>{rowDeviceCell(row)}</span>
+            {affected && <span>{affected}</span>}
+            <span className="muted">{ago(rowFirstSeen(row))}</span>
           </div>
-          {issue.acknowledged && issue.note && <div className="issue-note-inline">{issue.note}</div>}
-          {expanded.has(issue.issueKey) && (
-            <IssueDetail issue={issue} related={relatedByKey.get(issue.issueKey) ?? []} onOpenRelated={openIssue} />
+          {!isCombined(row) && row.primary.acknowledged && row.primary.note && (
+            <div className="issue-note-inline">{row.primary.note}</div>
           )}
-          {ackingKey === issue.issueKey && ackForm()}
-          {!selecting && <div className="actions">{actionButton(issue)}</div>}
+          {expanded.has(row.key) && rowDetail(row)}
+          {ackingKey === row.key && ackForm()}
+          {!selecting && <div className="actions">{actionButton(row)}</div>}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 
   // Desktop: a table whose rows expand into a full-width detail row.
   // In selection mode the trailing action cell holds the checkbox instead of
   // the button, so the row's columns stay exactly where they are.
-  const table = (list: Issue[], selectable: boolean) => (
+  const table = (list: Row[], selectable: boolean) => (
       <div className="table-wrap desktop-only">
         <table>
           <thead>
@@ -537,53 +688,58 @@ export default function Issues() {
             </tr>
           </thead>
           <tbody>
-            {list.map((issue) => (
-              <Fragment key={issue.issueKey}>
-                <tr id={`issue-${issue.issueKey}`}>
+            {list.map((row) => {
+              const sev = rowSeverity(row);
+              const first = rowFirstSeen(row);
+              return (
+              <Fragment key={row.key}>
+                <tr id={`issue-${row.key}`}>
                   <td>
-                    <HealthBadge severity={issue.severity} label={issue.severity === 'bad' ? '⚠ critical' : '⚠ warning'} />
+                    <HealthBadge severity={sev} label={sev === 'bad' ? '⚠ critical' : '⚠ warning'} />
                   </td>
-                  <td>{deviceCell(issue)}</td>
-                  <td className="wrap-mobile">{issue.subjectLabel ?? <span className="muted">—</span>}</td>
+                  <td>{rowDeviceCell(row)}</td>
+                  <td className="wrap-mobile">{rowAffectedLabel(row) ?? <span className="muted">—</span>}</td>
                   <td>
-                    <button className="detail-toggle" onClick={() => toggle(issue.issueKey)} aria-expanded={expanded.has(issue.issueKey)}>
-                      {issue.title} {expanded.has(issue.issueKey) ? '▾' : '▸'}
+                    <button className="detail-toggle" onClick={() => toggle(row.key)} aria-expanded={expanded.has(row.key)}>
+                      {row.primary.title} {expanded.has(row.key) ? '▾' : '▸'}
                     </button>
-                    {issue.acknowledged && issue.note && <div className="issue-note-inline">{issue.note}</div>}
+                    {partialAckHint(row)}
+                    {!isCombined(row) && row.primary.acknowledged && row.primary.note && (
+                      <div className="issue-note-inline">{row.primary.note}</div>
+                    )}
                   </td>
-                  <td className="muted" title={absolute(issue.firstSeen)}>{ago(issue.firstSeen)}</td>
+                  <td className="muted" title={absolute(first)}>{ago(first)}</td>
                   <td className="select-cell">
                     {selectable ? (
                       <input
                         type="checkbox"
                         className="select-box"
-                        checked={selected.has(issue.issueKey)}
-                        onChange={() => toggleSelected(issue.issueKey)}
-                        aria-label={`Select ${issue.title}`}
+                        checked={rowSelected(row)}
+                        onChange={() => toggleSelectedRow(row)}
+                        aria-label={`Select ${row.primary.title}`}
                       />
                     ) : (
-                      actionButton(issue)
+                      actionButton(row)
                     )}
                   </td>
                 </tr>
-                {(expanded.has(issue.issueKey) || ackingKey === issue.issueKey) && (
+                {(expanded.has(row.key) || ackingKey === row.key) && (
                   <tr className="vlan-detail-row">
                     <td colSpan={6}>
-                      {ackingKey === issue.issueKey && ackForm()}
-                      {expanded.has(issue.issueKey) && (
-                        <IssueDetail issue={issue} related={relatedByKey.get(issue.issueKey) ?? []} onOpenRelated={openIssue} />
-                      )}
+                      {ackingKey === row.key && ackForm()}
+                      {expanded.has(row.key) && rowDetail(row)}
                     </td>
                   </tr>
                 )}
               </Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
     );
 
-  const section = (list: Issue[], emptyText: string, selectable = false) =>
+  const section = (list: Row[], emptyText: string, selectable = false) =>
     list.length === 0 ? <p className="muted">{emptyText}</p> : (
       <>
         {cardList(list, selectable)}

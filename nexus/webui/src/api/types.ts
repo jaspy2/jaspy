@@ -499,6 +499,10 @@ export interface Issue {
   subjectLabel: string | null;
   // Ordered typed rows describing every known signal, for the detail view.
   detail: IssueDetail[];
+  // Set when this issue is one end of an inter-switch link fault; both ends
+  // share this key so the /issues page combines them into one two-ended row.
+  // null for issues that stay single-ended.
+  groupKey: string | null;
   firstSeen: number; // epoch ms of the current occurrence's onset
   lastSeen: number; // epoch ms it was last observed active
   acknowledged: boolean;

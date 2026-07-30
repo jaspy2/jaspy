@@ -995,6 +995,7 @@ fn tracked_to_api_issues(
                 description: t.issue.description,
                 subject_label: t.issue.subject_label,
                 detail: t.issue.detail,
+                group_key: t.issue.group_key,
                 first_seen: t.first_seen,
                 last_seen: t.last_seen,
                 acknowledged,

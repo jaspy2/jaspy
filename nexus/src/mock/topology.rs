@@ -205,7 +205,20 @@ pub fn build() -> Topology {
             vlans: &[1, 10, 30],
             interfaces: vec![
                 uplink(10101, "Te1/1/1", "TenGigabitEthernet1/1/1", "uplink core1", 10000, ("core1", "Te1/0/1")),
-                uplink(10102, "Te1/1/2", "TenGigabitEthernet1/1/2", "downlink hall a 01", 10000, ("access-hall-a-01", "Te1/1/1")),
+                // Runs saturated: the far end (access-hall-a-01 Te1/1/1) is also
+                // saturated, so both ends raise iface-high-util and the /issues
+                // page combines them into one two-ended link row.
+                MockInterface {
+                    ifindex: 10102,
+                    name: "Te1/1/2",
+                    descr: "TenGigabitEthernet1/1/2",
+                    alias: "downlink hall a 01",
+                    speed_mbps: 10000,
+                    peer: Some(("access-hall-a-01", "Te1/1/1")),
+                    flaps: false,
+                    up: true,
+                    discard_rate: 0, error_rate: 0, saturated: true, renegotiates: false,
+                },
                 MockInterface {
                     ifindex: 10103,
                     name: "Te1/1/3",
@@ -283,6 +296,10 @@ pub fn build() -> Topology {
             }];
             // The degraded bundle leg: Gi1/0/2 fell back to 100M (faulty cable).
             set_iface(&mut a01, 10202, |i| i.speed_mbps = 100);
+            // Saturate the uplink to dist1 (Te1/1/2). The dist1 side is
+            // saturated too, so both ends raise iface-high-util and the /issues
+            // page shows a single combined "access-hall-a-01 ↔ dist1" row.
+            set_iface(&mut a01, 10101, |i| i.saturated = true);
             // Simulated faults (non-LAG, up ports): a congested port dropping
             // ~200 discards/s and a flaky-cable port taking ~5 input errors/s.
             set_iface(&mut a01, 10204, |i| i.discard_rate = 200);

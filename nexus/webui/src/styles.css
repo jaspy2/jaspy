@@ -456,6 +456,18 @@ button.health-toggle:hover:not(:disabled) { text-decoration: underline; }
 }
 .related-chip:hover { background: var(--muted-bg); }
 
+/* A combined two-ended link row: the "A ↔ B" endpoints in the Device cell, and
+   the stacked per-end detail in the expanded view. */
+.issue-link-ends { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px; }
+.issue-group-detail { display: flex; flex-direction: column; gap: 12px; }
+.issue-side { padding-left: 10px; border-left: 3px solid var(--border); }
+.issue-side-head {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.issue-side-head .muted { font-weight: 400; }
+
 /* Interface type filter: toggle chips. "On" is a filled accent chip; "off"
    (the type is hidden) is muted and struck through so the state reads at a
    glance. */
