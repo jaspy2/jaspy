@@ -76,8 +76,15 @@ fn issue_scan_worker(
                 Ok(mut conn) => {
                     let derived = routes::api::v1::collect_issues(&mut *conn, &imds, &entity_metrics, &lag_store, &vlan_store, &cache_controller);
                     let now = utilities::tools::get_time_msecs();
-                    if let Ok(mut tracker) = tracker.lock() {
-                        tracker.reconcile(now, derived);
+                    let tracked = if let Ok(mut tracker) = tracker.lock() {
+                        tracker.reconcile(now, derived)
+                    } else {
+                        Vec::new()
+                    };
+                    // Publish the fresh snapshot so concurrent /issues and
+                    // per-device readers serve it instead of re-deriving.
+                    if let Ok(cc) = cache_controller.lock() {
+                        cc.store_issues(tracked, interval_secs as f64);
                     }
                 }
                 Err(e) => println!("[issues] failed to acquire db connection for scan: {}", e),
@@ -608,6 +615,9 @@ async fn server_main() {
                 routes::api::v1::issues,
                 routes::api::v1::issue_ack,
                 routes::api::v1::issue_unack,
+                routes::api::v1::issue_types,
+                routes::api::v1::issue_suppress,
+                routes::api::v1::issue_unsuppress,
                 routes::api::v1::device_create,
                 routes::api::v1::device_update,
                 routes::api::v1::device_delete,

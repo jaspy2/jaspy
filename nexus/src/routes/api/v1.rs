@@ -8,6 +8,26 @@ use rocket::State;
 
 const EVENT_SETTING: &str = "event";
 
+// TTL for the shared issue-list cache, aligned with the background scan cadence
+// (JASPY_ISSUE_SCAN_SECS, default 15s) so a served snapshot is never more than
+// one scan interval stale.
+fn issue_cache_ttl_secs() -> f64 {
+    std::env::var("JASPY_ISSUE_SCAN_SECS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(15) as f64
+}
+
+// The persisted set of suppressed issue-type `kind`s. Empty (and tolerant of a
+// malformed value) when unset, so suppression can never break derivation.
+fn load_suppressed_types(connection: &mut db::AnyConnection) -> std::collections::HashSet<String> {
+    match models::dbo::Setting::get(connection, utilities::issues::SUPPRESSED_SETTING) {
+        Some(json) => utilities::issues::parse_suppressed(&json),
+        None => std::collections::HashSet::new(),
+    }
+}
+
 // Live (up, seconds since last interface poll) for a device, from IMDS.
 fn imds_device_live(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, fqdn: &str) -> (Option<bool>, Option<u64>) {
     if let Ok(ref mut imds) = imds.inner().lock() {
@@ -217,7 +237,7 @@ pub fn devices(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::im
 }
 
 #[get("/devices/<device_fqdn>")]
-pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>, lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>, entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
+pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>, lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>, entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
     let device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
     // Live interface state (up/speed) plus recent-history health from IMDS,
@@ -425,6 +445,21 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         name: device_vlans.names.get(&id).cloned(),
     }).collect();
 
+    // Per-device issues: filter the shared fleet derivation (so infra-port
+    // gating and type suppression apply identically to /issues) down to this
+    // device, then join persisted acks. Served from the same short-lived cache.
+    let device_issues = {
+        let tracked = cached_tracked_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), vlan_store.inner(), cache_controller.inner(), tracker.inner());
+        let acks: std::collections::HashMap<String, models::dbo::IssueAck> = models::dbo::IssueAck::all(&mut connection)
+            .into_iter()
+            .map(|a| (a.issue_key.clone(), a))
+            .collect();
+        let mine: Vec<_> = tracked.into_iter().filter(|t| t.issue.fqdn.as_str() == device_fqdn).collect();
+        let mut issues = tracked_to_api_issues(mine, &acks);
+        issues.sort_by(|a, b| b.first_seen.cmp(&a.first_seen));
+        issues
+    };
+
     let device = api_device(&mut connection, imds, &device);
     Some(Json(models::json::ApiDeviceDetail {
         device: device,
@@ -433,6 +468,7 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         port_channels: port_channels,
         ip_addresses: resolve_device_ips(&device_fqdn),
         poe_budget: poe_budget.iter().map(api_poe_budget).collect(),
+        issues: device_issues,
     }))
 }
 
@@ -849,41 +885,57 @@ pub fn collect_issues(
         }
     }
 
+    // Suppressed issue types are hidden everywhere: filtering here (the single
+    // derivation choke point) keeps them out of the list, the tracker, and the
+    // per-device view uniformly.
+    let suppressed = load_suppressed_types(connection);
+    if !suppressed.is_empty() {
+        out.retain(|i| !suppressed.contains(&i.kind));
+    }
+
     out
 }
 
-// GET /api/v1/issues: every known fleet problem (active and acknowledged),
-// derived on the fly and enriched with tracker timestamps + any persisted
-// acknowledgement. Sorted most-recent-first.
-#[get("/issues")]
-pub fn issues(
-    mut connection: db::JaspyDB,
-    imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
-    entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
-    lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
-    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
-    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
-    tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>,
-) -> Json<models::json::ApiIssuesResponse> {
-    let derived = collect_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), vlan_store.inner(), cache_controller.inner());
-    let now = utilities::tools::get_time_msecs();
-    let (tracked, known_keys) = match tracker.inner().lock() {
-        Ok(mut t) => {
-            let tracked = t.reconcile(now, derived);
-            let known = t.known_keys();
-            (tracked, known)
+// Read-through accessor for the derived+reconciled fleet issue list. Serves the
+// shared short-lived cache when fresh; on a miss it re-derives, reconciles into
+// the tracker, and repopulates the cache. The background issue_scan_worker keeps
+// the cache warm on its own cadence, so concurrent readers almost always hit.
+// Does NOT hold the CacheController lock across collect_issues (which locks it
+// itself for the weathermap topology).
+pub fn cached_tracked_issues(
+    connection: &mut db::AnyConnection,
+    imds: &Arc<Mutex<utilities::imds::IMDS>>,
+    entity_metrics: &Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>,
+    lag_store: &Arc<Mutex<crate::collectors::lagpoller::LagStore>>,
+    vlan_store: &Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>,
+    cache_controller: &Arc<Mutex<utilities::cache::CacheController>>,
+    tracker: &Arc<Mutex<crate::utilities::issues::IssueTracker>>,
+) -> Vec<crate::utilities::issues::TrackedIssue> {
+    if let Ok(cc) = cache_controller.lock() {
+        if let Some(cached) = cc.fresh_issues() {
+            return cached;
         }
-        Err(_) => (Vec::new(), std::collections::HashSet::new()),
+    }
+    let derived = collect_issues(connection, imds, entity_metrics, lag_store, vlan_store, cache_controller);
+    let now = utilities::tools::get_time_msecs();
+    let tracked = match tracker.lock() {
+        Ok(mut t) => t.reconcile(now, derived),
+        Err(_) => Vec::new(),
     };
+    if let Ok(cc) = cache_controller.lock() {
+        cc.store_issues(tracked.clone(), issue_cache_ttl_secs());
+    }
+    tracked
+}
 
-    let acks: std::collections::HashMap<String, models::dbo::IssueAck> = models::dbo::IssueAck::all(&mut connection)
-        .into_iter()
-        .map(|a| (a.issue_key.clone(), a))
-        .collect();
-    // Prune acks whose issue the tracker has fully forgotten (grace-aware).
-    let _ = models::dbo::IssueAck::delete_orphans(&mut connection, &known_keys);
-
-    let mut issues: Vec<models::json::ApiIssue> = tracked
+// Map tracked issues to their API DTOs, joining any persisted acknowledgement.
+// Shared by the fleet /issues route and the per-device detail view so both apply
+// the same ack semantics. Does not sort.
+fn tracked_to_api_issues(
+    tracked: Vec<crate::utilities::issues::TrackedIssue>,
+    acks: &std::collections::HashMap<String, models::dbo::IssueAck>,
+) -> Vec<models::json::ApiIssue> {
+    tracked
         .into_iter()
         .map(|t| {
             let key = t.issue.issue_key();
@@ -909,7 +961,33 @@ pub fn issues(
                 note: if acknowledged { ack.and_then(|a| a.note.clone()) } else { None },
             }
         })
+        .collect()
+}
+
+// GET /api/v1/issues: every known fleet problem (active and acknowledged),
+// served from the shared short-lived cache and enriched with tracker timestamps
+// + any persisted acknowledgement. Sorted most-recent-first.
+#[get("/issues")]
+pub fn issues(
+    mut connection: db::JaspyDB,
+    imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
+    entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>,
+    lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+    tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>,
+) -> Json<models::json::ApiIssuesResponse> {
+    let tracked = cached_tracked_issues(&mut connection, imds.inner(), entity_metrics.inner(), lag_store.inner(), vlan_store.inner(), cache_controller.inner(), tracker.inner());
+    let known_keys = tracker.inner().lock().map(|t| t.known_keys()).unwrap_or_default();
+
+    let acks: std::collections::HashMap<String, models::dbo::IssueAck> = models::dbo::IssueAck::all(&mut connection)
+        .into_iter()
+        .map(|a| (a.issue_key.clone(), a))
         .collect();
+    // Prune acks whose issue the tracker has fully forgotten (grace-aware).
+    let _ = models::dbo::IssueAck::delete_orphans(&mut connection, &known_keys);
+
+    let mut issues = tracked_to_api_issues(tracked, &acks);
     // Most recent first.
     issues.sort_by(|a, b| b.first_seen.cmp(&a.first_seen));
     Json(models::json::ApiIssuesResponse { issues })
@@ -976,6 +1054,82 @@ pub fn issue_unack(
             error: format!("failed to remove acknowledgement: {}", e),
         }))),
     }
+}
+
+// The catalog of known issue types, each tagged with its current suppression
+// state.
+fn issue_types_response(connection: &mut db::AnyConnection) -> Vec<models::json::ApiIssueType> {
+    let suppressed = load_suppressed_types(connection);
+    utilities::issues::issue_type_catalog()
+        .into_iter()
+        .map(|t| models::json::ApiIssueType {
+            kind: t.kind.to_string(),
+            category: t.category.to_string(),
+            title: t.title.to_string(),
+            description: t.description.to_string(),
+            suppressed: suppressed.contains(t.kind),
+        })
+        .collect()
+}
+
+// Persist a mutated suppressed set and invalidate the issue cache so the change
+// takes effect on the next read instead of up to one TTL later.
+fn persist_suppressed(
+    connection: &mut db::AnyConnection,
+    cache_controller: &Arc<Mutex<utilities::cache::CacheController>>,
+    set: &std::collections::HashSet<String>,
+) -> Result<(), (rocket::http::Status, Json<models::json::ApiError>)> {
+    let json = utilities::issues::serialize_suppressed(set);
+    if let Err(e) = models::dbo::Setting::set(connection, utilities::issues::SUPPRESSED_SETTING, &json) {
+        return Err((rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+            error: format!("failed to persist suppressed issue types: {} (are the migrations up to date?)", e),
+        })));
+    }
+    if let Ok(cc) = cache_controller.lock() {
+        cc.invalidate_issues_cache();
+    }
+    Ok(())
+}
+
+// GET /api/v1/issues/types: every known issue type + whether it is suppressed.
+#[get("/issues/types")]
+pub fn issue_types(mut connection: db::JaspyDB) -> Json<Vec<models::json::ApiIssueType>> {
+    Json(issue_types_response(&mut connection))
+}
+
+// POST /api/v1/issues/suppress: hide an entire issue type from every issue view.
+// 400 for an unknown kind. Returns the updated type list. Idempotent.
+#[post("/issues/suppress", data = "<body>")]
+pub fn issue_suppress(
+    body: Json<models::json::ApiIssueTypeRequest>,
+    mut connection: db::JaspyDB,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+) -> Result<Json<Vec<models::json::ApiIssueType>>, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let req = body.into_inner();
+    if !utilities::issues::is_known_kind(&req.kind) {
+        return Err((rocket::http::Status::BadRequest, Json(models::json::ApiError {
+            error: format!("unknown issue type: {}", req.kind),
+        })));
+    }
+    let mut set = load_suppressed_types(&mut connection);
+    set.insert(req.kind.clone());
+    persist_suppressed(&mut connection, cache_controller.inner(), &set)?;
+    Ok(Json(issue_types_response(&mut connection)))
+}
+
+// POST /api/v1/issues/unsuppress: un-hide an issue type. Idempotent; an unknown
+// kind is accepted as a no-op so a stale UI can always clear a suppression.
+#[post("/issues/unsuppress", data = "<body>")]
+pub fn issue_unsuppress(
+    body: Json<models::json::ApiIssueTypeRequest>,
+    mut connection: db::JaspyDB,
+    cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>,
+) -> Result<Json<Vec<models::json::ApiIssueType>>, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let req = body.into_inner();
+    let mut set = load_suppressed_types(&mut connection);
+    set.remove(&req.kind);
+    persist_suppressed(&mut connection, cache_controller.inner(), &set)?;
+    Ok(Json(issue_types_response(&mut connection)))
 }
 
 // Queue an immediate VLAN membership poll for one device. The vlanpoller
@@ -1055,7 +1209,7 @@ pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: 
     match models::dbo::Device::create(&new_device, &mut connection) {
         Ok(created_device) => {
             let device_fqdn = format!("{}.{}", created_device.name, created_device.dns_domain);
-            if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
+            if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); cache_controller.invalidate_issues_cache(); }
             let event = models::events::Event::device_created_event(&device_fqdn);
             if let Ok(ref mut msgbus) = msgbus.lock() {
                 msgbus.event(event);
@@ -1121,7 +1275,7 @@ pub fn device_delete(mut connection: db::JaspyDB, device_fqdn: &str, cache_contr
         println!("[api] failed to delete {}: {}", device_fqdn, e);
         return None;
     }
-    if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
+    if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); cache_controller.invalidate_issues_cache(); }
     let event = models::events::Event::device_deleted_event(&device_fqdn);
     if let Ok(ref mut msgbus) = msgbus.lock() {
         msgbus.event(event);
@@ -1177,7 +1331,7 @@ pub fn reset(mut connection: db::JaspyDB, cache_controller: &State<Arc<Mutex<uti
         }
     }
     let _ = models::dbo::Setting::delete(&mut connection, EVENT_SETTING);
-    if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); }
+    if let Ok(ref cache_controller) = cache_controller.lock() { cache_controller.invalidate_weathermap_cache(); cache_controller.invalidate_issues_cache(); }
     Json(models::json::ApiResetResult { devices_deleted: devices_deleted })
 }
 

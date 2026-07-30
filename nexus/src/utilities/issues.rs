@@ -18,6 +18,78 @@ use crate::models::json::{ApiIssueDetail, ApiIssueDetailValue};
 pub const SEV_WARN: &str = "warn";
 pub const SEV_BAD: &str = "bad";
 
+// --- Issue type catalog & suppression ------------------------------------
+
+// The persisted Setting key holding the JSON array of suppressed issue-type
+// `kind`s. A suppressed kind is filtered out of every derivation (see
+// collect_issues) so it never appears in the list, the tracker, or per-device
+// views — distinct from acknowledging a single instance.
+pub const SUPPRESSED_SETTING: &str = "suppressed_issue_types";
+
+// One entry in the authoritative catalog of issue types the system can raise.
+// `kind` matches DerivedIssue::kind exactly (the suppression granularity);
+// title/description are type-level copy for the management UI.
+#[derive(Clone, Debug, PartialEq)]
+pub struct IssueTypeInfo {
+    pub kind: &'static str,
+    pub category: &'static str,
+    pub title: &'static str,
+    pub description: &'static str,
+}
+
+// Every issue `kind` the derivation can emit, grouped by category. Single
+// source of truth for "what types exist"; keep in sync with the constructors
+// in this module. Some kinds are compound (`stp-flag:*`, `lag:*`) — each full
+// kind string is its own suppressible type.
+pub fn issue_type_catalog() -> Vec<IssueTypeInfo> {
+    vec![
+        IssueTypeInfo { kind: "device-down", category: "device", title: "Device down", description: "A monitored device has stopped responding to polls." },
+        IssueTypeInfo { kind: "poe-pse-down", category: "poe", title: "PoE power supply not operational", description: "A PSE power group is not on and cannot source PoE power." },
+        IssueTypeInfo { kind: "poe-budget", category: "poe", title: "PoE budget near capacity", description: "A PSE group is running near (or over) its power budget." },
+        IssueTypeInfo { kind: "iface-flapping", category: "interface", title: "Interface flapping", description: "An infrastructure port has gone up/down repeatedly in a short window." },
+        IssueTypeInfo { kind: "iface-stale", category: "interface", title: "Interface not polling", description: "An infrastructure port has stopped answering polls." },
+        IssueTypeInfo { kind: "iface-errors", category: "interface", title: "Interface errors", description: "An infrastructure port is accumulating input/output errors." },
+        IssueTypeInfo { kind: "iface-discards", category: "interface", title: "Interface discards", description: "An infrastructure port is discarding packets." },
+        IssueTypeInfo { kind: "iface-high-util", category: "interface", title: "High utilization", description: "An infrastructure port peaked at high link utilization." },
+        IssueTypeInfo { kind: "iface-speed", category: "interface", title: "Speed renegotiation", description: "An infrastructure port renegotiated its link speed." },
+        IssueTypeInfo { kind: "stp-flag:no-root", category: "stp", title: "STP: no root bridge", description: "A VLAN has spanning-tree nodes but no elected root bridge." },
+        IssueTypeInfo { kind: "stp-flag:multiple-roots", category: "stp", title: "STP: multiple roots", description: "A VLAN has more than one root bridge." },
+        IssueTypeInfo { kind: "stp-flag:cycle", category: "stp", title: "STP: cycle", description: "A VLAN's spanning tree contains a cycle." },
+        IssueTypeInfo { kind: "stp-flag:multiple-root-ports", category: "stp", title: "STP: multiple root ports", description: "A device has multiple root ports on one VLAN." },
+        IssueTypeInfo { kind: "stp-unmonitored-root", category: "stp", title: "STP root not monitored", description: "A VLAN's root bridge is a superior bridge that jaspy does not monitor." },
+        IssueTypeInfo { kind: "stp-root-mismatch", category: "stp", title: "STP root mismatch", description: "Devices disagree about a VLAN's root bridge." },
+        IssueTypeInfo { kind: "stp-orphan", category: "stp", title: "STP orphan", description: "A device has a root port whose upstream neighbour is unresolved." },
+        IssueTypeInfo { kind: "lag:member-link-down", category: "lag", title: "Port-channel: uplink member down", description: "A port-channel has a member link down while others still carry traffic." },
+        IssueTypeInfo { kind: "lag:not-lacp", category: "lag", title: "Port-channel: not running LACP", description: "A port-channel is negotiated with PAgP or static mode instead of LACP." },
+        IssueTypeInfo { kind: "lag:single-member", category: "lag", title: "Port-channel: has only one member", description: "A port-channel has only one member (may be an intentional single uplink)." },
+        IssueTypeInfo { kind: "lag:member-no-lacp-partner", category: "lag", title: "Port-channel: member has no LACP partner", description: "A port-channel member is not seeing an LACP partner." },
+        IssueTypeInfo { kind: "lag:member-not-bundled", category: "lag", title: "Port-channel: member is not bundled", description: "A port-channel member is not bundled into the aggregate." },
+        IssueTypeInfo { kind: "lag:members-report-different-partners", category: "lag", title: "Port-channel: members report different LACP partners", description: "A port-channel's members report different LACP partners." },
+        IssueTypeInfo { kind: "lag:members-wired-to-different-devices", category: "lag", title: "Port-channel: members are wired to different devices", description: "A port-channel's members are wired to different neighbouring devices." },
+        IssueTypeInfo { kind: "lag:far-end-lag-not-found", category: "lag", title: "Port-channel: far-end aggregate not found", description: "The far-end aggregate of a port-channel could not be found." },
+        IssueTypeInfo { kind: "lag:far-end-member-count-mismatch", category: "lag", title: "Port-channel: far-end member count mismatch", description: "A port-channel and its far-end aggregate report different member counts." },
+    ]
+}
+
+pub fn is_known_kind(kind: &str) -> bool {
+    issue_type_catalog().iter().any(|t| t.kind == kind)
+}
+
+// Parse the persisted JSON array of suppressed kinds. Tolerant of a malformed
+// value (returns empty) so a bad Setting can never break issue derivation.
+pub fn parse_suppressed(json: &str) -> HashSet<String> {
+    serde_json::from_str::<Vec<String>>(json)
+        .map(|v| v.into_iter().collect())
+        .unwrap_or_default()
+}
+
+// Serialize the suppressed set as a sorted JSON array (stable on disk).
+pub fn serialize_suppressed(set: &HashSet<String>) -> String {
+    let mut v: Vec<&String> = set.iter().collect();
+    v.sort();
+    serde_json::to_string(&v).unwrap_or_else(|_| "[]".to_string())
+}
+
 // The hostname is the first DNS label; empty fqdn (network-level issues) stays
 // empty.
 fn hostname_of(fqdn: &str) -> String {
@@ -847,6 +919,41 @@ impl IssueTracker {
 mod tests {
     use super::*;
     use crate::collectors::poe::PoeBudget;
+
+    #[test]
+    fn catalog_is_non_empty_with_unique_kinds() {
+        let catalog = issue_type_catalog();
+        assert!(!catalog.is_empty());
+        let mut kinds: Vec<&str> = catalog.iter().map(|t| t.kind).collect();
+        let count = kinds.len();
+        kinds.sort();
+        kinds.dedup();
+        assert_eq!(kinds.len(), count, "catalog kinds must be unique");
+        // Every catalog entry must classify into a known category.
+        for t in &catalog {
+            assert!(
+                matches!(t.category, "device" | "poe" | "interface" | "stp" | "lag"),
+                "unexpected category {} for {}", t.category, t.kind
+            );
+        }
+        assert!(is_known_kind("lag:not-lacp"));
+        assert!(!is_known_kind("lag:totally-made-up"));
+    }
+
+    #[test]
+    fn suppressed_set_roundtrips_through_json() {
+        let mut set = HashSet::new();
+        set.insert("lag:not-lacp".to_string());
+        set.insert("device-down".to_string());
+        let json = serialize_suppressed(&set);
+        // Sorted, stable on disk.
+        assert_eq!(json, r#"["device-down","lag:not-lacp"]"#);
+        assert_eq!(parse_suppressed(&json), set);
+        // Tolerates garbage and empties.
+        assert!(parse_suppressed("not json").is_empty());
+        assert!(parse_suppressed("").is_empty());
+        assert!(parse_suppressed("[]").is_empty());
+    }
 
     fn budget(total_w: i64, consumed_w: i64, oper_on: bool, threshold_pct: Option<i64>) -> PoeBudget {
         PoeBudget { group: 1, total_w, consumed_w, oper_on, threshold_pct }

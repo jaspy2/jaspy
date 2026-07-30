@@ -2,8 +2,18 @@ import { Fragment, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { Issue, IssueDetailValue } from '../api/types';
+import type { Issue, IssueDetailValue, IssueType } from '../api/types';
 import { HealthBadge } from '../components/StatusBadge';
+
+// Category display order and labels for the "Issue types" management panel.
+const CATEGORY_ORDER = ['device', 'poe', 'interface', 'stp', 'lag'] as const;
+const CATEGORY_LABEL: Record<string, string> = {
+  device: 'Device',
+  poe: 'PoE',
+  interface: 'Interface',
+  stp: 'Spanning tree',
+  lag: 'Link aggregation',
+};
 
 // Compact "5m ago" from an epoch-ms timestamp.
 function ago(ms: number): string {
@@ -218,6 +228,44 @@ function IssueDetail({
 export default function Issues() {
   const queryClient = useQueryClient();
   const issues = useQuery({ queryKey: ['issues'], queryFn: api.issues, refetchInterval: 10000 });
+  const issueTypes = useQuery({ queryKey: ['issue-types'], queryFn: api.issueTypes, refetchInterval: 30000 });
+
+  // The "Issue types" panel: manage suppression and filter the list to one type.
+  const [typesOpen, setTypesOpen] = useState(false);
+  const [selectedKind, setSelectedKind] = useState<string | null>(null);
+  const invalidateTypes = () => {
+    queryClient.invalidateQueries({ queryKey: ['issue-types'] });
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+  };
+  const suppress = useMutation({ mutationFn: api.suppressIssueType, onSuccess: invalidateTypes });
+  const unsuppress = useMutation({ mutationFn: api.unsuppressIssueType, onSuccess: invalidateTypes });
+  const onToggleSuppress = (t: IssueType) => {
+    if (t.suppressed) {
+      unsuppress.mutate({ kind: t.kind });
+    } else {
+      if (selectedKind === t.kind) setSelectedKind(null); // a suppressed type has nothing to filter
+      suppress.mutate({ kind: t.kind });
+    }
+  };
+
+  // Active issue count per kind (from the full, unfiltered list) for the panel.
+  // A suppressed type never appears in the list, so it shows "—".
+  const countByKind = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of issues.data?.issues ?? []) m.set(i.kind, (m.get(i.kind) ?? 0) + 1);
+    return m;
+  }, [issues.data]);
+
+  const typesByCategory = useMemo(() => {
+    const groups = new Map<string, IssueType[]>();
+    for (const t of issueTypes.data ?? []) {
+      if (!groups.has(t.category)) groups.set(t.category, []);
+      groups.get(t.category)!.push(t);
+    }
+    return groups;
+  }, [issueTypes.data]);
+  const suppressedCount = (issueTypes.data ?? []).filter((t) => t.suppressed).length;
+
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (key: string) =>
     setExpanded((prev) => {
@@ -311,12 +359,12 @@ export default function Issues() {
   const pending = ack.isPending || unack.isPending || massAck.isPending;
 
   const { active, acknowledged } = useMemo(() => {
-    const all = issues.data?.issues ?? [];
+    const all = (issues.data?.issues ?? []).filter((i) => !selectedKind || i.kind === selectedKind);
     return {
       active: all.filter((i) => !i.acknowledged),
       acknowledged: all.filter((i) => i.acknowledged),
     };
-  }, [issues.data]);
+  }, [issues.data, selectedKind]);
 
   // Select-all reflects the current Active list; toggling clears or fills it.
   const allSelected = active.length > 0 && active.every((i) => selected.has(i.issueKey));
@@ -501,11 +549,23 @@ export default function Issues() {
       <p className="muted">
         Every problem currently detected across the fleet — device reachability, interface health, spanning
         tree and link aggregation. Acknowledge an issue to move it to the list below; it re-appears if the
-        condition clears and later recurs.
+        condition clears and later recurs. Suppress an entire type from the panel below to hide it
+        everywhere.
       </p>
       {issues.isError && <p className="error">Failed to load issues: {String(issues.error)}</p>}
-      {(ack.isError || unack.isError || massAck.isError) && (
-        <p className="error">{String(ack.error ?? unack.error ?? massAck.error)}</p>
+      {(ack.isError || unack.isError || massAck.isError || suppress.isError || unsuppress.isError) && (
+        <p className="error">{String(ack.error ?? unack.error ?? massAck.error ?? suppress.error ?? unsuppress.error)}</p>
+      )}
+
+      {selectedKind && (
+        <div className="issue-filter-active">
+          <span>
+            Showing only <strong>{selectedKind}</strong>
+          </span>
+          <button className="secondary" onClick={() => setSelectedKind(null)}>
+            Clear filter
+          </button>
+        </div>
       )}
 
       <div className="section-head">
@@ -551,6 +611,59 @@ export default function Issues() {
         {acknowledged.length > 0 && <span className="badge badge-muted">{acknowledged.length}</span>}
       </h2>
       {section(acknowledged, 'Nothing acknowledged.')}
+
+      {/* Management/filter lives at the bottom, collapsed by default, so it
+          doesn't cost screen space when /issues is embedded in a dashboard. */}
+      <div className="panel issue-types-panel" style={{ marginTop: 24 }}>
+        <button
+          className="section-toggle"
+          onClick={() => setTypesOpen((o) => !o)}
+          aria-expanded={typesOpen}
+        >
+          Issue types (manage / filter){' '}
+          {suppressedCount > 0 && <span className="badge badge-muted">{suppressedCount} suppressed</span>}{' '}
+          {typesOpen ? '▾' : '▸'}
+        </button>
+        {typesOpen && (
+          <div className="issue-types">
+            {issueTypes.isLoading && <p className="muted">Loading types…</p>}
+            {CATEGORY_ORDER.map((cat) => {
+              const list = typesByCategory.get(cat);
+              if (!list || list.length === 0) return null;
+              return (
+                <div key={cat} className="issue-type-group">
+                  <h3 className="issue-type-cat">{CATEGORY_LABEL[cat]}</h3>
+                  {list.map((t) => {
+                    const isFilter = selectedKind === t.kind;
+                    const count = countByKind.get(t.kind) ?? 0;
+                    return (
+                      <div key={t.kind} className={`issue-type-row ${t.suppressed ? 'suppressed' : ''}`}>
+                        <button
+                          className={`chip ${isFilter ? 'chip-on' : ''}`}
+                          title={t.description}
+                          disabled={t.suppressed}
+                          aria-pressed={isFilter}
+                          onClick={() => setSelectedKind(isFilter ? null : t.kind)}
+                        >
+                          {t.title}
+                        </button>
+                        <span className="issue-type-count muted">{t.suppressed ? '—' : count}</span>
+                        <button
+                          className="secondary issue-type-toggle"
+                          disabled={suppress.isPending || unsuppress.isPending}
+                          onClick={() => onToggleSuppress(t)}
+                        >
+                          {t.suppressed ? 'Suppressed — restore' : 'Suppress'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </>
   );
 }

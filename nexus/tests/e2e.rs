@@ -1447,6 +1447,90 @@ fn mock_mode_serves_network(db: DbHarness) {
 }
 
 // ---------------------------------------------------------------------------
+// 6b. Issue-type suppression: hide an entire kind everywhere, and confirm the
+// per-device issue list is fed by the same (suppression-aware) derivation.
+// Uses the mock network, whose single-member port-channels reliably raise a
+// lag:single-member issue.
+// ---------------------------------------------------------------------------
+e2e_both!(issue_type_suppression_hides_a_kind);
+fn issue_type_suppression_hides_a_kind(db: DbHarness) {
+    let nexus = Nexus::builder(db.db_url())
+        .arg("mock")
+        .poller(true)
+        .poll_loop_msecs(300)
+        .lagpoller(true)
+        .env("JASPY_MOCK_SNMPBOT_PORT", &free_port().to_string())
+        .env("JASPY_DISCOVERY_INTERVAL_SECS", "5")
+        // Tight scan cadence so the shared snapshot refreshes quickly (the
+        // read-through also rebuilds on demand after an invalidation).
+        .env("JASPY_ISSUE_SCAN_SECS", "1")
+        .start();
+
+    const KIND: &str = "lag:single-member";
+    let find_issue = |n: &Nexus| -> Option<serde_json::Value> {
+        n.get_json("/api/v1/issues")["issues"]
+            .as_array()
+            .and_then(|a| a.iter().find(|i| i["kind"] == KIND).cloned())
+    };
+
+    // The mock network's single-member uplink surfaces as a lag:single-member
+    // issue once discovery + the lagpoller have run.
+    assert!(
+        wait_until(Duration::from_secs(45), || find_issue(&nexus).is_some()),
+        "expected a {} issue from the mock network; log:\n{}", KIND, nexus.log()
+    );
+    let fqdn = find_issue(&nexus).unwrap()["fqdn"].as_str().unwrap().to_string();
+
+    // Consolidation: the same issue appears in that device's detail payload,
+    // fed by the shared derivation.
+    let detail = nexus.get_json(&format!("/api/v1/devices/{}", fqdn));
+    assert!(
+        detail["issues"].as_array().unwrap().iter().any(|i| i["kind"] == KIND),
+        "device detail should carry the {} issue: {}", KIND, detail["issues"]
+    );
+
+    // The kind is in the catalog and starts un-suppressed.
+    let types = nexus.get_json("/api/v1/issues/types");
+    assert!(
+        types.as_array().unwrap().iter().any(|t| t["kind"] == KIND && t["suppressed"] == false),
+        "types catalog should list {} as not suppressed: {}", KIND, types
+    );
+
+    // Suppress it.
+    let resp = nexus.post_json("/api/v1/issues/suppress", &json!({ "kind": KIND }));
+    assert!(resp.status().is_success(), "suppress should succeed");
+
+    // Gone from both the fleet list and the device detail, and flagged in the
+    // catalog. Invalidation is immediate; allow a beat for the next read.
+    assert!(
+        wait_until(Duration::from_secs(10), || find_issue(&nexus).is_none()),
+        "suppressed {} should vanish from /api/v1/issues", KIND
+    );
+    let detail = nexus.get_json(&format!("/api/v1/devices/{}", fqdn));
+    assert!(
+        !detail["issues"].as_array().unwrap().iter().any(|i| i["kind"] == KIND),
+        "suppressed {} should vanish from the device detail too", KIND
+    );
+    let types = nexus.get_json("/api/v1/issues/types");
+    assert!(
+        types.as_array().unwrap().iter().any(|t| t["kind"] == KIND && t["suppressed"] == true),
+        "catalog should mark {} suppressed: {}", KIND, types
+    );
+
+    // An unknown kind is rejected.
+    let resp = nexus.post_json("/api/v1/issues/suppress", &json!({ "kind": "lag:not-a-real-kind" }));
+    assert_eq!(resp.status().as_u16(), 400, "unknown kind should 400");
+
+    // Unsuppress → the issue comes back.
+    let resp = nexus.post_json("/api/v1/issues/unsuppress", &json!({ "kind": KIND }));
+    assert!(resp.status().is_success(), "unsuppress should succeed");
+    assert!(
+        wait_until(Duration::from_secs(10), || find_issue(&nexus).is_some()),
+        "unsuppressed {} should reappear in /api/v1/issues", KIND
+    );
+}
+
+// ---------------------------------------------------------------------------
 // 7. Mock mode default database: sqlite temp file, zero prerequisites
 // ---------------------------------------------------------------------------
 #[test]

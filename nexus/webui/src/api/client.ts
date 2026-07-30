@@ -12,6 +12,8 @@ import type {
   Issue,
   IssuesResponse,
   IssueAckRequest,
+  IssueType,
+  IssueTypeRequest,
   ResetResult,
   StpTree,
   StpVlanSummary,
@@ -90,6 +92,11 @@ export const api = {
     request<Issue>('/api/v1/issues/ack', { method: 'POST', body: JSON.stringify(body) }),
   unackIssue: (body: IssueAckRequest) =>
     request<void>('/api/v1/issues/unack', { method: 'POST', body: JSON.stringify(body) }),
+  issueTypes: () => request<IssueType[]>('/api/v1/issues/types'),
+  suppressIssueType: (body: IssueTypeRequest) =>
+    request<IssueType[]>('/api/v1/issues/suppress', { method: 'POST', body: JSON.stringify(body) }),
+  unsuppressIssueType: (body: IssueTypeRequest) =>
+    request<IssueType[]>('/api/v1/issues/unsuppress', { method: 'POST', body: JSON.stringify(body) }),
 };
 
 // WebSocket endpoint for live log tailing (backlog replay + push). Relative to

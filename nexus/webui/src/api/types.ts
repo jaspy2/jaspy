@@ -286,6 +286,9 @@ export interface DeviceDetail {
   ipAddresses: string[];
   // Switch-wide PoE budget per PSE group; empty for non-PoE devices.
   poeBudget: PoeBudget[];
+  // Derived issues affecting this device, from the same fleet-wide derivation
+  // that backs /issues (same infra-gating + suppression). Empty when healthy.
+  issues: Issue[];
 }
 
 // One PSE group's power budget for the device-wide PoE summary (watts).
@@ -511,4 +514,19 @@ export interface IssuesResponse {
 export interface IssueAckRequest {
   issueKey: string;
   note?: string | null;
+}
+
+// One known issue type from the catalog (GET /api/v1/issues/types), with its
+// current suppression state. Suppressing a type hides every instance of that
+// `kind` from all issue views (distinct from acknowledging one instance).
+export interface IssueType {
+  kind: string; // matches Issue.kind — the suppression granularity
+  category: 'device' | 'poe' | 'interface' | 'stp' | 'lag';
+  title: string;
+  description: string;
+  suppressed: boolean;
+}
+
+export interface IssueTypeRequest {
+  kind: string;
 }

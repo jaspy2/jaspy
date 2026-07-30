@@ -561,6 +561,12 @@ pub struct ApiDeviceDetail {
     // non-PoE devices. Additive: default-deserialized for older payloads.
     #[serde(default)]
     pub poe_budget: Vec<ApiPoeBudget>,
+    // Derived issues affecting this device, filtered from the same shared
+    // fleet-wide derivation that backs /api/v1/issues (so infra-port gating and
+    // type suppression apply identically). Empty when the device is healthy.
+    // Additive: default-deserialized for older payloads.
+    #[serde(default)]
+    pub issues: Vec<ApiIssue>,
 }
 
 // One PSE group's power budget for the device-wide PoE summary. Watts are
@@ -927,4 +933,23 @@ pub struct ApiIssueAckRequest {
     pub issue_key: String,
     #[serde(default)]
     pub note: Option<String>,
+}
+
+// GET /api/v1/issues/types: one known issue type from the catalog, with its
+// current suppression state. Suppressed types are hidden from every issue view.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiIssueType {
+    pub kind: String,     // matches ApiIssue::kind (the suppression granularity)
+    pub category: String, // "device" | "poe" | "interface" | "stp" | "lag"
+    pub title: String,
+    pub description: String,
+    pub suppressed: bool,
+}
+
+// Request body for POST /api/v1/issues/suppress and /unsuppress.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiIssueTypeRequest {
+    pub kind: String,
 }

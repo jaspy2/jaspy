@@ -266,6 +266,9 @@ textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   margin-top: 4px;
   white-space: pre-wrap;
 }
+.issue-line { color: var(--muted); font-size: 0.9em; margin: 4px 0 0; }
+.panel.issue-acked { opacity: 0.6; }
+.section-suffix { margin-left: auto; font-size: 13px; }
 
 button, a.button {
   background: var(--accent);
@@ -469,6 +472,34 @@ button.health-toggle:hover:not(:disabled) { text-decoration: underline; }
 .chip-off { background: transparent; color: var(--muted); text-decoration: line-through; }
 .chip:hover:not(:disabled) { filter: brightness(1.1); }
 .chip-off:hover { filter: none; background: var(--muted-bg); }
+.chip:disabled { cursor: default; opacity: 0.5; }
+
+/* Issue-types management + filter panel on /issues. */
+.issue-types-panel { margin-bottom: 20px; }
+.issue-filter-active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--muted-bg);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.issue-types { margin-top: 12px; display: flex; flex-direction: column; gap: 16px; }
+.issue-type-group { display: flex; flex-direction: column; gap: 4px; }
+.issue-type-cat {
+  margin: 0 0 2px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.issue-type-row { display: flex; align-items: center; gap: 10px; }
+.issue-type-row.suppressed .chip { text-decoration: line-through; opacity: 0.6; }
+.issue-type-count { min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.issue-type-toggle { margin-left: auto; font-size: 12px; padding: 2px 10px; }
 .iface-detail-heading {
   color: var(--muted);
   font-size: 12px;

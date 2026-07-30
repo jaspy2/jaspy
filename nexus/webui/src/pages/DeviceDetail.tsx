@@ -680,6 +680,7 @@ export default function DeviceDetail() {
   const poeBudget = detail.data.poeBudget ?? [];
   const vlanNames = new Map((detail.data.vlans ?? []).map((v) => [v.id, v.name]));
   const portChannels = detail.data.portChannels ?? [];
+  const deviceIssues = detail.data.issues ?? [];
   const sensors = entity.data?.sensors ?? [];
   const stp = entity.data?.stp ?? [];
   const sortedInterfaces = [...interfaces].sort(makeCmp((i) => ifaceSortVal(i, ifaceSort), ifaceAsc));
@@ -786,6 +787,31 @@ export default function DeviceDetail() {
           )}
         </div>
       </div>
+
+      {deviceIssues.length > 0 && (
+        <Section
+          title={`Issues (${deviceIssues.length})`}
+          suffix={
+            <span className="section-suffix">
+              <Link to="/issues">open Issues →</Link>
+            </span>
+          }
+        >
+          <div className="item-list">
+            {deviceIssues.map((issue) => (
+              <div key={issue.issueKey} className={`panel ${issue.acknowledged ? 'issue-acked' : ''}`}>
+                <span className="item-title">
+                  <HealthBadge severity={issue.severity} label={issue.severity === 'bad' ? '⚠ critical' : '⚠ warning'} />
+                  <span>{issue.title}</span>
+                  {issue.subjectLabel && <span className="muted">{issue.subjectLabel}</span>}
+                  {issue.acknowledged && <span className="badge badge-muted">acknowledged</span>}
+                </span>
+                <p className="issue-line">{issue.description}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {portChannels.length > 0 && (
         <Section title={`Port-channels (${portChannels.length})`}>
