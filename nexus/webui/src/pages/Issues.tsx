@@ -92,6 +92,8 @@ function explainKind(kind: string): string | null {
       return 'A PoE power supply is not operational — ports it feeds cannot deliver power.';
     case 'lag:member-link-down':
       return 'One member of this LACP uplink bundle is physically down while another is still up — the uplink keeps working but has lost its redundancy. The verdict below names the most likely loose cable end.';
+    case 'iface-flapping':
+      return 'This port keeps going down and back up. If it connects to another switch (see the far end below), a flapping inter-switch link is usually a bad cable, a dirty/failing SFP, or a duplex/speed mismatch — check both ends.';
     case 'lag:speed-mismatch':
       return 'Members of this port-channel are up but running at different link speeds — usually a faulty cable or a duplex/auto-negotiation fault forcing one leg to a lower speed. The bundle still forms, but throughput is capped and traffic hashes unevenly. Check the slow member’s cabling and port settings.';
   }

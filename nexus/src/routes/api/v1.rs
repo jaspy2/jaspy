@@ -667,36 +667,71 @@ pub fn collect_issues(
     // lag_store-then-connection order as the rest and never nests under imds.
     let lag_members = lag_store.lock().map(|s| s.lag_members()).unwrap_or_default();
     let mut infra_ports: HashMap<String, HashSet<i32>> = HashMap::new();
+    // Resolved far end per infra port (ifindex -> (monitored peer, raw CDP
+    // neighbour)), used to enrich the flapping issue with the other end of the
+    // link. Built here — before the IMDS lock — because it needs DB topology,
+    // and only for infra ports so the extra peer lookups stay bounded.
+    let mut iface_conns: HashMap<String, HashMap<i32, (Option<models::json::ApiInterfaceConnection>, Option<models::json::ApiCdpNeighbor>)>> = HashMap::new();
     for device in devices.iter() {
         let fqdn = format!("{}.{}", device.name, device.dns_domain);
         let interfaces = device.interfaces(connection);
         let ids: Vec<i32> = interfaces.iter().map(|i| i.id).collect();
-        // Interface ids a monitored neighbour points at (links are stored
-        // one-directionally), mirroring the /devices reverse-link union.
-        let mut reverse: HashSet<i32> = HashSet::new();
+        // Interfaces a monitored neighbour points at (links are stored
+        // one-directionally), keyed by target id → the neighbour's fqdn + port,
+        // mirroring the /devices reverse-link union.
+        let mut reverse: HashMap<i32, models::json::ApiInterfaceConnection> = HashMap::new();
         for remote in models::dbo::Interface::pointing_at(connection, &ids) {
+            let remote_device = remote.device(connection);
+            let conn = models::json::ApiInterfaceConnection {
+                fqdn: format!("{}.{}", remote_device.name, remote_device.dns_domain),
+                interface: remote.name(),
+            };
             for t in [remote.connected_interface, remote.virtual_connection] {
                 if let Some(t) = t {
                     if ids.contains(&t) {
-                        reverse.insert(t);
+                        reverse.entry(t).or_insert_with(|| conn.clone());
                     }
                 }
             }
         }
         let dev_lag = lag_members.get(&fqdn);
         let mut set = HashSet::new();
+        let mut conns = HashMap::new();
         for iface in interfaces.iter() {
             let idx = iface.index;
             let is_lag = dev_lag.map_or(false, |aggs| aggs.values().any(|m| m.contains(&(idx as i64))));
             let has_link = iface.connected_interface.is_some()
                 || iface.virtual_connection.is_some()
-                || reverse.contains(&iface.id);
+                || reverse.contains_key(&iface.id);
             let has_cdp = iface.cdp_device_id.as_deref().map_or(false, |s| !s.trim().is_empty());
-            if is_lag || has_link || has_cdp {
-                set.insert(idx);
+            if !(is_lag || has_link || has_cdp) {
+                continue;
             }
+            set.insert(idx);
+            // Resolve the far end: forward monitored peer, else the reverse link,
+            // else the raw CDP neighbour (only when no monitored peer, so it
+            // renders as plain text rather than a link). Mirrors device_detail.
+            let monitored = iface
+                .peer_interface(connection)
+                .map(|peer| {
+                    let pd = peer.device(connection);
+                    models::json::ApiInterfaceConnection {
+                        fqdn: format!("{}.{}", pd.name, pd.dns_domain),
+                        interface: peer.name(),
+                    }
+                })
+                .or_else(|| reverse.get(&iface.id).cloned());
+            let cdp = match (&monitored, &iface.cdp_device_id) {
+                (None, Some(device_id)) if !device_id.trim().is_empty() => Some(models::json::ApiCdpNeighbor {
+                    device_id: device_id.clone(),
+                    device_port: iface.cdp_device_port.clone().filter(|s| !s.trim().is_empty()),
+                }),
+                _ => None,
+            };
+            conns.insert(idx, (monitored, cdp));
         }
-        infra_ports.insert(fqdn, set);
+        infra_ports.insert(fqdn.clone(), set);
+        iface_conns.insert(fqdn, conns);
     }
 
     // --- Device down + per-interface health (one IMDS lock) ---
@@ -715,11 +750,17 @@ pub fn collect_issues(
                     out.push(issue);
                 }
                 let infra = infra_ports.get(&fqdn);
+                let dev_conns = iface_conns.get(&fqdn);
                 for (ifindex, name) in names.iter() {
                     if let Some(summary) = imds_guard.interface_health(&fqdn, *ifindex, now) {
                         let health = api_interface_health(summary);
                         let is_infra = infra.map_or(false, |s| s.contains(ifindex));
-                        out.extend(issues::interface_health_issues(&fqdn, *ifindex, name, &health, is_infra));
+                        let far = dev_conns.and_then(|c| c.get(ifindex));
+                        out.extend(issues::interface_health_issues(
+                            &fqdn, *ifindex, name, &health, is_infra,
+                            far.and_then(|(m, _)| m.as_ref()),
+                            far.and_then(|(_, c)| c.as_ref()),
+                        ));
                     }
                 }
             }

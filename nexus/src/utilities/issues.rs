@@ -288,7 +288,20 @@ pub fn poe_budget_issues(fqdn: &str, budgets: &[crate::collectors::poe::PoeBudge
 // entirely — its flaps/errors/discards are end-host noise, not a fleet problem,
 // and they otherwise drown out the issues that matter. The caller decides the
 // flag; see collect_issues.
-pub fn interface_health_issues(fqdn: &str, ifindex: i32, iface_name: &str, h: &json::ApiInterfaceHealth, is_infrastructure_port: bool) -> Vec<DerivedIssue> {
+//
+// `connected_to`/`cdp_neighbor` are the interface's resolved far end (a
+// monitored peer, else a raw CDP/LLDP neighbour); the flapping issue uses them
+// to name the other side of the link so an operator can see it's a
+// switch-to-switch link and jump to the far-end device.
+pub fn interface_health_issues(
+    fqdn: &str,
+    ifindex: i32,
+    iface_name: &str,
+    h: &json::ApiInterfaceHealth,
+    is_infrastructure_port: bool,
+    connected_to: Option<&json::ApiInterfaceConnection>,
+    cdp_neighbor: Option<&json::ApiCdpNeighbor>,
+) -> Vec<DerivedIssue> {
     if !is_infrastructure_port || h.severity.is_none() {
         return Vec::new();
     }
@@ -307,16 +320,38 @@ pub fn interface_health_issues(fqdn: &str, ifindex: i32, iface_name: &str, h: &j
 
     let mut out = Vec::new();
     if h.flap_count > 0 {
+        let mut detail = vec![
+            pair("flap count", h.flap_count.to_string()),
+            pair("last flap", h.last_flap_secs_ago.map(|s| format!("{}s ago", s)).unwrap_or_else(|| "—".to_string())),
+            pair("window", format!("{}s", h.flap_window_secs)),
+        ];
+        // The far end, so the operator can see whether this is a switch-to-switch
+        // link (and jump to the other device). A monitored peer becomes a link;
+        // an unmonitored CDP/LLDP neighbour is shown as plain text.
+        if let Some(peer) = connected_to {
+            detail.push(verdict_row(
+                "verdict",
+                format!(
+                    "This is an inter-switch link to {} ({}). A flapping link between two switches is usually a bad cable, a dirty/failing SFP, or a duplex/speed mismatch — check both ends.",
+                    hostname_of(&peer.fqdn), peer.interface
+                ),
+                "bad",
+            ));
+            detail.push(device_row("connected to", peer.fqdn.clone()));
+            detail.push(iface_row("far-end port", peer.interface.clone(), None));
+        } else if let Some(cdp) = cdp_neighbor {
+            let neighbor = match &cdp.device_port {
+                Some(port) if !port.trim().is_empty() => format!("{} ({})", cdp.device_id, port),
+                _ => cdp.device_id.clone(),
+            };
+            detail.push(pair("neighbor (CDP/LLDP)", neighbor));
+        }
         out.push(mk(
             "iface-flapping",
             SEV_BAD,
             "Interface flapping",
             format!("{} {} flapped {} time(s) in the last {}s", host, iface_name, h.flap_count, h.flap_window_secs),
-            vec![
-                pair("flap count", h.flap_count.to_string()),
-                pair("last flap", h.last_flap_secs_ago.map(|s| format!("{}s ago", s)).unwrap_or_else(|| "—".to_string())),
-                pair("window", format!("{}s", h.flap_window_secs)),
-            ],
+            detail,
         ));
     }
     if h.stale {
@@ -1114,7 +1149,7 @@ mod tests {
 
     #[test]
     fn healthy_interface_yields_nothing() {
-        assert!(interface_health_issues("sw1.example.com", 1, "Gi1/0/1", &health(None), true).is_empty());
+        assert!(interface_health_issues("sw1.example.com", 1, "Gi1/0/1", &health(None), true, None, None).is_empty());
     }
 
     // A fully tripped health summary used by several tests below.
@@ -1134,7 +1169,7 @@ mod tests {
     #[test]
     fn interface_signals_split_into_one_issue_each() {
         let h = all_signals_tripped();
-        let issues = interface_health_issues("sw1.example.com", 10001, "Gi1/0/1", &h, true);
+        let issues = interface_health_issues("sw1.example.com", 10001, "Gi1/0/1", &h, true, None, None);
         let kinds: HashSet<&str> = issues.iter().map(|i| i.kind.as_str()).collect();
         assert!(kinds.contains("iface-flapping"));
         assert!(kinds.contains("iface-errors"));
@@ -1154,17 +1189,45 @@ mod tests {
         // Same tripped signals, but a non-infrastructure port (no LAG, no
         // CDP/LLDP neighbour): every signal is silenced as end-host noise.
         let h = all_signals_tripped();
-        assert!(interface_health_issues("sw1.example.com", 10001, "Gi1/0/1", &h, false).is_empty());
+        assert!(interface_health_issues("sw1.example.com", 10001, "Gi1/0/1", &h, false, None, None).is_empty());
     }
 
     #[test]
     fn stale_interface_is_bad() {
         let mut h = health(Some("bad"));
         h.stale = true;
-        let issues = interface_health_issues("sw1.example.com", 1, "Gi1", &h, true);
+        let issues = interface_health_issues("sw1.example.com", 1, "Gi1", &h, true, None, None);
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].kind, "iface-stale");
         assert_eq!(issues[0].severity, SEV_BAD);
+    }
+
+    #[test]
+    fn flapping_issue_names_the_far_end() {
+        let mut h = health(Some("bad"));
+        h.flap_count = 4;
+
+        // A monitored peer → a Device row (renders as a link) plus the far-end
+        // port, so the operator can jump to the other switch.
+        let peer = json::ApiInterfaceConnection { fqdn: "dist1.example.com".to_string(), interface: "Te1/1/3".to_string() };
+        let issues = interface_health_issues("a02.example.com", 10101, "Te1/1/1", &h, true, Some(&peer), None);
+        let flap = issues.iter().find(|i| i.kind == "iface-flapping").unwrap();
+        let far = flap.detail.iter().find_map(|d| match &d.value {
+            ApiIssueDetailValue::Device { fqdn, .. } => Some(fqdn.as_str()),
+            _ => None,
+        });
+        assert_eq!(far, Some("dist1.example.com"));
+        assert!(flap.detail.iter().any(|d| d.label == "far-end port"));
+
+        // An unmonitored CDP/LLDP neighbour → plain text, no Device link.
+        let cdp = json::ApiCdpNeighbor { device_id: "core-sw9".to_string(), device_port: Some("Gi0/1".to_string()) };
+        let issues = interface_health_issues("a02.example.com", 10101, "Te1/1/1", &h, true, None, Some(&cdp));
+        let flap = issues.iter().find(|i| i.kind == "iface-flapping").unwrap();
+        assert!(!flap.detail.iter().any(|d| matches!(d.value, ApiIssueDetailValue::Device { .. })));
+        assert_eq!(
+            detail_text(flap, "neighbor (CDP/LLDP)"),
+            Some("core-sw9 (Gi0/1)")
+        );
     }
 
     #[test]
