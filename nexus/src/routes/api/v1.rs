@@ -246,6 +246,8 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
     // Cumulative raw counters since the device's last counter reset:
     // (in_octets, out_octets, in_errors, out_errors, out_discards).
     let mut octets: std::collections::HashMap<i32, (Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>)> = std::collections::HashMap::new();
+    // Admin/err-disable overlay: (admin_up, err_disabled, cause, recover_secs).
+    let mut estate: std::collections::HashMap<i32, (Option<bool>, bool, Option<String>, Option<i32>)> = std::collections::HashMap::new();
     let mut health: std::collections::HashMap<i32, models::json::ApiInterfaceHealth> = std::collections::HashMap::new();
     if let Ok(ref mut imds) = imds.inner().lock() {
         if let Some(device_metric) = imds.get_device(&device_fqdn) {
@@ -255,6 +257,12 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
                     None => interface_metric.speed,
                 };
                 live.insert(*ifindex, (interface_metric.up, reported_speed));
+                estate.insert(*ifindex, (
+                    interface_metric.admin_up,
+                    interface_metric.err_disabled,
+                    interface_metric.err_disable_cause.clone(),
+                    interface_metric.err_disable_recover_secs,
+                ));
                 octets.insert(*ifindex, (
                     interface_metric.in_octets,
                     interface_metric.out_octets,
@@ -342,6 +350,8 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             _ => None,
         };
         let (up, speed) = live.get(&interface.index).cloned().unwrap_or((None, None));
+        let (admin_up, err_disabled, err_disable_cause, err_disable_recover_secs) =
+            estate.get(&interface.index).cloned().unwrap_or((None, false, None, None));
         let (in_octets, out_octets, in_errors, out_errors, out_discards) =
             octets.get(&interface.index).cloned().unwrap_or((None, None, None, None, None));
         let interface_vlans = vlans.get(&(interface.index as i64));
@@ -362,6 +372,10 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
             cdp_neighbor: cdp_neighbor,
             up: up,
             speed: speed,
+            admin_up: admin_up,
+            err_disabled: err_disabled,
+            err_disable_cause: err_disable_cause,
+            err_disable_recover_secs: err_disable_recover_secs,
             in_octets: in_octets,
             out_octets: out_octets,
             in_errors: in_errors,
@@ -742,7 +756,11 @@ pub fn collect_issues(
             // before interface_health() re-borrows the guard.
             let snapshot = imds_guard.get_device(&fqdn).map(|dm| {
                 let ssp = if dm.last_poll > 0 { Some(now.saturating_sub(dm.last_poll) / 1000) } else { None };
-                let names: Vec<(i32, String)> = dm.interfaces.iter().map(|(idx, m)| (*idx, m.name.clone())).collect();
+                let names: Vec<(i32, String, bool, Option<String>, Option<i32>)> = dm
+                    .interfaces
+                    .iter()
+                    .map(|(idx, m)| (*idx, m.name.clone(), m.err_disabled, m.err_disable_cause.clone(), m.err_disable_recover_secs))
+                    .collect();
                 (dm.up, ssp, names)
             });
             if let Some((up, ssp, names)) = snapshot {
@@ -751,15 +769,24 @@ pub fn collect_issues(
                 }
                 let infra = infra_ports.get(&fqdn);
                 let dev_conns = iface_conns.get(&fqdn);
-                for (ifindex, name) in names.iter() {
+                for (ifindex, name, err_disabled, err_cause, err_recover) in names.iter() {
+                    let far = dev_conns.and_then(|c| c.get(ifindex));
                     if let Some(summary) = imds_guard.interface_health(&fqdn, *ifindex, now) {
                         let health = api_interface_health(summary);
                         let is_infra = infra.map_or(false, |s| s.contains(ifindex));
-                        let far = dev_conns.and_then(|c| c.get(ifindex));
                         out.extend(issues::interface_health_issues(
                             &fqdn, *ifindex, name, &health, is_infra,
                             far.and_then(|(m, _)| m.as_ref()),
                             far.and_then(|(_, c)| c.as_ref()),
+                        ));
+                    }
+                    // Err-disabled fires on ANY port (unlike counter-window
+                    // health, which is gated to infrastructure ports): a switch
+                    // error-disabling an access port is a real, actionable fault.
+                    if *err_disabled {
+                        out.push(issues::err_disabled_issue(
+                            &fqdn, *ifindex, name, err_cause.as_deref(), *err_recover,
+                            far.and_then(|(m, _)| m.as_ref()),
                         ));
                     }
                 }

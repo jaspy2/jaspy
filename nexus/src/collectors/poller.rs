@@ -48,6 +48,13 @@ fn try_get_updown_as_bool(val: Option<&SNMPBotResultEntryObjectValue>) -> Option
     return None;
 }
 
+fn try_get_string(val: Option<&SNMPBotResultEntryObjectValue>) -> Option<String> {
+    if let Some(SNMPBotResultEntryObjectValue::Str(val)) = val {
+        return Some(val.clone());
+    }
+    return None;
+}
+
 fn interface_report_from_entry(if_index: &i32, objects: &HashMap<String, SNMPBotResultEntryObjectValue>) -> models::json::InterfaceMonitorInterfaceReport {
     models::json::InterfaceMonitorInterfaceReport {
         if_index: *if_index,
@@ -64,6 +71,13 @@ fn interface_report_from_entry(if_index: &i32, objects: &HashMap<String, SNMPBot
         out_discards: try_get_u64(objects.get("IF-MIB::ifOutDiscards")),
         up: try_get_updown_as_bool(objects.get("IF-MIB::ifOperStatus")),
         speed: try_get_i32(objects.get("IF-MIB::ifHighSpeed")),
+        admin_up: try_get_updown_as_bool(objects.get("IF-MIB::ifAdminStatus")),
+        // A row in cErrDisableIfStatusTable exists only for an error-disabled
+        // port, so the cause's presence is the err-disabled flag; the enum
+        // arrives as its name string (e.g. "bpduGuard").
+        err_disabled: Some(objects.contains_key("CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusCause")),
+        err_disable_cause: try_get_string(objects.get("CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusCause")),
+        err_disable_recover_secs: try_get_i32(objects.get("CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTimeToRecover")),
     }
 }
 
@@ -203,6 +217,27 @@ mod tests {
         assert_eq!(report.in_octets, None);
         assert_eq!(report.up, None);
         assert_eq!(report.speed, None);
+        // No err-disable table row merged in => an authoritative "not disabled".
+        assert_eq!(report.err_disabled, Some(false));
+        assert_eq!(report.err_disable_cause, None);
+        assert_eq!(report.admin_up, None);
+    }
+
+    #[test]
+    fn interface_report_reads_err_disable_and_admin_status() {
+        // A row from cErrDisableIfStatusTable merged into the ifIndex map (the
+        // ENUM cause arrives as its name string) marks the port err-disabled.
+        let mut objects = HashMap::new();
+        objects.insert("IF-MIB::ifOperStatus".to_string(), SNMPBotResultEntryObjectValue::Str("down".to_string()));
+        objects.insert("IF-MIB::ifAdminStatus".to_string(), SNMPBotResultEntryObjectValue::Str("up".to_string()));
+        objects.insert("CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusCause".to_string(), SNMPBotResultEntryObjectValue::Str("bpduGuard".to_string()));
+        objects.insert("CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTimeToRecover".to_string(), SNMPBotResultEntryObjectValue::Uint64(39));
+        let report = interface_report_from_entry(&9, &objects);
+        assert_eq!(report.up, Some(false));
+        assert_eq!(report.admin_up, Some(true));
+        assert_eq!(report.err_disabled, Some(true));
+        assert_eq!(report.err_disable_cause.as_deref(), Some("bpduGuard"));
+        assert_eq!(report.err_disable_recover_secs, Some(39));
     }
 }
 
@@ -285,6 +320,10 @@ fn poll_device(snmp: &SnmpSource, device: &PollDevice) -> Option<(models::json::
     // ifTable before ifXTable: first writer wins on object-key collisions.
     let o1 = snmp_query(&device.fqdn, &mut stats, snmp, &host, "IF-MIB::ifTable");
     let o2 = snmp_query(&device.fqdn, &mut stats, snmp, &host, "IF-MIB::ifXTable");
+    // Authoritative err-disabled state (Cisco). The table is empty on a healthy
+    // switch and absent on platforms that don't implement it, so a failure here
+    // must not poison the counter poll — its outcome is deliberately ignored.
+    snmp_query(&device.fqdn, &mut stats, snmp, &host, "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTable");
     let timed_out = o1 == SnmpOutcome::Timeout || o2 == SnmpOutcome::Timeout;
 
     let mut report = models::json::InterfaceMonitorReport { device_fqdn: device.fqdn.clone(), interfaces: Vec::new() };

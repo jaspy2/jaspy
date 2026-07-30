@@ -22,6 +22,16 @@ pub struct InterfaceMetrics {
     pub up: Option<bool>,
     pub speed: Option<i32>,
 
+    // ifAdminStatus (None = not yet learned). Lets the UI tell an admin-shut
+    // port apart from a link-down one.
+    pub admin_up: Option<bool>,
+    // Authoritative Cisco err-disable state: whether the switch has
+    // error-disabled the port, the cause (enum name, e.g. "bpduGuard"), and the
+    // seconds until auto-recovery. Populated from CISCO-ERR-DISABLE-MIB.
+    pub err_disabled: bool,
+    pub err_disable_cause: Option<String>,
+    pub err_disable_recover_secs: Option<i32>,
+
     pub counter_violations: u64,
 }
 
@@ -50,6 +60,10 @@ impl InterfaceMetrics {
         self.out_discards = None;
         self.up = None;
         self.speed = None;
+        self.admin_up = None;
+        self.err_disabled = false;
+        self.err_disable_cause = None;
+        self.err_disable_recover_secs = None;
         self.counter_violations = 0;
     }
 }

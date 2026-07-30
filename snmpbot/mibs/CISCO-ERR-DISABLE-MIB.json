@@ -1,0 +1,101 @@
+{
+  "Name": "CISCO-ERR-DISABLE-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.548",
+  "Objects": [
+    {
+      "Name": "cErrDisableIfStatusVlanIndex",
+      "NotAccessible": true,
+      "OID": ".1.3.6.1.4.1.9.9.548.1.3.1.1.1",
+      "Syntax": "Integer32"
+    },
+    {
+      "Name": "cErrDisableIfStatusCause",
+      "OID": ".1.3.6.1.4.1.9.9.548.1.3.1.1.2",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {"Name": "udld", "Value": 1},
+        {"Name": "bpduGuard", "Value": 2},
+        {"Name": "channelMisconfig", "Value": 3},
+        {"Name": "pagpFlap", "Value": 4},
+        {"Name": "dtpFlap", "Value": 5},
+        {"Name": "linkFlap", "Value": 6},
+        {"Name": "l2ptGuard", "Value": 7},
+        {"Name": "dot1xSecurityViolation", "Value": 8},
+        {"Name": "portSecurityViolation", "Value": 9},
+        {"Name": "gbicInvalid", "Value": 10},
+        {"Name": "dhcpRateLimit", "Value": 11},
+        {"Name": "unicastFlood", "Value": 12},
+        {"Name": "vmps", "Value": 13},
+        {"Name": "stormControl", "Value": 14},
+        {"Name": "inlinePower", "Value": 15},
+        {"Name": "arpInspection", "Value": 16},
+        {"Name": "portLoopback", "Value": 17},
+        {"Name": "packetBuffer", "Value": 18},
+        {"Name": "macLimit", "Value": 19},
+        {"Name": "linkMonitorFailure", "Value": 20},
+        {"Name": "oamRemoteFailure", "Value": 21},
+        {"Name": "dot1adIncompEtype", "Value": 22},
+        {"Name": "dot1adIncompTunnel", "Value": 23},
+        {"Name": "sfpConfigMismatch", "Value": 24},
+        {"Name": "communityLimit", "Value": 25},
+        {"Name": "invalidPolicy", "Value": 26},
+        {"Name": "lsGroup", "Value": 27},
+        {"Name": "ekey", "Value": 28},
+        {"Name": "portModeFailure", "Value": 29},
+        {"Name": "pppoeIaRateLimit", "Value": 30},
+        {"Name": "oamRemoteCriticalEvent", "Value": 31},
+        {"Name": "oamRemoteDyingGasp", "Value": 32},
+        {"Name": "oamRemoteLinkFault", "Value": 33},
+        {"Name": "mvrp", "Value": 34},
+        {"Name": "tranceiverIncomp", "Value": 35},
+        {"Name": "other", "Value": 36},
+        {"Name": "portReinitLimitReached", "Value": 37},
+        {"Name": "adminRxBBCreditPerfBufIncomp", "Value": 38},
+        {"Name": "ficonNotEnabled", "Value": 39},
+        {"Name": "adminModeIncomp", "Value": 40},
+        {"Name": "adminSpeedIncomp", "Value": 41},
+        {"Name": "adminRxBBCreditIncomp", "Value": 42},
+        {"Name": "adminRxBufSizeIncomp", "Value": 43},
+        {"Name": "eppFailure", "Value": 44},
+        {"Name": "osmEPortUp", "Value": 45},
+        {"Name": "osmNonEPortUp", "Value": 46},
+        {"Name": "udldUniDir", "Value": 47},
+        {"Name": "udldTxRxLoop", "Value": 48},
+        {"Name": "udldNeighbourMismatch", "Value": 49},
+        {"Name": "udldEmptyEcho", "Value": 50},
+        {"Name": "udldAggrasiveModeLinkFailed", "Value": 51},
+        {"Name": "excessivePortInterrupts", "Value": 52},
+        {"Name": "channelErrDisabled", "Value": 53},
+        {"Name": "hwProgFailed", "Value": 54},
+        {"Name": "internalHandshakeFailed", "Value": 55},
+        {"Name": "stpInconsistencyOnVpcPeerLink", "Value": 56},
+        {"Name": "stpPortStateFailure", "Value": 57},
+        {"Name": "ipConflict", "Value": 58},
+        {"Name": "multipleMSapIdsRcvd", "Value": 59},
+        {"Name": "oneHundredPdusWithoutAck", "Value": 60},
+        {"Name": "ipQosCompatCheckFailure", "Value": 61},
+        {"Name": "loopDetect", "Value": 62}
+      ]
+    },
+    {
+      "Name": "cErrDisableIfStatusTimeToRecover",
+      "OID": ".1.3.6.1.4.1.9.9.548.1.3.1.1.3",
+      "Syntax": "Gauge32"
+    }
+  ],
+  "Tables": [
+    {
+      "Name": "cErrDisableIfStatusTable",
+      "OID": ".1.3.6.1.4.1.9.9.548.1.3.1",
+      "EntryName": "cErrDisableIfStatusEntry",
+      "IndexObjects": [
+        "IF-MIB::ifIndex",
+        "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusVlanIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusCause",
+        "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTimeToRecover"
+      ]
+    }
+  ]
+}

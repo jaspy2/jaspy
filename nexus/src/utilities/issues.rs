@@ -52,6 +52,7 @@ pub fn issue_type_catalog() -> Vec<IssueTypeInfo> {
         IssueTypeInfo { kind: "iface-discards", category: "interface", title: "Interface discards", description: "An infrastructure port is discarding packets." },
         IssueTypeInfo { kind: "iface-high-util", category: "interface", title: "High utilization", description: "An infrastructure port peaked at high link utilization." },
         IssueTypeInfo { kind: "iface-speed", category: "interface", title: "Speed renegotiation", description: "An infrastructure port renegotiated its link speed." },
+        IssueTypeInfo { kind: "iface-err-disabled", category: "interface", title: "Port err-disabled", description: "The switch has error-disabled a port (e.g. BPDU guard, port-security, link-flap); it stays down until recovery." },
         IssueTypeInfo { kind: "stp-flag:no-root", category: "stp", title: "STP: no root bridge", description: "A VLAN has spanning-tree nodes but no elected root bridge." },
         IssueTypeInfo { kind: "stp-flag:multiple-roots", category: "stp", title: "STP: multiple roots", description: "A VLAN has more than one root bridge." },
         IssueTypeInfo { kind: "stp-flag:cycle", category: "stp", title: "STP: cycle", description: "A VLAN's spanning tree contains a cycle." },
@@ -459,6 +460,70 @@ pub fn interface_health_issues(
         ));
     }
     out
+}
+
+// A friendlier one-line explanation for the common err-disable causes; empty
+// for the long tail (the raw cause name still shows in its own row).
+fn err_disable_cause_hint(cause: &str) -> &'static str {
+    match cause {
+        "bpduGuard" => "BPDU guard tripped — a BPDU arrived on a PortFast/edge port (something running spanning tree, e.g. a switch, was plugged into an access port).",
+        "portSecurityViolation" => "Port-security violation — a disallowed MAC, or more MACs than permitted, were seen on the port.",
+        "linkFlap" => "Link-flap protection — the port bounced up/down too many times in a short window.",
+        "dhcpRateLimit" => "DHCP snooping rate-limit exceeded.",
+        "arpInspection" => "Dynamic ARP inspection rate-limit exceeded.",
+        "stormControl" => "Storm control threshold exceeded (broadcast/multicast/unknown-unicast flood).",
+        "loopDetect" | "portLoopback" => "A loop was detected on the port.",
+        "udld" | "udldUniDir" | "udldTxRxLoop" | "udldNeighbourMismatch" | "udldEmptyEcho" | "udldAggrasiveModeLinkFailed" => "UDLD detected a unidirectional link or miswired fiber.",
+        _ => "",
+    }
+}
+
+// A port the switch has error-disabled (CISCO-ERR-DISABLE-MIB). Unlike the
+// interface-health signals this fires on ANY port — err-disable on an
+// access/edge port (BPDU guard, port-security) is a genuine, actionable fault,
+// not end-host noise. `cause` is the MIB enum name (e.g. "bpduGuard"); the
+// far end is attached when it is a monitored peer. Single-ended (group_key
+// None): err-disable is a local action, not a shared link property.
+pub fn err_disabled_issue(
+    fqdn: &str,
+    ifindex: i32,
+    iface_name: &str,
+    cause: Option<&str>,
+    recover_secs: Option<i32>,
+    connected_to: Option<&json::ApiInterfaceConnection>,
+) -> DerivedIssue {
+    let host = hostname_of(fqdn);
+    let cause_raw = cause.unwrap_or("unknown");
+    let hint = err_disable_cause_hint(cause_raw);
+    let verdict = if hint.is_empty() {
+        format!("{} was error-disabled by the switch (cause: {}). The port is forced down until it recovers — investigate the cause, then clear err-disable (shut/no shut) or wait for auto-recovery.", iface_name, cause_raw)
+    } else {
+        format!("{} was error-disabled by the switch. {} The port is forced down until it recovers — fix the cause, then clear err-disable (shut/no shut) or wait for auto-recovery.", iface_name, hint)
+    };
+    let mut detail = vec![
+        verdict_row("verdict", verdict, "bad"),
+        pair("cause", cause_raw.to_string()),
+    ];
+    match recover_secs {
+        Some(secs) if secs > 0 => detail.push(pair("auto-recovers in", format!("{}s", secs))),
+        _ => detail.push(pair("auto-recovery", "not scheduled — manual clear required")),
+    }
+    if let Some(peer) = connected_to {
+        detail.push(device_row("connected to", peer.fqdn.clone()));
+        detail.push(iface_row("far-end port", peer.interface.clone(), None));
+    }
+    DerivedIssue {
+        fqdn: fqdn.to_string(),
+        hostname: host.clone(),
+        kind: "iface-err-disabled".to_string(),
+        subject: ifindex.to_string(),
+        severity: SEV_BAD.to_string(),
+        title: "Port err-disabled".to_string(),
+        description: format!("{} {} is err-disabled ({})", host, iface_name, cause_raw),
+        subject_label: Some(iface_name.to_string()),
+        detail,
+        group_key: None,
+    }
 }
 
 // --- STP ------------------------------------------------------------------
@@ -1307,6 +1372,38 @@ mod tests {
         let issues = interface_health_issues("a.example.com", 10001, "Gi1/0/1", &h, true, None, Some(&cdp));
         let util = issues.iter().find(|i| i.kind == "iface-high-util").unwrap();
         assert!(util.group_key.is_none());
+    }
+
+    #[test]
+    fn err_disabled_issue_is_bad_with_cause_and_far_end() {
+        let peer = json::ApiInterfaceConnection { fqdn: "dist1.example.com".to_string(), interface: "Gi1/0/2".to_string() };
+        let issue = err_disabled_issue("a01.example.com", 9, "Gi1/0/1", Some("bpduGuard"), Some(39), Some(&peer));
+        assert_eq!(issue.kind, "iface-err-disabled");
+        assert_eq!(issue.severity, SEV_BAD);
+        assert_eq!(issue.subject, "9");
+        assert_eq!(issue.issue_key(), "a01.example.com|iface-err-disabled|9");
+        assert!(issue.group_key.is_none());
+        assert!(has_text(&issue, "cause", "bpduGuard"));
+        assert!(has_text(&issue, "auto-recovers in", "39s"));
+        // The far end is attached as a device link + far-end port.
+        assert!(issue.detail.iter().any(|d| matches!(&d.value, ApiIssueDetailValue::Device { fqdn, .. } if fqdn == "dist1.example.com")));
+        // The bpduGuard verdict carries the friendly hint.
+        let verdict = issue.detail.iter().find(|d| d.label == "verdict").unwrap();
+        match &verdict.value {
+            ApiIssueDetailValue::Verdict { tone, text } => {
+                assert_eq!(tone, "bad");
+                assert!(text.contains("BPDU guard"));
+            }
+            other => panic!("expected a verdict, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn err_disabled_issue_without_recovery_or_far_end() {
+        let issue = err_disabled_issue("a01.example.com", 9, "Gi1/0/1", None, None, None);
+        assert!(has_text(&issue, "cause", "unknown"));
+        assert!(has_text(&issue, "auto-recovery", "not scheduled — manual clear required"));
+        assert!(!issue.detail.iter().any(|d| matches!(d.value, ApiIssueDetailValue::Device { .. })));
     }
 
     #[test]

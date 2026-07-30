@@ -260,6 +260,19 @@ pub struct ApiInterface {
     pub cdp_neighbor: Option<ApiCdpNeighbor>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
+    // ifAdminStatus overlay from IMDS (null = unknown). Lets the UI distinguish
+    // an admin-shut port from a link-down one. Additive.
+    #[serde(default)]
+    pub admin_up: Option<bool>,
+    // Authoritative Cisco err-disable state (CISCO-ERR-DISABLE-MIB): whether the
+    // switch has error-disabled the port, the cause (enum name, e.g.
+    // "bpduGuard"), and seconds until auto-recovery. Additive.
+    #[serde(default)]
+    pub err_disabled: bool,
+    #[serde(default)]
+    pub err_disable_cause: Option<String>,
+    #[serde(default)]
+    pub err_disable_recover_secs: Option<i32>,
     // Cumulative counters since the device's last counter reset (octets =
     // ifHCIn/OutOctets, errors/discards = ifInErrors/ifOutErrors/ifOutDiscards),
     // from IMDS. Additive: default-deserialized for older payloads.
@@ -728,6 +741,21 @@ pub struct InterfaceMonitorInterfaceReport {
     pub out_discards: Option<u64>,
     pub up: Option<bool>,
     pub speed: Option<i32>,
+    // ifAdminStatus (up/down), read so a down port can be told apart from an
+    // admin-shut one. err_disabled + cause come from the authoritative
+    // CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTable (a row present => the
+    // switch has error-disabled the port); recover_secs is its time-to-recover.
+    #[serde(default)]
+    pub admin_up: Option<bool>,
+    // None means "this report carries no err-disable info" (e.g. a link trap),
+    // so report_interfaces leaves the stored value alone; Some(_) is an
+    // authoritative poll result that overwrites it.
+    #[serde(default)]
+    pub err_disabled: Option<bool>,
+    #[serde(default)]
+    pub err_disable_cause: Option<String>,
+    #[serde(default)]
+    pub err_disable_recover_secs: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -759,6 +787,12 @@ impl InterfaceMonitorReport {
                 out_discards: None,
                 up: Some(up),
                 speed: None,
+                // A link up/down trap carries no admin/err-disable info; None
+                // means report_interfaces preserves the last polled value.
+                admin_up: None,
+                err_disabled: None,
+                err_disable_cause: None,
+                err_disable_recover_secs: None,
             }],
         }
     }

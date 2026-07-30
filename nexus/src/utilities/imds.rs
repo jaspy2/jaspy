@@ -273,6 +273,10 @@ impl IMDS {
             out_discards: None,
             up: None,
             speed: None,
+            admin_up: None,
+            err_disabled: false,
+            err_disable_cause: None,
+            err_disable_recover_secs: None,
 
             counter_violations: 0,
         });
@@ -454,6 +458,18 @@ impl IMDS {
                     }
                 }
                 interface.speed = interface_report.speed;
+            }
+            if interface_report.admin_up.is_some() {
+                interface.admin_up = interface_report.admin_up;
+            }
+            // Only an authoritative poll carries err-disable info (Some); a trap
+            // leaves it None so the last polled state stands. When present, the
+            // cause/recover only make sense while err-disabled, so they clear
+            // together once the port recovers.
+            if let Some(err_disabled) = interface_report.err_disabled {
+                interface.err_disabled = err_disabled;
+                interface.err_disable_cause = if err_disabled { interface_report.err_disable_cause.clone() } else { None };
+                interface.err_disable_recover_secs = if err_disabled { interface_report.err_disable_recover_secs } else { None };
             }
 
             // Feed the recent-history health store. Effective speed prefers the
@@ -703,6 +719,10 @@ mod tests {
             out_discards: None,
             up: None,
             speed: None,
+            admin_up: None,
+            err_disabled: None,
+            err_disable_cause: None,
+            err_disable_recover_secs: None,
         }
     }
 
@@ -726,6 +746,10 @@ mod tests {
             out_discards: None,
             up: None,
             speed: None,
+            admin_up: None,
+            err_disabled: false,
+            err_disable_cause: None,
+            err_disable_recover_secs: None,
             counter_violations: 0,
         }
     }

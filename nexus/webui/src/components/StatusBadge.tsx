@@ -4,6 +4,16 @@ export function UpBadge({ up }: { up: boolean | null }) {
   return <span className="badge badge-muted">unknown</span>;
 }
 
+// A port the switch has error-disabled (CISCO-ERR-DISABLE-MIB). Always a fault
+// (badge-bad); the cause is surfaced in the title for a quick hover.
+export function ErrDisabledBadge({ cause }: { cause: string | null }) {
+  return (
+    <span className="badge badge-bad" title={cause ? `err-disabled: ${cause}` : 'err-disabled'}>
+      err-disabled{cause ? ` · ${cause}` : ''}
+    </span>
+  );
+}
+
 export function PollingBadge({ enabled }: { enabled: boolean | null }) {
   if (enabled === false) return <span className="badge badge-warn">polling off</span>;
   return <span className="badge badge-muted">{enabled === true ? 'polling on' : 'polling default'}</span>;

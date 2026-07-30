@@ -495,6 +495,7 @@ mod tests {
             "LLDP-MIB::lldpLocPortTable",
             "LLDP-MIB::lldpRemTable",
             "CISCO-CDP-MIB::cdpCacheTable",
+            "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTable",
         ];
         for id in tables {
             assert!(reg.table(id).is_some(), "table {} did not resolve", id);

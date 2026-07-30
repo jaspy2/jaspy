@@ -188,6 +188,15 @@ export interface Interface {
   cdpNeighbor: CdpNeighbor | null;
   up: boolean | null;
   speed: number | null;
+  // ifAdminStatus (null = unknown): lets us tell an admin-shut port from a
+  // link-down one.
+  adminUp: boolean | null;
+  // Authoritative Cisco err-disable state (CISCO-ERR-DISABLE-MIB): whether the
+  // switch has error-disabled the port, the cause (enum name, e.g. "bpduGuard"),
+  // and seconds until auto-recovery.
+  errDisabled: boolean;
+  errDisableCause: string | null;
+  errDisableRecoverSecs: number | null;
   // Cumulative counters since the device's last counter reset: octets (bytes)
   // and error/discard packet counts.
   inOctets: number | null;

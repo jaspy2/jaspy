@@ -65,6 +65,9 @@ pub struct MockInterface {
     pub error_rate: u64,   // ifInErrors per second
     pub saturated: bool,   // octet rate ≈ 95% of speed → high utilization
     pub renegotiates: bool, // ifHighSpeed toggles full↔1/10th
+    // When set, the port is error-disabled: forced oper-down and reported in
+    // CISCO-ERR-DISABLE-MIB with this cause (e.g. "bpduGuard").
+    pub err_disable_cause: Option<&'static str>,
 }
 
 // A declared link aggregate for the LAG tables (pagpPortTable + dot3ad).
@@ -135,19 +138,19 @@ pub struct Topology {
 
 fn uplink(ifindex: i64, name: &'static str, descr: &'static str, alias: &'static str, speed: u64, peer: (&'static str, &'static str)) -> MockInterface {
     MockInterface { ifindex, name, descr, alias, speed_mbps: speed, peer: Some(peer), flaps: false, up: true,
-        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false }
+        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false, err_disable_cause: None }
 }
 
 fn access_port(ifindex: i64, name: &'static str, descr: &'static str, up: bool) -> MockInterface {
     MockInterface { ifindex, name, descr, alias: "", speed_mbps: 1000, peer: None, flaps: false, up,
-        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false }
+        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false, err_disable_cause: None }
 }
 
 // Aggregate (Po) interface: no LLDP peer of its own (LLDP runs on the
 // members), speed = the bundle total.
 fn port_channel(ifindex: i64, name: &'static str, descr: &'static str, alias: &'static str, speed: u64) -> MockInterface {
     MockInterface { ifindex, name, descr, alias, speed_mbps: speed, peer: None, flaps: false, up: true,
-        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false }
+        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false, err_disable_cause: None }
 }
 
 pub fn build() -> Topology {
@@ -217,7 +220,7 @@ pub fn build() -> Topology {
                     peer: Some(("access-hall-a-01", "Te1/1/1")),
                     flaps: false,
                     up: true,
-                    discard_rate: 0, error_rate: 0, saturated: true, renegotiates: false,
+                    discard_rate: 0, error_rate: 0, saturated: true, renegotiates: false, err_disable_cause: None,
                 },
                 MockInterface {
                     ifindex: 10103,
@@ -228,7 +231,7 @@ pub fn build() -> Topology {
                     peer: Some(("access-hall-a-02", "Te1/1/1")),
                     flaps: true,
                     up: true,
-                    discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false,
+                    discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false, err_disable_cause: None,
                 },
                 uplink(10105, "Te1/1/5", "TenGigabitEthernet1/1/5", "uplink core1 (2)", 10000, ("core1", "Te1/0/5")),
                 // "uplink ..." alias so stp_role makes the bundle the root port.
@@ -264,7 +267,7 @@ pub fn build() -> Topology {
                     peer: Some(("core1", "Te1/0/6")),
                     flaps: false,
                     up: false,
-                    discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false,
+                    discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false, err_disable_cause: None,
                 },
                 port_channel(5001, "Po1", "Port-channel1", "uplink core1 port-channel", 20000),
                 // Single-member SFP+ port-channel to wlc1 (mirrors wlc1 Po1):
@@ -304,6 +307,10 @@ pub fn build() -> Topology {
             // ~200 discards/s and a flaky-cable port taking ~5 input errors/s.
             set_iface(&mut a01, 10204, |i| i.discard_rate = 200);
             set_iface(&mut a01, 10205, |i| i.error_rate = 5);
+            // Gi1/0/3 got a switch plugged into an access port: BPDU guard
+            // error-disabled it. Forced oper-down + reported in the err-disable
+            // MIB, so it surfaces as the err-disabled badge and an /issues entry.
+            set_iface(&mut a01, 10203, |i| i.err_disable_cause = Some("bpduGuard"));
             a01
         },
         {
@@ -410,7 +417,7 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
         peer: Some(upstream),
         flaps: uplink_flaps,
         up: true,
-        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false,
+        discard_rate: 0, error_rate: 0, saturated: false, renegotiates: false, err_disable_cause: None,
     }];
     // Eight access ports; a deterministic mix of up/down.
     const PORTS: [(&str, &str); 8] = [
@@ -580,6 +587,11 @@ pub fn off_fleet_root_bridge_id(vlan: i64) -> String {
 }
 
 pub fn iface_up(iface: &MockInterface, elapsed: f64) -> bool {
+    // An error-disabled port is held down by the switch regardless of anything
+    // else.
+    if iface.err_disable_cause.is_some() {
+        return false;
+    }
     if iface.flaps {
         (elapsed.max(0.0) as u64 / FLAP_HALF_PERIOD_SECS) % 2 == 0
     } else {
@@ -732,6 +744,9 @@ impl Topology {
                             "IF-MIB::ifDescr": iface.descr,
                             "IF-MIB::ifType": if dev.lags.iter().any(|l| l.ifindex == iface.ifindex) { "ieee8023adLag" } else { "ethernetCsmacd" },
                             "IF-MIB::ifPhysAddress": iface_mac(dev_idx, iface.ifindex),
+                            // Ports are configured no-shut; a down oper state is
+                            // a link fault (or err-disable), not an admin shut.
+                            "IF-MIB::ifAdminStatus": "up",
                             "IF-MIB::ifOperStatus": if iface_up(iface, elapsed) { "up" } else { "down" },
                             "IF-MIB::ifInErrors": error_counter(dev_idx, iface.ifindex, 1, elapsed) + fault_counter(iface.error_rate, elapsed),
                             "IF-MIB::ifOutErrors": error_counter(dev_idx, iface.ifindex, 2, elapsed),
@@ -1001,6 +1016,24 @@ impl Topology {
                             "CISCO-VLAN-MEMBERSHIP-MIB::vmPortStatus": "active",
                         }),
                     )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTable" => {
+                // One row per error-disabled port (the table is empty on a
+                // healthy switch). The cause is the CISCO-ERR-DISABLE-MIB enum
+                // name, exactly as snmpbot renders an ENUM column.
+                let entries = dev.interfaces.iter().filter_map(|iface| {
+                    iface.err_disable_cause.map(|cause| entry(
+                        json!({
+                            "IF-MIB::ifIndex": iface.ifindex,
+                            "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusVlanIndex": 0,
+                        }),
+                        json!({
+                            "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusCause": cause,
+                            "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTimeToRecover": 39,
+                        }),
+                    ))
                 }).collect();
                 Some(response(table_id, entries))
             }
@@ -1433,7 +1466,7 @@ mod tests {
     use super::*;
     use crate::collectors::poller::SNMPBotResultEntryObjectValue;
 
-    const ALL_TABLES: [&str; 22] = [
+    const ALL_TABLES: [&str; 23] = [
         "IF-MIB::ifTable",
         "IF-MIB::ifXTable",
         "ENTITY-MIB::entPhysicalTable",
@@ -1456,6 +1489,7 @@ mod tests {
         "CISCO-PAGP-MIB::pagpPortTable",
         "IEEE8023-LAG-MIB::dot3adAggTable",
         "IEEE8023-LAG-MIB::dot3adAggPortTable",
+        "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTable",
     ];
 
     #[test]
@@ -1476,6 +1510,28 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn err_disable_table_reports_the_seeded_port_and_it_is_oper_down() {
+        let topo = build();
+        let fqdn = "access-hall-a-01.mock.jaspy";
+        let resp = topo.table(fqdn, None, "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTable", 30.0).unwrap();
+        let value = serde_json::to_value(&resp).unwrap();
+        let entries = value["Entries"].as_array().unwrap();
+        // Exactly the one seeded err-disabled port (Gi1/0/3 = 10203).
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["Index"]["IF-MIB::ifIndex"].as_i64(), Some(10203));
+        assert_eq!(
+            entries[0]["Objects"]["CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusCause"].as_str(),
+            Some("bpduGuard")
+        );
+        // A switch that error-disables a port forces it oper-down.
+        let iftable = serde_json::to_value(topo.table(fqdn, None, "IF-MIB::ifTable", 30.0).unwrap()).unwrap();
+        let oper = iftable["Entries"].as_array().unwrap().iter()
+            .find(|e| e["Index"]["IF-MIB::ifIndex"].as_i64() == Some(10203))
+            .and_then(|e| e["Objects"]["IF-MIB::ifOperStatus"].as_str());
+        assert_eq!(oper, Some("down"));
     }
 
     // Pull a numeric object for one ifIndex out of a table response by

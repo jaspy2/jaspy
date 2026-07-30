@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, StpPort } from '../api/types';
-import { HealthBadge, PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
+import { ErrDisabledBadge, HealthBadge, PollingBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import ActionMenu from '../components/ActionMenu';
 import useLiveSocket from '../hooks/useLiveSocket';
 
@@ -369,6 +369,19 @@ function InterfaceDetail({ iface, names }: { iface: Interface; names: Map<number
   // Descriptive facts (everything else the API knows about the interface).
   rows.push({ label: 'ifIndex', value: String(iface.index) });
   rows.push({ label: 'Oper status', value: iface.up === true ? 'up' : iface.up === false ? 'down' : 'unknown' });
+  if (iface.adminUp !== null) {
+    rows.push({ label: 'Admin status', value: iface.adminUp ? 'up' : 'down' });
+  }
+  if (iface.errDisabled) {
+    const recover = iface.errDisableRecoverSecs && iface.errDisableRecoverSecs > 0
+      ? ` · auto-recovers in ${iface.errDisableRecoverSecs}s`
+      : ' · manual clear required';
+    rows.push({
+      label: 'Err-disabled',
+      value: `${iface.errDisableCause ?? 'unknown cause'}${recover}`,
+      cls: 'bad-text',
+    });
+  }
   rows.push({ label: 'Type', value: iface.interfaceType });
   if (iface.media) rows.push({ label: 'Media', value: mediaLabel(iface.media) });
   if (iface.poe) {
@@ -501,7 +514,7 @@ function makeCmp<T>(val: (t: T) => string | number | null, asc: boolean): (a: T,
 function ifaceSortVal(i: Interface, key: IfaceSortKey): string | number | null {
   switch (key) {
     case 'name': return i.displayName ?? i.name ?? '';
-    case 'state': return i.up === false ? 0 : i.up === null ? 1 : 2; // down first
+    case 'state': return i.errDisabled ? 0 : i.up === false ? 1 : i.up === null ? 2 : 3; // err-disabled, then down, first
     case 'speed': return i.speed;
     case 'vlan': return i.nativeVlan;
     case 'tagged': return i.taggedVlans?.length ?? 0;
@@ -904,6 +917,7 @@ export default function DeviceDetail() {
               </button>
               {iface.portChannel && <span className="badge badge-muted">{iface.portChannel}</span>}
               <UpBadge up={iface.up} />
+              {iface.errDisabled && <ErrDisabledBadge cause={iface.errDisableCause} />}
               {iface.health?.severity && <HealthBadge severity={iface.health.severity} />}
             </span>
             <span className="item-sub">
@@ -970,6 +984,7 @@ export default function DeviceDetail() {
                   </td>
                   <td>
                     <UpBadge up={iface.up} />
+                    {iface.errDisabled && <> <ErrDisabledBadge cause={iface.errDisableCause} /></>}
                     {iface.health?.severity && <> <HealthBadge severity={iface.health.severity} /></>}
                   </td>
                   <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
