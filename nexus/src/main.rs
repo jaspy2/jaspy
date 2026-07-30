@@ -695,6 +695,7 @@ async fn server_main() {
                 routes::dev::metrics::metrics_fast,
                 routes::dev::metrics::metrics,
                 routes::dev::metrics::metrics_perf,
+                routes::dev::metrics::snmp_adaptive,
             ]
         )
         .mount(
@@ -714,6 +715,7 @@ async fn server_main() {
                 routes::api::v1::devices,
                 routes::api::v1::device_detail,
                 routes::api::v1::device_entity,
+                routes::api::v1::device_snmp_sessions,
                 routes::api::v1::device_vlan_poll,
                 routes::api::v1::vlans,
                 routes::api::v1::stp_summary,

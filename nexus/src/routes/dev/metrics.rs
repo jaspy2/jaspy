@@ -4,6 +4,7 @@ use crate::collectors::entitypoller::EntityMetricsStore;
 use rocket::State;
 use crate::models;
 use rocket::get;
+use rocket::serde::json::Json;
 
 // TODO: GH#9 Move everything to v1 API
 #[get("/fast")]
@@ -86,4 +87,30 @@ pub fn metrics_perf() -> String {
         max_eff_ms
     ));
     s
+}
+
+// By-name dump of the entire live adaptive-SNMP registry (every device, primary +
+// per-VLAN sessions) — the named companion to the aggregate gauges above, for
+// CLI/ops inspection. Empty in snmpbot mode. Lock-free like /perf.
+#[get("/snmp-adaptive")]
+pub fn snmp_adaptive() -> Json<Vec<models::json::ApiSnmpAdaptiveDevice>> {
+    let mut devices: Vec<models::json::ApiSnmpAdaptiveDevice> = Vec::new();
+    // all_adaptive_sessions() is sorted by fqdn then vlan, so consecutive entries
+    // for one device group together.
+    for (fqdn, snap) in crate::snmp::embedded::all_adaptive_sessions() {
+        let session = models::json::ApiSnmpSession {
+            vlan: snap.vlan,
+            port: snap.port,
+            effective_timeout_ms: snap.effective_ms,
+            ewma_latency_ms: snap.ewma_ms,
+            consec_timeouts: snap.consec_timeouts,
+            dead: snap.dead,
+            status: snap.status.to_string(),
+        };
+        match devices.last_mut() {
+            Some(d) if d.fqdn == fqdn => d.sessions.push(session),
+            _ => devices.push(models::json::ApiSnmpAdaptiveDevice { fqdn, sessions: vec![session] }),
+        }
+    }
+    Json(devices)
 }

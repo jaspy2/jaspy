@@ -30,3 +30,19 @@ pub mod entity_media;
 // (POWER-ETHERNET-MIB + CISCO-POWER-ETHERNET-EXT-MIB) and switch-wide PSE
 // budget; the entitypoller polls it into an in-memory overlay served by /api/v1.
 pub mod poe;
+
+// The embedded SNMP client (snmp2) embeds two 64 KiB receive buffers by value —
+// `SyncSession { recv_buf: [u8; 65507] }` and each request `Pdu { buf: [u8;
+// 65507] }`. Opening a session and building request PDUs stacks several of these,
+// and a debug build (which doesn't elide the redundant 64 KiB moves the way
+// release does) overflows the default 2 MiB thread stack on the very first poll.
+// Give every thread that opens SNMP sessions a generous stack. Thread stacks are
+// committed lazily, so the unused headroom costs address space, not RSS.
+pub const SNMP_WORKER_STACK_BYTES: usize = 8 * 1024 * 1024;
+
+// A thread builder with the SNMP worker stack size. Use this (instead of
+// `thread::spawn`) for any thread that polls, discovers, or otherwise opens
+// embedded SNMP sessions.
+pub fn snmp_thread_builder() -> std::thread::Builder {
+    std::thread::Builder::new().stack_size(SNMP_WORKER_STACK_BYTES)
+}

@@ -130,10 +130,18 @@ pub fn prepare() -> MockGuard {
             dead_streak: 3,
             enabled: true,
         };
+        // Record the config so the device-page Debugging section can show the
+        // floor/ceiling/enabled header (production does this in Embedded::new,
+        // which mock mode never constructs — it runs against the fake snmpbot).
+        crate::snmp::embedded::set_adapt_config(cfg);
         let devices = topology::build().devices;
         if let Some(d) = devices.get(1) {
             // Slow-but-alive: learned ~2.8s RTT -> elevated ~6s timeout.
             crate::snmp::embedded::seed_state(&d.fqdn(), topology::COMMUNITY, 161, &cfg, Some(2850.0), 6000, 0, false);
+            // A per-VLAN secondary session (community@vlan) so the Debugging table
+            // demonstrably shows primary + per-VLAN rows.
+            let vlan_community = format!("{}@100", topology::COMMUNITY);
+            crate::snmp::embedded::seed_state(&d.fqdn(), &vlan_community, 161, &cfg, Some(1800.0), 4500, 0, false);
         }
         if let Some(d) = devices.get(2) {
             // Unresponsive: collapsed to fast-fail.

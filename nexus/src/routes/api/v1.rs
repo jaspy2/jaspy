@@ -537,6 +537,33 @@ pub fn device_entity(device_fqdn: &str, entity_metrics: &State<Arc<Mutex<crate::
     Json(entity)
 }
 
+// Project the embedded client's live session snapshot into its JSON shape.
+fn api_snmp_session(s: crate::snmp::embedded::SessionSnapshot) -> models::json::ApiSnmpSession {
+    models::json::ApiSnmpSession {
+        vlan: s.vlan,
+        port: s.port,
+        effective_timeout_ms: s.effective_ms,
+        ewma_latency_ms: s.ewma_ms,
+        consec_timeouts: s.consec_timeouts,
+        dead: s.dead,
+        status: s.status.to_string(),
+    }
+}
+
+// Adaptive-polling state for a device's live SNMP sessions (primary + per-VLAN),
+// for the device-page Debugging section. Empty `sessions` in snmpbot mode or when
+// the device has not been polled by the embedded client.
+#[get("/devices/<device_fqdn>/snmp-sessions")]
+pub fn device_snmp_sessions(device_fqdn: &str) -> Json<models::json::ApiSnmpSessions> {
+    let config = crate::snmp::embedded::adapt_config().map(|c| models::json::ApiSnmpAdaptConfig {
+        floor_ms: c.base_ms,
+        ceiling_ms: c.max_ms,
+        adaptive: c.enabled,
+    });
+    let sessions = crate::snmp::embedded::sessions_for(device_fqdn).into_iter().map(api_snmp_session).collect();
+    Json(models::json::ApiSnmpSessions { config, sessions })
+}
+
 fn device_base_macs(connection: &mut db::AnyConnection) -> std::collections::HashMap<String, Option<String>> {
     models::dbo::Device::all(connection)
         .into_iter()

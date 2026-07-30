@@ -146,6 +146,32 @@ export interface SnmpHealth {
   ewmaLatencyMs: number | null;
 }
 
+// Active adaptive-timeout config, for the device-page Debugging section header.
+export interface SnmpAdaptConfig {
+  floorMs: number;
+  ceilingMs: number;
+  adaptive: boolean;
+}
+
+// One live SNMP session's adaptive state. `vlan` is null for the primary polling
+// session, or the VLAN id for a per-VLAN secondary session.
+export interface SnmpSession {
+  vlan: number | null;
+  port: number;
+  effectiveTimeoutMs: number;
+  ewmaLatencyMs: number | null;
+  consecTimeouts: number;
+  dead: boolean;
+  status: 'normal' | 'slow' | 'dead';
+}
+
+// Device-page Debugging payload: config context + every live session for the
+// device. `config` is null and `sessions` empty in snmpbot mode.
+export interface SnmpSessions {
+  config: SnmpAdaptConfig | null;
+  sessions: SnmpSession[];
+}
+
 // Per-interface health signals (utilities/health.rs), present only when a
 // signal has tripped. The UI turns these numbers into human phrasing.
 export interface InterfaceHealth {

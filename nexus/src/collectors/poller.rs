@@ -400,9 +400,11 @@ fn check_if_worker_needed(pool: &db::Pool, snmp: &Arc<SnmpSource>, poll_loop_mse
         poll_workers.insert(
             fqdn.clone(),
             PollThreadInfo {
-                thd: thread::spawn(move || {
-                    poll_worker(pool_copy, snmp_copy, device_copy, poll_loop_msecs, report_device_status, imds_copy, running_worker, tx);
-                }),
+                thd: super::snmp_thread_builder()
+                    .spawn(move || {
+                        poll_worker(pool_copy, snmp_copy, device_copy, poll_loop_msecs, report_device_status, imds_copy, running_worker, tx);
+                    })
+                    .expect("spawn poll worker thread"),
                 running: worker_running,
                 finished_signal: rx,
             },

@@ -256,6 +256,48 @@ pub struct ApiSnmpHealth {
     pub ewma_latency_ms: Option<f64>,
 }
 
+// The active adaptive-timeout config (floor/ceiling and whether adaptation is on),
+// for the device-page Debugging section header.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiSnmpAdaptConfig {
+    pub floor_ms: u64,
+    pub ceiling_ms: u64,
+    pub adaptive: bool,
+}
+
+// One live SNMP session's adaptive state. `vlan` is null for the primary polling
+// session, or the VLAN id for a per-VLAN secondary session. `status` is a slug
+// ("normal" | "slow" | "dead").
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiSnmpSession {
+    pub vlan: Option<u32>,
+    pub port: u16,
+    pub effective_timeout_ms: u64,
+    pub ewma_latency_ms: Option<f64>,
+    pub consec_timeouts: u32,
+    pub dead: bool,
+    pub status: String,
+}
+
+// Device-page Debugging payload: the config context plus every live session for
+// the device (empty in snmpbot mode or for an unpolled device).
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiSnmpSessions {
+    pub config: Option<ApiSnmpAdaptConfig>,
+    pub sessions: Vec<ApiSnmpSession>,
+}
+
+// One device's sessions for the fleet-wide /dev/metrics/snmp-adaptive dump.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiSnmpAdaptiveDevice {
+    pub fqdn: String,
+    pub sessions: Vec<ApiSnmpSession>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiInterface {

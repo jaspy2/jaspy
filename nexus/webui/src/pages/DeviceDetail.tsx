@@ -2,7 +2,7 @@ import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, StpPort } from '../api/types';
+import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, SnmpSession, StpPort } from '../api/types';
 import { ErrDisabledBadge, HealthBadge, PollingBadge, SnmpHealthBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import ActionMenu from '../components/ActionMenu';
 import useLiveSocket from '../hooks/useLiveSocket';
@@ -121,8 +121,8 @@ function poeMeterColor(pct: number): string {
 // A titled section whose body collapses when its heading is clicked. Starts
 // expanded; each section keeps its own open/closed state so they toggle
 // independently (desktop and mobile alike).
-function Section({ title, suffix, children }: { title: string; suffix?: ReactNode; children: ReactNode }) {
-  const [open, setOpen] = useState(true);
+function Section({ title, suffix, defaultOpen = true, children }: { title: string; suffix?: ReactNode; defaultOpen?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <section>
       <h2 className="section-head">
@@ -135,6 +135,69 @@ function Section({ title, suffix, children }: { title: string; suffix?: ReactNod
       {open && children}
     </section>
   );
+}
+
+// Adaptive SNMP polling state for the device's live sessions (primary + per-VLAN).
+// Rendered inside a collapsed-by-default Section, so this component only mounts —
+// and its query only fires — once the user expands the Debugging section.
+function SnmpAdaptivePanel({ fqdn }: { fqdn: string }) {
+  const sessions = useQuery({
+    queryKey: ['snmp-sessions', fqdn],
+    queryFn: () => api.deviceSnmpSessions(fqdn),
+    refetchInterval: 10000,
+  });
+
+  if (sessions.isLoading) return <p className="muted">Loading SNMP session state…</p>;
+  if (sessions.isError) return <p className="muted">Could not load SNMP session state.</p>;
+
+  const data = sessions.data;
+  const config = data?.config ?? null;
+  const rows = data?.sessions ?? [];
+
+  return (
+    <>
+      <p className="muted">
+        SNMP adaptive polling
+        {config
+          ? ` · floor ${config.floorMs}ms · ceiling ${config.ceilingMs}ms · adaptive ${config.adaptive ? 'on' : 'off'}`
+          : ' · config unavailable'}
+      </p>
+      {rows.length === 0 ? (
+        <p className="muted">No adaptive SNMP state recorded for this device (only populated in embedded SNMP mode).</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Effective timeout</th>
+                <th>EWMA RTT</th>
+                <th className="hide-mobile">Timeouts</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((s) => (
+                <tr key={s.vlan === null ? 'primary' : `vlan-${s.vlan}`}>
+                  <td>{s.vlan === null ? 'primary' : `vlan ${s.vlan}`}</td>
+                  <td>{s.effectiveTimeoutMs} ms</td>
+                  <td>{s.ewmaLatencyMs === null ? '—' : `${Math.round(s.ewmaLatencyMs)} ms`}</td>
+                  <td className="hide-mobile">{s.consecTimeouts}</td>
+                  <td><SnmpSessionStatusBadge status={s.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+function SnmpSessionStatusBadge({ status }: { status: SnmpSession['status'] }) {
+  if (status === 'dead') return <span className="badge badge-bad">not responding</span>;
+  if (status === 'slow') return <span className="badge badge-warn">slow</span>;
+  return <span className="badge badge-ok">normal</span>;
 }
 
 function PoeBudgetSummary({ budgets }: { budgets: PoeBudget[] }) {
@@ -1108,6 +1171,10 @@ export default function DeviceDetail() {
       {sensors.length === 0 && stp.length === 0 && entitypollerEnabled && (
         <p className="muted">No sensor/STP data for this device (yet).</p>
       )}
+
+      <Section title="Debugging" defaultOpen={false}>
+        <SnmpAdaptivePanel fqdn={fqdn} />
+      </Section>
     </>
   );
 }

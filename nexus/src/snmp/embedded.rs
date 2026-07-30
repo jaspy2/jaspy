@@ -322,6 +322,22 @@ fn latency_registry() -> &'static RwLock<HashMap<String, Arc<DeviceLatency>>> {
     DEVICE_LATENCY.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
+// The adaptive config the embedded client was constructed with. Recorded once at
+// Embedded::new so the debug endpoints can report the floor/ceiling/enabled even
+// for a device that has no session in the registry yet.
+static ADAPT_CFG: OnceLock<AdaptCfg> = OnceLock::new();
+
+// Record the active adaptive config. Called from Embedded::new in production;
+// mock mode calls it directly since it seeds the registry without an Embedded.
+pub fn set_adapt_config(cfg: AdaptCfg) {
+    let _ = ADAPT_CFG.set(cfg);
+}
+
+// The active adaptive config, if the embedded client has been constructed.
+pub fn adapt_config() -> Option<AdaptCfg> {
+    ADAPT_CFG.get().copied()
+}
+
 // Get-or-create the shared state handle for a session_key.
 fn device_latency(key: &str, cfg: &AdaptCfg) -> Arc<DeviceLatency> {
     let reg = latency_registry();
@@ -415,6 +431,85 @@ pub fn adapt_aggregate() -> (u64, u64, u64) {
         }
     }
     (elevated, dead, max_eff)
+}
+
+// One live session's adaptive state, projected for the debug views. A session is
+// the device's primary polling session (vlan == None) or a per-VLAN secondary
+// session (vlan == Some(n)), distinguished by the "community@vlan" community
+// segment of its registry key.
+pub struct SessionSnapshot {
+    pub vlan: Option<u32>,
+    pub port: u16,
+    pub effective_ms: u64,
+    pub base_ms: u64,
+    pub ewma_ms: Option<f64>,
+    pub consec_timeouts: u32,
+    pub dead: bool,
+    pub status: &'static str, // "normal" | "slow" | "dead"
+}
+
+// Project a registry entry into a SessionSnapshot. Returns None if the key does
+// not split into the expected fqdn/community/port form. Also yields the fqdn so
+// callers enumerating the whole registry can group by device.
+fn session_snapshot(key: &str, handle: &DeviceLatency) -> Option<(String, SessionSnapshot)> {
+    let mut parts = key.split('\u{1f}');
+    let fqdn = parts.next()?.to_string();
+    let community = parts.next()?;
+    let port: u16 = parts.next()?.parse().ok()?;
+    // Per-VLAN secondary sessions carry a "community@vlan" community.
+    let vlan = community.rsplit_once('@').and_then(|(_, v)| v.parse::<u32>().ok());
+    let s = handle.snapshot();
+    let status = if s.dead {
+        "dead"
+    } else if s.effective_ms > handle.cfg.base_ms {
+        "slow"
+    } else {
+        "normal"
+    };
+    Some((
+        fqdn,
+        SessionSnapshot {
+            vlan,
+            port,
+            effective_ms: s.effective_ms,
+            base_ms: handle.cfg.base_ms,
+            ewma_ms: s.ewma_ms,
+            consec_timeouts: s.consec_timeouts,
+            dead: s.dead,
+            status,
+        },
+    ))
+}
+
+// Every live adaptive session for one device (primary + per-VLAN), for the
+// device-page Debugging section. Empty in snmpbot mode or for an unpolled device.
+// Sorted primary first, then by ascending VLAN.
+pub fn sessions_for(fqdn: &str) -> Vec<SessionSnapshot> {
+    let prefix = format!("{}\u{1f}", fqdn);
+    let map = match latency_registry().read() {
+        Ok(m) => m,
+        Err(_) => return Vec::new(),
+    };
+    let mut out: Vec<SessionSnapshot> = map
+        .iter()
+        .filter(|(k, _)| k.starts_with(&prefix))
+        .filter_map(|(k, h)| session_snapshot(k, h).map(|(_, snap)| snap))
+        .collect();
+    out.sort_by_key(|s| s.vlan.map(|v| v as u64 + 1).unwrap_or(0));
+    out
+}
+
+// The entire registry (all devices, primary + per-VLAN), for the fleet-wide
+// /dev/metrics/snmp-adaptive dump. Each entry carries its device fqdn.
+pub fn all_adaptive_sessions() -> Vec<(String, SessionSnapshot)> {
+    let map = match latency_registry().read() {
+        Ok(m) => m,
+        Err(_) => return Vec::new(),
+    };
+    let mut out: Vec<(String, SessionSnapshot)> =
+        map.iter().filter_map(|(k, h)| session_snapshot(k, h)).collect();
+    out.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.vlan.cmp(&b.1.vlan)));
+    out
 }
 
 // --- real snmp2-backed transport -----------------------------------------
@@ -664,6 +759,7 @@ pub struct Embedded {
 
 impl Embedded {
     pub fn new(mibs: Arc<MibRegistry>, port: u16, retries: u32, max_repetitions: u32, adapt: AdaptCfg) -> Embedded {
+        set_adapt_config(adapt);
         Embedded { mibs, port, retries, max_repetitions, adapt }
     }
 
@@ -1137,5 +1233,58 @@ mod tests {
         assert_eq!(s.effective_ms, c.base_ms);
         adapt(&mut s, Sample::Ok(9000.0), &c);
         assert_eq!(s.effective_ms, c.base_ms);
+    }
+
+    // --- Part C: session enumeration for the debug views -------------------
+    // These seed the process-global registry; each uses a unique fqdn so the
+    // fqdn-prefixed reads stay isolated under parallel test execution.
+
+    #[test]
+    fn sessions_for_lists_primary_and_vlan_sorted() {
+        let c = adapt_cfg();
+        let fqdn = "sw-sessions-test.example.net";
+        // Primary (fast), and two per-VLAN sessions out of numeric order.
+        seed_state(fqdn, "public", 161, &c, Some(12.0), 2000, 0, false);
+        seed_state(fqdn, "public@200", 161, &c, None, 2000, 6, true);
+        seed_state(fqdn, "public@100", 161, &c, Some(2850.0), 6000, 0, false);
+
+        let sessions = sessions_for(fqdn);
+        assert_eq!(sessions.len(), 3);
+        // Primary first, then ascending VLAN.
+        assert_eq!(sessions[0].vlan, None);
+        assert_eq!(sessions[0].status, "normal");
+        assert_eq!(sessions[0].base_ms, c.base_ms);
+        assert_eq!(sessions[1].vlan, Some(100));
+        assert_eq!(sessions[1].effective_ms, 6000);
+        assert_eq!(sessions[1].status, "slow");
+        assert_eq!(sessions[2].vlan, Some(200));
+        assert!(sessions[2].dead);
+        assert_eq!(sessions[2].status, "dead");
+    }
+
+    #[test]
+    fn sessions_for_unknown_device_is_empty() {
+        assert!(sessions_for("no-such-device-xyz.example.net").is_empty());
+    }
+
+    #[test]
+    fn all_adaptive_sessions_includes_seeded_device() {
+        let c = adapt_cfg();
+        let fqdn = "sw-fleet-test.example.net";
+        seed_state(fqdn, "public", 161, &c, Some(30.0), 2000, 0, false);
+        seed_state(fqdn, "public@42", 161, &c, Some(4000.0), 8500, 0, false);
+
+        let mine: Vec<_> = all_adaptive_sessions().into_iter().filter(|(f, _)| f == fqdn).collect();
+        assert_eq!(mine.len(), 2);
+        assert!(mine.iter().any(|(_, s)| s.vlan == Some(42) && s.effective_ms == 8500 && s.status == "slow"));
+    }
+
+    #[test]
+    fn adapt_config_reports_after_set() {
+        // OnceLock: some other test in this process may set it first, so assert
+        // presence and shape rather than exact equality with our cfg.
+        set_adapt_config(adapt_cfg());
+        let cfg = adapt_config().expect("config set");
+        assert!(cfg.max_ms >= cfg.base_ms);
     }
 }

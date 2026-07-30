@@ -26,7 +26,10 @@ where
     let queue: Mutex<VecDeque<T>> = Mutex::new(items.into());
     thread::scope(|scope| {
         for _ in 0..workers {
-            scope.spawn(|| {
+            // Larger stack: the work closure opens embedded SNMP sessions, whose
+            // 64 KiB inline buffers overflow the default thread stack in debug
+            // builds (see collectors::SNMP_WORKER_STACK_BYTES).
+            super::snmp_thread_builder().spawn_scoped(scope, || {
                 if jitter_msecs > 0 {
                     let sleep = thread_rng().gen_range(0.0, jitter_msecs as f64);
                     thread::sleep(time::Duration::from_millis(sleep as u64));
@@ -41,7 +44,7 @@ where
                         None => break,
                     }
                 }
-            });
+            }).expect("spawn bounded worker thread");
         }
     });
 }

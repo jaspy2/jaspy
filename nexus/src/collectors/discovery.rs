@@ -751,9 +751,14 @@ fn start_device_discovery(shared: &Arc<CrawlShared>, device_fqdn: String) {
         state.in_flight.insert(device_fqdn.clone());
     }
     let thread_shared = shared.clone();
-    let handle = thread::spawn(move || {
-        discover_device(thread_shared, device_fqdn);
-    });
+    // Larger stack: discover_device opens embedded SNMP sessions, whose 64 KiB
+    // inline buffers overflow the default thread stack in debug builds (see
+    // collectors::SNMP_WORKER_STACK_BYTES).
+    let handle = super::snmp_thread_builder()
+        .spawn(move || {
+            discover_device(thread_shared, device_fqdn);
+        })
+        .expect("spawn discovery device thread");
     if let Ok(mut handles) = shared.handles.lock() {
         handles.push(handle);
     }
@@ -2019,9 +2024,13 @@ pub fn run(
             let pool = pool.clone();
             let msgbus = msgbus.clone();
             let cache_controller = cache_controller.clone();
-            thread::spawn(move || {
-                run_single_device(snmp, pool, msgbus, cache_controller, snapshot, req, skip_dns);
-            });
+            // Larger stack: run_single_device opens embedded SNMP sessions (see
+            // collectors::SNMP_WORKER_STACK_BYTES).
+            super::snmp_thread_builder()
+                .spawn(move || {
+                    run_single_device(snmp, pool, msgbus, cache_controller, snapshot, req, skip_dns);
+                })
+                .expect("spawn single-device discovery thread");
         }
 
         if let Some(params) = next_run_params(&snmp, skip_dns, &control) {

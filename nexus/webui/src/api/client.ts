@@ -15,6 +15,7 @@ import type {
   IssueType,
   IssueTypeRequest,
   ResetResult,
+  SnmpSessions,
   StpTree,
   StpVlanSummary,
   StpExpectedRootRequest,
@@ -53,6 +54,8 @@ export const api = {
   device: (fqdn: string) => request<DeviceDetail>(`/api/v1/devices/${encodeURIComponent(fqdn)}`),
   deviceEntity: (fqdn: string) =>
     request<DeviceEntity>(`/api/v1/devices/${encodeURIComponent(fqdn)}/entity`),
+  deviceSnmpSessions: (fqdn: string) =>
+    request<SnmpSessions>(`/api/v1/devices/${encodeURIComponent(fqdn)}/snmp-sessions`),
   createDevice: (body: DeviceUpdate) =>
     request<Device>('/api/v1/devices', { method: 'POST', body: JSON.stringify(body) }),
   updateDevice: (fqdn: string, body: DeviceUpdate) =>
