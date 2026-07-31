@@ -23,6 +23,7 @@ import type {
   Summary,
   SystemStatus,
   VlanSummary,
+  VlanPolicyRequest,
 } from './types';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -89,6 +90,8 @@ export const api = {
   pollVlans: (fqdn: string) =>
     request<void>(`/api/v1/devices/${encodeURIComponent(fqdn)}/vlans/poll`, { method: 'POST' }),
   vlans: () => request<VlanSummary[]>('/api/v1/vlans'),
+  setVlanPolicy: (body: VlanPolicyRequest) =>
+    request<VlanSummary[]>('/api/v1/vlans/policy', { method: 'POST', body: JSON.stringify(body) }),
   stp: () => request<StpVlanSummary[]>('/api/v1/stp'),
   stpTree: (vlan: number) => request<StpTree>(`/api/v1/stp/${vlan}`),
   markExpectedRoot: (body: StpExpectedRootRequest) =>

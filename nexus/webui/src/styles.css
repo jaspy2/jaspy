@@ -363,6 +363,12 @@ tr.clickable:hover td { background: var(--muted-bg); }
 .badge-warn { background: var(--warn-bg); color: var(--warn); }
 .badge-muted { background: var(--muted-bg); color: var(--muted); }
 
+/* Per-VLAN escalation selector (VLANs page): tint non-default levels so a
+   reconfigured VLAN stands out. `normal` uses the plain control styling. */
+select.vlan-policy { font: inherit; }
+select.vlan-policy-quiet { color: var(--muted); }
+select.vlan-policy-sensitive { color: var(--bad); font-weight: 600; }
+
 /* Per-interface VLAN expansion (device detail): the toggle renders inline
    like a link, not as a filled button. */
 button.vlan-toggle {

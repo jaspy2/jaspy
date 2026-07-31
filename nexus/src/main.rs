@@ -719,6 +719,7 @@ async fn server_main() {
                 routes::api::v1::device_snmp_sessions,
                 routes::api::v1::device_vlan_poll,
                 routes::api::v1::vlans,
+                routes::api::v1::vlan_policy_set,
                 routes::api::v1::stp_summary,
                 routes::api::v1::stp_tree,
                 routes::api::v1::stp_expected_root_add,

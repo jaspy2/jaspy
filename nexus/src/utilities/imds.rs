@@ -107,10 +107,18 @@ impl IMDS {
     }
 
     // Worst interface health severity for a device, for the /devices list badge.
-    pub fn device_health(self: &IMDS, fqdn: &str, now: u64) -> Option<crate::utilities::health::Severity> {
+    // `levels` maps ifindex -> per-VLAN escalation policy (resolved by the caller
+    // from VLAN membership); an empty map means every interface is `Normal`,
+    // reproducing the pre-policy behavior.
+    pub fn device_health(
+        self: &IMDS,
+        fqdn: &str,
+        now: u64,
+        levels: &HashMap<i32, crate::utilities::health::EscalationLevel>,
+    ) -> Option<crate::utilities::health::Severity> {
         let device = self.metrics_storage.devices.get(fqdn)?;
         let last_reports: HashMap<i32, u64> = device.interfaces.iter().map(|(ifindex, iface)| (*ifindex, iface.last_report)).collect();
-        self.health.device_rollup(fqdn, now, &last_reports)
+        self.health.device_rollup(fqdn, now, &last_reports, levels)
     }
 
     // Optional disk persistence of the health store (see main.rs).
@@ -1315,7 +1323,7 @@ mod tests {
         assert_eq!(summary.discards, 5000);
         assert_eq!(summary.severity, Some(crate::utilities::health::Severity::Bad)); // flapping
         // Device rollup reflects the same worst severity.
-        assert_eq!(imds.device_health(&fqdn, now), Some(crate::utilities::health::Severity::Bad));
+        assert_eq!(imds.device_health(&fqdn, now, &HashMap::new()), Some(crate::utilities::health::Severity::Bad));
     }
 
     // Regression: a pinger up-report for a device not yet populated in IMDS (the

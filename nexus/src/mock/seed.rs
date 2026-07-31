@@ -39,6 +39,20 @@ fn seed_expected_roots() -> Vec<SeedExpectedRoot> {
     }]
 }
 
+// Per-VLAN escalation policy for the device-list "⚠ interfaces" badge, so the
+// feature is demoable out of the box. Access ports alternate between VLAN 10 and
+// VLAN 20 (see topology::access_vlan): VLAN 10 (a benign discard/renegotiation
+// user VLAN) is quieted off the fleet list, while VLAN 20 (a watched VLAN) is
+// sensitive so its minor issues are promoted to red. Keyed by VLAN id string ->
+// level, matching the JSON blob format of VLAN_POLICY_SETTING in
+// routes/api/v1.rs. Seeded only when unset so a change made on the VLANs page
+// sticks across restarts on a persisted JASPY_DB_URL.
+const VLAN_POLICY_SETTING: &str = "vlan_health_policy";
+
+fn seed_vlan_policy() -> Vec<(&'static str, &'static str)> {
+    vec![("10", "quiet"), ("20", "sensitive")]
+}
+
 // Hand-laid weathermap layout: firewall on top, then core, dist, access rows.
 // Only seeded where no position exists yet (a persisted JASPY_DB_URL keeps
 // whatever the developer dragged).
@@ -91,6 +105,14 @@ fn run(db_url: &str) {
     // Event name for the UI header; mirrors PUT /api/v1/event.
     let event_json = serde_json::json!({"name": "Mock Event"}).to_string();
     let _ = models::dbo::Setting::set(&mut connection, "event", &event_json);
+
+    // Per-VLAN escalation policy, only when unset (a UI change must stick).
+    if models::dbo::Setting::get(&mut connection, VLAN_POLICY_SETTING).is_none() {
+        let policy: std::collections::HashMap<&str, &str> = seed_vlan_policy().into_iter().collect();
+        if let Ok(json) = serde_json::to_string(&policy) {
+            let _ = models::dbo::Setting::set(&mut connection, VLAN_POLICY_SETTING, &json);
+        }
+    }
 
     // Expected-root acknowledgements don't depend on the discovery crawl (they
     // key on VLAN + fqdn), so seed them upfront. Only when absent, so a removal
@@ -223,6 +245,35 @@ mod tests {
                 dev.stp_vlans.contains(&seed.vlan),
                 "device {} does not run STP on VLAN {} (expected-root seed is stale)",
                 seed.device, seed.vlan,
+            );
+        }
+    }
+
+    #[test]
+    fn seed_vlan_policy_targets_real_access_vlans() {
+        let topo = topology::build();
+        // Every access VLAN the mock actually assigns to an access port.
+        let access_vlans: std::collections::HashSet<i64> = topo
+            .devices
+            .iter()
+            .flat_map(|d| {
+                d.interfaces
+                    .iter()
+                    .filter(|i| i.peer.is_none() && !i.name.starts_with("Po"))
+                    .map(topology::access_vlan)
+            })
+            .collect();
+        for (vlan, level) in seed_vlan_policy() {
+            let id: i64 = vlan.parse().expect("seeded VLAN id must parse");
+            assert!(
+                access_vlans.contains(&id),
+                "seeded policy VLAN {} is not an access VLAN in the mock topology",
+                id
+            );
+            assert!(
+                matches!(level, "quiet" | "normal" | "sensitive"),
+                "seeded policy level {} is not a valid escalation level",
+                level
             );
         }
     }

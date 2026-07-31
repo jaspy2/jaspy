@@ -288,10 +288,21 @@ export interface VlanDevice {
   taggedPorts: number;
 }
 
+// Per-VLAN escalation policy for the device-list "⚠ interfaces" badge. `normal`
+// is today's behavior; `quiet` keeps minor signals (discards/errors/util) off
+// the fleet list; `sensitive` promotes them to red.
+export type VlanPolicyLevel = 'quiet' | 'normal' | 'sensitive';
+
 export interface VlanSummary {
   id: number;
   names: string[]; // distinct names across devices; >1 = naming conflict
   devices: VlanDevice[];
+  policyLevel: VlanPolicyLevel;
+}
+
+export interface VlanPolicyRequest {
+  vlanId: number;
+  level: VlanPolicyLevel;
 }
 
 // One link aggregate (Cisco port-channel / HP trk) from the lagpoller, with

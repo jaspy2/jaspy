@@ -636,6 +636,15 @@ pub struct ApiVlanSummary {
     // network disagrees about this VLAN's name.
     pub names: Vec<String>,
     pub devices: Vec<ApiVlanDevice>,
+    // Per-VLAN escalation policy for the device-list "⚠ interfaces" badge:
+    // "quiet" | "normal" | "sensitive". Defaults to "normal"; the vlanpoller
+    // has no DB access so the /vlans route overlays the configured value.
+    #[serde(default = "default_policy_level")]
+    pub policy_level: String,
+}
+
+fn default_policy_level() -> String {
+    "normal".to_string()
 }
 
 #[derive(Serialize, Deserialize)]
@@ -1075,4 +1084,13 @@ pub struct ApiIssueType {
 #[serde(rename_all = "camelCase")]
 pub struct ApiIssueTypeRequest {
     pub kind: String,
+}
+
+// Request body for POST /api/v1/vlans/policy: set a VLAN's escalation level.
+// `level` is "quiet" | "normal" | "sensitive"; "normal" clears the override.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiVlanPolicyRequest {
+    pub vlan_id: i64,
+    pub level: String,
 }

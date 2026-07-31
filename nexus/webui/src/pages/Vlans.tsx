@@ -1,8 +1,17 @@
 import { Fragment, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { VlanSummary } from '../api/types';
+import type { VlanPolicyLevel, VlanSummary } from '../api/types';
+
+const POLICY_LEVELS: VlanPolicyLevel[] = ['quiet', 'normal', 'sensitive'];
+// Hover help explaining what each level does to the device-list "⚠ interfaces"
+// badge. Hard faults (flapping/stale) always escalate regardless of level.
+const POLICY_HELP =
+  'Device-list badge policy for access ports in this VLAN:\n' +
+  '• quiet — hide minor issues (discards/errors/util) from the device list\n' +
+  '• normal — minor issues show yellow (default)\n' +
+  '• sensitive — minor issues show red';
 
 // A VLAN's display name: the single agreed name, a dash when nothing on the
 // network names it, or every conflicting variant when the switches disagree.
@@ -20,8 +29,19 @@ function vlanNameCell(vlan: VlanSummary) {
 }
 
 export default function Vlans() {
+  const queryClient = useQueryClient();
   const vlans = useQuery({ queryKey: ['vlans'], queryFn: api.vlans, refetchInterval: 30000 });
   const system = useQuery({ queryKey: ['system'], queryFn: api.system, staleTime: 60000 });
+  // The POST returns the refreshed inventory; seed the cache with it so the
+  // dropdown reflects the new level immediately, and nudge the device list
+  // (its "⚠ interfaces" badges depend on this policy).
+  const setPolicy = useMutation({
+    mutationFn: (vars: { vlanId: number; level: VlanPolicyLevel }) => api.setVlanPolicy(vars),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['vlans'], updated);
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    },
+  });
   const [filter, setFilter] = useState('');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const toggle = (id: number) =>
@@ -79,6 +99,7 @@ export default function Vlans() {
               <th>Switches</th>
               <th className="hide-mobile">Native ports</th>
               <th className="hide-mobile">Tagged ports</th>
+              <th title={POLICY_HELP}>Escalation</th>
             </tr>
           </thead>
           <tbody>
@@ -94,10 +115,33 @@ export default function Vlans() {
                   <td>{vlan.devices.length}</td>
                   <td className="hide-mobile">{vlan.devices.reduce((sum, d) => sum + d.nativePorts, 0)}</td>
                   <td className="hide-mobile">{vlan.devices.reduce((sum, d) => sum + d.taggedPorts, 0)}</td>
+                  <td>
+                    <select
+                      className={
+                        (vlan.policyLevel ?? 'normal') !== 'normal'
+                          ? `vlan-policy vlan-policy-${vlan.policyLevel}`
+                          : 'vlan-policy'
+                      }
+                      title={POLICY_HELP}
+                      // Fall back to the real default so an older backend that
+                      // omits policyLevel doesn't render as the first option.
+                      value={vlan.policyLevel ?? 'normal'}
+                      disabled={setPolicy.isPending}
+                      onChange={(e) =>
+                        setPolicy.mutate({ vlanId: vlan.id, level: e.target.value as VlanPolicyLevel })
+                      }
+                    >
+                      {POLICY_LEVELS.map((level) => (
+                        <option key={level} value={level}>
+                          {level}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                 </tr>
                 {expanded.has(vlan.id) && (
                   <tr className="vlan-detail-row">
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       <p style={{ margin: '4px 0 8px' }}>
                         <Link to={`/stp?vlan=${vlan.id}`}>STP tree for VLAN {vlan.id} →</Link>
                       </p>
@@ -119,7 +163,7 @@ export default function Vlans() {
             ))}
             {rows.length === 0 && !vlans.isLoading && (
               <tr>
-                <td colSpan={5} className="muted">
+                <td colSpan={6} className="muted">
                   {system.data?.vlanpollerEnabled === false
                     ? 'The VLAN poller is disabled (JASPY_ENABLE_VLANPOLLER).'
                     : 'No VLAN data (yet) — the VLAN poller fills this after its first cycle.'}

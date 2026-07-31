@@ -96,6 +96,64 @@ impl Severity {
 }
 
 // ---------------------------------------------------------------------------
+// Escalation level
+// ---------------------------------------------------------------------------
+
+// Per-VLAN policy that decides which of an interface's signals reach the
+// device-list rollup badge. It does NOT touch the per-interface badges on the
+// device-detail page (those always show every signal) — only what escalates to
+// the fleet list. The owning route resolves an interface's level from its access
+// VLAN before calling `device_rollup`; trunks and unknown VLANs resolve to
+// `Normal`, so the default reproduces today's behavior exactly.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum EscalationLevel {
+    // Only hard faults (flapping / stale) escalate; minor signals (discards,
+    // errors, high-util, renegotiation) stay off the fleet list.
+    Quiet,
+    // Today's behavior: hard faults -> red, minor signals -> yellow.
+    #[default]
+    Normal,
+    // Minor signals are promoted to red so they are impossible to miss.
+    Sensitive,
+}
+
+impl EscalationLevel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            EscalationLevel::Quiet => "quiet",
+            EscalationLevel::Normal => "normal",
+            EscalationLevel::Sensitive => "sensitive",
+        }
+    }
+
+    // Parse the wire/stored string; unknown (incl. "normal") -> Normal.
+    pub fn from_str(s: &str) -> EscalationLevel {
+        match s {
+            "quiet" => EscalationLevel::Quiet,
+            "sensitive" => EscalationLevel::Sensitive,
+            _ => EscalationLevel::Normal,
+        }
+    }
+
+    // How one interface's health summary contributes to the device rollup under
+    // this level. `hard` is the Bad-class signal set (flapping / stale).
+    fn contribution(self, severity: Option<Severity>, hard: bool) -> Option<Severity> {
+        match self {
+            EscalationLevel::Quiet => {
+                if hard {
+                    Some(Severity::Bad)
+                } else {
+                    None
+                }
+            }
+            EscalationLevel::Normal => severity,
+            // Any tripped signal becomes red (hard faults already are).
+            EscalationLevel::Sensitive => severity.map(|_| Severity::Bad),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Stored samples/events (private; serde for optional disk persistence)
 // ---------------------------------------------------------------------------
 
@@ -382,18 +440,29 @@ impl HealthStore {
     }
 
     // Worst severity across a device's interfaces, for the /devices list badge.
-    // `last_reports` maps ifindex -> last-poll timestamp (from IMDS).
+    // `last_reports` maps ifindex -> last-poll timestamp (from IMDS). `levels`
+    // maps ifindex -> per-VLAN escalation policy; an interface absent from the
+    // map (VLAN unknown, trunk, or no policy configured) defaults to `Normal`,
+    // reproducing today's behavior. The level filters which of the interface's
+    // signals contribute to this rollup — the per-interface `summary()` badges
+    // are unaffected.
     pub fn device_rollup(
         &self,
         fqdn: &str,
         now: u64,
         last_reports: &HashMap<i32, u64>,
+        levels: &HashMap<i32, EscalationLevel>,
     ) -> Option<Severity> {
         let interfaces = self.devices.get(fqdn)?;
         let mut worst: Option<Severity> = None;
         for ifindex in interfaces.keys() {
             let last_report = last_reports.get(ifindex).copied().unwrap_or(0);
-            if let Some(severity) = self.summary(fqdn, *ifindex, now, last_report).and_then(|s| s.severity) {
+            let Some(summary) = self.summary(fqdn, *ifindex, now, last_report) else {
+                continue;
+            };
+            let level = levels.get(ifindex).copied().unwrap_or_default();
+            let hard = summary.flapping || summary.stale;
+            if let Some(severity) = level.contribution(summary.severity, hard) {
                 worst = Some(match worst {
                     Some(w) => w.combine(severity),
                     None => severity,
@@ -784,7 +853,7 @@ mod tests {
         s.ingest(FQDN, 2, flap(true), 1_000_000);
         s.ingest(FQDN, 3, counters(0, 0, 0, 10_000), 1_000_000);
         let last: HashMap<i32, u64> = vec![(1, 1_000_000u64), (2, 1_000_000), (3, 1_000_000)].into_iter().collect();
-        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last), Some(Severity::Bad));
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &HashMap::new()), Some(Severity::Bad));
     }
 
     #[test]
@@ -792,7 +861,71 @@ mod tests {
         let mut s = store();
         s.ingest(FQDN, 1, counters(0, 0, 0, 10_000), 1_000_000);
         let last: HashMap<i32, u64> = vec![(1, 1_000_000u64)].into_iter().collect();
-        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last), None);
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &HashMap::new()), None);
+    }
+
+    // --- per-VLAN escalation levels ---
+
+    #[test]
+    fn quiet_level_suppresses_minor_but_keeps_hard_faults() {
+        let mut s = store();
+        // iface 1: warn (discards only). iface 2: bad (flapping).
+        s.ingest(FQDN, 1, counters(0, 0, 100, 10_000), 1_000_000);
+        s.ingest(FQDN, 2, flap(false), 1_000_000);
+        s.ingest(FQDN, 2, flap(true), 1_000_000);
+        s.ingest(FQDN, 2, flap(false), 1_000_000);
+        s.ingest(FQDN, 2, flap(true), 1_000_000);
+        let last: HashMap<i32, u64> = vec![(1, 1_000_000u64), (2, 1_000_000)].into_iter().collect();
+
+        // Quiet on iface 1 alone: its discard warning is dropped, iface 2 still red.
+        let levels: HashMap<i32, EscalationLevel> = vec![(1, EscalationLevel::Quiet)].into_iter().collect();
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &levels), Some(Severity::Bad));
+
+        // Quiet on both: iface 1 minor suppressed, but iface 2 flapping is a hard
+        // fault and still escalates.
+        let levels: HashMap<i32, EscalationLevel> =
+            vec![(1, EscalationLevel::Quiet), (2, EscalationLevel::Quiet)].into_iter().collect();
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &levels), Some(Severity::Bad));
+    }
+
+    #[test]
+    fn quiet_level_silences_a_discards_only_device() {
+        let mut s = store();
+        // Single interface, discards only -> normally warn (yellow).
+        s.ingest(FQDN, 1, counters(0, 0, 100, 10_000), 1_000_000);
+        let last: HashMap<i32, u64> = vec![(1, 1_000_000u64)].into_iter().collect();
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &HashMap::new()), Some(Severity::Warn));
+        let levels: HashMap<i32, EscalationLevel> = vec![(1, EscalationLevel::Quiet)].into_iter().collect();
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &levels), None);
+    }
+
+    #[test]
+    fn sensitive_level_promotes_minor_to_red() {
+        let mut s = store();
+        // Discards only -> warn under Normal, promoted to Bad under Sensitive.
+        s.ingest(FQDN, 1, counters(0, 0, 100, 10_000), 1_000_000);
+        let last: HashMap<i32, u64> = vec![(1, 1_000_000u64)].into_iter().collect();
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &HashMap::new()), Some(Severity::Warn));
+        let levels: HashMap<i32, EscalationLevel> = vec![(1, EscalationLevel::Sensitive)].into_iter().collect();
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &levels), Some(Severity::Bad));
+    }
+
+    #[test]
+    fn sensitive_level_leaves_healthy_interface_alone() {
+        let mut s = store();
+        s.ingest(FQDN, 1, counters(0, 0, 0, 10_000), 1_000_000);
+        let last: HashMap<i32, u64> = vec![(1, 1_000_000u64)].into_iter().collect();
+        let levels: HashMap<i32, EscalationLevel> = vec![(1, EscalationLevel::Sensitive)].into_iter().collect();
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &levels), None);
+    }
+
+    #[test]
+    fn escalation_level_from_str_roundtrip() {
+        for lvl in [EscalationLevel::Quiet, EscalationLevel::Normal, EscalationLevel::Sensitive] {
+            assert_eq!(EscalationLevel::from_str(lvl.as_str()), lvl);
+        }
+        assert_eq!(EscalationLevel::from_str("bogus"), EscalationLevel::Normal);
+        assert_eq!(EscalationLevel::default(), EscalationLevel::Normal);
     }
 
     // --- retain / unknown keys ---

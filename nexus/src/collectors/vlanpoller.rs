@@ -109,7 +109,9 @@ impl VlanStore {
             let mut names: Vec<String> = devices.iter().filter_map(|d| d.name.clone()).collect();
             names.sort();
             names.dedup();
-            ApiVlanSummary { id, names, devices }
+            // Default policy; the /vlans route overlays the configured level
+            // (this store has no DB access).
+            ApiVlanSummary { id, names, devices, policy_level: "normal".to_string() }
         }).collect()
     }
 

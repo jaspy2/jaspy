@@ -28,6 +28,107 @@ fn load_suppressed_types(connection: &mut db::AnyConnection) -> std::collections
     }
 }
 
+// Setting key for the per-VLAN escalation policy (a JSON object
+// {"<vlanId>": "quiet"|"sensitive"}). Only non-"normal" overrides are stored.
+const VLAN_POLICY_SETTING: &str = "vlan_health_policy";
+
+// Decode the stored policy blob ({"<vlanId>": "quiet"|"sensitive"}). Tolerant of
+// a malformed value (returns empty) so a bad blob can never break the rollup;
+// `Normal`/unknown entries are dropped, so an empty map means all-`Normal`.
+fn parse_vlan_policy(json: &str) -> std::collections::HashMap<i64, utilities::health::EscalationLevel> {
+    let mut out = std::collections::HashMap::new();
+    let Ok(map) = serde_json::from_str::<std::collections::HashMap<String, String>>(json) else {
+        return out;
+    };
+    for (k, v) in map {
+        if let Ok(id) = k.parse::<i64>() {
+            let level = utilities::health::EscalationLevel::from_str(&v);
+            if level != utilities::health::EscalationLevel::Normal {
+                out.insert(id, level);
+            }
+        }
+    }
+    out
+}
+
+// Encode the policy map, dropping `Normal` entries so the blob only ever lists
+// the quiet/sensitive VLANs.
+fn serialize_vlan_policy(policy: &std::collections::HashMap<i64, utilities::health::EscalationLevel>) -> String {
+    let map: std::collections::HashMap<String, String> = policy
+        .iter()
+        .filter(|(_, lvl)| **lvl != utilities::health::EscalationLevel::Normal)
+        .map(|(id, lvl)| (id.to_string(), lvl.as_str().to_string()))
+        .collect();
+    serde_json::to_string(&map).unwrap_or_else(|_| "{}".to_string())
+}
+
+// The persisted per-VLAN escalation policy, keyed by VLAN id. Empty when unset
+// or malformed.
+fn load_vlan_policy(connection: &mut db::AnyConnection) -> std::collections::HashMap<i64, utilities::health::EscalationLevel> {
+    match models::dbo::Setting::get(connection, VLAN_POLICY_SETTING) {
+        Some(json) => parse_vlan_policy(&json),
+        None => std::collections::HashMap::new(),
+    }
+}
+
+// Persist the policy map (only quiet/sensitive overrides are stored).
+fn persist_vlan_policy(
+    connection: &mut db::AnyConnection,
+    policy: &std::collections::HashMap<i64, utilities::health::EscalationLevel>,
+) -> Result<(), (rocket::http::Status, Json<models::json::ApiError>)> {
+    let json = serialize_vlan_policy(policy);
+    if let Err(e) = models::dbo::Setting::set(connection, VLAN_POLICY_SETTING, &json) {
+        return Err((rocket::http::Status::InternalServerError, Json(models::json::ApiError {
+            error: format!("failed to persist VLAN policy: {} (are the migrations up to date?)", e),
+        })));
+    }
+    Ok(())
+}
+
+// Resolve each interface's escalation level from VLAN membership + the policy
+// map, for one device (membership keyed by ifIndex -> (native, tagged)). Access
+// ports (no tagged VLANs) take their native VLAN's level; trunk ports and
+// interfaces with unknown membership stay `Normal` (omitted from the map, which
+// `device_rollup` defaults to `Normal`). Only non-`Normal` entries are emitted.
+fn resolve_levels(
+    membership: &std::collections::HashMap<i64, (Option<i64>, Vec<i64>)>,
+    policy: &std::collections::HashMap<i64, utilities::health::EscalationLevel>,
+) -> std::collections::HashMap<i32, utilities::health::EscalationLevel> {
+    let mut out = std::collections::HashMap::new();
+    for (ifindex, (native, tagged)) in membership {
+        if !tagged.is_empty() {
+            continue; // trunk port -> Normal
+        }
+        if let Some(vlan) = native {
+            if let Some(level) = policy.get(vlan) {
+                if *level != utilities::health::EscalationLevel::Normal {
+                    out.insert(*ifindex as i32, *level);
+                }
+            }
+        }
+    }
+    out
+}
+
+// GET /vlans response body: the in-memory inventory with the configured policy
+// level overlaid per VLAN (the vlanpoller store has no DB access).
+fn vlans_with_policy(
+    connection: &mut db::AnyConnection,
+    vlan_store: &Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>,
+) -> Vec<models::json::ApiVlanSummary> {
+    let mut vlans = match vlan_store.lock() {
+        Ok(store) => store.network_vlans(),
+        Err(_) => Vec::new(),
+    };
+    let policy = load_vlan_policy(connection);
+    for v in vlans.iter_mut() {
+        if let Some(level) = policy.get(&v.id) {
+            v.policy_level = level.as_str().to_string();
+        }
+    }
+    vlans
+}
+
 // Live (up, seconds since last interface poll) for a device, from IMDS.
 fn imds_device_live(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, fqdn: &str) -> (Option<bool>, Option<u64>) {
     if let Ok(ref mut imds) = imds.inner().lock() {
@@ -203,12 +304,22 @@ fn api_interface_health(summary: crate::utilities::health::InterfaceHealthSummar
     }
 }
 
-fn api_device(connection: &mut db::AnyConnection, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, device: &models::dbo::Device) -> models::json::ApiDevice {
+fn api_device(
+    connection: &mut db::AnyConnection,
+    imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
+    device: &models::dbo::Device,
+    membership: &std::collections::HashMap<String, std::collections::HashMap<i64, (Option<i64>, Vec<i64>)>>,
+    policy: &std::collections::HashMap<i64, utilities::health::EscalationLevel>,
+) -> models::json::ApiDevice {
     let fqdn = format!("{}.{}", device.name, device.dns_domain);
     let (up, seconds_since_last_poll) = imds_device_live(imds, &fqdn);
-    // Worst per-interface health severity, for the device-list problem badge.
+    // Per-VLAN escalation levels for this device's interfaces; empty => Normal
+    // (today's behavior), which is also the case for an empty membership map.
+    let levels = membership.get(&fqdn).map(|m| resolve_levels(m, policy)).unwrap_or_default();
+    // Worst per-interface health severity, for the device-list problem badge,
+    // filtered by each interface's VLAN escalation level.
     let interface_health = match imds.inner().lock() {
-        Ok(imds) => imds.device_health(&fqdn, utilities::tools::get_time_msecs()).map(|s| s.as_str().to_string()),
+        Ok(imds) => imds.device_health(&fqdn, utilities::tools::get_time_msecs(), &levels).map(|s| s.as_str().to_string()),
         Err(_) => None,
     };
     // Adaptive SNMP-polling health from the embedded client's registry (empty in
@@ -238,10 +349,20 @@ fn api_device(connection: &mut db::AnyConnection, imds: &State<Arc<Mutex<utiliti
 }
 
 #[get("/devices")]
-pub fn devices(mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Json<Vec<models::json::ApiDevice>> {
+pub fn devices(
+    mut connection: db::JaspyDB,
+    imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
+) -> Json<Vec<models::json::ApiDevice>> {
+    // Snapshot VLAN membership and the escalation policy once for the whole list.
+    let membership = match vlan_store.inner().lock() {
+        Ok(store) => store.membership_map(),
+        Err(_) => std::collections::HashMap::new(),
+    };
+    let policy = load_vlan_policy(&mut connection);
     let mut ret = Vec::new();
     for device in models::dbo::Device::all(&mut connection).iter() {
-        ret.push(api_device(&mut connection, imds, device));
+        ret.push(api_device(&mut connection, imds, device, &membership, &policy));
     }
     Json(ret)
 }
@@ -484,7 +605,13 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         issues
     };
 
-    let device = api_device(&mut connection, imds, &device);
+    // Same VLAN-filtered rollup badge as the device list.
+    let membership = match vlan_store.inner().lock() {
+        Ok(store) => store.membership_map(),
+        Err(_) => std::collections::HashMap::new(),
+    };
+    let policy = load_vlan_policy(&mut connection);
+    let device = api_device(&mut connection, imds, &device, &membership, &policy);
     Some(Json(models::json::ApiDeviceDetail {
         device: device,
         interfaces: interfaces,
@@ -717,15 +844,39 @@ fn expected_roots_by_vlan(connection: &mut db::AnyConnection) -> std::collection
     out
 }
 
-// Network-wide VLAN inventory (id, per-device names, port usage), straight
-// from the in-memory vlanpoller store — no DB. Empty until the first poll.
+// Network-wide VLAN inventory (id, per-device names, port usage) from the
+// in-memory vlanpoller store, with each VLAN's escalation policy overlaid from
+// the DB. Empty until the first poll.
 #[get("/vlans")]
-pub fn vlans(vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>) -> Json<Vec<models::json::ApiVlanSummary>> {
-    let vlans = match vlan_store.inner().lock() {
-        Ok(store) => store.network_vlans(),
-        Err(_) => Vec::new(),
-    };
-    Json(vlans)
+pub fn vlans(
+    mut connection: db::JaspyDB,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
+) -> Json<Vec<models::json::ApiVlanSummary>> {
+    Json(vlans_with_policy(&mut connection, vlan_store.inner()))
+}
+
+// POST /api/v1/vlans/policy: set a VLAN's escalation level for the device-list
+// "⚠ interfaces" badge. `level` is "quiet"|"normal"|"sensitive"; "normal"
+// clears the override. 400 for an unknown level. Returns the updated inventory.
+#[post("/vlans/policy", data = "<body>")]
+pub fn vlan_policy_set(
+    body: Json<models::json::ApiVlanPolicyRequest>,
+    mut connection: db::JaspyDB,
+    vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
+) -> Result<Json<Vec<models::json::ApiVlanSummary>>, (rocket::http::Status, Json<models::json::ApiError>)> {
+    let req = body.into_inner();
+    if !matches!(req.level.as_str(), "quiet" | "normal" | "sensitive") {
+        return Err((rocket::http::Status::BadRequest, Json(models::json::ApiError {
+            error: format!("unknown escalation level: {} (expected quiet|normal|sensitive)", req.level),
+        })));
+    }
+    let mut policy = load_vlan_policy(&mut connection);
+    match utilities::health::EscalationLevel::from_str(&req.level) {
+        utilities::health::EscalationLevel::Normal => { policy.remove(&req.vlan_id); }
+        level => { policy.insert(req.vlan_id, level); }
+    }
+    persist_vlan_policy(&mut connection, &policy)?;
+    Ok(Json(vlans_with_policy(&mut connection, vlan_store.inner())))
 }
 
 // Aggregate every currently-detected fleet problem into a flat list of derived
@@ -1468,7 +1619,9 @@ pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: 
             if let Ok(ref mut msgbus) = msgbus.lock() {
                 msgbus.event(event);
             }
-            Ok(Json(api_device(&mut connection, imds, &created_device)))
+            // Post-create echo: no VLAN membership yet, so the badge uses the
+            // default (Normal) policy.
+            Ok(Json(api_device(&mut connection, imds, &created_device, &std::collections::HashMap::new(), &std::collections::HashMap::new())))
         }
         Err(e) => Err(api_err(
             rocket::http::Status::InternalServerError,
@@ -1519,7 +1672,9 @@ pub fn device_update(device_fqdn: &str, device_json: Json<models::dbo::NewDevice
             return None;
         }
     }
-    Some(Json(api_device(&mut connection, imds, &device)))
+    // Post-update echo; the fleet-list rollup applies the VLAN policy — this
+    // single-device echo uses the default (Normal).
+    Some(Json(api_device(&mut connection, imds, &device, &std::collections::HashMap::new(), &std::collections::HashMap::new())))
 }
 
 #[delete("/devices/<device_fqdn>")]
@@ -1846,6 +2001,54 @@ mod tests {
         // Empty / whitespace-only hostname is rejected.
         assert!(validated_device_identity("", "event.example").is_err());
         assert!(validated_device_identity("   ", "event.example").is_err());
+    }
+
+    #[test]
+    fn resolve_levels_access_vs_trunk_vs_unknown() {
+        use utilities::health::EscalationLevel;
+        // VLAN 10 quiet, VLAN 20 sensitive, VLAN 30 unset (normal).
+        let policy: std::collections::HashMap<i64, EscalationLevel> = vec![
+            (10, EscalationLevel::Quiet),
+            (20, EscalationLevel::Sensitive),
+        ].into_iter().collect();
+        // if1 access VLAN10 -> Quiet; if2 access VLAN20 -> Sensitive;
+        // if3 access VLAN30 (normal, unset) -> omitted; if4 trunk (native 10 but
+        // tagged non-empty) -> omitted (Normal); if5 access VLAN10 -> Quiet.
+        let membership: std::collections::HashMap<i64, (Option<i64>, Vec<i64>)> = vec![
+            (1, (Some(10), vec![])),
+            (2, (Some(20), vec![])),
+            (3, (Some(30), vec![])),
+            (4, (Some(10), vec![10, 20])),
+            (5, (Some(10), vec![])),
+        ].into_iter().collect();
+        let levels = resolve_levels(&membership, &policy);
+        assert_eq!(levels.get(&1), Some(&EscalationLevel::Quiet));
+        assert_eq!(levels.get(&2), Some(&EscalationLevel::Sensitive));
+        assert_eq!(levels.get(&3), None); // normal -> omitted
+        assert_eq!(levels.get(&4), None); // trunk -> normal -> omitted
+        assert_eq!(levels.get(&5), Some(&EscalationLevel::Quiet));
+        assert_eq!(levels.len(), 3);
+    }
+
+    #[test]
+    fn vlan_policy_json_roundtrip_drops_normal() {
+        use utilities::health::EscalationLevel;
+        let policy: std::collections::HashMap<i64, EscalationLevel> = vec![
+            (10, EscalationLevel::Quiet),
+            (20, EscalationLevel::Sensitive),
+            (30, EscalationLevel::Normal), // must not be stored
+        ].into_iter().collect();
+        let json = serialize_vlan_policy(&policy);
+        let back = parse_vlan_policy(&json);
+        assert_eq!(back.get(&10), Some(&EscalationLevel::Quiet));
+        assert_eq!(back.get(&20), Some(&EscalationLevel::Sensitive));
+        assert_eq!(back.get(&30), None);
+        assert_eq!(back.len(), 2);
+        // Malformed / empty blobs are tolerated.
+        assert!(parse_vlan_policy("not json").is_empty());
+        assert!(parse_vlan_policy("{}").is_empty());
+        // An explicit "normal" string in the blob is dropped on read too.
+        assert!(parse_vlan_policy(r#"{"5":"normal"}"#).is_empty());
     }
 
     #[test]
