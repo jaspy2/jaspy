@@ -323,6 +323,29 @@ impl IMDS {
         }
     }
 
+    // Build the `neighborLinksState` map annotated onto an interfaceUpDown
+    // event, i.e. the up/down state of every LAG member interface bundled to
+    // the same neighbor. For each member, its state as carried by the CURRENT
+    // report batch (`report_ups`, keyed by ifIndex) wins over its pre-batch
+    // last-known state (the third tuple element). Preferring the report matters
+    // when several members flap in one poll: reading only the pre-batch
+    // snapshot annotated the second-processed member's event from stale data,
+    // so a whole bundle going down showed as [UD]/[DU] instead of [DD].
+    // `members` is one (ifIndex, name, snapshot_up) per bundle member.
+    fn lag_link_statuses(members: &[(i32, String, Option<bool>)], report_ups: &HashMap<i32, Option<bool>>) -> HashMap<String, String> {
+        let mut link_statuses = HashMap::new();
+        for (index, name, snapshot_up) in members {
+            let up = report_ups.get(index).copied().flatten().or(*snapshot_up);
+            let status = match up {
+                Some(true) => "up".to_string(),
+                Some(false) => "down".to_string(),
+                None => "unknown".to_string(),
+            };
+            link_statuses.insert(name.clone(), status);
+        }
+        link_statuses
+    }
+
     pub fn report_interfaces(self: &mut IMDS, connection: &mut AnyConnection, imr: models::json::InterfaceMonitorReport) {
         let device;
         let last_report = utilities::tools::get_time_msecs();
@@ -342,6 +365,13 @@ impl IMDS {
         // O(interfaces^2) under the global IMDS lock (PERF.md #1). One clone per
         // device keeps report_interfaces O(interfaces).
         let interfaces_snapshot = device.interfaces.clone();
+        // Up/down as carried by THIS report batch, keyed by ifIndex. LAG peer
+        // states annotated onto a link-flap event prefer these over the
+        // pre-batch snapshot, so that when several members of one bundle flap
+        // in the same poll every emitted event reflects all their fresh states
+        // (see lag_link_statuses).
+        let report_ups: HashMap<i32, Option<bool>> =
+            imr.interfaces.iter().map(|r| (r.if_index, r.up)).collect();
         for interface_report in imr.interfaces.iter() {
             let interface;
             match device.interfaces.get_mut(&interface_report.if_index) {
@@ -396,7 +426,6 @@ impl IMDS {
                             let mut neighbor : Option<String> = None;
                             let mut neighbor_interface_name : Option<String> = None;
                             let mut link_interfaces : Vec<models::dbo::Interface> = Vec::new();
-                            let mut link_statuses : HashMap<String, String> = HashMap::new();
                             if let Some(connpair) = ConnectionPair::load_by_fqdn_ifindex(connection, &imr.device_fqdn, &interface_report.if_index) {
                                 if let Some(remote_info) = connpair.remote_info {
                                     neighbor = Some(format!("{}.{}", remote_info.device.name, remote_info.device.dns_domain));
@@ -410,24 +439,13 @@ impl IMDS {
                                     }
                                 }
                             }
+                            let mut lag_members : Vec<(i32, String, Option<bool>)> = Vec::new();
                             for link_interface in link_interfaces.iter() {
                                 if let Some(link_interface_data) = interfaces_snapshot.get(&link_interface.index) {
-                                    // The interface that just flapped reports its
-                                    // fresh state; its LAG peers keep their
-                                    // last-known state from the snapshot.
-                                    let up = if link_interface.index == interface_report.if_index {
-                                        interface_report.up
-                                    } else {
-                                        link_interface_data.up
-                                    };
-                                    let status = match up {
-                                        Some(true) => "up".to_string(),
-                                        Some(false) => "down".to_string(),
-                                        None => "unknown".to_string(),
-                                    };
-                                    link_statuses.insert(link_interface_data.name.clone(), status);
+                                    lag_members.push((link_interface.index, link_interface_data.name.clone(), link_interface_data.up));
                                 }
                             }
+                            let link_statuses = IMDS::lag_link_statuses(&lag_members, &report_ups);
                             if let Ok(ref mut msgbus) = self.msgbus.lock() {
                                 let event = models::events::Event::interface_updown_event(&imr.device_fqdn, &interface.name, neighbor, neighbor_interface_name, &link_statuses, old_state, new_state);
                                 msgbus.event(event);
@@ -756,6 +774,61 @@ mod tests {
 
     fn metrics_by_name<'a>(metrics: &'a [LabeledMetric], name: &str) -> Vec<&'a LabeledMetric> {
         metrics.iter().filter(|m| m.name == name).collect()
+    }
+
+    // --- LAG neighborLinksState annotation ---
+
+    #[test]
+    fn lag_link_statuses_prefers_current_report_over_snapshot() {
+        // Two-member LAG (ifIndex 1 = Gi1/0/30, ifIndex 2 = Gi2/0/30). Both go
+        // down in the SAME poll, so both appear in this report as up=false. The
+        // pre-batch snapshot still shows both up. Regardless of which member's
+        // flap event we are annotating, every member must read as down ([DD]) —
+        // the report state wins over the stale snapshot.
+        let members = vec![
+            (1, "Gi1/0/30".to_string(), Some(true)),
+            (2, "Gi2/0/30".to_string(), Some(true)),
+        ];
+        let mut report_ups: HashMap<i32, Option<bool>> = HashMap::new();
+        report_ups.insert(1, Some(false));
+        report_ups.insert(2, Some(false));
+        let statuses = IMDS::lag_link_statuses(&members, &report_ups);
+        assert_eq!(statuses.get("Gi1/0/30"), Some(&"down".to_string()));
+        assert_eq!(statuses.get("Gi2/0/30"), Some(&"down".to_string()));
+    }
+
+    #[test]
+    fn lag_link_statuses_falls_back_to_snapshot_when_absent_from_report() {
+        // Only ifIndex 1 flapped this poll; its LAG peer (ifIndex 2) is not in
+        // the report, so its last-known snapshot state (up) is used → [DU].
+        let members = vec![
+            (1, "Gi1/0/30".to_string(), Some(true)),
+            (2, "Gi2/0/30".to_string(), Some(true)),
+        ];
+        let mut report_ups: HashMap<i32, Option<bool>> = HashMap::new();
+        report_ups.insert(1, Some(false));
+        let statuses = IMDS::lag_link_statuses(&members, &report_ups);
+        assert_eq!(statuses.get("Gi1/0/30"), Some(&"down".to_string()));
+        assert_eq!(statuses.get("Gi2/0/30"), Some(&"up".to_string()));
+    }
+
+    #[test]
+    fn lag_link_statuses_report_entry_without_up_falls_back_to_snapshot() {
+        // A report entry carrying no up/down info (counters-only, e.g. up=None)
+        // must not clobber the peer's last-known state with "unknown".
+        let members = vec![(2, "Gi2/0/30".to_string(), Some(true))];
+        let mut report_ups: HashMap<i32, Option<bool>> = HashMap::new();
+        report_ups.insert(2, None);
+        let statuses = IMDS::lag_link_statuses(&members, &report_ups);
+        assert_eq!(statuses.get("Gi2/0/30"), Some(&"up".to_string()));
+    }
+
+    #[test]
+    fn lag_link_statuses_unknown_when_no_state_anywhere() {
+        let members = vec![(2, "Gi2/0/30".to_string(), None)];
+        let report_ups: HashMap<i32, Option<bool>> = HashMap::new();
+        let statuses = IMDS::lag_link_statuses(&members, &report_ups);
+        assert_eq!(statuses.get("Gi2/0/30"), Some(&"unknown".to_string()));
     }
 
     // --- counter validation ---
