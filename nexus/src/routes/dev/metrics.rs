@@ -59,6 +59,10 @@ pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, entity_metrics: 
         ret.push_str(&store.render());
     }
 
+    // Per-device/query SNMP poll counters (all collectors, via the SnmpSource
+    // seam) for attributing and rating the polling load.
+    ret.push_str(&utilities::pollstats::render());
+
     ret.push_str("\n");
 
     return Some(ret);

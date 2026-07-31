@@ -13,7 +13,8 @@ use super::embedded::Embedded;
 use super::hostspec::HostSpec;
 use super::snmpbot_http::SnmpbotHttp;
 use super::types::{SNMPBotObjectResponse, SNMPBotResponse};
-use crate::utilities::perfstats::PERF;
+use crate::utilities::perfstats::{PERF, SnmpOutcome};
+use crate::utilities::pollstats;
 use crate::utilities::semaphore::Semaphore;
 use std::time::Instant;
 
@@ -46,6 +47,18 @@ impl Drop for InflightGuard {
     }
 }
 
+// Classify a backend result for the per-device poll counters: Ok yields the
+// fetched-value count (via the response-specific counter), a timeout is bucketed
+// apart (its ~full-timeout wall time would skew latency), and anything else is a
+// genuine error. Uses the same timeout classifier as the interface poller.
+fn classify<T>(result: &Result<T, String>, count: impl Fn(&T) -> u64) -> (SnmpOutcome, u64) {
+    match result {
+        Ok(resp) => (SnmpOutcome::Ok, count(resp)),
+        Err(e) if crate::snmp::is_snmp_timeout(e) => (SnmpOutcome::Timeout, 0),
+        Err(_) => (SnmpOutcome::Error, 0),
+    }
+}
+
 impl SnmpSource {
     // max_inflight = 0 means unlimited.
     pub fn new(backend: SnmpBackend, max_inflight: usize) -> SnmpSource {
@@ -70,17 +83,25 @@ impl SnmpSource {
 
     pub fn table(&self, host: &HostSpec, table_id: &str) -> Result<SNMPBotResponse, String> {
         let _admit = self.admit();
-        match &self.backend {
+        let start = Instant::now();
+        let result = match &self.backend {
             SnmpBackend::SnmpbotHttp(client) => client.table(host, table_id),
             SnmpBackend::Embedded(client) => client.table(host, table_id),
-        }
+        };
+        let (outcome, values) = classify(&result, pollstats::table_value_count);
+        pollstats::record(&host.fqdn, table_id, outcome, values, start.elapsed());
+        result
     }
 
     pub fn object(&self, host: &HostSpec, object_id: &str) -> Result<SNMPBotObjectResponse, String> {
         let _admit = self.admit();
-        match &self.backend {
+        let start = Instant::now();
+        let result = match &self.backend {
             SnmpBackend::SnmpbotHttp(client) => client.object(host, object_id),
             SnmpBackend::Embedded(client) => client.object(host, object_id),
-        }
+        };
+        let (outcome, values) = classify(&result, pollstats::object_value_count);
+        pollstats::record(&host.fqdn, object_id, outcome, values, start.elapsed());
+        result
     }
 }

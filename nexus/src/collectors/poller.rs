@@ -469,6 +469,9 @@ pub fn run(snmp: Arc<SnmpSource>, poll_loop_msecs: u64, report_device_status: bo
     while running.load(atomic::Ordering::Relaxed) {
         if ticks_since_reload == 0 {
             let devices = load_devices(&pool);
+            // Drop per-device SNMP poll counters for devices no longer monitored.
+            let monitored: std::collections::HashSet<String> = devices.keys().cloned().collect();
+            crate::utilities::pollstats::retain(&monitored);
             let mut expired_fqdns: Vec<String> = Vec::new();
             check_if_worker_needed(&pool, &snmp, poll_loop_msecs, report_device_status, &imds, &devices, &mut poll_workers);
             check_expired_fqdn_workers(&devices, &poll_workers, &mut expired_fqdns);

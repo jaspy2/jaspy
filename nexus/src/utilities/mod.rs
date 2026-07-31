@@ -4,6 +4,7 @@ pub mod issues;
 pub mod livelog;
 pub mod msgbus;
 pub mod perfstats;
+pub mod pollstats;
 pub mod semaphore;
 pub mod tools;
 pub mod cache;
