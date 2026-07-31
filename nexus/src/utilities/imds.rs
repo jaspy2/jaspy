@@ -1297,12 +1297,21 @@ mod tests {
         // same-millisecond reports).
         imds.report_interfaces(&mut conn, report(Some(true), Some(1000)));
         std::thread::sleep(std::time::Duration::from_millis(2));
-        // Flip oper status (1 flap) and grow discards by 5000.
+        // Bounce the link down/up twice — two recoveries (down->up) is a genuine
+        // flap. Grow discards by 5000 on the first drop; keep it flat after so
+        // only that one delta lands in the window.
         imds.report_interfaces(&mut conn, report(Some(false), Some(6000)));
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        imds.report_interfaces(&mut conn, report(Some(true), Some(6000))); // recovery #1
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        imds.report_interfaces(&mut conn, report(Some(false), Some(6000)));
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        imds.report_interfaces(&mut conn, report(Some(true), Some(6000))); // recovery #2
 
         let now = utilities::tools::get_time_msecs();
         let summary = imds.interface_health(&fqdn, 1, now).expect("interface should be unhealthy");
-        assert_eq!(summary.flap_count, 1);
+        assert_eq!(summary.flap_count, 2);
+        assert!(summary.flapping);
         assert_eq!(summary.discards, 5000);
         assert_eq!(summary.severity, Some(crate::utilities::health::Severity::Bad)); // flapping
         // Device rollup reflects the same worst severity.

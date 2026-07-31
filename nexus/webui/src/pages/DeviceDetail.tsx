@@ -373,9 +373,9 @@ function healthLines(h: InterfaceHealth): string[] {
   if (h.stale) {
     lines.push('no recent SNMP data — the device may have stopped responding (stale)');
   }
-  if (h.flapCount > 0) {
-    const ago = h.lastFlapSecsAgo !== null ? `, last ${humanDuration(h.lastFlapSecsAgo)} ago` : '';
-    lines.push(`${h.flapCount} link flap${h.flapCount === 1 ? '' : 's'} in last ${humanDuration(h.flapWindowSecs)}${ago}`);
+  if (h.flapping) {
+    const ago = h.lastFlapSecsAgo !== null ? `, last came up ${humanDuration(h.lastFlapSecsAgo)} ago` : '';
+    lines.push(`flapping — bounced down/up ${h.flapCount} times in last ${humanDuration(h.flapWindowSecs)}${ago}`);
   }
   if (h.discards > 0) {
     lines.push(`${n(h.discards)} discard${h.discards === 1 ? '' : 's'} in last ${humanDuration(h.counterWindowSecs)}`);
@@ -420,7 +420,7 @@ function InterfaceDetail({ iface, names }: { iface: Interface; names: Map<number
     rows.push({ label: 'Discards', value: counterVal(iface.outDiscards, h.discards), cls: h.discards > 0 ? 'warn-text' : undefined });
     rows.push({ label: 'Input errors', value: counterVal(iface.inErrors, h.inErrors), cls: h.inErrors > 0 ? 'warn-text' : undefined });
     rows.push({ label: 'Output errors', value: counterVal(iface.outErrors, h.outErrors), cls: h.outErrors > 0 ? 'warn-text' : undefined });
-    rows.push({ label: `Link flaps (last ${fw})`, value: flapVal, cls: h.flapCount > 0 ? 'bad-text' : undefined });
+    rows.push({ label: `Link recoveries (last ${fw})`, value: flapVal, cls: h.flapping ? 'bad-text' : undefined });
     rows.push({ label: `Speed changes (last ${fw})`, value: speedVal, cls: h.speedChangeCount > 0 ? 'warn-text' : undefined });
     rows.push({ label: `Peak utilization (last ${uw})`, value: h.peakUtilizationPct !== null ? `${Math.round(h.peakUtilizationPct)}%` : '—', cls: h.highUtilization ? 'warn-text' : undefined });
     const tw = humanDuration(h.throughputWindowSecs);

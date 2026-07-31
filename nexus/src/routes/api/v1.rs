@@ -183,6 +183,7 @@ fn api_interface_health(summary: crate::utilities::health::InterfaceHealthSummar
     models::json::ApiInterfaceHealth {
         severity: summary.severity.map(|s| s.as_str().to_string()),
         flap_count: summary.flap_count,
+        flapping: summary.flapping,
         last_flap_secs_ago: summary.last_flap_secs_ago,
         in_errors: summary.in_errors,
         out_errors: summary.out_errors,

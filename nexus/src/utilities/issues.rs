@@ -357,10 +357,14 @@ pub fn interface_health_issues(
     };
 
     let mut out = Vec::new();
-    if h.flap_count > 0 {
+    // Only a link that has recovered repeatedly (flap_count crossed the
+    // threshold server-side) is flapping. A single recovery — a first cable
+    // plug-in, a one-off reboot — sets flap_count == 1 but leaves `flapping`
+    // false, so it shows in the detail metrics without raising this alert.
+    if h.flapping {
         let mut detail = vec![
-            pair("flap count", h.flap_count.to_string()),
-            pair("last flap", h.last_flap_secs_ago.map(|s| format!("{}s ago", s)).unwrap_or_else(|| "—".to_string())),
+            pair("recoveries", h.flap_count.to_string()),
+            pair("last came up", h.last_flap_secs_ago.map(|s| format!("{}s ago", s)).unwrap_or_else(|| "—".to_string())),
             pair("window", format!("{}s", h.flap_window_secs)),
         ];
         // The far end, so the operator can see whether this is a switch-to-switch
@@ -388,7 +392,7 @@ pub fn interface_health_issues(
             "iface-flapping",
             SEV_BAD,
             "Interface flapping",
-            format!("{} {} flapped {} time(s) in the last {}s", host, iface_name, h.flap_count, h.flap_window_secs),
+            format!("{} {} bounced down/up {} times in the last {}s", host, iface_name, h.flap_count, h.flap_window_secs),
             detail,
         ));
     }
@@ -1242,6 +1246,7 @@ mod tests {
         json::ApiInterfaceHealth {
             severity: severity.map(|s| s.to_string()),
             flap_count: 0,
+            flapping: false,
             last_flap_secs_ago: None,
             in_errors: 0,
             out_errors: 0,
@@ -1280,6 +1285,7 @@ mod tests {
     fn all_signals_tripped() -> json::ApiInterfaceHealth {
         let mut h = health(Some("bad"));
         h.flap_count = 3;
+        h.flapping = true;
         h.last_flap_secs_ago = Some(12);
         h.in_errors = 5;
         h.discards = 7;
@@ -1330,6 +1336,7 @@ mod tests {
     fn flapping_issue_names_the_far_end() {
         let mut h = health(Some("bad"));
         h.flap_count = 4;
+        h.flapping = true;
 
         // A monitored peer → a Device row (renders as a link) plus the far-end
         // port, so the operator can jump to the other switch.

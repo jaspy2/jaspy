@@ -36,6 +36,11 @@ pub struct HealthConfig {
     // matching show-threshold (so a single stray error can be tuned out).
     pub error_show_threshold: u64,
     pub discard_show_threshold: u64,
+    // Flapping is a count of *recoveries* (down->up transitions) in the window;
+    // the signal trips when that count strictly exceeds this threshold. Default
+    // 1 means "needs >= 2 recoveries", so a first cable plug-in or a one-off
+    // reboot (a single recovery) is not flapping — only a link that keeps
+    // coming back is.
     pub flap_show_threshold: u32,
 }
 
@@ -50,7 +55,7 @@ impl Default for HealthConfig {
             stale_ms: 60_000, // 60 s
             error_show_threshold: 0,
             discard_show_threshold: 0,
-            flap_show_threshold: 0,
+            flap_show_threshold: 1, // >= 2 recoveries; see field doc
         }
     }
 }
@@ -163,7 +168,15 @@ pub struct InterfaceHealthSummary {
     // below are always populated so the UI can show the full picture (incl.
     // the zeroed/OK metrics) for any polled interface.
     pub severity: Option<Severity>,
+    // Number of recoveries (down->up transitions) within the flap window, i.e.
+    // how many times the link came back up. A first plug-in or a single reboot
+    // reads as 1; a genuinely flapping link reads higher.
     pub flap_count: u32,
+    // Whether flap_count crossed the configured threshold (>= 2 recoveries by
+    // default). Exposed so the UI/issues layer renders the alert off the
+    // server-side decision instead of re-deriving it — mirrors high_utilization.
+    pub flapping: bool,
+    // Time since the link last came back up (last recovery), within the window.
     pub last_flap_secs_ago: Option<u64>,
     pub in_errors: u64,
     pub out_errors: u64,
@@ -307,13 +320,17 @@ impl HealthStore {
         // Window flaps/speed-changes at read time too: prune only runs on
         // ingest, so a stale (no longer polled) or freshly reloaded interface
         // must still age its events out here, or it reports false "Bad".
+        // Count only recoveries (down->up transitions): a single one-way change
+        // (first plug-in, unplug, one-off reboot) is not flapping. A link that
+        // keeps coming back racks up recoveries. `last_flap` is the last such
+        // recovery, so it tracks what flap_count measures.
         let flap_cut = now.saturating_sub(cfg.flap_window_ms);
-        let in_window_flaps = ih.flaps.iter().filter(|f| f.ts >= flap_cut).count();
-        let flap_count = in_window_flaps as u32;
+        let recoveries = ih.flaps.iter().filter(|f| f.ts >= flap_cut && f.up).count();
+        let flap_count = recoveries as u32;
         let last_flap_secs_ago = ih
             .flaps
             .iter()
-            .filter(|f| f.ts >= flap_cut)
+            .filter(|f| f.ts >= flap_cut && f.up)
             .last()
             .map(|f| now.saturating_sub(f.ts) / 1000);
         let speed_change_count = ih.speed_changes.iter().filter(|e| e.ts >= flap_cut).count() as u32;
@@ -340,6 +357,7 @@ impl HealthStore {
         Some(InterfaceHealthSummary {
             severity,
             flap_count,
+            flapping,
             last_flap_secs_ago,
             in_errors,
             out_errors,
@@ -442,7 +460,7 @@ mod tests {
             stale_ms: 60_000,
             error_show_threshold: 0,
             discard_show_threshold: 0,
-            flap_show_threshold: 0,
+            flap_show_threshold: 1, // >= 2 recoveries trips (matches default)
         }
     }
 
@@ -532,44 +550,95 @@ mod tests {
     }
 
     #[test]
-    fn flaps_counted_within_window_with_last_ago() {
+    fn recoveries_counted_within_window_with_last_ago() {
+        // Two full down->up->down->up bounces: two recoveries -> flapping.
+        // flap_count counts recoveries (the two `up`s), last_flap tracks the
+        // most recent recovery, not the trailing `down`.
         let mut s = store();
         s.ingest(FQDN, 1, flap(false), 1_000_000);
-        s.ingest(FQDN, 1, flap(true), 1_060_000);
+        s.ingest(FQDN, 1, flap(true), 1_060_000);  // recovery #1
         s.ingest(FQDN, 1, flap(false), 1_120_000);
-        let now = 1_600_000; // last flap 480s ago, all within 10-min window
+        s.ingest(FQDN, 1, flap(true), 1_180_000);  // recovery #2
+        let now = 1_600_000; // last recovery 420s ago, all within 10-min window
         let summary = s.summary(FQDN, 1, now, now).unwrap();
-        assert_eq!(summary.flap_count, 3);
-        assert_eq!(summary.last_flap_secs_ago, Some(480));
+        assert_eq!(summary.flap_count, 2);
+        assert_eq!(summary.last_flap_secs_ago, Some(420));
+        assert!(summary.flapping);
         assert_eq!(summary.severity, Some(Severity::Bad));
     }
 
     #[test]
-    fn flaps_outside_window_are_pruned() {
+    fn single_recovery_is_not_flapping() {
+        // First cable plug-in: the port was polled down, then comes up once.
+        // One recovery is a state change, not a flap — the reported false
+        // positive ("flapped 1 time(s)") must not fire.
+        let mut s = store();
+        s.ingest(FQDN, 1, flap(false), 1_000_000); // polled down (nothing plugged)
+        s.ingest(FQDN, 1, flap(true), 1_060_000);  // cable plugged -> up
+        let summary = s.summary(FQDN, 1, 1_100_000, 1_100_000).unwrap();
+        assert_eq!(summary.flap_count, 1);
+        assert!(!summary.flapping);
+        assert_eq!(summary.severity, None);
+    }
+
+    #[test]
+    fn unplug_records_no_recovery() {
+        // A one-way down transition (cable pulled / decommission) never came
+        // back up: zero recoveries, not flapping.
         let mut s = store();
         s.ingest(FQDN, 1, flap(false), 1_000_000);
-        // A much later ingest prunes the old flap (>10 min gap).
+        let summary = s.summary(FQDN, 1, 1_050_000, 1_050_000).unwrap();
+        assert_eq!(summary.flap_count, 0);
+        assert!(!summary.flapping);
+        assert_eq!(summary.severity, None);
+    }
+
+    #[test]
+    fn single_reboot_is_not_flapping() {
+        // Far-end device reboots once: the link drops (up->down) and recovers
+        // (down->up) a single time. One recovery -> not flapping.
+        let mut s = store();
+        s.ingest(FQDN, 1, flap(false), 1_000_000); // link dropped
+        s.ingest(FQDN, 1, flap(true), 1_030_000);  // came back once
+        let summary = s.summary(FQDN, 1, 1_100_000, 1_100_000).unwrap();
+        assert_eq!(summary.flap_count, 1);
+        assert!(!summary.flapping);
+        assert_eq!(summary.severity, None);
+    }
+
+    #[test]
+    fn recoveries_outside_window_are_pruned() {
+        let mut s = store();
+        s.ingest(FQDN, 1, flap(false), 1_000_000);
+        // A much later ingest prunes the old down (>10 min gap); one recovery
+        // survives in-window.
         s.ingest(FQDN, 1, flap(true), 1_000_000 + 700_000);
         let now = 1_000_000 + 700_000;
         let summary = s.summary(FQDN, 1, now, now).unwrap();
         assert_eq!(summary.flap_count, 1);
+        assert!(!summary.flapping);
     }
 
     #[test]
-    fn flaps_age_out_at_read_time_without_new_ingest() {
+    fn recoveries_age_out_at_read_time_without_new_ingest() {
         // A stale/decommissioned interface stops being ingested, so prune never
-        // runs again. summary() must still window the frozen flaps out, or the
+        // runs again. summary() must still window the frozen events out, or the
         // interface reports a permanent false "Bad".
         let mut s = store();
         s.ingest(FQDN, 1, flap(false), 1_000_000);
-        s.ingest(FQDN, 1, flap(true), 1_060_000);
-        // Read within the flap window: both flaps present.
-        assert_eq!(s.summary(FQDN, 1, 1_100_000, 1_100_000).unwrap().flap_count, 2);
+        s.ingest(FQDN, 1, flap(true), 1_010_000);  // recovery #1
+        s.ingest(FQDN, 1, flap(false), 1_020_000);
+        s.ingest(FQDN, 1, flap(true), 1_030_000);  // recovery #2
+        // Read within the flap window: both recoveries present -> flapping.
+        let within = s.summary(FQDN, 1, 1_100_000, 1_100_000).unwrap();
+        assert_eq!(within.flap_count, 2);
+        assert_eq!(within.severity, Some(Severity::Bad));
         // Read past the window with NO further ingest: aged out -> no badge.
         // last_report == now so the stale signal does not fire either.
-        let later = 1_060_000 + 700_000;
+        let later = 1_030_000 + 700_000;
         let summary = s.summary(FQDN, 1, later, later).unwrap();
         assert_eq!(summary.flap_count, 0);
+        assert!(!summary.flapping);
         assert_eq!(summary.severity, None);
     }
 
@@ -696,9 +765,13 @@ mod tests {
     #[test]
     fn device_rollup_returns_worst_severity() {
         let mut s = store();
-        // iface 1: warn (discards). iface 2: bad (flapping). iface 3: healthy.
+        // iface 1: warn (discards). iface 2: bad (flapping: 2 recoveries).
+        // iface 3: healthy.
         s.ingest(FQDN, 1, counters(0, 0, 100, 10_000), 1_000_000);
         s.ingest(FQDN, 2, flap(false), 1_000_000);
+        s.ingest(FQDN, 2, flap(true), 1_000_000);
+        s.ingest(FQDN, 2, flap(false), 1_000_000);
+        s.ingest(FQDN, 2, flap(true), 1_000_000);
         s.ingest(FQDN, 3, counters(0, 0, 0, 10_000), 1_000_000);
         let last: HashMap<i32, u64> = vec![(1, 1_000_000u64), (2, 1_000_000), (3, 1_000_000)].into_iter().collect();
         assert_eq!(s.device_rollup(FQDN, 1_000_000, &last), Some(Severity::Bad));

@@ -392,7 +392,8 @@ pub struct ApiInterfacePoe {
 #[serde(rename_all = "camelCase")]
 pub struct ApiInterfaceHealth {
     pub severity: Option<String>, // "warn" | "bad"; null = healthy (no badge)
-    pub flap_count: u32,
+    pub flap_count: u32,          // recoveries (down->up) in the flap window
+    pub flapping: bool,           // flap_count crossed the threshold (>= 2)
     pub last_flap_secs_ago: Option<u64>,
     pub in_errors: u64,
     pub out_errors: u64,

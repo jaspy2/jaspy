@@ -178,7 +178,8 @@ export interface InterfaceHealth {
   // null = healthy (no badge); the metric fields are always populated so the
   // expanded detail view can show the full picture for any interface.
   severity: 'warn' | 'bad' | null;
-  flapCount: number;
+  flapCount: number; // recoveries (down→up) in the flap window
+  flapping: boolean; // flapCount crossed the threshold (≥2) — the alert-worthy signal
   lastFlapSecsAgo: number | null;
   inErrors: number;
   outErrors: number;
