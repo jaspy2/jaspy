@@ -20,6 +20,7 @@ use crate::utilities::imds::IMDS;
 use crate::utilities::tools;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::net::ToSocketAddrs;
 use std::sync::{Arc, Mutex, atomic};
 use std::thread;
 use std::time;
@@ -144,19 +145,59 @@ fn advance_shard(accounting: &mut HashMap<String, PingAccountingInfo>, shard: &[
     reports
 }
 
-// Build a liboping instance with every shard host added (best-effort: a host
-// whose add_host fails — e.g. unresolvable — is simply omitted and will read as
-// not-responding this cycle). Returns the instance and the number of hosts added.
-fn build_shard_instance(shard: &[String]) -> Result<(oping::Ping, usize), oping::PingError> {
+// Resolve each shard fqdn to a concrete IP, returning the (fqdn, addr) pairs
+// that resolved. We ping by IP rather than by name because liboping fills
+// PingItem.hostname with the DNS *canonical* name (getaddrinfo AI_CANONNAME):
+// for a CNAME'd device (e.g. redbull-sw1.asm.fi -> partner-sw2.asm.fi) that
+// canonical name differs from the fqdn we monitor by, so keying replies by
+// hostname silently dropped every CNAME host — it never matched the shard key
+// and read as permanently DOWN despite replying fine. Pinning our own resolved
+// IP makes PingItem.address echo back exactly what we added, so replies map
+// cleanly back to the fqdn regardless of DNS aliasing. A host that fails to
+// resolve is omitted and reads as not-responding this cycle (best-effort,
+// matching the old add_host-failure behavior).
+fn resolve_shard_targets(shard: &[String]) -> Vec<(String, String)> {
+    let mut targets = Vec::new();
+    for fqdn in shard {
+        // Port is irrelevant (ICMP); to_socket_addrs just needs one to resolve.
+        if let Ok(mut addrs) = (fqdn.as_str(), 0u16).to_socket_addrs() {
+            if let Some(addr) = addrs.next() {
+                targets.push((fqdn.clone(), addr.ip().to_string()));
+            }
+        }
+    }
+    targets
+}
+
+// Build a liboping instance with every resolved target added by IP (best-effort:
+// an address whose add_host fails is omitted and reads as not-responding this
+// cycle). Returns the instance and the number of hosts added.
+fn build_shard_instance(targets: &[(String, String)]) -> Result<(oping::Ping, usize), oping::PingError> {
     let mut ping = oping::Ping::new();
     ping.set_timeout(PING_TIMEOUT)?;
     let mut added = 0usize;
-    for fqdn in shard {
-        if ping.add_host(fqdn.as_str()).is_ok() {
+    for (_fqdn, addr) in targets {
+        if ping.add_host(addr.as_str()).is_ok() {
             added += 1;
         }
     }
     Ok((ping, added))
+}
+
+// Translate liboping's per-address reply map back to our fqdn keys. `targets`
+// is (fqdn, addr) as added; `responded_by_addr` is keyed by the address liboping
+// echoes back (PingItem.address). A fqdn whose address produced no reply row is
+// omitted here and counts as not-responding downstream (advance_shard's
+// unwrap_or(false)). Two fqdns sharing an address both take that address's
+// result. Pure — unit-tested without sockets.
+fn responses_by_fqdn(targets: &[(String, String)], responded_by_addr: &HashMap<String, bool>) -> HashMap<String, bool> {
+    let mut responded = HashMap::new();
+    for (fqdn, addr) in targets {
+        if let Some(&up) = responded_by_addr.get(addr) {
+            responded.insert(fqdn.clone(), up);
+        }
+    }
+    responded
 }
 
 fn ping_shard_worker(pool: db::Pool, imds: Arc<Mutex<IMDS>>, shard_id: usize, workers: usize, running: Arc<atomic::AtomicBool>) {
@@ -179,13 +220,15 @@ fn ping_shard_worker(pool: db::Pool, imds: Arc<Mutex<IMDS>>, shard_id: usize, wo
         reconcile_accounting(&mut accounting, &shard, &imds);
 
         if !shard.is_empty() {
-            match build_shard_instance(&shard) {
+            let targets = resolve_shard_targets(&shard);
+            match build_shard_instance(&targets) {
                 Ok((ping, added)) if added > 0 => match ping.send() {
                     Ok(results) => {
-                        let mut responded: HashMap<String, bool> = HashMap::new();
+                        let mut responded_by_addr: HashMap<String, bool> = HashMap::new();
                         for item in results {
-                            responded.insert(item.hostname.clone(), is_responding(&item));
+                            responded_by_addr.insert(item.address.clone(), is_responding(&item));
                         }
+                        let responded = responses_by_fqdn(&targets, &responded_by_addr);
                         for (fqdn, up) in advance_shard(&mut accounting, &shard, &responded) {
                             report_up(&pool, &imds, &fqdn, up);
                             println!("[{}] -> {}", fqdn, if up { "OK" } else { "DOWN" });
@@ -313,6 +356,49 @@ mod tests {
         let reports = advance_shard(&mut acc, &shard, &responded);
         assert!(reports.is_empty()); // one miss doesn't flip yet
         assert_eq!(acc["up.example.com"].hysteresis_unresponsive, 1);
+    }
+
+    #[test]
+    fn responses_by_fqdn_maps_by_address_not_canonical_hostname() {
+        // Regression for the CNAME bug: we ping by resolved IP, and a CNAME'd
+        // device's DNS canonical name (what liboping would put in
+        // PingItem.hostname) is irrelevant — replies are keyed by address.
+        // redbull-sw1.asm.fi (a CNAME of partner-sw2.asm.fi) resolved to
+        // 10.0.0.2 and replied; it must map back to the fqdn we monitor by,
+        // NOT be dropped because "partner-sw2.asm.fi" != "redbull-sw1.asm.fi".
+        let targets = vec![
+            ("redbull-sw1.asm.fi".to_string(), "10.0.0.2".to_string()),
+            ("a01-sw1.asm.fi".to_string(), "10.0.0.3".to_string()),
+        ];
+        let mut by_addr = HashMap::new();
+        by_addr.insert("10.0.0.2".to_string(), true);
+        by_addr.insert("10.0.0.3".to_string(), true);
+        let responded = responses_by_fqdn(&targets, &by_addr);
+        assert_eq!(responded.get("redbull-sw1.asm.fi"), Some(&true));
+        assert_eq!(responded.get("a01-sw1.asm.fi"), Some(&true));
+    }
+
+    #[test]
+    fn responses_by_fqdn_omits_address_with_no_reply() {
+        // An added target whose address produced no reply row is omitted, so
+        // advance_shard's unwrap_or(false) treats it as not responding.
+        let targets = vec![("gw-sw1.asm.fi".to_string(), "10.0.0.9".to_string())];
+        let by_addr: HashMap<String, bool> = HashMap::new();
+        assert!(responses_by_fqdn(&targets, &by_addr).is_empty());
+    }
+
+    #[test]
+    fn responses_by_fqdn_shared_address_maps_all_fqdns() {
+        // Two monitored names resolving to the same IP both take that result.
+        let targets = vec![
+            ("alias-a.asm.fi".to_string(), "10.0.0.5".to_string()),
+            ("alias-b.asm.fi".to_string(), "10.0.0.5".to_string()),
+        ];
+        let mut by_addr = HashMap::new();
+        by_addr.insert("10.0.0.5".to_string(), false);
+        let responded = responses_by_fqdn(&targets, &by_addr);
+        assert_eq!(responded.get("alias-a.asm.fi"), Some(&false));
+        assert_eq!(responded.get("alias-b.asm.fi"), Some(&false));
     }
 
     #[test]
