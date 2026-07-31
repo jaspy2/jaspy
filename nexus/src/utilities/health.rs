@@ -107,8 +107,10 @@ impl Severity {
 // `Normal`, so the default reproduces today's behavior exactly.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum EscalationLevel {
-    // Only hard faults (flapping / stale) escalate; minor signals (discards,
-    // errors, high-util, renegotiation) stay off the fleet list.
+    // Nothing from this VLAN's interfaces reaches the device-list rollup — not
+    // even hard faults (flapping / stale). The per-interface badges on the
+    // device-detail page still show every signal (including red flapping); only
+    // the fleet-list escalation is muted.
     Quiet,
     // Today's behavior: hard faults -> red, minor signals -> yellow.
     #[default]
@@ -136,16 +138,12 @@ impl EscalationLevel {
     }
 
     // How one interface's health summary contributes to the device rollup under
-    // this level. `hard` is the Bad-class signal set (flapping / stale).
-    fn contribution(self, severity: Option<Severity>, hard: bool) -> Option<Severity> {
+    // this level.
+    fn contribution(self, severity: Option<Severity>) -> Option<Severity> {
         match self {
-            EscalationLevel::Quiet => {
-                if hard {
-                    Some(Severity::Bad)
-                } else {
-                    None
-                }
-            }
+            // Fully muted from the fleet list — even flapping/stale. The
+            // interface's own badges are unaffected.
+            EscalationLevel::Quiet => None,
             EscalationLevel::Normal => severity,
             // Any tripped signal becomes red (hard faults already are).
             EscalationLevel::Sensitive => severity.map(|_| Severity::Bad),
@@ -461,8 +459,7 @@ impl HealthStore {
                 continue;
             };
             let level = levels.get(ifindex).copied().unwrap_or_default();
-            let hard = summary.flapping || summary.stale;
-            if let Some(severity) = level.contribution(summary.severity, hard) {
+            if let Some(severity) = level.contribution(summary.severity) {
                 worst = Some(match worst {
                     Some(w) => w.combine(severity),
                     None => severity,
@@ -867,9 +864,9 @@ mod tests {
     // --- per-VLAN escalation levels ---
 
     #[test]
-    fn quiet_level_suppresses_minor_but_keeps_hard_faults() {
+    fn quiet_level_suppresses_everything_including_flapping() {
         let mut s = store();
-        // iface 1: warn (discards only). iface 2: bad (flapping).
+        // iface 1: warn (discards only). iface 2: bad (flapping: 2 recoveries).
         s.ingest(FQDN, 1, counters(0, 0, 100, 10_000), 1_000_000);
         s.ingest(FQDN, 2, flap(false), 1_000_000);
         s.ingest(FQDN, 2, flap(true), 1_000_000);
@@ -877,14 +874,14 @@ mod tests {
         s.ingest(FQDN, 2, flap(true), 1_000_000);
         let last: HashMap<i32, u64> = vec![(1, 1_000_000u64), (2, 1_000_000)].into_iter().collect();
 
-        // Quiet on iface 1 alone: its discard warning is dropped, iface 2 still red.
-        let levels: HashMap<i32, EscalationLevel> = vec![(1, EscalationLevel::Quiet)].into_iter().collect();
-        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &levels), Some(Severity::Bad));
-
-        // Quiet on both: iface 1 minor suppressed, but iface 2 flapping is a hard
-        // fault and still escalates.
+        // Quiet on both: nothing escalates — not even the flapping interface.
         let levels: HashMap<i32, EscalationLevel> =
             vec![(1, EscalationLevel::Quiet), (2, EscalationLevel::Quiet)].into_iter().collect();
+        assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &levels), None);
+
+        // Quiet on iface 1 (discards) only: iface 2 is normal and its flapping
+        // still escalates to red — quiet is what suppresses, nothing else.
+        let levels: HashMap<i32, EscalationLevel> = vec![(1, EscalationLevel::Quiet)].into_iter().collect();
         assert_eq!(s.device_rollup(FQDN, 1_000_000, &last, &levels), Some(Severity::Bad));
     }
 

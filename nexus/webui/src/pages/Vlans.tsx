@@ -9,9 +9,9 @@ const POLICY_LEVELS: VlanPolicyLevel[] = ['quiet', 'normal', 'sensitive'];
 // badge. Hard faults (flapping/stale) always escalate regardless of level.
 const POLICY_HELP =
   'Device-list badge policy for access ports in this VLAN:\n' +
-  '• quiet — hide minor issues (discards/errors/util) from the device list\n' +
-  '• normal — minor issues show yellow (default)\n' +
-  '• sensitive — minor issues show red';
+  '• quiet — keep this VLAN off the device list entirely (even flapping); issues still show on the interface\n' +
+  '• normal — minor issues show yellow, flapping/stale red (default)\n' +
+  '• sensitive — minor issues show red too';
 
 // A VLAN's display name: the single agreed name, a dash when nothing on the
 // network names it, or every conflicting variant when the switches disagree.
