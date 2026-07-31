@@ -1251,6 +1251,7 @@ mod tests {
             in_errors: 0,
             out_errors: 0,
             discards: 0,
+            discards_high: false,
             speed_change_count: 0,
             last_speed_change: None,
             peak_utilization_pct: None,
@@ -1289,6 +1290,7 @@ mod tests {
         h.last_flap_secs_ago = Some(12);
         h.in_errors = 5;
         h.discards = 7;
+        h.discards_high = true;
         h.high_utilization = true;
         h.peak_utilization_pct = Some(95.0);
         h.speed_change_count = 1;

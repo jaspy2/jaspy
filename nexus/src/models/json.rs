@@ -398,6 +398,7 @@ pub struct ApiInterfaceHealth {
     pub in_errors: u64,
     pub out_errors: u64,
     pub discards: u64,
+    pub discards_high: bool, // windowed discards crossed the threshold
     pub speed_change_count: u32,
     // [from, to] Mbps of the most recent speed change (from may be null).
     pub last_speed_change: Option<(Option<i32>, i32)>,

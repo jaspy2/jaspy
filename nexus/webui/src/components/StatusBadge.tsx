@@ -1,4 +1,4 @@
-import type { SnmpHealth } from '../api/types';
+import type { InterfaceHealth, SnmpHealth } from '../api/types';
 
 // Adaptive SNMP-polling health: "slow" (badge-warn) when the learned socket
 // timeout is elevated, "not responding" (badge-bad) when the device collapsed to
@@ -51,4 +51,32 @@ export function StpStateBadge({ state }: { state: string }) {
 export function HealthBadge({ severity, label }: { severity: 'warn' | 'bad'; label?: string }) {
   const cls = severity === 'bad' ? 'badge-bad' : 'badge-warn';
   return <span className={`badge ${cls}`}>{label ?? (severity === 'bad' ? '⚠ issues' : '⚠')}</span>;
+}
+
+// High output discards get their own icon so a discard-heavy port is spottable
+// at a glance, distinct from the generic ⚠ (which covers every other signal).
+export function DiscardBadge() {
+  return <span className="badge badge-warn" title="high outgoing discards">🗑</span>;
+}
+
+// The health badges shown for an interface in the list: a dedicated 🗑 when
+// discards crossed the threshold, plus the generic ⚠/⚠ issues badge when any
+// *other* signal is present. Discards-only ⇒ 🗑 alone; discards + something
+// else ⇒ both; anything else ⇒ the unchanged ⚠.
+export function InterfaceHealthBadges({ health }: { health: InterfaceHealth }) {
+  const otherSignal =
+    health.flapping ||
+    health.stale ||
+    health.highUtilization ||
+    health.speedChangeCount > 0 ||
+    health.inErrors + health.outErrors > 0;
+  // A leading space before each badge spaces it inline (desktop table cell);
+  // in the mobile flex row the whitespace nodes are ignored and `gap` spaces
+  // them instead.
+  return (
+    <>
+      {health.discardsHigh && <> <DiscardBadge /></>}
+      {health.severity && otherSignal && <> <HealthBadge severity={health.severity} /></>}
+    </>
+  );
 }

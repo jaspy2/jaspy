@@ -188,6 +188,7 @@ fn api_interface_health(summary: crate::utilities::health::InterfaceHealthSummar
         in_errors: summary.in_errors,
         out_errors: summary.out_errors,
         discards: summary.discards,
+        discards_high: summary.discards_high,
         speed_change_count: summary.speed_change_count,
         last_speed_change: summary.last_speed_change,
         peak_utilization_pct: summary.peak_utilization_pct,

@@ -184,6 +184,7 @@ export interface InterfaceHealth {
   inErrors: number;
   outErrors: number;
   discards: number;
+  discardsHigh: boolean; // windowed discards crossed the threshold — the discard alert signal
   speedChangeCount: number;
   lastSpeedChange: [number | null, number] | null; // [from, to] Mbps
   peakUtilizationPct: number | null;

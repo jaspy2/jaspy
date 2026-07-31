@@ -181,6 +181,10 @@ pub struct InterfaceHealthSummary {
     pub in_errors: u64,
     pub out_errors: u64,
     pub discards: u64,
+    // Whether windowed discards crossed the configured threshold. Exposed like
+    // high_utilization so the UI can render a dedicated discard icon off the
+    // server-side decision rather than the raw count.
+    pub discards_high: bool,
     pub speed_change_count: u32,
     pub last_speed_change: Option<(Option<i32>, i32)>,
     pub peak_utilization_pct: Option<f64>,
@@ -362,6 +366,7 @@ impl HealthStore {
             in_errors,
             out_errors,
             discards,
+            discards_high: has_discards,
             speed_change_count,
             last_speed_change,
             peak_utilization_pct: peak_util,
@@ -535,12 +540,17 @@ mod tests {
         c.discard_show_threshold = 10;
         let mut s = HealthStore::new(c);
         s.ingest(FQDN, 1, counters(0, 0, 5, 10_000), 1_000_000);
-        // 5 discards <= threshold 10 -> no badge (but the count is still shown).
-        assert_eq!(s.summary(FQDN, 1, 1_000_000, 1_000_000).unwrap().severity, None);
+        // 5 discards <= threshold 10 -> no badge (but the count is still shown),
+        // and discards_high tracks the same threshold decision.
+        let below = s.summary(FQDN, 1, 1_000_000, 1_000_000).unwrap();
+        assert_eq!(below.severity, None);
+        assert!(!below.discards_high);
         s.ingest(FQDN, 1, counters(0, 0, 20, 10_000), 1_000_000);
         // now 25 > 10 -> surfaced.
-        assert_eq!(s.summary(FQDN, 1, 1_000_000, 1_000_000).unwrap().severity, Some(Severity::Warn));
-        assert_eq!(s.summary(FQDN, 1, 1_000_000, 1_000_000).unwrap().discards, 25);
+        let above = s.summary(FQDN, 1, 1_000_000, 1_000_000).unwrap();
+        assert_eq!(above.severity, Some(Severity::Warn));
+        assert_eq!(above.discards, 25);
+        assert!(above.discards_high);
     }
 
     // --- flapping ---

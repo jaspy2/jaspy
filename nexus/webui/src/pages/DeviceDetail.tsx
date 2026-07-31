@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, SnmpSession, StpPort } from '../api/types';
-import { ErrDisabledBadge, HealthBadge, PollingBadge, SnmpHealthBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
+import { ErrDisabledBadge, HealthBadge, InterfaceHealthBadges, PollingBadge, SnmpHealthBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import ActionMenu from '../components/ActionMenu';
 import useLiveSocket from '../hooks/useLiveSocket';
 
@@ -378,7 +378,7 @@ function healthLines(h: InterfaceHealth): string[] {
     lines.push(`flapping — bounced down/up ${h.flapCount} times in last ${humanDuration(h.flapWindowSecs)}${ago}`);
   }
   if (h.discards > 0) {
-    lines.push(`${n(h.discards)} discard${h.discards === 1 ? '' : 's'} in last ${humanDuration(h.counterWindowSecs)}`);
+    lines.push(`${n(h.discards)} outgoing discard${h.discards === 1 ? '' : 's'} in last ${humanDuration(h.counterWindowSecs)}`);
   }
   if (h.inErrors + h.outErrors > 0) {
     lines.push(`${n(h.inErrors)} input / ${n(h.outErrors)} output errors in last ${humanDuration(h.counterWindowSecs)}`);
@@ -417,7 +417,7 @@ function InterfaceDetail({ iface, names }: { iface: Interface; names: Map<number
     // else just the windowed delta.
     const counterVal = (total: number | null, delta: number) =>
       total !== null ? `${n(total)} (${n(delta)} in last ${cw})` : `${n(delta)} in last ${cw}`;
-    rows.push({ label: 'Discards', value: counterVal(iface.outDiscards, h.discards), cls: h.discards > 0 ? 'warn-text' : undefined });
+    rows.push({ label: 'Outgoing discards', value: counterVal(iface.outDiscards, h.discards), cls: h.discardsHigh ? 'warn-text' : undefined });
     rows.push({ label: 'Input errors', value: counterVal(iface.inErrors, h.inErrors), cls: h.inErrors > 0 ? 'warn-text' : undefined });
     rows.push({ label: 'Output errors', value: counterVal(iface.outErrors, h.outErrors), cls: h.outErrors > 0 ? 'warn-text' : undefined });
     rows.push({ label: `Link recoveries (last ${fw})`, value: flapVal, cls: h.flapping ? 'bad-text' : undefined });
@@ -981,7 +981,7 @@ export default function DeviceDetail() {
               {iface.portChannel && <span className="badge badge-muted">{iface.portChannel}</span>}
               <UpBadge up={iface.up} />
               {iface.errDisabled && <ErrDisabledBadge cause={iface.errDisableCause} />}
-              {iface.health?.severity && <HealthBadge severity={iface.health.severity} />}
+              {iface.health && <InterfaceHealthBadges health={iface.health} />}
             </span>
             <span className="item-sub">
               {iface.speed !== null && <span>{iface.speed} Mb/s</span>}
@@ -1048,7 +1048,7 @@ export default function DeviceDetail() {
                   <td>
                     <UpBadge up={iface.up} />
                     {iface.errDisabled && <> <ErrDisabledBadge cause={iface.errDisableCause} /></>}
-                    {iface.health?.severity && <> <HealthBadge severity={iface.health.severity} /></>}
+                    {iface.health && <InterfaceHealthBadges health={iface.health} />}
                   </td>
                   <td>{iface.speed !== null ? `${iface.speed} Mb/s` : '—'}</td>
                   <td>{iface.nativeVlan ?? '—'}</td>
