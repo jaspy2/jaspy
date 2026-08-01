@@ -405,6 +405,34 @@ export interface DeviceEntity {
   sensors: EntitySensor[];
   stp: StpPort[];
   stpBridges: StpBridge[];
+  // Cisco Class-Based QoS (policy-map) counters; empty for devices with no
+  // policy-maps (the common case — only core routers use them).
+  qos: QosClass[];
+}
+
+// Policer counters for a class (null column = device omitted it).
+export interface QosPolice {
+  conformPkts: number | null;
+  conformBytes: number | null;
+  exceedPkts: number | null;
+  exceedBytes: number | null;
+  violatePkts: number | null;
+  violateBytes: number | null;
+}
+
+// One class-map within an applied service-policy (CISCO-CLASS-BASED-QOS-MIB).
+export interface QosClass {
+  interface: string | null; // ifName; null for a control-plane policy
+  interfaceId: number | null;
+  direction: string; // "input" | "output"
+  policyMap: string;
+  classMap: string;
+  prepolicyPkts: number | null;
+  prepolicyBytes: number | null;
+  postpolicyBytes: number | null;
+  dropPkts: number | null;
+  dropBytes: number | null;
+  police: QosPolice | null;
 }
 
 // GET /api/v1/stp — VLANs with STP data.

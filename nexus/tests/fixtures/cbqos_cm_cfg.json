@@ -1,0 +1,22 @@
+{
+  "ID": "CISCO-CLASS-BASED-QOS-MIB::cbQosCMCfgTable",
+  "IndexKeys": ["CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex"],
+  "ObjectKeys": ["CISCO-CLASS-BASED-QOS-MIB::cbQosCMName"],
+  "Entries": [
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 294953246 },
+      "Objects": { "CISCO-CLASS-BASED-QOS-MIB::cbQosCMName": "v4httphttps" }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 305117108 },
+      "Objects": { "CISCO-CLASS-BASED-QOS-MIB::cbQosCMName": "v6httphttps" }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 1593 },
+      "Objects": { "CISCO-CLASS-BASED-QOS-MIB::cbQosCMName": "class-default" }
+    }
+  ]
+}

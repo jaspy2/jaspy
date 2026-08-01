@@ -1392,6 +1392,46 @@ fn mock_mode_serves_network(db: DbHarness) {
         "dist2 sensors should appear in the entity API"
     );
 
+    // QoS policy-map counters: core1 is the only device with a service-policy
+    // (the httphttps input policer on its Te1/0/3 firewall uplink). Its
+    // v6httphttps class exceeds the rate, so the exceeded counter climbs. Every
+    // other device exposes no policy-maps, exercising the negative-probe cache.
+    nexus.wait_for_metric("jaspy_qos_police_exceed_bytes_total", Duration::from_secs(20));
+    let body = nexus.metrics();
+    assert!(
+        metric_value(&body, "jaspy_qos_class_prepolicy_packets_total",
+            &["fqdn=\"core1.mock.jaspy\"", "policymap=\"httphttps\"", "classmap=\"v4httphttps\"", "interface=\"Te1/0/3\""]).is_some(),
+        "core1 QoS class metric missing:\n{}",
+        body
+    );
+    assert!(
+        metric_value(&body, "jaspy_qos_police_exceed_bytes_total",
+            &["fqdn=\"core1.mock.jaspy\"", "classmap=\"v6httphttps\""]).map(|v| v > 0).unwrap_or(false),
+        "core1 v6httphttps policer should show exceeded bytes:\n{}",
+        body
+    );
+    // Structured API: core1 carries the joined QoS rows (policy-map, class,
+    // policer) mapped to its interface; dist1 (no policy-maps) stays empty.
+    assert!(
+        wait_until(Duration::from_secs(10), || {
+            let entity = nexus.get_json("/api/v1/devices/core1.mock.jaspy/entity");
+            entity["qos"].as_array().map(|q| {
+                q.iter().any(|c| c["policyMap"] == "httphttps"
+                    && c["classMap"] == "v6httphttps"
+                    && c["interface"] == "Te1/0/3"
+                    && c["police"]["exceedBytes"].as_u64().unwrap_or(0) > 0)
+            }).unwrap_or(false)
+        }),
+        "core1 /entity should carry the httphttps QoS rows; log:\n{}",
+        nexus.log()
+    );
+    let dist1_qos = nexus.get_json("/api/v1/devices/dist1.mock.jaspy/entity");
+    assert_eq!(
+        dist1_qos["qos"].as_array().map(|q| q.len()).unwrap_or(0), 0,
+        "dist1 has no policy-maps, qos should be empty: {}",
+        dist1_qos
+    );
+
     // STP tree endpoints: vlan 10 is core1 -> dist1 -> {a-01, a-02} (4 nodes,
     // max depth 2); a-02's redundant backup uplink to core1 is the one
     // blocked link.

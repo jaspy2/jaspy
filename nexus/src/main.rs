@@ -327,6 +327,10 @@ async fn server_main() {
     let entitypoller_interval_msecs = c.get_int("entitypoller_interval_msecs").unwrap_or(120000) as u64;
     let entitypoller_disable_sensors = c.get_bool("entitypoller_disable_sensors").unwrap_or(false);
     let entitypoller_disable_stp = c.get_bool("entitypoller_disable_stp").unwrap_or(false);
+    // Cisco QoS (policy-map) counters, a core-router feature. Enabled by default;
+    // devices without service-policies are gated out by an empty-walk probe that
+    // is remembered per device for 5 min, so this is cheap on a switch fleet.
+    let entitypoller_disable_qos = c.get_bool("entitypoller_disable_qos").unwrap_or(false);
 
     // vlanpoller collector: per-interface VLAN membership (native + tagged)
     // into an in-memory store, default poll interval 5 minutes. Also pollable
@@ -536,7 +540,7 @@ async fn server_main() {
         let running_collector = running.clone();
         let snmp_collector = snmp.clone();
         Some(std::thread::spawn(move || {
-            collectors::entitypoller::run(snmp_collector, entitypoller_interval_msecs, entitypoller_disable_sensors, entitypoller_disable_stp, store_collector, running_collector);
+            collectors::entitypoller::run(snmp_collector, entitypoller_interval_msecs, entitypoller_disable_sensors, entitypoller_disable_stp, entitypoller_disable_qos, store_collector, running_collector);
         }))
     } else {
         println!("[entitypoller] disabled via JASPY_ENABLE_ENTITYPOLLER");

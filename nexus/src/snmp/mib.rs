@@ -496,6 +496,12 @@ mod tests {
             "LLDP-MIB::lldpRemTable",
             "CISCO-CDP-MIB::cdpCacheTable",
             "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTable",
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosServicePolicyTable",
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsTable",
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapCfgTable",
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMCfgTable",
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMStatsTable",
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceStatsTable",
         ];
         for id in tables {
             assert!(reg.table(id).is_some(), "table {} did not resolve", id);

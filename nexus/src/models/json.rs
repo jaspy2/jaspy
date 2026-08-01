@@ -744,6 +744,44 @@ pub struct ApiDeviceEntity {
     // Per-VLAN bridge scalars. Additive: default-deserialized for older payloads.
     #[serde(default)]
     pub stp_bridges: Vec<ApiStpBridge>,
+    // Cisco Class-Based QoS (policy-map) counters, one row per class within each
+    // applied service-policy; empty for devices with no policy-maps (the common
+    // case — only core routers use them). Additive: default-deserialized.
+    #[serde(default)]
+    pub qos: Vec<ApiQosClass>,
+}
+
+// One class-map within an applied service-policy (CISCO-CLASS-BASED-QOS-MIB).
+// Counters are the 64-bit HC columns; null means the device omitted that column.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiQosClass {
+    // ifName of the interface the policy is applied to; null for a control-plane
+    // policy (ifIndex 0) or an unresolved index.
+    pub interface: Option<String>,
+    pub interface_id: Option<i64>, // db interface id when the name resolves
+    pub direction: String,         // "input" | "output"
+    pub policy_map: String,
+    pub class_map: String,
+    // Class-map matched/transmitted/dropped counters.
+    pub prepolicy_pkts: Option<u64>,
+    pub prepolicy_bytes: Option<u64>,
+    pub postpolicy_bytes: Option<u64>,
+    pub drop_pkts: Option<u64>,
+    pub drop_bytes: Option<u64>,
+    // Policer counters when the class has a police action; null otherwise.
+    pub police: Option<ApiQosPolice>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiQosPolice {
+    pub conform_pkts: Option<u64>,
+    pub conform_bytes: Option<u64>,
+    pub exceed_pkts: Option<u64>,
+    pub exceed_bytes: Option<u64>,
+    pub violate_pkts: Option<u64>,
+    pub violate_bytes: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

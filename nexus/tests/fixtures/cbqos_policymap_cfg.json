@@ -1,0 +1,12 @@
+{
+  "ID": "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapCfgTable",
+  "IndexKeys": ["CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex"],
+  "ObjectKeys": ["CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapName"],
+  "Entries": [
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 9580332 },
+      "Objects": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapName": "httphttps" }
+    }
+  ]
+}

@@ -661,7 +661,7 @@ fn api_poe_budget(budget: &crate::collectors::poe::PoeBudget) -> models::json::A
 pub fn device_entity(device_fqdn: &str, entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>) -> Json<models::json::ApiDeviceEntity> {
     let entity = match entity_metrics.inner().lock() {
         Ok(store) => store.device_entity(device_fqdn),
-        Err(_) => models::json::ApiDeviceEntity { sensors: Vec::new(), stp: Vec::new(), stp_bridges: Vec::new() },
+        Err(_) => models::json::ApiDeviceEntity { sensors: Vec::new(), stp: Vec::new(), stp_bridges: Vec::new(), qos: Vec::new() },
     };
     Json(entity)
 }

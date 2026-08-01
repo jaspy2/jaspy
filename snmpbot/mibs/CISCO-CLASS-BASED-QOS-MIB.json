@@ -1,0 +1,206 @@
+{
+  "Name": "CISCO-CLASS-BASED-QOS-MIB",
+  "OID": ".1.3.6.1.4.1.9.9.166",
+  "Objects": [
+    {
+      "Name": "cbQosPolicyIndex",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.1.1.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cbQosPolicyDirection",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.1.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {"Name": "input", "Value": 1},
+        {"Name": "output", "Value": 2}
+      ]
+    },
+    {
+      "Name": "cbQosIfIndex",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.1.1.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cbQosObjectsIndex",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.5.1.1.1",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cbQosConfigIndex",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.5.1.1.2",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cbQosObjectsType",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.5.1.1.3",
+      "Syntax": "ENUM",
+      "SyntaxOptions": [
+        {"Name": "policymap", "Value": 1},
+        {"Name": "classmap", "Value": 2},
+        {"Name": "matchStatement", "Value": 3},
+        {"Name": "queueing", "Value": 4},
+        {"Name": "randomDetect", "Value": 5},
+        {"Name": "trafficShaping", "Value": 6},
+        {"Name": "police", "Value": 7},
+        {"Name": "set", "Value": 8},
+        {"Name": "compression", "Value": 9},
+        {"Name": "ipslaMeasure", "Value": 10},
+        {"Name": "account", "Value": 11}
+      ]
+    },
+    {
+      "Name": "cbQosParentObjectsIndex",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.5.1.1.4",
+      "Syntax": "Unsigned32"
+    },
+    {
+      "Name": "cbQosPolicyMapName",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.6.1.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cbQosCMName",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.7.1.1.1",
+      "Syntax": "SNMPv2-TC::DisplayString"
+    },
+    {
+      "Name": "cbQosCMPrePolicyPkt64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.15.1.1.3",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosCMPrePolicyByte64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.15.1.1.6",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosCMPostPolicyByte64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.15.1.1.10",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosCMDropPkt64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.15.1.1.14",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosCMDropByte64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.15.1.1.17",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosPoliceConformedPkt64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.17.1.1.3",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosPoliceConformedByte64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.17.1.1.6",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosPoliceExceededPkt64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.17.1.1.10",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosPoliceExceededByte64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.17.1.1.13",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosPoliceViolatedPkt64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.17.1.1.17",
+      "Syntax": "Counter64"
+    },
+    {
+      "Name": "cbQosPoliceViolatedByte64",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.17.1.1.20",
+      "Syntax": "Counter64"
+    }
+  ],
+  "Tables": [
+    {
+      "Name": "cbQosServicePolicyTable",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.1.1",
+      "EntryName": "cbQosServicePolicyEntry",
+      "IndexObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyDirection",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosIfIndex"
+      ]
+    },
+    {
+      "Name": "cbQosObjectsTable",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.5.1",
+      "EntryName": "cbQosObjectsEntry",
+      "IndexObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex"
+      ]
+    },
+    {
+      "Name": "cbQosPolicyMapCfgTable",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.6.1",
+      "EntryName": "cbQosPolicyMapCfgEntry",
+      "IndexObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapName"
+      ]
+    },
+    {
+      "Name": "cbQosCMCfgTable",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.7.1",
+      "EntryName": "cbQosCMCfgEntry",
+      "IndexObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMName"
+      ]
+    },
+    {
+      "Name": "cbQosCMStatsTable",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.15.1",
+      "EntryName": "cbQosCMStatsEntry",
+      "IndexObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyPkt64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyByte64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPostPolicyByte64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropPkt64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropByte64"
+      ]
+    },
+    {
+      "Name": "cbQosPoliceStatsTable",
+      "OID": ".1.3.6.1.4.1.9.9.166.1.17.1",
+      "EntryName": "cbQosPoliceStatsEntry",
+      "IndexObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex"
+      ],
+      "EntryObjects": [
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedPkt64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedByte64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededPkt64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededByte64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedPkt64",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedByte64"
+      ]
+    }
+  ]
+}

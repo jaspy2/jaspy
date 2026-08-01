@@ -2,7 +2,7 @@ import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, SnmpSession, StpPort } from '../api/types';
+import type { CdpNeighbor, Device, DeviceUpdate, Interface, InterfaceHealth, InterfacePoe, LiveEvent, PoeBudget, PortChannelMember, QosClass, SnmpSession, StpPort } from '../api/types';
 import { ErrDisabledBadge, HealthBadge, InterfaceHealthBadges, PollingBadge, SnmpHealthBadge, StpStateBadge, UpBadge } from '../components/StatusBadge';
 import ActionMenu from '../components/ActionMenu';
 import useLiveSocket from '../hooks/useLiveSocket';
@@ -356,6 +356,91 @@ function formatBytes(bytes: number): string {
   let i = 0;
   while (v >= 1024 && i < units.length - 1) { v /= 1024; i += 1; }
   return `${i === 0 ? v : v.toFixed(2)} ${units[i]}`;
+}
+
+// Group flat QoS class rows into their service-policies. One group per
+// (interface, direction, policy-map) — the CLI's "Service-policy <dir>:
+// <policy>" on an interface — preserving the decoder's stable class order.
+interface QosGroup {
+  key: string;
+  interface: string;
+  direction: string;
+  policyMap: string;
+  classes: QosClass[];
+}
+function groupQos(qos: QosClass[]): QosGroup[] {
+  const groups: QosGroup[] = [];
+  const byKey = new Map<string, QosGroup>();
+  for (const c of qos) {
+    const iface = c.interface ?? 'control-plane';
+    const key = `${iface} ${c.direction} ${c.policyMap}`;
+    let g = byKey.get(key);
+    if (!g) {
+      g = { key, interface: iface, direction: c.direction, policyMap: c.policyMap, classes: [] };
+      byKey.set(key, g);
+      groups.push(g);
+    }
+    g.classes.push(c);
+  }
+  return groups;
+}
+
+// null-safe cell formatters for QoS counters.
+function qosCount(n: number | null): string {
+  return n === null ? '—' : groupThousands(n);
+}
+function qosBytes(n: number | null): string {
+  return n === null ? '—' : formatBytes(n);
+}
+
+// One collapsible-free block per service-policy: a heading (interface ·
+// direction · policy-map) over a per-class counter table. Drops and policer
+// exceed/violate are highlighted when non-zero — those are the actionable rows.
+function QosSection({ groups }: { groups: QosGroup[] }) {
+  return (
+    <>
+      {groups.map((g) => (
+        <div key={g.key} className="qos-group">
+          <h4 className="qos-group-title">
+            {g.interface} · <span className="muted">{g.direction}</span> · <code>{g.policyMap}</code>
+          </h4>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th>Matched pkts</th>
+                  <th className="hide-mobile">Matched bytes</th>
+                  <th>Dropped pkts</th>
+                  <th className="hide-mobile">Conformed bytes</th>
+                  <th>Exceeded bytes</th>
+                  <th className="hide-mobile">Violated bytes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.classes.map((c) => {
+                  const dropped = (c.dropPkts ?? 0) > 0;
+                  const exceeded = (c.police?.exceedBytes ?? 0) > 0;
+                  const violated = (c.police?.violateBytes ?? 0) > 0;
+                  return (
+                    <tr key={c.classMap}>
+                      <td className="wrap-mobile"><code>{c.classMap}</code></td>
+                      <td>{qosCount(c.prepolicyPkts)}</td>
+                      <td className="hide-mobile">{qosBytes(c.prepolicyBytes)}</td>
+                      <td>{dropped ? <span className="badge badge-warn">{qosCount(c.dropPkts)}</span> : qosCount(c.dropPkts)}</td>
+                      <td className="hide-mobile">{c.police ? qosBytes(c.police.conformBytes) : '—'}</td>
+                      <td>{c.police ? (exceeded ? <span className="badge badge-warn">{qosBytes(c.police.exceedBytes)}</span> : qosBytes(c.police.exceedBytes)) : '—'}</td>
+                      <td className="hide-mobile">{c.police ? (violated ? <span className="badge badge-warn">{qosBytes(c.police.violateBytes)}</span> : qosBytes(c.police.violateBytes)) : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </>
+  );
 }
 
 // Throughput in bits/sec → decimal units (kbps/Mbps/Gbps, base 1000).
@@ -759,6 +844,7 @@ export default function DeviceDetail() {
   const deviceIssues = detail.data.issues ?? [];
   const sensors = entity.data?.sensors ?? [];
   const stp = entity.data?.stp ?? [];
+  const qosGroups = groupQos(entity.data?.qos ?? []);
   const sortedInterfaces = [...interfaces].sort(makeCmp((i) => ifaceSortVal(i, ifaceSort), ifaceAsc));
   const sortedStp = [...stp].sort(makeCmp((p) => stpSortVal(p, stpSort), stpAsc));
 
@@ -1170,6 +1256,12 @@ export default function DeviceDetail() {
 
       {sensors.length === 0 && stp.length === 0 && entitypollerEnabled && (
         <p className="muted">No sensor/STP data for this device (yet).</p>
+      )}
+
+      {qosGroups.length > 0 && (
+        <Section title={`QoS policy-maps (${qosGroups.length})`}>
+          <QosSection groups={qosGroups} />
+        </Section>
       )}
 
       <Section title="Debugging" defaultOpen={false}>

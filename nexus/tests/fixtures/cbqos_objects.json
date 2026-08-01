@@ -1,0 +1,95 @@
+{
+  "ID": "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsTable",
+  "IndexKeys": [
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex"
+  ],
+  "ObjectKeys": [
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex"
+  ],
+  "Entries": [
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 1 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 9580332,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "policymap",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 0
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 65536 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 294953246,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "classmap",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 1
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 65537 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 637950900,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "matchStatement",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 65536
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 65538 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 1698643895,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "police",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 65536
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 131072 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 305117108,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "classmap",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 1
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 131073 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 648864916,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "matchStatement",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 131072
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 131074 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 1633055329,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "police",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 131072
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 196608 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 1593,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "classmap",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 1
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 196609 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": 1594,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "matchStatement",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 196608
+      }
+    }
+  ]
+}

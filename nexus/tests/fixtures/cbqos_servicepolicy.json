@@ -1,0 +1,18 @@
+{
+  "ID": "CISCO-CLASS-BASED-QOS-MIB::cbQosServicePolicyTable",
+  "IndexKeys": ["CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex"],
+  "ObjectKeys": [
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyDirection",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosIfIndex"
+  ],
+  "Entries": [
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyDirection": "input",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosIfIndex": 9
+      }
+    }
+  ]
+}

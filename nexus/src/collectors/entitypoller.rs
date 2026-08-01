@@ -47,6 +47,10 @@ pub struct EntityMetricsStore {
     // In-memory only, like media: PoE is dynamic and re-polled each cycle.
     poe: HashMap<String, HashMap<i32, crate::collectors::poe::InterfacePoe>>,
     poe_budget: HashMap<String, Vec<crate::collectors::poe::PoeBudget>>,
+    // Live Cisco QoS (policy-map) counters per device, one entry per class in
+    // each applied service-policy (CISCO-CLASS-BASED-QOS-MIB). In-memory only
+    // like poe: dynamic, re-polled each cycle, absent for non-QoS devices.
+    qos: HashMap<String, Vec<crate::collectors::qos::QosClass>>,
 }
 
 impl EntityMetricsStore {
@@ -56,6 +60,7 @@ impl EntityMetricsStore {
             media: HashMap::new(),
             poe: HashMap::new(),
             poe_budget: HashMap::new(),
+            qos: HashMap::new(),
         }
     }
 
@@ -110,6 +115,16 @@ impl EntityMetricsStore {
         self.poe_budget.get(fqdn).cloned().unwrap_or_default()
     }
 
+    // Replace the QoS overlay for one device (empty => forget it, so a device
+    // that stops answering CBQoS falls back to no overlay).
+    fn set_qos(&mut self, fqdn: String, qos: Vec<crate::collectors::qos::QosClass>) {
+        if qos.is_empty() {
+            self.qos.remove(&fqdn);
+        } else {
+            self.qos.insert(fqdn, qos);
+        }
+    }
+
     // Every device's PSE budget at once, for the fleet-wide Issues scan
     // (mirrors network_stp). Devices without PoE are omitted.
     pub fn network_poe_budget(&self) -> HashMap<String, Vec<crate::collectors::poe::PoeBudget>> {
@@ -122,6 +137,7 @@ impl EntityMetricsStore {
         self.media.retain(|fqdn, _| keep.contains(fqdn));
         self.poe.retain(|fqdn, _| keep.contains(fqdn));
         self.poe_budget.retain(|fqdn, _| keep.contains(fqdn));
+        self.qos.retain(|fqdn, _| keep.contains(fqdn));
     }
 
     // Prometheus text for every stored device, one metric per line.
@@ -138,14 +154,19 @@ impl EntityMetricsStore {
     // Latest results for one device as structured JSON DTOs for /api/v1.
     // Unknown fqdn and not-yet-polled both yield empty vectors.
     pub fn device_entity(&self, fqdn: &str) -> crate::models::json::ApiDeviceEntity {
-        match self.devices.get(fqdn) {
+        let mut entity = match self.devices.get(fqdn) {
             Some(device) => device.entity.clone(),
             None => crate::models::json::ApiDeviceEntity {
                 sensors: Vec::new(),
                 stp: Vec::new(),
                 stp_bridges: Vec::new(),
+                qos: Vec::new(),
             },
-        }
+        };
+        // QoS is stored structured (like poe), separate from the metrics-decoded
+        // sensors/STP; attach it here so /api/v1 gets it in one payload.
+        entity.qos = self.qos.get(fqdn).map(|q| qos_to_api(q)).unwrap_or_default();
+        entity
     }
 
     // Every device's STP data at once, for the network-wide tree computation
@@ -296,7 +317,8 @@ fn decode_entity(metrics: &[LabeledMetric]) -> crate::models::json::ApiDeviceEnt
         }
     }
 
-    ApiDeviceEntity { sensors: sensors, stp: stp, stp_bridges: stp_bridges }
+    // qos is attached separately by device_entity() from the structured store.
+    ApiDeviceEntity { sensors: sensors, stp: stp, stp_bridges: stp_bridges, qos: Vec::new() }
 }
 
 #[cfg(test)]
@@ -938,6 +960,82 @@ mod tests {
     fn poe_metrics_empty_when_no_poe() {
         assert!(poe_metrics(&poe_test_device(), &HashMap::new(), &[], 1).is_empty());
     }
+
+    // --- qos_metrics ---
+
+    #[test]
+    fn qos_metrics_class_with_policer_full_labels() {
+        use crate::collectors::qos::{QosClass, QosDirection, QosPolice};
+        let qos = vec![QosClass {
+            interface_ifindex: 9,
+            interface_name: Some("Fo1/0/1".to_string()),
+            interface_id: Some(501),
+            direction: QosDirection::Input,
+            policymap: "httphttps".to_string(),
+            classmap: "v6httphttps".to_string(),
+            prepolicy_pkts: Some(4746055580),
+            prepolicy_bytes: Some(13544055268755),
+            postpolicy_bytes: Some(13544490413400),
+            drop_pkts: Some(10926),
+            drop_bytes: Some(16621056),
+            police: Some(QosPolice {
+                conform_pkts: Some(4745951234),
+                conform_bytes: Some(13522486551429),
+                exceed_pkts: Some(10926),
+                exceed_bytes: Some(16621056),
+                violate_pkts: None,
+                violate_bytes: None,
+            }),
+        }];
+        let metrics = qos_metrics(&poe_test_device(), &qos, 7);
+
+        // Full, deterministically-sorted label set on a class counter.
+        assert_eq!(
+            find(&metrics, "jaspy_qos_class_prepolicy_packets_total").as_text(),
+            "jaspy_qos_class_prepolicy_packets_total{classmap=\"v6httphttps\",direction=\"input\",fqdn=\"sw1.example.com\",hostname=\"sw1\",interface=\"Fo1/0/1\",interface_id=\"501\",policymap=\"httphttps\"} 4746055580 7"
+        );
+        // Live-verified policer values surface on the police_* series.
+        assert_eq!(find(&metrics, "jaspy_qos_police_exceed_bytes_total").value.as_i64(), 16621056);
+        assert_eq!(find(&metrics, "jaspy_qos_police_conform_bytes_total").value.as_i64(), 13522486551429);
+        // None policer columns are omitted, not emitted as 0.
+        let names: HashSet<&str> = metrics.iter().map(|m| m.name.as_str()).collect();
+        assert!(!names.contains("jaspy_qos_police_violate_packets_total"));
+        assert!(!names.contains("jaspy_qos_police_violate_bytes_total"));
+    }
+
+    #[test]
+    fn qos_metrics_control_plane_has_no_interface_id_label() {
+        use crate::collectors::qos::{QosClass, QosDirection};
+        let qos = vec![QosClass {
+            interface_ifindex: 0,
+            interface_name: None,
+            interface_id: None,
+            direction: QosDirection::Input,
+            policymap: "system-cpp-policy".to_string(),
+            classmap: "class-default".to_string(),
+            prepolicy_pkts: Some(5),
+            prepolicy_bytes: None,
+            postpolicy_bytes: None,
+            drop_pkts: None,
+            drop_bytes: None,
+            police: None,
+        }];
+        let metrics = qos_metrics(&poe_test_device(), &qos, 3);
+        // ifIndex 0 with no name renders the interface label as "control-plane"
+        // and omits interface_id entirely.
+        let m = find(&metrics, "jaspy_qos_class_prepolicy_packets_total");
+        assert_eq!(m.labels.get("interface").map(|s| s.as_str()), Some("control-plane"));
+        assert!(!m.labels.contains_key("interface_id"));
+        // No policer, and absent class columns are omitted.
+        let names: HashSet<&str> = metrics.iter().map(|m| m.name.as_str()).collect();
+        assert!(!names.contains("jaspy_qos_class_drop_packets_total"));
+        assert!(names.iter().all(|n| !n.starts_with("jaspy_qos_police_")));
+    }
+
+    #[test]
+    fn qos_metrics_empty_when_no_qos() {
+        assert!(qos_metrics(&poe_test_device(), &[], 1).is_empty());
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1368,6 +1466,189 @@ fn poe_metrics(
 }
 
 // ---------------------------------------------------------------------------
+// QoS polling (CISCO-CLASS-BASED-QOS-MIB): Cisco policy-map counters, a
+// core-router feature. Gated so switches without service-policies are never
+// walked: a confirmed empty cbQosServicePolicyTable is remembered in the
+// QosProbeCache for QOS_NEGATIVE_TTL, and non-Cisco devices are skipped by the
+// discovery vendor hint. Decode + cache logic live in collectors::qos.
+// ---------------------------------------------------------------------------
+
+// Poll a device's QoS state. Returns leaving `qos_out` empty (so the overlay is
+// forgotten) whenever the device has no policy-maps, is non-Cisco, is skipped by
+// the negative cache, or an SNMP walk errors. The cache is only updated on an
+// authoritative answer: an empty service-policy walk records a negative; a
+// non-empty one clears it. Transient SNMP errors are never cached.
+fn get_qos(
+    snmp: &SnmpSource,
+    device: &EntityDevice,
+    cache: &crate::collectors::qos::QosProbeCache,
+    now: std::time::Instant,
+    qos_out: &mut Vec<crate::collectors::qos::QosClass>,
+) {
+    use crate::collectors::qos;
+
+    // CBQoS is Cisco-only; skip the probe entirely for other vendors.
+    if device.vendor != Vendor::Cisco {
+        return;
+    }
+    if cache.should_skip(&device.fqdn, now) {
+        return;
+    }
+    let host = format!("{}@{}", device.community, device.fqdn);
+
+    // The presence gate: an empty walk is the authoritative "no policy-maps"
+    // signal; an SNMP error (None) is transient and must not be cached.
+    let service_policy = match fetch_table(snmp, &host, "CISCO-CLASS-BASED-QOS-MIB::cbQosServicePolicyTable") {
+        Some(t) => t,
+        None => return,
+    };
+    if service_policy.entries.is_empty() {
+        cache.record_absent(&device.fqdn, now);
+        return;
+    }
+    cache.note_present(&device.fqdn);
+
+    // Pull the rest of the join. Any errored walk aborts this cycle (the overlay
+    // is left empty rather than storing a half-joined view).
+    let objects = match fetch_table(snmp, &host, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsTable") {
+        Some(t) => t,
+        None => return,
+    };
+    let policymap_cfg = match fetch_table(snmp, &host, "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapCfgTable") {
+        Some(t) => t,
+        None => return,
+    };
+    let cm_cfg = match fetch_table(snmp, &host, "CISCO-CLASS-BASED-QOS-MIB::cbQosCMCfgTable") {
+        Some(t) => t,
+        None => return,
+    };
+    let cm_stats = match fetch_table(snmp, &host, "CISCO-CLASS-BASED-QOS-MIB::cbQosCMStatsTable") {
+        Some(t) => t,
+        None => return,
+    };
+    let police_stats = match fetch_table(snmp, &host, "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceStatsTable") {
+        Some(t) => t,
+        None => return,
+    };
+
+    let if_names = get_if_names(snmp, &host);
+    let mut classes = qos::decode_qos(
+        &service_policy, &objects, &policymap_cfg, &cm_cfg, &cm_stats, &police_stats, &if_names,
+    );
+
+    // Resolve the db interface id from the ifName (device.interfaces is keyed by
+    // both name and description); leaves None for control-plane / unmapped.
+    let iface_by_name: HashMap<String, i32> =
+        device.interfaces.iter().map(|(key, (_, id))| (key.clone(), *id)).collect();
+    for class in classes.iter_mut() {
+        class.interface_id = class
+            .interface_name
+            .as_ref()
+            .and_then(|n| iface_by_name.get(n))
+            .map(|id| *id as i64);
+    }
+    *qos_out = classes;
+}
+
+// ifIndex -> ifName from IF-MIB::ifXTable, for labeling QoS rows with the
+// interface the service-policy is applied to.
+fn get_if_names(snmp: &SnmpSource, host: &String) -> HashMap<i64, String> {
+    let mut names: HashMap<i64, String> = HashMap::new();
+    if let Some(ifx) = fetch_table(snmp, host, "IF-MIB::ifXTable") {
+        for entry in ifx.entries.iter() {
+            let idx = match entry.index.get("IF-MIB::ifIndex") {
+                Some(v) => *v,
+                None => continue,
+            };
+            if let Some(name) = obj_str(&entry.objects, "IF-MIB::ifName") {
+                names.insert(idx, name);
+            }
+        }
+    }
+    names
+}
+
+// Convert stored QosClass rows to the API DTO (used by device_entity()). Free
+// function so the store method can call it without a device handle — everything
+// it needs (name, id, counters) is already on QosClass.
+fn qos_to_api(classes: &[crate::collectors::qos::QosClass]) -> Vec<crate::models::json::ApiQosClass> {
+    use crate::models::json::{ApiQosClass, ApiQosPolice};
+    classes.iter().map(|c| ApiQosClass {
+        interface: c.interface_name.clone(),
+        interface_id: c.interface_id,
+        direction: c.direction.as_str().to_string(),
+        policy_map: c.policymap.clone(),
+        class_map: c.classmap.clone(),
+        prepolicy_pkts: c.prepolicy_pkts,
+        prepolicy_bytes: c.prepolicy_bytes,
+        postpolicy_bytes: c.postpolicy_bytes,
+        drop_pkts: c.drop_pkts,
+        drop_bytes: c.drop_bytes,
+        police: c.police.as_ref().map(|p| ApiQosPolice {
+            conform_pkts: p.conform_pkts,
+            conform_bytes: p.conform_bytes,
+            exceed_pkts: p.exceed_pkts,
+            exceed_bytes: p.exceed_bytes,
+            violate_pkts: p.violate_pkts,
+            violate_bytes: p.violate_bytes,
+        }),
+    }).collect()
+}
+
+// Build Prometheus samples from the decoded QoS state. Pure (no I/O), like
+// poe_metrics, so the label/name mapping is unit-tested from QosClass values.
+// All counters are monotonic (Counter64), emitted as _total; a class/policer
+// column the device omits is skipped rather than reported as 0.
+fn qos_metrics(
+    device: &EntityDevice,
+    qos: &[crate::collectors::qos::QosClass],
+    timestamp: u64,
+) -> Vec<LabeledMetric> {
+    let mut out: Vec<LabeledMetric> = Vec::new();
+    for class in qos.iter() {
+        // Interface label: ifName when resolved, "control-plane" for a
+        // control-plane policy (ifIndex 0), else the raw ifIndex.
+        let interface = class.interface_name.clone().unwrap_or_else(|| {
+            if class.interface_ifindex == 0 {
+                "control-plane".to_string()
+            } else {
+                class.interface_ifindex.to_string()
+            }
+        });
+        let mut labels: HashMap<String, String> = HashMap::new();
+        labels.insert("fqdn".to_string(), device.fqdn.clone());
+        labels.insert("hostname".to_string(), device.hostname.clone());
+        labels.insert("interface".to_string(), interface);
+        labels.insert("direction".to_string(), class.direction.as_str().to_string());
+        labels.insert("policymap".to_string(), class.policymap.clone());
+        labels.insert("classmap".to_string(), class.classmap.clone());
+        if let Some(id) = class.interface_id {
+            labels.insert("interface_id".to_string(), id.to_string());
+        }
+
+        let mut push = |name: &str, value: Option<u64>| {
+            if let Some(v) = value {
+                out.push(LabeledMetric::new(&name.to_string(), MetricValue::Uint64(v), &labels, timestamp));
+            }
+        };
+        push("jaspy_qos_class_prepolicy_packets_total", class.prepolicy_pkts);
+        push("jaspy_qos_class_prepolicy_bytes_total", class.prepolicy_bytes);
+        push("jaspy_qos_class_postpolicy_bytes_total", class.postpolicy_bytes);
+        push("jaspy_qos_class_drop_packets_total", class.drop_pkts);
+        push("jaspy_qos_class_drop_bytes_total", class.drop_bytes);
+        if let Some(p) = class.police.as_ref() {
+            push("jaspy_qos_police_conform_packets_total", p.conform_pkts);
+            push("jaspy_qos_police_conform_bytes_total", p.conform_bytes);
+            push("jaspy_qos_police_exceed_packets_total", p.exceed_pkts);
+            push("jaspy_qos_police_exceed_bytes_total", p.exceed_bytes);
+            push("jaspy_qos_police_violate_packets_total", p.violate_pkts);
+            push("jaspy_qos_police_violate_bytes_total", p.violate_bytes);
+        }
+    }
+    out
+}
+
+// ---------------------------------------------------------------------------
 // STP polling, one vendor::Source per incompatible MIB family:
 //   - CiscoStpxSource: CISCO-STP-EXTENSIONS-MIB roles + per-VLAN BRIDGE-MIB
 //   - HpRpvstSource:   HP-ICF-RPVST-MIB (ProCurve RPVST+)
@@ -1769,12 +2050,16 @@ pub(crate) fn interruptible_sleep(msecs: u64, running: &Arc<atomic::AtomicBool>)
     }
 }
 
-pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, disable_stp: bool, store: Arc<Mutex<EntityMetricsStore>>, running: Arc<atomic::AtomicBool>) {
-    println!("[entitypoller] starting in-process collector (interval_msecs={}, sensors={}, stp={})",
-        interval_msecs, !disable_sensors, !disable_stp);
+pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, disable_stp: bool, disable_qos: bool, store: Arc<Mutex<EntityMetricsStore>>, running: Arc<atomic::AtomicBool>) {
+    println!("[entitypoller] starting in-process collector (interval_msecs={}, sensors={}, stp={}, qos={})",
+        interval_msecs, !disable_sensors, !disable_stp, !disable_qos);
     let pool = db::connect();
     let no_jitter = std::env::var("JASPY_POLLER_NO_JITTER").map(|v| v == "1" || v == "true").unwrap_or(false);
     let stp_sources = Arc::new(vendor::SourceCache::new());
+    // Negative-probe cache: remembers which devices have no policy-maps so we
+    // don't re-walk them every cycle (survives across cycles, unlike the
+    // per-cycle device list). Cloned into each worker below.
+    let qos_cache = Arc::new(crate::collectors::qos::QosProbeCache::new());
 
     while running.load(atomic::Ordering::Relaxed) {
         let cycle_start = tools::get_time_msecs();
@@ -1786,6 +2071,7 @@ pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, di
             store.retain(&keep);
         }
         stp_sources.retain(&keep);
+        qos_cache.retain(&keep);
 
         // Bounded per-device fan-out, joined at a barrier (the Go original
         // spawned one goroutine per device via runOnce+WaitGroup).
@@ -1795,6 +2081,7 @@ pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, di
             let mut media: HashMap<i32, String> = HashMap::new();
             let mut poe: HashMap<i32, crate::collectors::poe::InterfacePoe> = HashMap::new();
             let mut poe_budget: Vec<crate::collectors::poe::PoeBudget> = Vec::new();
+            let mut qos: Vec<crate::collectors::qos::QosClass> = Vec::new();
             if !disable_sensors {
                 get_entities(&snmp, &device, &mut metrics, &mut media);
             }
@@ -1807,11 +2094,18 @@ pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, di
             // the same vec so render() picks them up; decode_entity ignores the
             // jaspy_poe_* names.
             metrics.extend(poe_metrics(&device, &poe, &poe_budget, tools::get_time_msecs()));
+            if !disable_qos {
+                get_qos(&snmp, &device, &qos_cache, std::time::Instant::now(), &mut qos);
+                // Same pattern as PoE: emit jaspy_qos_* samples and keep the
+                // structured rows for the /api/v1 device_entity overlay.
+                metrics.extend(qos_metrics(&device, &qos, tools::get_time_msecs()));
+            }
             if let Ok(mut store) = store.lock() {
                 store.replace_device(device.fqdn.clone(), metrics);
                 store.set_media(device.fqdn.clone(), media);
                 store.set_poe(device.fqdn.clone(), poe);
                 store.set_poe_budget(device.fqdn.clone(), poe_budget);
+                store.set_qos(device.fqdn.clone(), qos);
             }
         });
 

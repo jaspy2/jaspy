@@ -1,0 +1,41 @@
+{
+  "ID": "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceStatsTable",
+  "IndexKeys": [
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex"
+  ],
+  "ObjectKeys": [
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedPkt64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedByte64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededPkt64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededByte64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedPkt64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedByte64"
+  ],
+  "Entries": [
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 65538 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedPkt64": 27381474389,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedByte64": 4869193294464,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededPkt64": 0,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededByte64": 0,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedPkt64": 0,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedByte64": 0
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 131074 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedPkt64": 4745951234,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedByte64": 13522486551429,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededPkt64": 10926,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededByte64": 16621056,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedPkt64": 0,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedByte64": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "ID": "CISCO-CLASS-BASED-QOS-MIB::cbQosCMStatsTable",
+  "IndexKeys": [
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex"
+  ],
+  "ObjectKeys": [
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyPkt64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyByte64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPostPolicyByte64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropPkt64",
+    "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropByte64"
+  ],
+  "Entries": [
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 65536 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyPkt64": 27381474389,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyByte64": 4875772636329,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPostPolicyByte64": 4876253915510,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropPkt64": 0,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropByte64": 0
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 131072 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyPkt64": 4746055580,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyByte64": 13544055268755,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPostPolicyByte64": 13544490413400,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropPkt64": 10926,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropByte64": 16621056
+      }
+    },
+    {
+      "HostID": "asm-gw1.asm.fi",
+      "Index": { "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": 144, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 196608 },
+      "Objects": {
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyPkt64": 14674395919,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyByte64": 0,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPostPolicyByte64": 0,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropPkt64": 0,
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropByte64": 0
+      }
+    }
+  ]
+}

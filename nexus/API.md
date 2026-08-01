@@ -134,9 +134,9 @@ Response: [`ApiDeviceDetail`](#apidevicedetail).
 
 ### `GET /api/v1/devices/{fqdn}/entity`
 
-Latest entitypoller results (environment sensors + per-VLAN STP) from the
-in-memory store. Unknown fqdn and not-yet-polled devices both return `200`
-with empty arrays.
+Latest entitypoller results (environment sensors, per-VLAN STP, and Cisco QoS
+policy-map counters) from the in-memory store. Unknown fqdn and not-yet-polled
+devices both return `200` with empty arrays.
 
 Response: [`ApiDeviceEntity`](#apideviceentity).
 
@@ -387,6 +387,19 @@ Per-port series are labelled `fqdn`, `hostname`, `name`, `interface_id`:
 `jaspy_poe_budget_consumed_watts`, `jaspy_poe_budget_oper_on` (0/1), and
 `jaspy_poe_budget_threshold_percent` (omitted when unset).
 
+QoS policy-map series come from the entitypoller (CISCO-CLASS-BASED-QOS-MIB),
+for Cisco devices with service-policies applied (core routers). All are
+monotonic `_total` counters labelled `fqdn`, `hostname`, `interface`
+(`control-plane` for ifIndex 0), `direction`, `policymap`, `classmap`, plus
+`interface_id` when the name resolves. Per-class:
+`jaspy_qos_class_prepolicy_packets_total`, `jaspy_qos_class_prepolicy_bytes_total`,
+`jaspy_qos_class_postpolicy_bytes_total`, `jaspy_qos_class_drop_packets_total`,
+`jaspy_qos_class_drop_bytes_total`. For classes with a policer:
+`jaspy_qos_police_conform_packets_total`/`_bytes_total`,
+`jaspy_qos_police_exceed_packets_total`/`_bytes_total`,
+`jaspy_qos_police_violate_packets_total`/`_bytes_total`. A column the device
+omits is skipped, not emitted as 0.
+
 ---
 
 ## Schemas
@@ -533,6 +546,7 @@ Present only when a signal has tripped.
 | `sensors` | [`ApiEntitySensor`](#apientitysensor)`[]` | |
 | `stp` | [`ApiStpPort`](#apistpport)`[]` | per-port STP |
 | `stpBridges` | [`ApiStpBridge`](#apistpbridge)`[]` | per-VLAN bridge scalars |
+| `qos` | [`ApiQosClass`](#apiqosclass)`[]` | Cisco policy-map counters; empty for devices with no service-policies |
 
 ### ApiEntitySensor
 
@@ -577,6 +591,36 @@ Present only when a signal has tripped.
 | `topologyChanges` | integer \| null | |
 | `timeSinceTopologyChangeSecs` | integer \| null | |
 | `timestamp` | integer | msecs |
+
+### ApiQosClass
+
+One class-map within an applied service-policy (CISCO-CLASS-BASED-QOS-MIB).
+Counters are the 64-bit HC columns; `null` means the device omitted that column.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `interface` | string \| null | ifName the policy is applied to; `null` for a control-plane policy (ifIndex 0) |
+| `interfaceId` | integer \| null | db interface id when the name resolves |
+| `direction` | string | `"input"` \| `"output"` |
+| `policyMap` | string | |
+| `classMap` | string | |
+| `prepolicyPkts` | integer \| null | matched packets |
+| `prepolicyBytes` | integer \| null | matched bytes |
+| `postpolicyBytes` | integer \| null | transmitted bytes after the policy |
+| `dropPkts` | integer \| null | |
+| `dropBytes` | integer \| null | |
+| `police` | [`ApiQosPolice`](#apiqospolice) \| null | policer counters, when the class has a police action |
+
+### ApiQosPolice
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `conformPkts` | integer \| null | |
+| `conformBytes` | integer \| null | |
+| `exceedPkts` | integer \| null | |
+| `exceedBytes` | integer \| null | |
+| `violatePkts` | integer \| null | |
+| `violateBytes` | integer \| null | |
 
 ### ApiVlanSummary
 

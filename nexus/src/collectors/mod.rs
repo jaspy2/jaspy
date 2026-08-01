@@ -30,6 +30,11 @@ pub mod entity_media;
 // (POWER-ETHERNET-MIB + CISCO-POWER-ETHERNET-EXT-MIB) and switch-wide PSE
 // budget; the entitypoller polls it into an in-memory overlay served by /api/v1.
 pub mod poe;
+// qos decodes Cisco Class-Based QoS (policy-map) counters
+// (CISCO-CLASS-BASED-QOS-MIB) and owns the negative-probe cache that keeps the
+// entitypoller from re-walking devices with no service-policies. Core-router
+// feature; the entitypoller polls it into an overlay served by /api/v1.
+pub mod qos;
 
 // The embedded SNMP client (snmp2) embeds two 64 KiB receive buffers by value —
 // `SyncSession { recv_buf: [u8; 65507] }` and each request `Pdu { buf: [u8;

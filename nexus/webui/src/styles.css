@@ -363,6 +363,16 @@ tr.clickable:hover td { background: var(--muted-bg); }
 .badge-warn { background: var(--warn-bg); color: var(--warn); }
 .badge-muted { background: var(--muted-bg); color: var(--muted); }
 
+/* QoS policy-maps: one block per service-policy (interface · direction ·
+   policy-map) over a per-class counter table. */
+.qos-group + .qos-group { margin-top: 16px; }
+.qos-group-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.qos-group-title code { font-size: 12.5px; }
+
 /* Per-VLAN escalation selector (VLANs page): tint non-default levels so a
    reconfigured VLAN stands out. `normal` uses the plain control styling. */
 select.vlan-policy { font: inherit; }

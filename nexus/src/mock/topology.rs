@@ -96,6 +96,26 @@ pub struct MockPoe {
     pub delivering: Vec<(i64, i64)>, // (ifindex, consumption_mw)
 }
 
+// Cisco Class-Based QoS (policy-map) applied to an interface, modeling a
+// rate-limit service-policy like the core routers' httphttps policer. Feeds the
+// CISCO-CLASS-BASED-QOS-MIB arms (see the qos collector). Counters are
+// time-derived and monotonic. Absent (None) on devices without policy-maps,
+// which is the common case — only a core router exposes this.
+pub struct MockQos {
+    pub ifindex: i64,            // interface the service-policy is applied to
+    pub direction: &'static str, // "input" | "output"
+    pub policy_map: &'static str,
+    pub classes: &'static [MockQosClass],
+}
+
+pub struct MockQosClass {
+    pub name: &'static str,
+    pub policed: bool, // has a policer action (police counters present)
+    // Policer is dropping traffic (exceed/drop counters climb) — drives the
+    // "exceeded" warn badge in the device view's QoS section.
+    pub exceeds: bool,
+}
+
 pub struct MockDevice {
     pub name: &'static str,
     pub model: &'static str,
@@ -114,6 +134,10 @@ pub struct MockDevice {
     pub lags: Vec<MockLag>,
     // PoE, for PSE-capable access switches; None on non-PoE devices.
     pub poe: Option<MockPoe>,
+    // Cisco QoS policy-map, for core routers; None on devices with no
+    // service-policies (the common case). Gated by the qos collector's
+    // negative-probe cache.
+    pub qos: Option<MockQos>,
     // Whether the device publishes its own LLDP local-system data
     // (lldpLocChassisId + lldpLocPortTable) and a BRIDGE-MIB base address —
     // the sources discovery derives base_mac from, and the loc-port table it
@@ -193,6 +217,21 @@ pub fn build() -> Topology {
                 MockLag { ifindex: 5002, members: &[10102, 10106], partner_mac: "", defaulted_members: &[], down_members: &[] },
             ],
             poe: None,
+            // core1 is the fleet's core router: it applies the httphttps input
+            // policer on its firewall uplink (Te1/0/3), like the real asm-gw
+            // gateways. v6httphttps exceeds its rate — the "policer dropping"
+            // demo. Every other mock device has no policy-maps (qos: None), so
+            // the negative-probe cache path is exercised too.
+            qos: Some(MockQos {
+                ifindex: 10103,
+                direction: "input",
+                policy_map: "httphttps",
+                classes: &[
+                    MockQosClass { name: "v4httphttps", policed: true, exceeds: false },
+                    MockQosClass { name: "v6httphttps", policed: true, exceeds: true },
+                    MockQosClass { name: "class-default", policed: false, exceeds: false },
+                ],
+            }),
         },
         MockDevice {
             name: "dist1",
@@ -239,6 +278,7 @@ pub fn build() -> Topology {
             ],
             lags: vec![MockLag { ifindex: 5001, members: &[10101, 10105], partner_mac: "", defaulted_members: &[], down_members: &[] }],
             poe: None,
+            qos: None,
         },
         MockDevice {
             name: "dist2",
@@ -279,6 +319,7 @@ pub fn build() -> Topology {
                 MockLag { ifindex: 5002, members: &[10104], partner_mac: "", defaulted_members: &[], down_members: &[] },
             ],
             poe: None,
+            qos: None,
         },
         {
             // a-01 carries a 2-member LACP bundle to an unmonitored server. Both
@@ -375,6 +416,7 @@ pub fn build() -> Topology {
             ],
             lags: vec![MockLag { ifindex: 5001, members: &[1], partner_mac: "", defaulted_members: &[], down_members: &[] }],
             poe: None,
+            qos: None,
         },
         MockDevice {
             name: "fw1",
@@ -394,6 +436,7 @@ pub fn build() -> Topology {
             ],
             lags: Vec::new(),
             poe: None,
+            qos: None,
         },
     ];
     Topology { devices, started: crate::utilities::tools::get_time() }
@@ -453,6 +496,7 @@ fn access_switch(name: &'static str, upstream: (&'static str, &'static str), upl
             budget_w: 370,
             delivering: vec![(10201, 15400), (10203, 6500)],
         }),
+        qos: None,
     }
 }
 
@@ -495,6 +539,49 @@ fn poe_ports(dev: &MockDevice) -> Vec<&MockInterface> {
     dev.interfaces.iter()
         .filter(|i| !i.name.starts_with("Po") && i.speed_mbps < 10000)
         .collect()
+}
+
+// --- QoS (CISCO-CLASS-BASED-QOS-MIB) synthetic index scheme ---
+// One service-policy per device (policyIndex 144), a policymap object at
+// objIndex 1, and per class a classmap object at (i+1)*65536 with an optional
+// child police object 2 above it — mirroring the real object hierarchy so the
+// collector's parent-chain join is exercised.
+const QOS_POLICY_INDEX: i64 = 144;
+const QOS_POLICYMAP_CONFIG: i64 = 900000;
+
+struct QosGen {
+    obj: i64,
+    police_obj: Option<i64>,
+    config: i64,
+    police_config: i64,
+    name: &'static str,
+    exceeds: bool,
+}
+
+fn qos_gen(qos: &MockQos) -> Vec<QosGen> {
+    qos.classes.iter().enumerate().map(|(i, c)| {
+        let obj = (i as i64 + 1) * 65536;
+        QosGen {
+            obj,
+            police_obj: if c.policed { Some(obj + 2) } else { None },
+            config: 900001 + i as i64,
+            police_config: 910001 + i as i64,
+            name: c.name,
+            exceeds: c.exceeds,
+        }
+    }).collect()
+}
+
+// Monotonic per-class counters (Counter64), pure functions of elapsed so they
+// only ever climb. Returns (prepolicy_pkts, prepolicy_bytes, postpolicy_bytes,
+// drop_pkts, drop_bytes); a policing class that exceeds its rate also drops.
+fn qos_class_counters(i: usize, exceeds: bool, elapsed: f64) -> (u64, u64, u64, u64, u64) {
+    let secs = elapsed.max(0.0) as u64;
+    let i = i as u64;
+    let pkts = 1_000_000 * (i + 1) + secs * (500 + 100 * i);
+    let bytes = pkts.saturating_mul(760);
+    let (drop_pkts, drop_bytes) = if exceeds { (secs * 3, secs * 3 * 760) } else { (0, 0) };
+    (pkts, bytes, bytes, drop_pkts, drop_bytes)
 }
 
 // ---------------------------------------------------------------------------
@@ -1395,6 +1482,100 @@ impl Topology {
                 }).collect();
                 Some(response(table_id, entries))
             }
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosServicePolicyTable" => {
+                let qos = match &dev.qos { Some(q) => q, None => return Some(response(table_id, Vec::new())) };
+                Some(response(table_id, vec![entry(
+                    json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": QOS_POLICY_INDEX}),
+                    json!({
+                        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyDirection": qos.direction,
+                        "CISCO-CLASS-BASED-QOS-MIB::cbQosIfIndex": qos.ifindex,
+                    }),
+                )]))
+            }
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsTable" => {
+                let qos = match &dev.qos { Some(q) => q, None => return Some(response(table_id, Vec::new())) };
+                // Root policymap object, then classmap (+ child police) per class.
+                let mut entries = vec![entry(
+                    json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": QOS_POLICY_INDEX, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": 1}),
+                    json!({
+                        "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": QOS_POLICYMAP_CONFIG,
+                        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "policymap",
+                        "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 0,
+                    }),
+                )];
+                for g in qos_gen(qos) {
+                    entries.push(entry(
+                        json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": QOS_POLICY_INDEX, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": g.obj}),
+                        json!({
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": g.config,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "classmap",
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": 1,
+                        }),
+                    ));
+                    if let Some(police_obj) = g.police_obj {
+                        entries.push(entry(
+                            json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": QOS_POLICY_INDEX, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": police_obj}),
+                            json!({
+                                "CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": g.police_config,
+                                "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsType": "police",
+                                "CISCO-CLASS-BASED-QOS-MIB::cbQosParentObjectsIndex": g.obj,
+                            }),
+                        ));
+                    }
+                }
+                Some(response(table_id, entries))
+            }
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapCfgTable" => {
+                let qos = match &dev.qos { Some(q) => q, None => return Some(response(table_id, Vec::new())) };
+                Some(response(table_id, vec![entry(
+                    json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": QOS_POLICYMAP_CONFIG}),
+                    json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapName": qos.policy_map}),
+                )]))
+            }
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMCfgTable" => {
+                let qos = match &dev.qos { Some(q) => q, None => return Some(response(table_id, Vec::new())) };
+                let entries = qos_gen(qos).into_iter().map(|g| entry(
+                    json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosConfigIndex": g.config}),
+                    json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosCMName": g.name}),
+                )).collect();
+                Some(response(table_id, entries))
+            }
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMStatsTable" => {
+                let qos = match &dev.qos { Some(q) => q, None => return Some(response(table_id, Vec::new())) };
+                let entries = qos_gen(qos).into_iter().enumerate().map(|(i, g)| {
+                    let (pkts, bytes, post, dpk, dby) = qos_class_counters(i, g.exceeds, elapsed);
+                    entry(
+                        json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": QOS_POLICY_INDEX, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": g.obj}),
+                        json!({
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyPkt64": pkts,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPrePolicyByte64": bytes,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMPostPolicyByte64": post,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropPkt64": dpk,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosCMDropByte64": dby,
+                        }),
+                    )
+                }).collect();
+                Some(response(table_id, entries))
+            }
+            "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceStatsTable" => {
+                let qos = match &dev.qos { Some(q) => q, None => return Some(response(table_id, Vec::new())) };
+                let entries = qos_gen(qos).into_iter().enumerate().filter_map(|(i, g)| {
+                    let police_obj = g.police_obj?;
+                    let (pkts, bytes, _post, dpk, dby) = qos_class_counters(i, g.exceeds, elapsed);
+                    Some(entry(
+                        json!({"CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyIndex": QOS_POLICY_INDEX, "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsIndex": police_obj}),
+                        json!({
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedPkt64": pkts,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceConformedByte64": bytes,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededPkt64": dpk,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceExceededByte64": dby,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedPkt64": 0,
+                            "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceViolatedByte64": 0,
+                        }),
+                    ))
+                }).collect();
+                Some(response(table_id, entries))
+            }
             _ => None,
         }
     }
@@ -1466,9 +1647,15 @@ mod tests {
     use super::*;
     use crate::collectors::poller::SNMPBotResultEntryObjectValue;
 
-    const ALL_TABLES: [&str; 23] = [
+    const ALL_TABLES: [&str; 29] = [
         "IF-MIB::ifTable",
         "IF-MIB::ifXTable",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosServicePolicyTable",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsTable",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapCfgTable",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMCfgTable",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosCMStatsTable",
+        "CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceStatsTable",
         "ENTITY-MIB::entPhysicalTable",
         "ENTITY-SENSOR-MIB::entPhySensorTable",
         "CISCO-ENTITY-SENSOR-MIB::entSensorValueTable",
@@ -1491,6 +1678,38 @@ mod tests {
         "IEEE8023-LAG-MIB::dot3adAggPortTable",
         "CISCO-ERR-DISABLE-MIB::cErrDisableIfStatusTable",
     ];
+
+    #[test]
+    fn qos_tables_join_through_the_decoder() {
+        use crate::collectors::qos;
+        let topo = build();
+        let g = |id: &str| topo.table("core1.mock.jaspy", None, id, 100.0).unwrap();
+        let mut if_names = std::collections::HashMap::new();
+        if_names.insert(10103, "Te1/0/3".to_string());
+        let classes = qos::decode_qos(
+            &g("CISCO-CLASS-BASED-QOS-MIB::cbQosServicePolicyTable"),
+            &g("CISCO-CLASS-BASED-QOS-MIB::cbQosObjectsTable"),
+            &g("CISCO-CLASS-BASED-QOS-MIB::cbQosPolicyMapCfgTable"),
+            &g("CISCO-CLASS-BASED-QOS-MIB::cbQosCMCfgTable"),
+            &g("CISCO-CLASS-BASED-QOS-MIB::cbQosCMStatsTable"),
+            &g("CISCO-CLASS-BASED-QOS-MIB::cbQosPoliceStatsTable"),
+            &if_names,
+        );
+        // Three classes, all on the httphttps policy applied to Te1/0/3 input.
+        assert_eq!(classes.len(), 3);
+        let v6 = classes.iter().find(|c| c.classmap == "v6httphttps").unwrap();
+        assert_eq!(v6.policymap, "httphttps");
+        assert_eq!(v6.interface_name.as_deref(), Some("Te1/0/3"));
+        assert_eq!(v6.direction, qos::QosDirection::Input);
+        // v6httphttps exceeds its policer rate; class-default has no policer.
+        assert!(v6.police.as_ref().unwrap().exceed_bytes.unwrap() > 0);
+        assert!(classes.iter().find(|c| c.classmap == "class-default").unwrap().police.is_none());
+
+        // A device without policy-maps answers an empty service-policy walk (the
+        // negative-probe path).
+        let dist1 = topo.table("dist1.mock.jaspy", None, "CISCO-CLASS-BASED-QOS-MIB::cbQosServicePolicyTable", 100.0).unwrap();
+        assert!(dist1.entries.is_empty());
+    }
 
     #[test]
     fn tables_serialize_with_snmpbot_shape() {
