@@ -173,6 +173,12 @@ pub struct ApiSystemStatus {
     pub poller_enabled: bool,
     pub poll_loop_msecs: u64,
     pub pinger_enabled: bool,
+    // Runtime master switch (Maintenance page): false = all switch-touching
+    // collectors are paused and /dev/metrics emits no switch series. Distinct
+    // from the per-collector *_enabled fields, which are the startup config for
+    // whether a collector thread was spawned at all. Additive/defaulted.
+    #[serde(default = "default_true")]
+    pub polling_enabled: bool,
     // "pinger" or "poller": where device up/down comes from.
     pub device_status_source: String,
     pub entitypoller_enabled: bool,
@@ -645,6 +651,18 @@ pub struct ApiVlanSummary {
 
 fn default_policy_level() -> String {
     "normal".to_string()
+}
+
+fn default_true() -> bool {
+    true
+}
+
+// PUT /api/v1/system/polling request + GET/PUT response: the runtime master
+// switch for all switch-touching collectors and the /dev/metrics exporter.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiPollingState {
+    pub enabled: bool,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -442,6 +442,11 @@ async fn server_main() {
     let vlan_store : Arc<Mutex<collectors::vlanpoller::VlanStore>> = Arc::new(Mutex::new(collectors::vlanpoller::VlanStore::new()));
     let lag_store : Arc<Mutex<collectors::lagpoller::LagStore>> = Arc::new(Mutex::new(collectors::lagpoller::LagStore::new()));
     let vlan_control : Arc<Mutex<collectors::vlanpoller::VlanPollerControl>> = Arc::new(Mutex::new(collectors::vlanpoller::VlanPollerControl::new()));
+    // Runtime master switch for every switch-touching collector (SNMP pollers +
+    // pinger), toggled from the Maintenance page. Starts enabled; pausing it
+    // stops the collectors querying switches and blanks the /dev/metrics export
+    // so Prometheus stops scraping stale switch series (see PollingControl).
+    let polling_control : Arc<collectors::PollingControl> = Arc::new(collectors::PollingControl::new(true));
     let cache_controller : Arc<Mutex<utilities::cache::CacheController>> = Arc::new(Mutex::new(utilities::cache::CacheController::new()));
     // Derived-issue onset tracker (utilities::issues). Grace keeps a briefly
     // cleared issue's first_seen stable across a single missed scan; a genuine
@@ -516,8 +521,9 @@ async fn server_main() {
         // Without the pinger, the poller doubles as the device up/down source
         // (a device answering SNMP is up).
         let report_device_status = !enable_pinger;
+        let control_collector = polling_control.clone();
         Some(std::thread::spawn(move || {
-            collectors::poller::run(snmp_collector, poll_loop_msecs, report_device_status, imds_collector, running_collector);
+            collectors::poller::run(snmp_collector, poll_loop_msecs, report_device_status, imds_collector, control_collector, running_collector);
         }))
     } else {
         println!("[poller] disabled via JASPY_ENABLE_POLLER");
@@ -527,8 +533,9 @@ async fn server_main() {
     let pinger_thread = if enable_pinger {
         let imds_collector = imds.clone();
         let running_collector = running.clone();
+        let control_collector = polling_control.clone();
         Some(std::thread::spawn(move || {
-            collectors::pinger::run(imds_collector, running_collector, pinger_workers);
+            collectors::pinger::run(imds_collector, control_collector, running_collector, pinger_workers);
         }))
     } else {
         println!("[pinger] disabled via JASPY_ENABLE_PINGER");
@@ -539,8 +546,9 @@ async fn server_main() {
         let store_collector = entity_metrics.clone();
         let running_collector = running.clone();
         let snmp_collector = snmp.clone();
+        let control_collector = polling_control.clone();
         Some(std::thread::spawn(move || {
-            collectors::entitypoller::run(snmp_collector, entitypoller_interval_msecs, entitypoller_disable_sensors, entitypoller_disable_stp, entitypoller_disable_qos, store_collector, running_collector);
+            collectors::entitypoller::run(snmp_collector, entitypoller_interval_msecs, entitypoller_disable_sensors, entitypoller_disable_stp, entitypoller_disable_qos, store_collector, control_collector, running_collector);
         }))
     } else {
         println!("[entitypoller] disabled via JASPY_ENABLE_ENTITYPOLLER");
@@ -552,8 +560,9 @@ async fn server_main() {
         let control_collector = vlan_control.clone();
         let running_collector = running.clone();
         let snmp_collector = snmp.clone();
+        let polling_collector = polling_control.clone();
         Some(std::thread::spawn(move || {
-            collectors::vlanpoller::run(snmp_collector, vlanpoller_interval_msecs, control_collector, store_collector, running_collector);
+            collectors::vlanpoller::run(snmp_collector, vlanpoller_interval_msecs, control_collector, polling_collector, store_collector, running_collector);
         }))
     } else {
         println!("[vlanpoller] disabled via JASPY_ENABLE_VLANPOLLER");
@@ -564,8 +573,9 @@ async fn server_main() {
         let store_collector = lag_store.clone();
         let running_collector = running.clone();
         let snmp_collector = snmp.clone();
+        let control_collector = polling_control.clone();
         Some(std::thread::spawn(move || {
-            collectors::lagpoller::run(snmp_collector, lagpoller_interval_msecs, store_collector, running_collector);
+            collectors::lagpoller::run(snmp_collector, lagpoller_interval_msecs, store_collector, control_collector, running_collector);
         }))
     } else {
         println!("[lagpoller] disabled via JASPY_ENABLE_LAGPOLLER");
@@ -742,6 +752,7 @@ async fn server_main() {
                 routes::api::v1::event_put,
                 routes::api::v1::reset,
                 routes::api::v1::system_status,
+                routes::api::v1::system_polling_set,
                 routes::api::v1::system_perf,
                 routes::api::v1::system_env,
                 routes::api::v1::ws_logs,
@@ -765,6 +776,7 @@ async fn server_main() {
         .manage(vlan_store.clone())
         .manage(lag_store.clone())
         .manage(vlan_control.clone())
+        .manage(polling_control.clone())
         .manage(discovery_control.clone())
         .manage(cache_controller.clone())
         .manage(issue_tracker.clone())

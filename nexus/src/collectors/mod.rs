@@ -51,3 +51,53 @@ pub const SNMP_WORKER_STACK_BYTES: usize = 8 * 1024 * 1024;
 pub fn snmp_thread_builder() -> std::thread::Builder {
     std::thread::Builder::new().stack_size(SNMP_WORKER_STACK_BYTES)
 }
+
+// Runtime master switch for all switch-touching collectors (the SNMP pollers —
+// interface/entity/vlan/lag — and the ICMP pinger), managed as shared rocket
+// state and toggled from the Maintenance page (PUT /api/v1/system/polling).
+//
+// Distinct from the per-collector `enable_*` startup config (which decides
+// whether a collector thread is spawned at all): this pauses the collectors
+// that ARE running so they stop querying switches, and the /dev/metrics
+// exporter emits nothing switch-derived while paused, so Prometheus sees the
+// series disappear instead of scraping the last (now frozen) values. Flipping
+// it back on resumes polling; the series reappear on the next scrape after the
+// collectors repopulate. A collector disabled at startup stays off regardless.
+pub struct PollingControl {
+    enabled: std::sync::atomic::AtomicBool,
+}
+
+impl PollingControl {
+    pub fn new(enabled: bool) -> PollingControl {
+        PollingControl { enabled: std::sync::atomic::AtomicBool::new(enabled) }
+    }
+
+    // True when collectors should be polling and the metrics exporter should be
+    // emitting switch-derived series.
+    pub fn enabled(&self) -> bool {
+        self.enabled.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub fn set(&self, enabled: bool) {
+        self.enabled.store(enabled, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn polling_control_defaults_and_toggles() {
+        let control = PollingControl::new(true);
+        assert!(control.enabled());
+        control.set(false);
+        assert!(!control.enabled());
+        control.set(true);
+        assert!(control.enabled());
+
+        // Constructed paused stays paused until set.
+        let paused = PollingControl::new(false);
+        assert!(!paused.enabled());
+    }
+}

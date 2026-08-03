@@ -8,6 +8,12 @@ function EnabledBadge({ enabled }: { enabled: boolean }) {
     : <span className="badge badge-muted">disabled</span>;
 }
 
+// Shown next to a collector that is configured on but currently held idle by
+// the runtime master switch (Polling control panel below).
+function PausedBadge({ show }: { show: boolean }) {
+  return show ? <> <span className="badge badge-warn">paused</span></> : null;
+}
+
 export default function Maintenance() {
   const queryClient = useQueryClient();
   const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary, refetchInterval: 10000 });
@@ -50,6 +56,11 @@ export default function Maintenance() {
     onSuccess: invalidateAll,
   });
 
+  const setPolling = useMutation({
+    mutationFn: (enabled: boolean) => api.setPolling(enabled),
+    onSuccess: invalidateAll,
+  });
+
   const [confirmText, setConfirmText] = useState('');
   const [resetResult, setResetResult] = useState<string | null>(null);
   const reset = useMutation({
@@ -78,22 +89,26 @@ export default function Maintenance() {
             <span>SNMP poller</span>
             <span>
               <EnabledBadge enabled={sys.pollerEnabled} />
+              <PausedBadge show={sys.pollerEnabled && !sys.pollingEnabled} />
               {sys.pollerEnabled && ` polling every ${sys.pollLoopMsecs / 1000}s`}
             </span>
             <span>Pinger</span>
             <span>
               <EnabledBadge enabled={sys.pingerEnabled} />
+              <PausedBadge show={sys.pingerEnabled && !sys.pollingEnabled} />
               {' '}— device up/down from {sys.deviceStatusSource === 'pinger' ? 'ICMP ping' : 'SNMP poll responses'}
             </span>
             <span>Entity poller</span>
             <span>
               <EnabledBadge enabled={sys.entitypollerEnabled} />
+              <PausedBadge show={sys.entitypollerEnabled && !sys.pollingEnabled} />
               {sys.entitypollerEnabled &&
                 ` every ${sys.entitypollerIntervalMsecs / 1000}s (sensors ${sys.entitypollerSensorsEnabled ? 'on' : 'off'}, STP ${sys.entitypollerStpEnabled ? 'on' : 'off'})`}
             </span>
             <span>VLAN poller</span>
             <span>
               <EnabledBadge enabled={sys.vlanpollerEnabled} />
+              <PausedBadge show={sys.vlanpollerEnabled && !sys.pollingEnabled} />
               {sys.vlanpollerEnabled && ` every ${sys.vlanpollerIntervalMsecs / 1000}s`}
             </span>
             <span>Periodic discovery</span>
@@ -149,6 +164,42 @@ export default function Maintenance() {
               {sys.weathermapDir ?? <span className="muted">directory not found — not served</span>}
             </span>
           </div>
+        ) : (
+          <p>Loading…</p>
+        )}
+      </div>
+
+      <h2>Polling control</h2>
+      <div className="panel">
+        <p className="muted" style={{ marginTop: 0 }}>
+          Master switch for every SNMP poller (interface, entity, VLAN, LAG) and
+          the ICMP pinger. Pausing stops all polling of switches and blanks the
+          exported <code>/dev/metrics</code>, so Prometheus stops scraping stale
+          switch series during a maintenance window. Collectors disabled at
+          startup stay off. This is not persisted — a restart returns to enabled.
+        </p>
+        {sys ? (
+          <>
+            <div className="kv">
+              <span>Status</span>
+              <span>
+                {sys.pollingEnabled
+                  ? <span className="badge badge-ok">active</span>
+                  : <span className="badge badge-warn">paused</span>}
+                {!sys.pollingEnabled && ' — collectors idle, switch metrics not exported'}
+              </span>
+            </div>
+            <div className="actions">
+              <button
+                className={sys.pollingEnabled ? 'danger' : undefined}
+                disabled={setPolling.isPending}
+                onClick={() => setPolling.mutate(!sys.pollingEnabled)}
+              >
+                {sys.pollingEnabled ? 'Pause all polling' : 'Resume polling'}
+              </button>
+              {setPolling.isError && <span className="error">{String(setPolling.error)}</span>}
+            </div>
+          </>
         ) : (
           <p>Loading…</p>
         )}

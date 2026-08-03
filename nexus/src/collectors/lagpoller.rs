@@ -443,6 +443,7 @@ pub fn run(
     snmp: Arc<SnmpSource>,
     interval_msecs: u64,
     store: Arc<Mutex<LagStore>>,
+    control: Arc<super::PollingControl>,
     running: Arc<atomic::AtomicBool>,
 ) {
     println!("[lagpoller] starting in-process collector (interval_msecs={})", interval_msecs);
@@ -451,6 +452,11 @@ pub fn run(
     let sources_cache = Arc::new(vendor::SourceCache::new());
 
     while running.load(atomic::Ordering::Relaxed) {
+        // Paused via the master switch: skip the poll cycle (no SNMP issued).
+        if !control.enabled() {
+            interruptible_sleep(1000, &running);
+            continue;
+        }
         let cycle_start = tools::get_time_msecs();
         let devices = load_devices(&pool);
         let keep: HashSet<String> = devices.iter().map(|d| d.fqdn.clone()).collect();

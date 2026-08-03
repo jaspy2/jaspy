@@ -2050,7 +2050,7 @@ pub(crate) fn interruptible_sleep(msecs: u64, running: &Arc<atomic::AtomicBool>)
     }
 }
 
-pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, disable_stp: bool, disable_qos: bool, store: Arc<Mutex<EntityMetricsStore>>, running: Arc<atomic::AtomicBool>) {
+pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, disable_stp: bool, disable_qos: bool, store: Arc<Mutex<EntityMetricsStore>>, control: Arc<super::PollingControl>, running: Arc<atomic::AtomicBool>) {
     println!("[entitypoller] starting in-process collector (interval_msecs={}, sensors={}, stp={}, qos={})",
         interval_msecs, !disable_sensors, !disable_stp, !disable_qos);
     let pool = db::connect();
@@ -2062,6 +2062,13 @@ pub fn run(snmp: Arc<SnmpSource>, interval_msecs: u64, disable_sensors: bool, di
     let qos_cache = Arc::new(crate::collectors::qos::QosProbeCache::new());
 
     while running.load(atomic::Ordering::Relaxed) {
+        // Paused via the master switch: skip the whole poll cycle so no SNMP is
+        // issued. The last sensor/STP/PoE/QoS samples stay in the store but the
+        // /dev/metrics exporter is gated, so Prometheus doesn't scrape them.
+        if !control.enabled() {
+            interruptible_sleep(1000, &running);
+            continue;
+        }
         let cycle_start = tools::get_time_msecs();
         let devices = load_devices(&pool);
 

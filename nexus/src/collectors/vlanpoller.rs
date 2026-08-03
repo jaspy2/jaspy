@@ -529,6 +529,7 @@ pub fn run(
     snmp: Arc<SnmpSource>,
     interval_msecs: u64,
     control: Arc<Mutex<VlanPollerControl>>,
+    polling: Arc<super::PollingControl>,
     store: Arc<Mutex<VlanStore>>,
     running: Arc<atomic::AtomicBool>,
 ) {
@@ -539,6 +540,13 @@ pub fn run(
     let mut next_cycle: u64 = 0; // first full cycle runs immediately
 
     while running.load(atomic::Ordering::Relaxed) {
+        // Paused via the master switch: skip both the interval cycle and the
+        // poll-now queue so no SNMP is issued. A poll-now request queued while
+        // paused stays pending and runs once polling resumes.
+        if !polling.enabled() {
+            interruptible_sleep(1000, &running);
+            continue;
+        }
         let now = tools::get_time_msecs();
         if now >= next_cycle {
             let devices = load_devices(&pool);

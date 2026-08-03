@@ -84,6 +84,10 @@ export interface SystemStatus {
   pollerEnabled: boolean;
   pollLoopMsecs: number;
   pingerEnabled: boolean;
+  // Runtime master switch: false = all SNMP pollers + pinger paused and
+  // /dev/metrics emits no switch series. Distinct from the per-collector
+  // *Enabled flags (startup config for whether a collector was spawned).
+  pollingEnabled: boolean;
   deviceStatusSource: 'pinger' | 'poller';
   entitypollerEnabled: boolean;
   entitypollerIntervalMsecs: number;
@@ -98,6 +102,10 @@ export interface SystemStatus {
   discoveryIntervalSecs: number;
   weathermapDir: string | null;
   megaexcelUrl: string | null; // integration base URL; null disables the links
+}
+
+export interface PollingState {
+  enabled: boolean;
 }
 
 export interface EnvVar {

@@ -200,7 +200,7 @@ fn responses_by_fqdn(targets: &[(String, String)], responded_by_addr: &HashMap<S
     responded
 }
 
-fn ping_shard_worker(pool: db::Pool, imds: Arc<Mutex<IMDS>>, shard_id: usize, workers: usize, running: Arc<atomic::AtomicBool>) {
+fn ping_shard_worker(pool: db::Pool, imds: Arc<Mutex<IMDS>>, shard_id: usize, workers: usize, control: Arc<super::PollingControl>, running: Arc<atomic::AtomicBool>) {
     // Stagger workers across the interval so their sends don't align into one
     // burst — with `workers` shards there are pings continuously in flight.
     let offset = (shard_id as u64) * PING_LOOP_MSECS / (workers as u64);
@@ -212,6 +212,18 @@ fn ping_shard_worker(pool: db::Pool, imds: Arc<Mutex<IMDS>>, shard_id: usize, wo
 
     while running.load(atomic::Ordering::Relaxed) {
         let start = tools::get_time_msecs();
+
+        // Paused via the master switch: issue no ICMP and report nothing. Drop
+        // the accounting so that on resume each device's first observation is
+        // reported afresh (matching startup) rather than diffed against a
+        // now-stale pre-pause state.
+        if !control.enabled() {
+            if !accounting.is_empty() {
+                accounting.clear();
+            }
+            thread::sleep(time::Duration::from_millis(PING_LOOP_MSECS));
+            continue;
+        }
 
         let shard: Vec<String> = load_device_fqdns(&pool)
             .into_keys()
@@ -255,7 +267,7 @@ fn ping_shard_worker(pool: db::Pool, imds: Arc<Mutex<IMDS>>, shard_id: usize, wo
     println!("[pinger] shard {}/{} stop monitoring", shard_id, workers);
 }
 
-pub fn run(imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, workers: usize) {
+pub fn run(imds: Arc<Mutex<IMDS>>, control: Arc<super::PollingControl>, running: Arc<atomic::AtomicBool>, workers: usize) {
     let workers = workers.max(1);
     println!("[pinger] starting in-process collector ({} shard workers)", workers);
     let pool = db::connect();
@@ -264,9 +276,10 @@ pub fn run(imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>, workers: us
     for shard_id in 0..workers {
         let pool_copy = pool.clone();
         let imds_copy = imds.clone();
+        let control_copy = control.clone();
         let running_copy = running.clone();
         handles.push(thread::spawn(move || {
-            ping_shard_worker(pool_copy, imds_copy, shard_id, workers, running_copy);
+            ping_shard_worker(pool_copy, imds_copy, shard_id, workers, control_copy, running_copy);
         }));
     }
 

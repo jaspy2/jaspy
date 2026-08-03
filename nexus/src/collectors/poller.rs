@@ -449,7 +449,7 @@ fn reap_finished_threads(reap_threads: &mut Vec<PollThreadInfo>) {
     }
 }
 
-pub fn run(snmp: Arc<SnmpSource>, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, running: Arc<atomic::AtomicBool>) {
+pub fn run(snmp: Arc<SnmpSource>, poll_loop_msecs: u64, report_device_status: bool, imds: Arc<Mutex<IMDS>>, control: Arc<super::PollingControl>, running: Arc<atomic::AtomicBool>) {
     println!("[poller] starting in-process collector (poll_loop_msecs={})", poll_loop_msecs);
     if report_device_status {
         println!("[poller] pinger is disabled; deriving device up/down from SNMP poll replies");
@@ -465,8 +465,41 @@ pub fn run(snmp: Arc<SnmpSource>, poll_loop_msecs: u64, report_device_status: bo
     let reload_secs: u64 = std::env::var("JASPY_POLLER_RELOAD_SECS").ok()
         .and_then(|v| v.parse().ok()).filter(|&v| v > 0).unwrap_or(15);
     let mut ticks_since_reload = 0u64;
+    // Track the master switch so the enable transition is detected: while paused
+    // the per-device workers are torn down (they stop querying switches), and on
+    // resume the device set is reconciled immediately rather than waiting out
+    // the reload interval.
+    let mut was_paused = false;
 
     while running.load(atomic::Ordering::Relaxed) {
+        if !control.enabled() {
+            // Paused: stop every worker so no SNMP is issued, then idle. The
+            // exporter is gated separately, so the stale in-IMDS counters are
+            // not scraped while paused.
+            if !poll_workers.is_empty() {
+                println!("[poller] polling paused; stopping {} device worker(s)", poll_workers.len());
+                for (_fqdn, worker) in poll_workers.iter() {
+                    worker.running.store(false, atomic::Ordering::Relaxed);
+                }
+                for (_fqdn, worker) in poll_workers.drain() {
+                    let _ = worker.thd.join();
+                }
+            }
+            // Drain any workers that were mid-reap when the pause landed.
+            for worker in reap_threads.drain(..) {
+                worker.running.store(false, atomic::Ordering::Relaxed);
+                let _ = worker.thd.join();
+            }
+            was_paused = true;
+            thread::sleep(time::Duration::from_millis(1000));
+            continue;
+        }
+        // On resume, reconcile the device set on this very tick.
+        if was_paused {
+            println!("[poller] polling resumed");
+            ticks_since_reload = 0;
+            was_paused = false;
+        }
         if ticks_since_reload == 0 {
             let devices = load_devices(&pool);
             // Drop per-device SNMP poll counters for devices no longer monitored.

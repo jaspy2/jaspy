@@ -243,14 +243,20 @@ pub fn summary(
     imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
     runtime_info: &State<Arc<Mutex<models::internal::RuntimeInfo>>>,
     discovery_control: &State<Arc<Mutex<crate::collectors::discovery::DiscoveryControl>>>,
+    polling_control: &State<Arc<crate::collectors::PollingControl>>,
 ) -> Json<models::json::ApiSummary> {
     let devices = models::dbo::Device::all(&mut connection);
+    // With polling paused (Maintenance master switch), the collectors are not
+    // updating reachability — the last-known up/down in IMDS is frozen, so
+    // report every device as unknown rather than claiming a stale state.
+    let paused = !polling_control.inner().enabled();
     let mut devices_up = 0;
     let mut devices_down = 0;
     let mut devices_unknown = 0;
     for device in devices.iter() {
         let fqdn = format!("{}.{}", device.name, device.dns_domain);
-        match imds_device_up(imds, &fqdn) {
+        let up = if paused { None } else { imds_device_up(imds, &fqdn) };
+        match up {
             Some(true) => devices_up += 1,
             Some(false) => devices_down += 1,
             None => devices_unknown += 1,
@@ -310,9 +316,14 @@ fn api_device(
     device: &models::dbo::Device,
     membership: &std::collections::HashMap<String, std::collections::HashMap<i64, (Option<i64>, Vec<i64>)>>,
     policy: &std::collections::HashMap<i64, utilities::health::EscalationLevel>,
+    polling_paused: bool,
 ) -> models::json::ApiDevice {
     let fqdn = format!("{}.{}", device.name, device.dns_domain);
-    let (up, seconds_since_last_poll) = imds_device_live(imds, &fqdn);
+    let (live_up, seconds_since_last_poll) = imds_device_live(imds, &fqdn);
+    // Paused (Maintenance master switch): the last-known up/down is frozen, so
+    // report reachability as unknown instead of a stale "up". The frozen last
+    // poll age is kept as-is — its growth is a useful staleness signal.
+    let up = if polling_paused { None } else { live_up };
     // Per-VLAN escalation levels for this device's interfaces; empty => Normal
     // (today's behavior), which is also the case for an empty membership map.
     let levels = membership.get(&fqdn).map(|m| resolve_levels(m, policy)).unwrap_or_default();
@@ -353,6 +364,7 @@ pub fn devices(
     mut connection: db::JaspyDB,
     imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
     vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>,
+    polling_control: &State<Arc<crate::collectors::PollingControl>>,
 ) -> Json<Vec<models::json::ApiDevice>> {
     // Snapshot VLAN membership and the escalation policy once for the whole list.
     let membership = match vlan_store.inner().lock() {
@@ -360,15 +372,16 @@ pub fn devices(
         Err(_) => std::collections::HashMap::new(),
     };
     let policy = load_vlan_policy(&mut connection);
+    let paused = !polling_control.inner().enabled();
     let mut ret = Vec::new();
     for device in models::dbo::Device::all(&mut connection).iter() {
-        ret.push(api_device(&mut connection, imds, device, &membership, &policy));
+        ret.push(api_device(&mut connection, imds, device, &membership, &policy, paused));
     }
     Json(ret)
 }
 
 #[get("/devices/<device_fqdn>")]
-pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>, lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>, entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>) -> Option<Json<models::json::ApiDeviceDetail>> {
+pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, vlan_store: &State<Arc<Mutex<crate::collectors::vlanpoller::VlanStore>>>, lag_store: &State<Arc<Mutex<crate::collectors::lagpoller::LagStore>>>, entity_metrics: &State<Arc<Mutex<crate::collectors::entitypoller::EntityMetricsStore>>>, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, tracker: &State<Arc<Mutex<crate::utilities::issues::IssueTracker>>>, polling_control: &State<Arc<crate::collectors::PollingControl>>) -> Option<Json<models::json::ApiDeviceDetail>> {
     let device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
     // Live interface state (up/speed) plus recent-history health from IMDS,
@@ -611,7 +624,7 @@ pub fn device_detail(mut connection: db::JaspyDB, device_fqdn: &str, imds: &Stat
         Err(_) => std::collections::HashMap::new(),
     };
     let policy = load_vlan_policy(&mut connection);
-    let device = api_device(&mut connection, imds, &device, &membership, &policy);
+    let device = api_device(&mut connection, imds, &device, &membership, &policy, !polling_control.inner().enabled());
     Some(Json(models::json::ApiDeviceDetail {
         device: device,
         interfaces: interfaces,
@@ -1595,7 +1608,7 @@ pub(crate) fn validated_device_identity(name: &str, dns_domain: &str) -> Result<
 // UI can explain a rejection: 400 = malformed identity, 409 = already exists,
 // 500 = insert failed.
 #[post("/devices", data = "<device_json>")]
-pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Result<Json<models::json::ApiDevice>, (rocket::http::Status, Json<models::json::ApiError>)> {
+pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, cache_controller: &State<Arc<Mutex<utilities::cache::CacheController>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>, polling_control: &State<Arc<crate::collectors::PollingControl>>) -> Result<Json<models::json::ApiDevice>, (rocket::http::Status, Json<models::json::ApiError>)> {
     let api_err = |status: rocket::http::Status, error: String| (status, Json(models::json::ApiError { error }));
 
     let mut new_device = device_json.into_inner();
@@ -1621,7 +1634,7 @@ pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: 
             }
             // Post-create echo: no VLAN membership yet, so the badge uses the
             // default (Normal) policy.
-            Ok(Json(api_device(&mut connection, imds, &created_device, &std::collections::HashMap::new(), &std::collections::HashMap::new())))
+            Ok(Json(api_device(&mut connection, imds, &created_device, &std::collections::HashMap::new(), &std::collections::HashMap::new(), !polling_control.inner().enabled())))
         }
         Err(e) => Err(api_err(
             rocket::http::Status::InternalServerError,
@@ -1631,7 +1644,7 @@ pub fn device_create(device_json: Json<models::dbo::NewDevice>, mut connection: 
 }
 
 #[put("/devices/<device_fqdn>", data = "<device_json>")]
-pub fn device_update(device_fqdn: &str, device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>) -> Option<Json<models::json::ApiDevice>> {
+pub fn device_update(device_fqdn: &str, device_json: Json<models::dbo::NewDevice>, mut connection: db::JaspyDB, imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>, polling_control: &State<Arc<crate::collectors::PollingControl>>) -> Option<Json<models::json::ApiDevice>> {
     let mut device = models::dbo::Device::find_by_fqdn(&mut connection, &device_fqdn)?;
 
     let mut changed = false;
@@ -1674,7 +1687,7 @@ pub fn device_update(device_fqdn: &str, device_json: Json<models::dbo::NewDevice
     }
     // Post-update echo; the fleet-list rollup applies the VLAN policy — this
     // single-device echo uses the default (Normal).
-    Some(Json(api_device(&mut connection, imds, &device, &std::collections::HashMap::new(), &std::collections::HashMap::new())))
+    Some(Json(api_device(&mut connection, imds, &device, &std::collections::HashMap::new(), &std::collections::HashMap::new(), !polling_control.inner().enabled())))
 }
 
 #[delete("/devices/<device_fqdn>")]
@@ -1752,6 +1765,7 @@ pub fn system_status(
     runtime_info: &State<Arc<Mutex<models::internal::RuntimeInfo>>>,
     msgbus: &State<Arc<Mutex<utilities::msgbus::MessageBus>>>,
     discovery_control: &State<Arc<Mutex<crate::collectors::discovery::DiscoveryControl>>>,
+    polling_control: &State<Arc<crate::collectors::PollingControl>>,
     pool: &State<db::Pool>,
 ) -> Json<models::json::ApiSystemStatus> {
     let startup_time = runtime_info.inner().lock().map(|r| r.startup_time).unwrap_or(0.0);
@@ -1799,6 +1813,7 @@ pub fn system_status(
         poller_enabled: system.poller_enabled,
         poll_loop_msecs: system.poll_loop_msecs,
         pinger_enabled: system.pinger_enabled,
+        polling_enabled: polling_control.inner().enabled(),
         device_status_source: if system.pinger_enabled { "pinger".to_string() } else { "poller".to_string() },
         entitypoller_enabled: system.entitypoller_enabled,
         entitypoller_interval_msecs: system.entitypoller_interval_msecs,
@@ -1816,6 +1831,23 @@ pub fn system_status(
         weathermap_dir: system.weathermap_dir.clone(),
         megaexcel_url: system.megaexcel_url.clone(),
     })
+}
+
+// PUT /api/v1/system/polling: flip the runtime master switch for every
+// switch-touching collector (SNMP interface/entity/vlan/lag pollers + the ICMP
+// pinger). Pausing it stops the collectors querying switches and makes
+// /dev/metrics emit nothing switch-derived, so Prometheus stops scraping the
+// now-frozen series (a maintenance-window control). Not persisted: a restart
+// returns to the enabled default. Returns the resulting state.
+#[put("/system/polling", data = "<body>")]
+pub fn system_polling_set(
+    body: Json<models::json::ApiPollingState>,
+    polling_control: &State<Arc<crate::collectors::PollingControl>>,
+) -> Json<models::json::ApiPollingState> {
+    let enabled = body.into_inner().enabled;
+    polling_control.inner().set(enabled);
+    println!("[api] polling master switch set to {} via /system/polling", if enabled { "enabled" } else { "paused" });
+    Json(models::json::ApiPollingState { enabled })
 }
 
 // GET /api/v1/system/perf: core hot-path performance counters for the

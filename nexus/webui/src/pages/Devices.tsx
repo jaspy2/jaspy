@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { Device } from '../api/types';
@@ -15,6 +15,8 @@ function lastPollText(secs: number | null): string {
 export default function Devices() {
   const navigate = useNavigate();
   const devices = useQuery({ queryKey: ['devices'], queryFn: api.devices, refetchInterval: 10000 });
+  const system = useQuery({ queryKey: ['system'], queryFn: api.system, refetchInterval: 10000 });
+  const pollingPaused = system.data?.pollingEnabled === false;
   const [filter, setFilter] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('fqdn');
   const [sortAsc, setSortAsc] = useState(true);
@@ -62,6 +64,17 @@ export default function Devices() {
   return (
     <>
       <h1>Devices</h1>
+      {pollingPaused && (
+        <div className="banner-warn" role="alert">
+          <span>⏸</span>
+          <span>
+            Polling is paused globally — no devices are being polled or pinged, so
+            reachability shows as <strong>unknown</strong> and metrics are not
+            being exported. Resume it on the{' '}
+            <Link to="/maintenance">Maintenance page</Link>.
+          </span>
+        </div>
+      )}
       <div className="toolbar">
         <input
           type="search"

@@ -8,7 +8,16 @@ use rocket::serde::json::Json;
 
 // TODO: GH#9 Move everything to v1 API
 #[get("/fast")]
-pub fn metrics_fast(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<String> {
+pub fn metrics_fast(
+    imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
+    polling: &State<Arc<crate::collectors::PollingControl>>,
+) -> Option<String> {
+    // Polling paused (Maintenance page master switch): emit nothing so
+    // Prometheus stops scraping the frozen switch series instead of recording
+    // stale values (see collectors::PollingControl).
+    if !polling.enabled() {
+        return Some("\n".to_string());
+    }
     let mut ret : String = String::new();
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 
@@ -30,7 +39,17 @@ pub fn metrics_fast(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>) -> Option<S
 }
 
 #[get("/")]
-pub fn metrics(imds: &State<Arc<Mutex<utilities::imds::IMDS>>>, entity_metrics: &State<Arc<Mutex<EntityMetricsStore>>>) -> Option<String> {
+pub fn metrics(
+    imds: &State<Arc<Mutex<utilities::imds::IMDS>>>,
+    entity_metrics: &State<Arc<Mutex<EntityMetricsStore>>>,
+    polling: &State<Arc<crate::collectors::PollingControl>>,
+) -> Option<String> {
+    // Polling paused: emit nothing switch-derived (IMDS counters, entity/PoE/QoS
+    // samples, per-device SNMP poll counters) so Prometheus stops scraping stale
+    // switch series. The /perf endpoint (process counters) stays live.
+    if !polling.enabled() {
+        return Some("\n".to_string());
+    }
     let mut ret : String = String::new();
     let metrics : Option<Vec<models::metrics::LabeledMetric>>;
 

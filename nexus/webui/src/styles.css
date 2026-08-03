@@ -199,6 +199,19 @@ a { color: var(--accent); }
   border-radius: 8px;
   padding: 16px;
 }
+/* Inline warning banner (e.g. "polling paused globally" on the Devices page). */
+.banner-warn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+.banner-warn a { color: inherit; font-weight: 600; }
 .kv {
   display: grid;
   grid-template-columns: max-content 1fr;

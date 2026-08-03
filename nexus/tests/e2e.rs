@@ -147,6 +147,65 @@ fn poller_queries_and_interface_metrics(db: DbHarness) {
 }
 
 // ---------------------------------------------------------------------------
+// 1a. The Maintenance-page polling master switch pauses collectors and blanks
+//     the exported metrics (PUT /api/v1/system/polling), then resumes them.
+// ---------------------------------------------------------------------------
+e2e_both!(polling_master_switch_pauses_and_resumes_metrics);
+fn polling_master_switch_pauses_and_resumes_metrics(db: DbHarness) {
+    let mock = SnmpbotMock::start();
+    mock.stub_table(FQDN, COMMUNITY, "IF-MIB::ifTable", &read_fixture("iftable.json"));
+    mock.stub_table(FQDN, COMMUNITY, "IF-MIB::ifXTable", &read_fixture("ifxtable.json"));
+    mock.stub_other_tables();
+
+    let nexus = Nexus::builder(db.db_url())
+        .snmpbot(&mock.url())
+        .poller(true)
+        .poll_loop_msecs(300)
+        .start();
+
+    nexus.post_json("/dev/device", &device_body(true));
+    nexus.put_json("/dev/discovery/device", &discovery_body("sw1", "test.example"));
+
+    // Switch series present and the master switch reports enabled by default.
+    nexus.wait_for_metric("jaspy_interface_octets", Duration::from_secs(15));
+    assert_eq!(nexus.get_json("/api/v1/system")["pollingEnabled"], json!(true));
+    // With the pinger off, a device answering SNMP reads up in the listing.
+    assert!(
+        wait_until(Duration::from_secs(10), || nexus.get_json("/api/v1/devices")[0]["up"] == json!(true)),
+        "device should read up while polling: {:?}", nexus.get_json("/api/v1/devices")
+    );
+
+    // Pause: the endpoint reflects it immediately (route-level gate), and the
+    // exporter drops every switch series so Prometheus stops scraping stale data.
+    let resp = nexus.put_json("/api/v1/system/polling", &json!({ "enabled": false }));
+    assert!(resp.status().is_success());
+    assert_eq!(nexus.get_json("/api/v1/system")["pollingEnabled"], json!(false));
+    assert!(
+        wait_until(Duration::from_secs(5), || !nexus.metrics().contains("jaspy_interface_octets")),
+        "switch metrics should disappear while polling is paused"
+    );
+    assert!(!nexus.metrics().contains("jaspy_"), "no switch series while paused: {:?}", nexus.metrics());
+    assert!(!nexus.metrics_fast().contains("jaspy_"), "no fast switch series while paused");
+
+    // Reachability must read unknown (null), not a stale "up", while paused —
+    // both in the device listing and in the fleet summary counts.
+    assert_eq!(nexus.get_json("/api/v1/devices")[0]["up"], json!(null), "paused device up should be unknown");
+    let summary = nexus.get_json("/api/v1/summary");
+    assert_eq!(summary["devicesUp"], json!(0), "no devices counted up while paused");
+    assert_eq!(summary["devicesUnknown"], json!(1), "the device is counted unknown while paused");
+
+    // Resume: collectors repopulate and the series come back on a later scrape.
+    let resp = nexus.put_json("/api/v1/system/polling", &json!({ "enabled": true }));
+    assert!(resp.status().is_success());
+    assert_eq!(nexus.get_json("/api/v1/system")["pollingEnabled"], json!(true));
+    nexus.wait_for_metric("jaspy_interface_octets", Duration::from_secs(15));
+    assert!(
+        wait_until(Duration::from_secs(10), || nexus.get_json("/api/v1/devices")[0]["up"] == json!(true)),
+        "device should read up again after resume"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // 1b. Entitypoller renders entity sensor + per-VLAN STP metrics
 // ---------------------------------------------------------------------------
 e2e_both!(entitypoller_sensor_and_stp_metrics);

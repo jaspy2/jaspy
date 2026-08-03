@@ -20,6 +20,7 @@ import type {
   StpVlanSummary,
   StpExpectedRootRequest,
   PerfStats,
+  PollingState,
   Summary,
   SystemStatus,
   VlanSummary,
@@ -50,6 +51,11 @@ export const api = {
   summary: () => request<Summary>('/api/v1/summary'),
   system: () => request<SystemStatus>('/api/v1/system'),
   systemPerf: () => request<PerfStats>('/api/v1/system/perf'),
+  setPolling: (enabled: boolean) =>
+    request<PollingState>('/api/v1/system/polling', {
+      method: 'PUT',
+      body: JSON.stringify({ enabled } satisfies PollingState),
+    }),
   systemEnv: () => request<EnvVar[]>('/api/v1/system/env'),
   devices: () => request<Device[]>('/api/v1/devices'),
   device: (fqdn: string) => request<DeviceDetail>(`/api/v1/devices/${encodeURIComponent(fqdn)}`),
